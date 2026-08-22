@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fox Classic 2026 – Påmelding</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <h1>🦊 Fox Classic 2026</h1>
+    <p class="subtitle">Terrengløp · lørdag 19. september 2026</p>
+    <ul class="facts">
+      <li><strong>Distanse:</strong> 5,3 km</li>
+      <li><strong>Start/mål:</strong> Rud-Øde</li>
+      <li><strong>Pris:</strong> Gratis</li>
+      <li><strong>Trim uten tidtaking:</strong> løp i eget tempo</li>
+      <li><strong>Konkurranse med tidtaking:</strong> start kl. 11:00</li>
+    </ul>
+  </header>
+
+  <section class="card">
+    <h2>Meld på deltaker</h2>
+    <form id="registrationForm" class="registration-form">
+      <div class="field">
+        <label for="fornavn">Fornavn</label>
+        <input type="text" id="fornavn" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="etternavn">Etternavn</label>
+        <input type="text" id="etternavn" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Kjønn</label>
+        <div class="radio-group">
+          <label class="radio-option"><input type="radio" name="kjonn" value="Mann" required> Mann</label>
+          <label class="radio-option"><input type="radio" name="kjonn" value="Kvinne"> Kvinne</label>
+        </div>
+      </div>
+      <div class="field">
+        <label>Øvelse</label>
+        <div class="radio-group">
+          <label class="radio-option"><input type="radio" name="ovelse" value="Trim uten tid" required> Trim uten tid</label>
+          <label class="radio-option"><input type="radio" name="ovelse" value="Konkurranse med tid"> Konkurranse med tid</label>
+        </div>
+      </div>
+      <p class="form-message" id="formMessage" role="status"></p>
+      <button type="submit" class="btn btn-primary">Legg til deltaker</button>
+      <p class="form-hint">Skjemaet tømmes automatisk slik at du raskt kan legge til flere deltakere.</p>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="list-header">
+      <h2>Påmeldte</h2>
+      <div class="counts" id="counts"></div>
+    </div>
+
+    <div class="filters">
+      <div class="field">
+        <label for="filterKjonn">Filtrer på kjønn</label>
+        <select id="filterKjonn">
+          <option value="">Alle</option>
+          <option value="Mann">Mann</option>
+          <option value="Kvinne">Kvinne</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filterOvelse">Filtrer på øvelse</label>
+        <select id="filterOvelse">
+          <option value="">Alle</option>
+          <option value="Trim uten tid">Trim uten tid</option>
+          <option value="Konkurranse med tid">Konkurranse med tid</option>
+        </select>
+      </div>
+      <button id="exportBtn" class="btn btn-secondary">Eksporter til Excel</button>
+    </div>
+
+    <div class="table-wrap">
+      <table id="participantsTable">
+        <thead>
+          <tr>
+            <th>Fornavn</th>
+            <th>Etternavn</th>
+            <th>Kjønn</th>
+            <th>Øvelse</th>
+            <th>Tid</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="participantsBody"></tbody>
+      </table>
+      <p class="empty-state" id="emptyState">Ingen påmeldte enda. Bli den første!</p>
+    </div>
+  </section>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
