@@ -8,12 +8,12 @@ const participantsBody = document.getElementById("participantsBody");
 const participantsTable = document.getElementById("participantsTable");
 const emptyState = document.getElementById("emptyState");
 const counts = document.getElementById("counts");
+const resultsContainer = document.getElementById("resultsContainer");
 
 let participants = [];
 
 async function loadParticipants() {
-  const res = await fetch("/api/participants");
-  participants = await res.json();
+  participants = await fcFetchParticipants();
   render();
 }
 
@@ -69,17 +69,8 @@ exportBtn.addEventListener("click", () => {
   window.location.href = "/api/export?" + params.toString();
 });
 
-function getFiltered() {
-  return participants.filter((p) => {
-    if (filterKjonn.value && p.kjonn !== filterKjonn.value) return false;
-    if (filterOvelse.value && p.ovelse !== filterOvelse.value) return false;
-    return true;
-  });
-}
-
 function render() {
-  const filtered = getFiltered();
-  participantsBody.innerHTML = "";
+  const filtered = fcFilterParticipants(participants, filterKjonn.value, filterOvelse.value);
 
   if (filtered.length === 0) {
     participantsTable.style.display = "none";
@@ -87,93 +78,13 @@ function render() {
   } else {
     participantsTable.style.display = "table";
     emptyState.style.display = "none";
-
-    const sorted = [...filtered].sort(
-      (a, b) => a.etternavn.localeCompare(b.etternavn, "nb") || a.fornavn.localeCompare(b.fornavn, "nb")
-    );
-
-    for (const p of sorted) {
-      const row = document.createElement("tr");
-
-      row.appendChild(cell(p.fornavn));
-      row.appendChild(cell(p.etternavn));
-      row.appendChild(cell(p.kjonn));
-      row.appendChild(cell(p.ovelse));
-      row.appendChild(tidCell(p));
-
-      const deleteCell = document.createElement("td");
-      const deleteBtn = document.createElement("button");
-      deleteBtn.className = "delete-btn";
-      deleteBtn.textContent = "✕";
-      deleteBtn.title = "Fjern deltaker";
-      deleteBtn.addEventListener("click", () => deleteParticipant(p.id));
-      deleteCell.appendChild(deleteBtn);
-      row.appendChild(deleteCell);
-
-      participantsBody.appendChild(row);
-    }
+    fcRenderTable(participantsBody, filtered, { editable: false });
   }
 
-  renderCounts();
-}
+  const c = fcCounts(filtered);
+  counts.textContent = `Totalt: ${c.total} · Trim: ${c.trim} · Konkurranse: ${c.konkurranse}`;
 
-function cell(text) {
-  const td = document.createElement("td");
-  td.textContent = text;
-  return td;
-}
-
-function tidCell(p) {
-  const td = document.createElement("td");
-  if (p.ovelse !== "Konkurranse med tid") {
-    td.textContent = "–";
-    return td;
-  }
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "tid-input";
-  input.placeholder = "tt:mm:ss";
-  input.value = p.tid || "";
-  input.addEventListener("change", () => saveTid(p.id, input));
-  td.appendChild(input);
-  return td;
-}
-
-async function saveTid(id, input) {
-  const res = await fetch(`/api/participants/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ tid: input.value.trim() || null }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    alert(body.error || "Kunne ikke lagre tid.");
-    return;
-  }
-  const updated = await res.json();
-  const idx = participants.findIndex((p) => p.id === id);
-  if (idx !== -1) participants[idx] = updated;
-}
-
-async function deleteParticipant(id) {
-  const participant = participants.find((p) => p.id === id);
-  if (!participant) return;
-  if (!confirm(`Fjerne ${participant.fornavn} ${participant.etternavn} fra påmeldingslisten?`)) return;
-
-  const res = await fetch(`/api/participants/${id}`, { method: "DELETE" });
-  if (!res.ok) {
-    alert("Kunne ikke fjerne deltaker.");
-    return;
-  }
-  participants = participants.filter((p) => p.id !== id);
-  render();
-}
-
-function renderCounts() {
-  const filtered = getFiltered();
-  const trim = filtered.filter((p) => p.ovelse === "Trim uten tid").length;
-  const konkurranse = filtered.filter((p) => p.ovelse === "Konkurranse med tid").length;
-  counts.textContent = `Totalt: ${filtered.length} · Trim: ${trim} · Konkurranse: ${konkurranse}`;
+  fcRenderResults(resultsContainer, participants);
 }
 
 loadParticipants();

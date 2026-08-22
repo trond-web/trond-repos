@@ -95,6 +95,7 @@ body {
 }
 
 input[type="text"],
+input[type="password"],
 select {
   padding: 10px 12px;
   border: 1px solid var(--border);
@@ -144,6 +145,21 @@ select {
 
 .btn-secondary:hover {
   background: #1f4680;
+}
+
+.btn-ghost {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn-ghost:hover {
+  background: #f1f5f9;
+}
+
+.btn-small {
+  padding: 6px 14px;
+  font-size: 0.85rem;
 }
 
 .form-message {
@@ -223,6 +239,38 @@ th {
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 0.9rem;
+}
+
+.edit-input {
+  width: 100%;
+  min-width: 100px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.edit-select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.page-footer {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.page-footer a {
+  color: var(--blue);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.page-footer a:hover {
+  text-decoration: underline;
 }
 
 .delete-btn {

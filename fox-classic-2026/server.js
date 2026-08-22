@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const express = require("express");
 const ExcelJS = require("exceljs");
 
@@ -9,6 +10,7 @@ const DATA_FILE = path.join(DATA_DIR, "participants.json");
 const KJONN_VALUES = ["Mann", "Kvinne"];
 const OVELSE_VALUES = ["Trim uten tid", "Konkurranse med tid"];
 const TID_PATTERN = /^([0-9]{1,2}:)?[0-5]?[0-9]:[0-5][0-9]$/;
+const ARRANGOR_PASSORD = process.env.ARRANGOR_PASSORD || "";
 
 function loadParticipants() {
   try {
@@ -42,12 +44,47 @@ function validateParticipant(body) {
   return null;
 }
 
+function isCorrectPassord(candidate) {
+  if (!ARRANGOR_PASSORD || typeof candidate !== "string") return false;
+  const a = Buffer.from(candidate);
+  const b = Buffer.from(ARRANGOR_PASSORD);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+function requireArrangor(req, res, next) {
+  const passord = req.header("x-arrangor-passord") || "";
+  if (!isCorrectPassord(passord)) {
+    return res.status(401).json({ error: "Feil eller manglende arrangørpassord." });
+  }
+  next();
+}
+
 const app = express();
 app.use(express.json());
+
+app.get("/arrangor", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "arrangor.html"));
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/api/participants", (req, res) => {
   res.json(participants);
+});
+
+app.post("/api/arrangor/login", (req, res) => {
+  if (!ARRANGOR_PASSORD) {
+    return res.status(500).json({ error: "Arrangørpassord er ikke konfigurert på serveren." });
+  }
+  if (!isCorrectPassord(req.body && req.body.passord)) {
+    return res.status(401).json({ error: "Feil passord." });
+  }
+  res.json({ ok: true });
+});
+
+app.get("/api/arrangor/verify", requireArrangor, (req, res) => {
+  res.json({ ok: true });
 });
 
 app.post("/api/participants", (req, res) => {
@@ -76,25 +113,52 @@ app.post("/api/participants", (req, res) => {
   res.status(201).json(created);
 });
 
-app.patch("/api/participants/:id", (req, res) => {
+app.patch("/api/participants/:id", requireArrangor, (req, res) => {
   const participant = participants.find((p) => p.id === req.params.id);
   if (!participant) {
     return res.status(404).json({ error: "Fant ikke deltaker." });
   }
 
+  const updates = {};
+
+  if ("fornavn" in req.body) {
+    const fornavn = String(req.body.fornavn || "").trim();
+    if (!fornavn) return res.status(400).json({ error: "Fornavn er påkrevd." });
+    updates.fornavn = fornavn;
+  }
+  if ("etternavn" in req.body) {
+    const etternavn = String(req.body.etternavn || "").trim();
+    if (!etternavn) return res.status(400).json({ error: "Etternavn er påkrevd." });
+    updates.etternavn = etternavn;
+  }
+  if ("kjonn" in req.body) {
+    const kjonn = String(req.body.kjonn || "").trim();
+    if (!KJONN_VALUES.includes(kjonn)) {
+      return res.status(400).json({ error: "Kjønn må være Mann eller Kvinne." });
+    }
+    updates.kjonn = kjonn;
+  }
+  if ("ovelse" in req.body) {
+    const ovelse = String(req.body.ovelse || "").trim();
+    if (!OVELSE_VALUES.includes(ovelse)) {
+      return res.status(400).json({ error: "Øvelse må være Trim uten tid eller Konkurranse med tid." });
+    }
+    updates.ovelse = ovelse;
+  }
   if ("tid" in req.body) {
     const tid = req.body.tid === null ? null : String(req.body.tid).trim();
     if (tid !== null && tid !== "" && !TID_PATTERN.test(tid)) {
       return res.status(400).json({ error: "Tid må være på format tt:mm:ss eller mm:ss." });
     }
-    participant.tid = tid || null;
+    updates.tid = tid || null;
   }
 
+  Object.assign(participant, updates);
   saveParticipants(participants);
   res.json(participant);
 });
 
-app.delete("/api/participants/:id", (req, res) => {
+app.delete("/api/participants/:id", requireArrangor, (req, res) => {
   const before = participants.length;
   participants = participants.filter((p) => p.id !== req.params.id);
   if (participants.length === before) {

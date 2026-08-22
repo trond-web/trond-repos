@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fox Classic 2026 – Arrangør</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <h1>🦊 Fox Classic 2026</h1>
+    <p class="subtitle">Arrangørside · lørdag 19. september 2026</p>
+  </header>
+
+  <section class="card" id="loginCard">
+    <h2>Logg inn som arrangør</h2>
+    <form id="loginForm" class="registration-form">
+      <div class="field">
+        <label for="passordInput">Arrangørpassord</label>
+        <input type="password" id="passordInput" required autocomplete="current-password">
+      </div>
+      <p class="form-message" id="loginMessage" role="status"></p>
+      <button type="submit" class="btn btn-primary">Logg inn</button>
+    </form>
+  </section>
+
+  <div id="mainContent" style="display: none;">
+    <div class="list-header">
+      <p class="form-hint">Innlogget som arrangør.</p>
+      <button id="logoutBtn" class="btn btn-ghost btn-small">Logg ut</button>
+    </div>
+
+    <section class="card">
+      <h2>Meld på deltaker</h2>
+      <form id="registrationForm" class="registration-form">
+        <div class="field">
+          <label for="fornavn">Fornavn</label>
+          <input type="text" id="fornavn" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="etternavn">Etternavn</label>
+          <input type="text" id="etternavn" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Kjønn</label>
+          <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="kjonn" value="Mann" required> Mann</label>
+            <label class="radio-option"><input type="radio" name="kjonn" value="Kvinne"> Kvinne</label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Øvelse</label>
+          <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="ovelse" value="Trim uten tid" required> Trim uten tid</label>
+            <label class="radio-option"><input type="radio" name="ovelse" value="Konkurranse med tid"> Konkurranse med tid</label>
+          </div>
+        </div>
+        <p class="form-message" id="formMessage" role="status"></p>
+        <button type="submit" class="btn btn-primary">Legg til deltaker</button>
+        <p class="form-hint">Skjemaet tømmes automatisk slik at du raskt kan legge til flere deltakere.</p>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="list-header">
+        <h2>Påmeldte</h2>
+        <div class="counts" id="counts"></div>
+      </div>
+      <p class="form-hint">Klikk i et felt for å rette det. Tid registreres på format tt:mm:ss eller mm:ss.</p>
+
+      <div class="filters">
+        <div class="field">
+          <label for="filterKjonn">Filtrer på kjønn</label>
+          <select id="filterKjonn">
+            <option value="">Alle</option>
+            <option value="Mann">Mann</option>
+            <option value="Kvinne">Kvinne</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filterOvelse">Filtrer på øvelse</label>
+          <select id="filterOvelse">
+            <option value="">Alle</option>
+            <option value="Trim uten tid">Trim uten tid</option>
+            <option value="Konkurranse med tid">Konkurranse med tid</option>
+          </select>
+        </div>
+        <button id="exportBtn" class="btn btn-secondary">Eksporter til Excel</button>
+      </div>
+
+      <div class="table-wrap">
+        <table id="participantsTable">
+          <thead>
+            <tr>
+              <th>Fornavn</th>
+              <th>Etternavn</th>
+              <th>Kjønn</th>
+              <th>Øvelse</th>
+              <th>Tid</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="participantsBody"></tbody>
+        </table>
+        <p class="empty-state" id="emptyState">Ingen påmeldte enda.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Resultater – Konkurranse med tid</h2>
+      <div id="resultsContainer"></div>
+    </section>
+  </div>
+
+  <p class="page-footer"><a href="/">← Til påmeldingssiden</a></p>
+</div>
+
+<script src="common.js"></script>
+<script src="arrangor.js"></script>
+</body>
+</html>
