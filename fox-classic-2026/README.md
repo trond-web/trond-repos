@@ -15,10 +15,18 @@ Enkel påmeldingsløsning for **Fox Classic 2026**, et terrengløp lørdag 19. s
   til å registrere tid, redigere deltakerfelt og slette deltakere. Låst bak et
   arrangørpassord (se under).
 
-Deltakersiden viser aldri rediger-/slett-kontroller, og de tilhørende
-API-endepunktene (`PATCH`/`DELETE /api/participants/:id`) krever passordet
-uansett hvilken side kallet kommer fra – så en deltaker kan ikke endre data selv
-om de prøver å kalle API-et direkte.
+To lag med beskyttelse på arrangørsiden:
+
+1. **Sidetilgang:** `/arrangor`, `/arrangor.html` og `/arrangor.js` krever HTTP
+   Basic-innlogging (nettleserens innebygde passord-dialog) før noe som helst
+   av arrangørsidens innhold lastes. En deltaker som går til `/arrangor` får
+   bare en innloggingsdialog – ingen side, ingen data.
+2. **API-tilgang:** Etter innlogging på arrangørsiden må man i tillegg logge inn
+   i selve appen. `PATCH`/`DELETE /api/participants/:id` krever passordet i en
+   header uansett hvilken side kallet kommer fra – så en deltaker kan ikke
+   endre data selv om de skulle prøve å kalle API-et direkte.
+
+Begge lagene bruker samme `ARRANGOR_PASSORD`.
 
 ## Funksjonalitet
 

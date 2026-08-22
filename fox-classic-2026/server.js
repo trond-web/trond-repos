@@ -60,8 +60,24 @@ function requireArrangor(req, res, next) {
   next();
 }
 
+// Gates the arrangør page itself (not just the API) so deltakere can't reach
+// or view the arrangør UI at all without the password.
+function requireArrangorBasicAuth(req, res, next) {
+  const header = req.headers.authorization || "";
+  const [scheme, encoded] = header.split(" ");
+  if (scheme === "Basic" && encoded) {
+    const decoded = Buffer.from(encoded, "base64").toString("utf8");
+    const candidate = decoded.slice(decoded.indexOf(":") + 1);
+    if (isCorrectPassord(candidate)) return next();
+  }
+  res.set("WWW-Authenticate", 'Basic realm="Fox Classic 2026 - Arrangor"');
+  res.status(401).send("Innlogging som arrangør kreves.");
+}
+
 const app = express();
 app.use(express.json());
+
+app.get(["/arrangor", "/arrangor.html", "/arrangor.js"], requireArrangorBasicAuth);
 
 app.get("/arrangor", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "arrangor.html"));
