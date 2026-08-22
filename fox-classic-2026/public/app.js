@@ -50,7 +50,7 @@ form.addEventListener("submit", async (e) => {
   form.reset();
   form.querySelector(`input[name="kjonn"][value="${CSS.escape(kjonnValue)}"]`).checked = true;
   form.querySelector(`input[name="ovelse"][value="${CSS.escape(ovelseValue)}"]`).checked = true;
-  showMessage(`${payload.fornavn} ${payload.etternavn} er meldt på!`, false);
+  showMessage(`🦊 ${payload.fornavn} ${payload.etternavn} er meldt på og klar for løypa!`, false);
   fornavnInput.focus();
 });
 

@@ -1,8 +1,9 @@
-const STORAGE_KEY = "foxClassicArrangorPassord";
+const STORAGE_KEY = "foxClassicArrangorCredentials";
 
 const loginCard = document.getElementById("loginCard");
 const loginForm = document.getElementById("loginForm");
 const loginMessage = document.getElementById("loginMessage");
+const brukernavnInput = document.getElementById("brukernavnInput");
 const passordInput = document.getElementById("passordInput");
 const mainContent = document.getElementById("mainContent");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -20,7 +21,14 @@ const counts = document.getElementById("counts");
 const resultsContainer = document.getElementById("resultsContainer");
 
 let participants = [];
-let passord = null;
+let credentials = null;
+
+function authHeaders() {
+  return {
+    "x-arrangor-brukernavn": credentials.brukernavn,
+    "x-arrangor-passord": credentials.passord,
+  };
+}
 
 async function init() {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -28,14 +36,19 @@ async function init() {
     showLogin();
     return;
   }
-  const res = await fetch("/api/arrangor/verify", {
-    headers: { "x-arrangor-passord": stored },
-  });
+  try {
+    credentials = JSON.parse(stored);
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    showLogin();
+    return;
+  }
+  const res = await fetch("/api/arrangor/verify", { headers: authHeaders() });
   if (res.ok) {
-    passord = stored;
     showMain();
   } else {
     localStorage.removeItem(STORAGE_KEY);
+    credentials = null;
     showLogin();
   }
 }
@@ -53,11 +66,11 @@ function showMain() {
 
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const candidate = passordInput.value;
+  const candidate = { brukernavn: brukernavnInput.value.trim(), passord: passordInput.value };
   const res = await fetch("/api/arrangor/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ passord: candidate }),
+    body: JSON.stringify(candidate),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -65,8 +78,8 @@ loginForm.addEventListener("submit", async (e) => {
     loginMessage.className = "form-message error";
     return;
   }
-  passord = candidate;
-  localStorage.setItem(STORAGE_KEY, candidate);
+  credentials = candidate;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(candidate));
   passordInput.value = "";
   loginMessage.textContent = "";
   showMain();
@@ -74,18 +87,18 @@ loginForm.addEventListener("submit", async (e) => {
 
 logoutBtn.addEventListener("click", () => {
   localStorage.removeItem(STORAGE_KEY);
-  passord = null;
+  credentials = null;
   showLogin();
 });
 
 async function authFetch(url, options = {}) {
   const res = await fetch(url, {
     ...options,
-    headers: { ...(options.headers || {}), "x-arrangor-passord": passord },
+    headers: { ...(options.headers || {}), ...authHeaders() },
   });
   if (res.status === 401) {
     localStorage.removeItem(STORAGE_KEY);
-    passord = null;
+    credentials = null;
     showLogin();
     loginMessage.textContent = "Du ble logget ut. Logg inn på nytt.";
     loginMessage.className = "form-message error";
@@ -131,7 +144,7 @@ form.addEventListener("submit", async (e) => {
   form.reset();
   form.querySelector(`input[name="kjonn"][value="${CSS.escape(kjonnValue)}"]`).checked = true;
   form.querySelector(`input[name="ovelse"][value="${CSS.escape(ovelseValue)}"]`).checked = true;
-  showFormMessage(`${payload.fornavn} ${payload.etternavn} er meldt på!`, false);
+  showFormMessage(`🦊 ${payload.fornavn} ${payload.etternavn} er meldt på og klar for løypa!`, false);
   fornavnInput.focus();
 });
 

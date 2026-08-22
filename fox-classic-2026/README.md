@@ -26,7 +26,8 @@ To lag med beskyttelse på arrangørsiden:
    header uansett hvilken side kallet kommer fra – så en deltaker kan ikke
    endre data selv om de skulle prøve å kalle API-et direkte.
 
-Begge lagene bruker samme `ARRANGOR_PASSORD`.
+Begge lagene bruker samme brukernavn/passord: `ARRANGOR_BRUKERNAVN` (standard: `admin`)
+og `ARRANGOR_PASSORD`.
 
 ## Funksjonalitet
 
@@ -40,6 +41,8 @@ Begge lagene bruker samme `ARRANGOR_PASSORD`.
 - Arrangører kan registrere tid, redigere deltakerfelt og slette deltakere fra
   `/arrangor` – et første steg mot en fremtidig stoppeklokke-funksjon for
   tidtaking på løpsdagen.
+- Reve-maskoten er med på begge sider (favicon, header og på arrangørens
+  "rev-hi"-innlogging), med et lite lekent preg på tekst og knapper.
 
 ## Kjøre lokalt
 
@@ -50,7 +53,8 @@ ARRANGOR_PASSORD=hemmelig npm start
 ```
 
 Åpne <http://localhost:3000> (deltakerside) og <http://localhost:3000/arrangor>
-(arrangørside, logg inn med passordet du satte i `ARRANGOR_PASSORD`).
+(arrangørside, logg inn med brukernavn `admin` og passordet du satte i
+`ARRANGOR_PASSORD`).
 
 Påmeldte lagres i `data/participants.json` (opprettes automatisk, og er ikke
 lagt inn i git). Ta gjerne jevnlig backup av denne filen under selve arrangementet.
@@ -67,12 +71,13 @@ det koblet på en persistent volume montert på `/data`, og appen lagrer dit nå
 miljøvariabelen `RAILWAY_VOLUME_MOUNT_PATH` er satt – slik overlever
 påmeldingene redeploys og restarter.
 
-## Arrangørpassord i drift
+## Arrangørinnlogging i drift
 
-Sett miljøvariabelen `ARRANGOR_PASSORD` på driftsmiljøet (f.eks.
-`railway variables set ARRANGOR_PASSORD=...`). Uten denne variabelen er
-`/arrangor`-innlogging og alle skrivbare endepunkter avslått. Passordet kan
-byttes når som helst – arrangører må da logge inn på nytt.
+Sett miljøvariablene `ARRANGOR_BRUKERNAVN` (standard: `admin`) og
+`ARRANGOR_PASSORD` på driftsmiljøet (f.eks. `railway variables set
+ARRANGOR_PASSORD=...`). Uten `ARRANGOR_PASSORD` er `/arrangor`-innlogging og
+alle skrivbare endepunkter avslått. Innloggingen kan byttes når som helst –
+arrangører må da logge inn på nytt.
 
 ## Mulig utvidelse
 

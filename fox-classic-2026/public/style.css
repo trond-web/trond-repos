@@ -2,7 +2,7 @@
   --orange: #e0812f;
   --orange-dark: #c76a1e;
   --blue: #2b5aa3;
-  --bg: #eaf6fb;
+  --bg: #e4f6fc;
   --card-bg: #ffffff;
   --text: #1f2937;
   --muted: #6b7280;
@@ -18,7 +18,9 @@
 body {
   margin: 0;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-  background: var(--bg);
+  background:
+    var(--bg)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cg fill='%23e0812f' fill-opacity='0.06'%3E%3Ccircle cx='27' cy='38' r='4'/%3E%3Ccircle cx='38' cy='31' r='4'/%3E%3Ccircle cx='49' cy='38' r='4'/%3E%3Cellipse cx='38' cy='52' rx='10' ry='8'/%3E%3C/g%3E%3C/svg%3E");
   color: var(--text);
 }
 
@@ -31,6 +33,34 @@ body {
 .hero {
   text-align: center;
   padding: 24px 16px 32px;
+}
+
+.mascot {
+  width: 140px;
+  height: auto;
+  margin: 0 auto 4px;
+  display: block;
+  animation: mascot-bob 2.6s ease-in-out infinite;
+}
+
+.mascot-small {
+  width: 90px;
+}
+
+@keyframes mascot-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot {
+    animation: none;
+  }
 }
 
 .hero h1 {
@@ -127,6 +157,7 @@ select {
   font-weight: 600;
   cursor: pointer;
   justify-self: start;
+  transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
 .btn-primary {
@@ -136,6 +167,7 @@ select {
 
 .btn-primary:hover {
   background: var(--orange-dark);
+  transform: translateY(-2px) scale(1.03);
 }
 
 .btn-secondary {
@@ -271,6 +303,23 @@ th {
 
 .page-footer a:hover {
   text-decoration: underline;
+}
+
+#loginCard {
+  border: 2px dashed var(--orange);
+  text-align: center;
+}
+
+#loginCard .registration-form {
+  max-width: 320px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.login-hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: -8px 0 4px;
 }
 
 .delete-btn {

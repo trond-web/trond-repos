@@ -150,7 +150,7 @@ function fcRenderResults(container, participants) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
     empty.style.display = "block";
-    empty.textContent = "Ingen resultater er registrert enda.";
+    empty.textContent = "Ingen resultater enda – de raskeste revene er fortsatt ute i skogen. 🌲🦊";
     container.appendChild(empty);
   } else {
     const table = document.createElement("table");

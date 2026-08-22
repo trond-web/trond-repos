@@ -11,6 +11,7 @@ const KJONN_VALUES = ["Mann", "Kvinne"];
 const OVELSE_VALUES = ["Trim uten tid", "Konkurranse med tid"];
 const TID_PATTERN = /^([0-9]{1,2}:)?[0-5]?[0-9]:[0-5][0-9]$/;
 const ARRANGOR_PASSORD = process.env.ARRANGOR_PASSORD || "";
+const ARRANGOR_BRUKERNAVN = process.env.ARRANGOR_BRUKERNAVN || "admin";
 
 function loadParticipants() {
   try {
@@ -44,31 +45,39 @@ function validateParticipant(body) {
   return null;
 }
 
-function isCorrectPassord(candidate) {
-  if (!ARRANGOR_PASSORD || typeof candidate !== "string") return false;
+function timingSafeEqualStr(candidate, expected) {
+  if (typeof candidate !== "string" || !expected) return false;
   const a = Buffer.from(candidate);
-  const b = Buffer.from(ARRANGOR_PASSORD);
+  const b = Buffer.from(expected);
   if (a.length !== b.length) return false;
   return crypto.timingSafeEqual(a, b);
 }
 
+function isCorrectCredentials(brukernavn, passord) {
+  if (!ARRANGOR_PASSORD) return false;
+  return timingSafeEqualStr(brukernavn, ARRANGOR_BRUKERNAVN) && timingSafeEqualStr(passord, ARRANGOR_PASSORD);
+}
+
 function requireArrangor(req, res, next) {
+  const brukernavn = req.header("x-arrangor-brukernavn") || "";
   const passord = req.header("x-arrangor-passord") || "";
-  if (!isCorrectPassord(passord)) {
-    return res.status(401).json({ error: "Feil eller manglende arrangørpassord." });
+  if (!isCorrectCredentials(brukernavn, passord)) {
+    return res.status(401).json({ error: "Feil eller manglende innlogging." });
   }
   next();
 }
 
 // Gates the arrangør page itself (not just the API) so deltakere can't reach
-// or view the arrangør UI at all without the password.
+// or view the arrangør UI at all without logging in.
 function requireArrangorBasicAuth(req, res, next) {
   const header = req.headers.authorization || "";
   const [scheme, encoded] = header.split(" ");
   if (scheme === "Basic" && encoded) {
     const decoded = Buffer.from(encoded, "base64").toString("utf8");
-    const candidate = decoded.slice(decoded.indexOf(":") + 1);
-    if (isCorrectPassord(candidate)) return next();
+    const separatorIndex = decoded.indexOf(":");
+    const brukernavn = separatorIndex === -1 ? decoded : decoded.slice(0, separatorIndex);
+    const passord = separatorIndex === -1 ? "" : decoded.slice(separatorIndex + 1);
+    if (isCorrectCredentials(brukernavn, passord)) return next();
   }
   res.set("WWW-Authenticate", 'Basic realm="Fox Classic 2026 - Arrangor"');
   res.status(401).send("Innlogging som arrangør kreves.");
@@ -91,10 +100,11 @@ app.get("/api/participants", (req, res) => {
 
 app.post("/api/arrangor/login", (req, res) => {
   if (!ARRANGOR_PASSORD) {
-    return res.status(500).json({ error: "Arrangørpassord er ikke konfigurert på serveren." });
+    return res.status(500).json({ error: "Arrangørinnlogging er ikke konfigurert på serveren." });
   }
-  if (!isCorrectPassord(req.body && req.body.passord)) {
-    return res.status(401).json({ error: "Feil passord." });
+  const { brukernavn, passord } = req.body || {};
+  if (!isCorrectCredentials(brukernavn, passord)) {
+    return res.status(401).json({ error: "Feil brukernavn eller passord." });
   }
   res.json({ ok: true });
 });
