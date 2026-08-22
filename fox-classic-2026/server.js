@@ -3,7 +3,7 @@ const path = require("path");
 const express = require("express");
 const ExcelJS = require("exceljs");
 
-const DATA_DIR = path.join(__dirname, "data");
+const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "participants.json");
 
 const KJONN_VALUES = ["Mann", "Kvinne"];

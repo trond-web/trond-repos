@@ -38,6 +38,11 @@ Fly.io eller en egen server – kjør `npm install && npm start` og pek `PORT`-m
 variabelen dit tjenesten forventer. Så lenge alle bruker samme kjørende instans,
 vil påmeldingslisten være delt for alle.
 
+Er live på Railway: <https://fox-classic-2026-production.up.railway.app>. Der er
+det koblet på en persistent volume montert på `/data`, og appen lagrer dit når
+miljøvariabelen `RAILWAY_VOLUME_MOUNT_PATH` er satt – slik overlever
+påmeldingene redeploys og restarter.
+
 ## Mulig utvidelse
 
 Datamodellen har allerede et `tid`-felt per deltaker i konkurranseøvelsen, slik at
