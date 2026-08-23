@@ -8,7 +8,7 @@ Enkel påmeldingsløsning for **Fox Classic 2026**, et terrengløp lørdag 19. s
 - **Øvelser:** Trim uten tidtaking (fri start 09:45–10:30), og Konkurranse med
   tidtaking (start kl. 11:00)
 
-## Tre sider
+## Fire sider
 
 - **`/` – deltakerside.** Melde på deltaker, se påmeldingslisten (filtrerbar på
   kjønn/øvelse), se resultater. Ingen mulighet til å endre eller slette data –
@@ -24,13 +24,15 @@ Enkel påmeldingsløsning for **Fox Classic 2026**, et terrengløp lørdag 19. s
   direkte når søket gir nøyaktig ett treff i "Venter". Viser ingen full liste,
   skjema eller feltredigering – bare det som trengs for å ta tider raskt. Samme
   innlogging som `/arrangor`.
+- **`/arrangor/kamera` – eksperimentell kamera-mål-modul.** Se eget avsnitt under.
 
 To lag med beskyttelse på arrangørsidene:
 
 1. **Sidetilgang:** `/arrangor`, `/arrangor.html`, `/arrangor.js`, `/arrangor/tid`,
-   `/tidtaking.html` og `/tidtaking.js` krever HTTP Basic-innlogging (nettleserens
-   innebygde passord-dialog) før noe som helst av innholdet lastes. En deltaker
-   som går til disse sidene får bare en innloggingsdialog – ingen side, ingen data.
+   `/tidtaking.html`, `/tidtaking.js`, `/arrangor/kamera`, `/kamera.html` og
+   `/kamera.js` krever HTTP Basic-innlogging (nettleserens innebygde
+   passord-dialog) før noe som helst av innholdet lastes. En deltaker som går
+   til disse sidene får bare en innloggingsdialog – ingen side, ingen data.
 2. **API-tilgang:** Etter innlogging på arrangørsiden må man i tillegg logge inn
    i selve appen. `PATCH`/`DELETE /api/participants/:id` krever passordet i en
    header uansett hvilken side kallet kommer fra – så en deltaker kan ikke
@@ -95,6 +97,48 @@ Sett miljøvariablene `ARRANGOR_BRUKERNAVN` (standard: `admin`) og
 ARRANGOR_PASSORD=...`). Uten `ARRANGOR_PASSORD` er `/arrangor`-innlogging og
 alle skrivbare endepunkter avslått. Innloggingen kan byttes når som helst –
 arrangører må da logge inn på nytt.
+
+## Kamera-mål (`/arrangor/kamera`) – eksperimentell
+
+En egen, separat modul på arrangørsiden som bruker mobilkameraet til å
+oppdage automatisk når en løper krysser mållinja, og fryse tiden i det
+øyeblikket – uten at noen må trykke "Mål" manuelt.
+
+Slik virker den:
+
+1. Arrangør åpner `/arrangor/kamera` på en mobil, monterer den fast rettet
+   mot mållinja, og trykker "Start kamera".
+2. En rød linje dras til å ligge over selve mållinja i bildet, og låses.
+3. Appen sammenligner et smalt bildeutsnitt rundt linja mellom bilderammer
+   (enkel bevegelsesdeteksjon i nettleseren, ingen ML-modell) for å oppdage
+   når noe beveger seg over linja. Ved en kryssing fryses tidspunktet
+   umiddelbart, og et bilde av øyeblikket lagres.
+4. Startnummeret forsøkes lest automatisk fra bildet med Tesseract.js
+   (OCR, lastes fra CDN først når det faktisk trengs – blokkerer aldri
+   innlogging eller kamera dersom nettet er dårlig eller CDN-en er
+   utilgjengelig). Dette er **kun et forslag**.
+5. Kryssingen havner i en kø under kameraet, med bilde, klokkeslett/tid og et
+   startnummerfelt (forhåndsutfylt av OCR om den lyktes). Arrangør må alltid
+   se på bildet og **bekrefte eller rette** startnummeret før noe registreres
+   – trykker man "✅ Bekreft" kalles samme mål-registrering som på
+   `/arrangor/tid`, med det opprinnelige kryssingstidspunktet (ikke
+   bekreftelsestidspunktet). "✕ Forkast" fjerner forslaget uten å registrere
+   noe.
+
+**Viktig – dette er bevisst bygget som et forsøk ved siden av, ikke en
+erstatning:** automatisk kryssingsdeteksjon og OCR fra et enkelt mobilkamera
+er grunnleggende upålitelig (lys, vinkel, flere løpere samtidig, bevegelse i
+bakgrunnen). Modulen er derfor designet til aldri å registrere noe uten
+menneskelig bekreftelse, og `/arrangor/tid` er og forblir hovedløsningen for
+tidtaking. Bruk kamera-modulen som et tillegg for å fange kryssingstidspunkt
+og få startnummerforslag – ikke som eneste tidtaking.
+
+Testet med en Playwright-basert ende-til-ende-test (syntetisk kamerastrøm med
+et bevegelig startnummer) som bekrefter at: kryssing oppdages til riktig tid,
+bildet som lagres er tydelig, manuell inntasting av startnummer fungerer når
+OCR ikke leser riktig (eller er utilgjengelig), bekreft-knappen registrerer
+riktig tid via samme API som `/arrangor/tid`, og forkast-knappen ikke
+registrerer noe.
 
 ## Mulig utvidelse
 

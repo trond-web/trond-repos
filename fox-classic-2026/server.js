@@ -112,7 +112,17 @@ const app = express();
 app.use(express.json());
 
 app.get(
-  ["/arrangor", "/arrangor.html", "/arrangor.js", "/arrangor/tid", "/tidtaking.html", "/tidtaking.js"],
+  [
+    "/arrangor",
+    "/arrangor.html",
+    "/arrangor.js",
+    "/arrangor/tid",
+    "/tidtaking.html",
+    "/tidtaking.js",
+    "/arrangor/kamera",
+    "/kamera.html",
+    "/kamera.js",
+  ],
   requireArrangorBasicAuth
 );
 
@@ -122,6 +132,10 @@ app.get("/arrangor", (req, res) => {
 
 app.get("/arrangor/tid", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "tidtaking.html"));
+});
+
+app.get("/arrangor/kamera", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "kamera.html"));
 });
 
 app.use(express.static(path.join(__dirname, "public")));
@@ -256,7 +270,19 @@ app.post("/api/participants/:id/mal", requireArrangor, (req, res) => {
     if (!race.startTime) {
       return res.status(400).json({ error: "Løpet er ikke startet ennå." });
     }
-    const elapsedMs = Date.now() - new Date(race.startTime).getTime();
+    // Callers (e.g. the camera-modulen) may report the moment the runner
+    // actually crossed the line, since OCR/confirmation can take a few
+    // seconds after that — the finish time must reflect the crossing, not
+    // whenever the arrangør finished confirming it.
+    let crossedAt = new Date();
+    if (req.body && req.body.tidspunkt) {
+      const parsed = new Date(req.body.tidspunkt);
+      if (isNaN(parsed.getTime())) {
+        return res.status(400).json({ error: "Ugyldig tidspunkt." });
+      }
+      crossedAt = parsed;
+    }
+    const elapsedMs = crossedAt.getTime() - new Date(race.startTime).getTime();
     participant.tid = formatElapsed(elapsedMs);
   } else {
     participant.fullfort = true;

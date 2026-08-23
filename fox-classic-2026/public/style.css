@@ -557,3 +557,115 @@ th {
   gap: 10px;
   flex-shrink: 0;
 }
+
+/* Kamera-mål (experimental camera module) */
+
+.experiment-note {
+  background: #fff7ed;
+  border: 1px solid var(--orange);
+  color: #7c3a0a;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.experiment-note a {
+  color: var(--orange-dark);
+  font-weight: 600;
+}
+
+.camera-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #111;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.camera-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.camera-wrap canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.camera-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 0 20px;
+  margin: 0;
+}
+
+.camera-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.pending-card {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  align-items: center;
+}
+
+.pending-thumb {
+  width: 90px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: #111;
+}
+
+.pending-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pending-time {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--orange-dark);
+}
+
+.pending-lookup {
+  font-size: 0.85rem;
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.pending-lookup.ok {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.pending-lookup.warn {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.pending-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
