@@ -17,10 +17,15 @@ const startnrInput = document.getElementById("startnrInput");
 const ovelseFilter = document.getElementById("ovelseFilter");
 const searchResults = document.getElementById("searchResults");
 const confirmBanner = document.getElementById("confirmBanner");
+const tabVenterBtn = document.getElementById("tabVenterBtn");
+const tabIMalBtn = document.getElementById("tabIMalBtn");
+const ventendeCount = document.getElementById("ventendeCount");
+const iMalCount = document.getElementById("iMalCount");
 
 let participants = [];
 let credentials = null;
 let raceStartTime = null;
+let activeTab = "venter";
 
 function authHeaders() {
   return {
@@ -109,7 +114,7 @@ async function authFetch(url, options = {}) {
 
 async function loadParticipants() {
   participants = await fcFetchParticipants();
-  renderSearch();
+  render();
 }
 
 async function loadRace() {
@@ -132,7 +137,7 @@ function updateRaceClockUI() {
     raceClockTime.textContent = "–";
     raceClockHint.textContent = "Trykk når konkurranseklassen starter.";
   }
-  renderSearch();
+  render();
 }
 
 setInterval(() => {
@@ -158,40 +163,69 @@ resetRaceBtn.addEventListener("click", async () => {
   updateRaceClockUI();
 });
 
-function getMatches() {
-  const query = startnrInput.value.trim().toLowerCase();
-  if (!query) return [];
-  return participants.filter((p) => {
-    if (!p.startnummer) return false;
-    if (!p.startnummer.toLowerCase().startsWith(query)) return false;
-    if (ovelseFilter.value && p.ovelse !== ovelseFilter.value) return false;
-    return true;
+function isFinished(p) {
+  return p.ovelse === "Konkurranse med tid" ? !!p.tid : !!p.fullfort;
+}
+
+function sortByStartnummer(list) {
+  return [...list].sort((a, b) => {
+    const an = parseInt(a.startnummer, 10);
+    const bn = parseInt(b.startnummer, 10);
+    if (!isNaN(an) && !isNaN(bn) && an !== bn) return an - bn;
+    return String(a.startnummer).localeCompare(String(b.startnummer), "nb");
   });
 }
 
-function renderSearch() {
-  const matches = getMatches();
+function getFilteredList(finished) {
+  const query = startnrInput.value.trim().toLowerCase();
+  return sortByStartnummer(
+    participants.filter((p) => {
+      if (!p.startnummer) return false;
+      if (isFinished(p) !== finished) return false;
+      if (ovelseFilter.value && p.ovelse !== ovelseFilter.value) return false;
+      if (query && !p.startnummer.toLowerCase().startsWith(query)) return false;
+      return true;
+    })
+  );
+}
+
+function setActiveTab(tab) {
+  activeTab = tab;
+  tabVenterBtn.classList.toggle("tab-btn-active", tab === "venter");
+  tabIMalBtn.classList.toggle("tab-btn-active", tab === "imal");
+  render();
+}
+
+tabVenterBtn.addEventListener("click", () => setActiveTab("venter"));
+tabIMalBtn.addEventListener("click", () => setActiveTab("imal"));
+
+function render() {
+  const venter = getFilteredList(false);
+  const iMal = getFilteredList(true);
+  ventendeCount.textContent = `(${venter.length})`;
+  iMalCount.textContent = `(${iMal.length})`;
+
+  const list = activeTab === "venter" ? venter : iMal;
   searchResults.innerHTML = "";
 
-  if (startnrInput.value.trim() === "") return;
-
-  if (matches.length === 0) {
+  if (list.length === 0) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
     empty.style.display = "block";
-    empty.textContent = "Ingen deltaker med det startnummeret.";
+    empty.textContent =
+      activeTab === "venter" ? "Ingen venter på mål (med disse filtrene)." : "Ingen registrert i mål enda.";
     searchResults.appendChild(empty);
     return;
   }
 
-  for (const p of matches) {
-    searchResults.appendChild(buildResultCard(p));
+  for (const p of list) {
+    searchResults.appendChild(buildResultCard(p, activeTab === "imal"));
   }
 }
 
-function buildResultCard(p) {
+function buildResultCard(p, finished) {
   const card = document.createElement("div");
-  card.className = "card result-card";
+  card.className = "card result-card" + (finished ? " result-card-finished" : "");
 
   const info = document.createElement("div");
   info.className = "result-card-info";
@@ -208,28 +242,39 @@ function buildResultCard(p) {
   meta.textContent = metaParts.join(" · ");
   info.appendChild(meta);
 
-  const status = document.createElement("div");
-  status.className = "result-card-status";
-  if (p.ovelse === "Konkurranse med tid") {
-    status.textContent = p.tid ? `Registrert: ${p.tid}` : "Venter på måltid";
-  } else {
-    status.textContent = p.fullfort ? "Registrert: Fullført" : "Venter på registrering";
-  }
-  info.appendChild(status);
-
   card.appendChild(info);
 
-  const isTimed = p.ovelse === "Konkurranse med tid";
-  const malBtn = document.createElement("button");
-  malBtn.type = "button";
-  malBtn.className = "btn btn-mal btn-mal-big";
-  malBtn.textContent = "🏁 Mål";
-  if (isTimed && !raceStartTime) {
-    malBtn.disabled = true;
-    malBtn.title = "Løpet er ikke startet ennå";
+  if (!finished) {
+    const isTimed = p.ovelse === "Konkurranse med tid";
+    const malBtn = document.createElement("button");
+    malBtn.type = "button";
+    malBtn.className = "btn btn-mal btn-mal-big";
+    malBtn.textContent = "🏁 Mål";
+    if (isTimed && !raceStartTime) {
+      malBtn.disabled = true;
+      malBtn.title = "Løpet er ikke startet ennå";
+    }
+    malBtn.addEventListener("click", () => handleFinish(p.id));
+    card.appendChild(malBtn);
+  } else {
+    const actions = document.createElement("div");
+    actions.className = "result-card-actions";
+
+    const result = document.createElement("div");
+    result.className = "result-card-result";
+    result.textContent = p.ovelse === "Konkurranse med tid" ? p.tid : "Fullført";
+    actions.appendChild(result);
+
+    const undoBtn = document.createElement("button");
+    undoBtn.type = "button";
+    undoBtn.className = "undo-btn";
+    undoBtn.title = "Angre";
+    undoBtn.textContent = "↺";
+    undoBtn.addEventListener("click", () => handleUndo(p));
+    actions.appendChild(undoBtn);
+
+    card.appendChild(actions);
   }
-  malBtn.addEventListener("click", () => handleFinish(p.id));
-  card.appendChild(malBtn);
 
   return card;
 }
@@ -245,13 +290,29 @@ async function handleFinish(id) {
   const idx = participants.findIndex((p) => p.id === id);
   if (idx !== -1) participants[idx] = updated;
 
-  const resultText =
-    updated.ovelse === "Konkurranse med tid" ? updated.tid : "Fullført";
+  const resultText = updated.ovelse === "Konkurranse med tid" ? updated.tid : "Fullført";
   showConfirmation(`✅ #${updated.startnummer} ${updated.fornavn} ${updated.etternavn} – ${resultText} registrert!`);
 
   startnrInput.value = "";
-  renderSearch();
+  render();
   startnrInput.focus();
+}
+
+async function handleUndo(p) {
+  const patch = p.ovelse === "Konkurranse med tid" ? { tid: null } : { fullfort: false };
+  const res = await authFetch(`/api/participants/${p.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) {
+    if (res.status !== 401) alert("Kunne ikke angre registrering.");
+    return;
+  }
+  const updated = await res.json();
+  const idx = participants.findIndex((x) => x.id === p.id);
+  if (idx !== -1) participants[idx] = updated;
+  render();
 }
 
 function showConfirmation(text) {
@@ -263,13 +324,13 @@ function showConfirmation(text) {
   }, 4000);
 }
 
-startnrInput.addEventListener("input", renderSearch);
-ovelseFilter.addEventListener("change", renderSearch);
+startnrInput.addEventListener("input", render);
+ovelseFilter.addEventListener("change", render);
 
 startnrInput.addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
   e.preventDefault();
-  const matches = getMatches();
+  const matches = getFilteredList(false);
   if (matches.length === 1) {
     handleFinish(matches[0].id);
   }

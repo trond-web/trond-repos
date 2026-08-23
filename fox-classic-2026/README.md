@@ -16,11 +16,12 @@ Enkel påmeldingsløsning for **Fox Classic 2026**, et terrengløp lørdag 19. s
   til å tildele startnummer, registrere tid, redigere deltakerfelt og slette
   deltakere. Låst bak et arrangørpassord (se under).
 - **`/arrangor/tid` – tidtakingsside.** En smal, fokusert side kun for tidtaking
-  under selve løpet: løpsklokke (start/nullstill) øverst, og et søkefelt der
-  arrangør skriver startnummer (ev. filtrert på øvelse) for raskt å finne riktig
-  deltaker og trykke "🏁 Mål". Trykk Enter i søkefeltet registrerer mål direkte
-  når søket gir nøyaktig ett treff. Viser ingen full liste, skjema eller
-  redigeringsmuligheter – bare det som trengs for å ta tider raskt. Samme
+  under selve løpet: løpsklokke (start/nullstill) øverst, et søkefelt (startnummer
+  + valgfritt øvelsesfilter), og to faner – **⏳ Venter** (sortert på startnummer,
+  med stor "🏁 Mål"-knapp per deltaker) og **✅ I mål** (viser registrert
+  tid/"Fullført", med angre-knapp). Trykk Enter i søkefeltet registrerer mål
+  direkte når søket gir nøyaktig ett treff i "Venter". Viser ingen full liste,
+  skjema eller feltredigering – bare det som trengs for å ta tider raskt. Samme
   innlogging som `/arrangor`.
 
 To lag med beskyttelse på arrangørsidene:

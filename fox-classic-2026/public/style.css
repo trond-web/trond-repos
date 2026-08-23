@@ -497,3 +497,46 @@ th {
   padding: 16px 28px;
   flex-shrink: 0;
 }
+
+.tab-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tab-btn {
+  flex: 1;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tab-btn-active {
+  background: var(--orange);
+  border-color: var(--orange);
+  color: white;
+}
+
+.result-card-finished {
+  opacity: 0.9;
+}
+
+.result-card-result {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--success);
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.result-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}

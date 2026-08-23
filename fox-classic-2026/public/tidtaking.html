@@ -63,10 +63,15 @@
           </select>
         </div>
       </form>
-      <p class="form-hint">Skriv startnummer for å finne deltakeren. Trykk Enter for å registrere mål direkte hvis det kun er ett treff. Deltakere uten startnummer vises ikke her – tildel startnummer på oversiktssiden først.</p>
+      <p class="form-hint">Skriv startnummer for å snevre inn listen under. Trykk Enter for å registrere mål direkte hvis det kun er ett treff i "Venter"-lista. Deltakere uten startnummer vises ikke her – tildel startnummer på oversiktssiden først.</p>
     </section>
 
     <p class="confirm-banner" id="confirmBanner" style="display: none;"></p>
+
+    <div class="tab-bar">
+      <button id="tabVenterBtn" type="button" class="tab-btn tab-btn-active">⏳ Venter <span id="ventendeCount"></span></button>
+      <button id="tabIMalBtn" type="button" class="tab-btn">✅ I mål <span id="iMalCount"></span></button>
+    </div>
 
     <div id="searchResults"></div>
   </div>
