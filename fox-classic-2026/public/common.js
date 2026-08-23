@@ -49,6 +49,7 @@ function fcRenderTable(tbody, participants, options) {
   for (const p of fcSortByName(participants)) {
     const row = document.createElement("tr");
 
+    row.appendChild(fcStartnummerCell(p, editable, options));
     row.appendChild(fcTextOrEditCell(p, "fornavn", editable, options, true));
     row.appendChild(fcTextOrEditCell(p, "etternavn", editable, options, true));
     row.appendChild(fcKlubbCell(p, editable, options));
@@ -93,6 +94,24 @@ function fcTextOrEditCell(p, field, editable, options, required) {
       return;
     }
     await options.onEdit(p.id, { [field]: value });
+  });
+  td.appendChild(input);
+  return td;
+}
+
+function fcStartnummerCell(p, editable, options) {
+  const td = document.createElement("td");
+  if (!editable) {
+    td.textContent = p.startnummer || "–";
+    return td;
+  }
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "edit-input startnr-input";
+  input.placeholder = "Startnr";
+  input.value = p.startnummer || "";
+  input.addEventListener("change", async () => {
+    await options.onEdit(p.id, { startnummer: input.value.trim() });
   });
   td.appendChild(input);
   return td;
@@ -217,7 +236,7 @@ function fcRenderResults(container, participants) {
     const table = document.createElement("table");
     const thead = document.createElement("thead");
     const headRow = document.createElement("tr");
-    for (const heading of ["Plass", "Fornavn", "Etternavn", "Klubb", "Kjønn", "Tid"]) {
+    for (const heading of ["Plass", "Startnr", "Fornavn", "Etternavn", "Klubb", "Kjønn", "Tid"]) {
       const th = document.createElement("th");
       th.textContent = heading;
       headRow.appendChild(th);
@@ -228,7 +247,7 @@ function fcRenderResults(container, participants) {
     const tbody = document.createElement("tbody");
     finished.forEach((p, i) => {
       const row = document.createElement("tr");
-      for (const value of [i + 1, p.fornavn, p.etternavn, p.klubb || "–", p.kjonn, p.tid]) {
+      for (const value of [i + 1, p.startnummer || "–", p.fornavn, p.etternavn, p.klubb || "–", p.kjonn, p.tid]) {
         const td = document.createElement("td");
         td.textContent = value;
         row.appendChild(td);

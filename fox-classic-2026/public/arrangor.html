@@ -47,6 +47,7 @@
         <button id="resetRaceBtn" class="btn btn-ghost" style="display: none;">Nullstill start</button>
       </div>
       <p class="form-hint" id="raceClockHint">Trykk når konkurranseklassen starter (planlagt kl. 11:00). Trykk "Mål" per deltaker i lista under når de kommer i mål.</p>
+      <a href="/arrangor/tid" class="btn btn-secondary" style="margin-top: 12px; display: inline-block;">🏁 Gå til tidtakingssiden →</a>
     </section>
 
     <section class="card">
@@ -89,7 +90,7 @@
         <h2>Påmeldte</h2>
         <div class="counts" id="counts"></div>
       </div>
-      <p class="form-hint">Klikk i et felt for å rette det. Trykk "🏁 Mål" for å registrere måltid automatisk, eller skriv inn tid manuelt (tt:mm:ss eller mm:ss).</p>
+      <p class="form-hint">Klikk i et felt for å rette det, f.eks. for å tildele startnummer. Trykk "🏁 Mål" for å registrere måltid automatisk, eller skriv inn tid manuelt (tt:mm:ss eller mm:ss).</p>
 
       <div class="filters">
         <div class="field">
@@ -115,6 +116,7 @@
         <table id="participantsTable">
           <thead>
             <tr>
+              <th>Startnr</th>
               <th>Fornavn</th>
               <th>Etternavn</th>
               <th>Klubb/team</th>

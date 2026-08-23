@@ -111,10 +111,17 @@ function requireArrangorBasicAuth(req, res, next) {
 const app = express();
 app.use(express.json());
 
-app.get(["/arrangor", "/arrangor.html", "/arrangor.js"], requireArrangorBasicAuth);
+app.get(
+  ["/arrangor", "/arrangor.html", "/arrangor.js", "/arrangor/tid", "/tidtaking.html", "/tidtaking.js"],
+  requireArrangorBasicAuth
+);
 
 app.get("/arrangor", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "arrangor.html"));
+});
+
+app.get("/arrangor/tid", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "tidtaking.html"));
 });
 
 app.use(express.static(path.join(__dirname, "public")));
@@ -156,6 +163,7 @@ app.post("/api/participants", (req, res) => {
     klubb: item.klubb ? String(item.klubb).trim() || null : null,
     kjonn: String(item.kjonn).trim(),
     ovelse: String(item.ovelse).trim(),
+    startnummer: null,
     tid: null,
     fullfort: false,
     registrertTidspunkt: new Date().toISOString(),
@@ -187,6 +195,10 @@ app.patch("/api/participants/:id", requireArrangor, (req, res) => {
   if ("klubb" in req.body) {
     const klubb = String(req.body.klubb || "").trim();
     updates.klubb = klubb || null;
+  }
+  if ("startnummer" in req.body) {
+    const startnummer = String(req.body.startnummer || "").trim();
+    updates.startnummer = startnummer || null;
   }
   if ("kjonn" in req.body) {
     const kjonn = String(req.body.kjonn || "").trim();
@@ -277,6 +289,7 @@ app.get("/api/export", async (req, res) => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Påmeldte");
   sheet.columns = [
+    { header: "Startnr", key: "startnummer", width: 10 },
     { header: "Fornavn", key: "fornavn", width: 18 },
     { header: "Etternavn", key: "etternavn", width: 18 },
     { header: "Klubb/team", key: "klubb", width: 20 },
@@ -290,6 +303,7 @@ app.get("/api/export", async (req, res) => {
   for (const p of rows) {
     const tidText = p.ovelse === "Trim uten tid" ? (p.fullfort ? "Fullført" : "") : p.tid || "";
     sheet.addRow({
+      startnummer: p.startnummer || "",
       fornavn: p.fornavn,
       etternavn: p.etternavn,
       klubb: p.klubb || "",
