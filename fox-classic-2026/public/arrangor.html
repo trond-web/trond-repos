@@ -40,6 +40,16 @@
     </div>
 
     <section class="card">
+      <h2>⏱️ Løpsklokke</h2>
+      <div class="race-clock">
+        <div class="race-clock-time" id="raceClockTime">–</div>
+        <button id="startRaceBtn" class="btn btn-primary">🏁 Start løpet</button>
+        <button id="resetRaceBtn" class="btn btn-ghost" style="display: none;">Nullstill start</button>
+      </div>
+      <p class="form-hint" id="raceClockHint">Trykk når konkurranseklassen starter (planlagt kl. 11:00). Trykk "Mål" per deltaker i lista under når de kommer i mål.</p>
+    </section>
+
+    <section class="card">
       <h2>Meld på deltaker</h2>
       <form id="registrationForm" class="registration-form">
         <div class="field">
@@ -49,6 +59,10 @@
         <div class="field">
           <label for="etternavn">Etternavn</label>
           <input type="text" id="etternavn" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="klubb">Klubb/team <span class="optional-label">(valgfritt)</span></label>
+          <input type="text" id="klubb" autocomplete="off">
         </div>
         <div class="field">
           <label>Kjønn</label>
@@ -75,7 +89,7 @@
         <h2>Påmeldte</h2>
         <div class="counts" id="counts"></div>
       </div>
-      <p class="form-hint">Klikk i et felt for å rette det. Tid registreres på format tt:mm:ss eller mm:ss.</p>
+      <p class="form-hint">Klikk i et felt for å rette det. Trykk "🏁 Mål" for å registrere måltid automatisk, eller skriv inn tid manuelt (tt:mm:ss eller mm:ss).</p>
 
       <div class="filters">
         <div class="field">
@@ -103,9 +117,10 @@
             <tr>
               <th>Fornavn</th>
               <th>Etternavn</th>
+              <th>Klubb/team</th>
               <th>Kjønn</th>
               <th>Øvelse</th>
-              <th>Tid</th>
+              <th>Tid/status</th>
               <th></th>
             </tr>
           </thead>

@@ -124,6 +124,12 @@ body {
   font-size: 0.9rem;
 }
 
+.optional-label {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 input[type="text"],
 input[type="password"],
 select {
@@ -287,6 +293,67 @@ th {
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 0.9rem;
+}
+
+.status-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-mal {
+  background: var(--success);
+  color: white;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.btn-mal:hover:not(:disabled) {
+  background: #166a3c;
+  transform: none;
+}
+
+.btn-mal:disabled {
+  background: var(--border);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.fullfort-badge {
+  color: var(--success);
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.undo-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 2px 8px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.undo-btn:hover {
+  color: var(--text);
+}
+
+.race-clock {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.race-clock-time {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--orange-dark);
+  font-variant-numeric: tabular-nums;
 }
 
 .page-footer {

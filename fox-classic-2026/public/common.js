@@ -39,6 +39,8 @@ function fcCounts(participants) {
  * options.editable: boolean — show edit fields + delete button
  * options.onEdit(id, patch): async callback for field edits
  * options.onDelete(id): async callback for delete
+ * options.onFinish(id): async callback for the "Mål" button (arrangør only)
+ * options.raceStarted: boolean — gates the Mål button for timed participants
  */
 function fcRenderTable(tbody, participants, options) {
   const editable = !!options.editable;
@@ -47,13 +49,14 @@ function fcRenderTable(tbody, participants, options) {
   for (const p of fcSortByName(participants)) {
     const row = document.createElement("tr");
 
-    row.appendChild(fcTextOrEditCell(p, "fornavn", editable, options));
-    row.appendChild(fcTextOrEditCell(p, "etternavn", editable, options));
+    row.appendChild(fcTextOrEditCell(p, "fornavn", editable, options, true));
+    row.appendChild(fcTextOrEditCell(p, "etternavn", editable, options, true));
+    row.appendChild(fcKlubbCell(p, editable, options));
     row.appendChild(fcSelectOrTextCell(p, "kjonn", ["Mann", "Kvinne"], editable, options));
     row.appendChild(
       fcSelectOrTextCell(p, "ovelse", ["Trim uten tid", "Konkurranse med tid"], editable, options)
     );
-    row.appendChild(fcTidCell(p, editable, options));
+    row.appendChild(fcStatusCell(p, editable, options));
 
     if (editable) {
       const deleteCell = document.createElement("td");
@@ -73,7 +76,7 @@ function fcRenderTable(tbody, participants, options) {
   }
 }
 
-function fcTextOrEditCell(p, field, editable, options) {
+function fcTextOrEditCell(p, field, editable, options, required) {
   const td = document.createElement("td");
   if (!editable) {
     td.textContent = p[field];
@@ -85,11 +88,29 @@ function fcTextOrEditCell(p, field, editable, options) {
   input.value = p[field];
   input.addEventListener("change", async () => {
     const value = input.value.trim();
-    if (!value) {
+    if (required && !value) {
       input.value = p[field];
       return;
     }
     await options.onEdit(p.id, { [field]: value });
+  });
+  td.appendChild(input);
+  return td;
+}
+
+function fcKlubbCell(p, editable, options) {
+  const td = document.createElement("td");
+  if (!editable) {
+    td.textContent = p.klubb || "–";
+    return td;
+  }
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "edit-input";
+  input.placeholder = "Klubb/team";
+  input.value = p.klubb || "";
+  input.addEventListener("change", async () => {
+    await options.onEdit(p.id, { klubb: input.value.trim() });
   });
   td.appendChild(input);
   return td;
@@ -117,25 +138,65 @@ function fcSelectOrTextCell(p, field, values, editable, options) {
   return td;
 }
 
-function fcTidCell(p, editable, options) {
+function fcStatusCell(p, editable, options) {
   const td = document.createElement("td");
-  if (p.ovelse !== "Konkurranse med tid") {
-    td.textContent = "–";
-    return td;
-  }
+  const isTimed = p.ovelse === "Konkurranse med tid";
+
   if (!editable) {
-    td.textContent = p.tid || "–";
+    if (isTimed) {
+      td.textContent = p.tid || "–";
+    } else {
+      td.textContent = p.fullfort ? "Fullført" : "–";
+    }
     return td;
   }
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "tid-input";
-  input.placeholder = "tt:mm:ss";
-  input.value = p.tid || "";
-  input.addEventListener("change", async () => {
-    await options.onEdit(p.id, { tid: input.value.trim() || null });
-  });
-  td.appendChild(input);
+
+  const wrap = document.createElement("div");
+  wrap.className = "status-cell";
+
+  if (isTimed) {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "tid-input";
+    input.placeholder = "tt:mm:ss";
+    input.value = p.tid || "";
+    input.addEventListener("change", async () => {
+      await options.onEdit(p.id, { tid: input.value.trim() || null });
+    });
+    wrap.appendChild(input);
+
+    const malBtn = document.createElement("button");
+    malBtn.type = "button";
+    malBtn.className = "btn btn-mal";
+    malBtn.textContent = "🏁 Mål";
+    malBtn.disabled = !options.raceStarted;
+    malBtn.title = options.raceStarted ? "Registrer måltid nå" : "Løpet er ikke startet ennå";
+    malBtn.addEventListener("click", () => options.onFinish(p.id));
+    wrap.appendChild(malBtn);
+  } else if (p.fullfort) {
+    const badge = document.createElement("span");
+    badge.className = "fullfort-badge";
+    badge.textContent = "✅ Fullført";
+    wrap.appendChild(badge);
+
+    const undoBtn = document.createElement("button");
+    undoBtn.type = "button";
+    undoBtn.className = "undo-btn";
+    undoBtn.title = "Angre fullført";
+    undoBtn.textContent = "↺";
+    undoBtn.addEventListener("click", () => options.onEdit(p.id, { fullfort: false }));
+    wrap.appendChild(undoBtn);
+  } else {
+    const malBtn = document.createElement("button");
+    malBtn.type = "button";
+    malBtn.className = "btn btn-mal";
+    malBtn.textContent = "🏁 Mål";
+    malBtn.title = "Marker som fullført";
+    malBtn.addEventListener("click", () => options.onFinish(p.id));
+    wrap.appendChild(malBtn);
+  }
+
+  td.appendChild(wrap);
   return td;
 }
 
@@ -156,7 +217,7 @@ function fcRenderResults(container, participants) {
     const table = document.createElement("table");
     const thead = document.createElement("thead");
     const headRow = document.createElement("tr");
-    for (const heading of ["Plass", "Fornavn", "Etternavn", "Kjønn", "Tid"]) {
+    for (const heading of ["Plass", "Fornavn", "Etternavn", "Klubb", "Kjønn", "Tid"]) {
       const th = document.createElement("th");
       th.textContent = heading;
       headRow.appendChild(th);
@@ -167,7 +228,7 @@ function fcRenderResults(container, participants) {
     const tbody = document.createElement("tbody");
     finished.forEach((p, i) => {
       const row = document.createElement("tr");
-      for (const value of [i + 1, p.fornavn, p.etternavn, p.kjonn, p.tid]) {
+      for (const value of [i + 1, p.fornavn, p.etternavn, p.klubb || "–", p.kjonn, p.tid]) {
         const td = document.createElement("td");
         td.textContent = value;
         row.appendChild(td);
@@ -190,4 +251,11 @@ function fcTidToSeconds(tid) {
   const parts = tid.split(":").map(Number);
   if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
   return parts[0] * 60 + parts[1];
+}
+
+function fcFormatClock(totalSeconds) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
 }

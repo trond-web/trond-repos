@@ -19,9 +19,14 @@ const participantsTable = document.getElementById("participantsTable");
 const emptyState = document.getElementById("emptyState");
 const counts = document.getElementById("counts");
 const resultsContainer = document.getElementById("resultsContainer");
+const raceClockTime = document.getElementById("raceClockTime");
+const startRaceBtn = document.getElementById("startRaceBtn");
+const resetRaceBtn = document.getElementById("resetRaceBtn");
+const raceClockHint = document.getElementById("raceClockHint");
 
 let participants = [];
 let credentials = null;
+let raceStartTime = null;
 
 function authHeaders() {
   return {
@@ -62,6 +67,7 @@ function showMain() {
   loginCard.style.display = "none";
   mainContent.style.display = "block";
   loadParticipants();
+  loadRace();
 }
 
 loginForm.addEventListener("submit", async (e) => {
@@ -111,6 +117,67 @@ async function loadParticipants() {
   render();
 }
 
+async function loadRace() {
+  const res = await fetch("/api/race");
+  const race = await res.json();
+  raceStartTime = race.startTime;
+  updateRaceClockUI();
+  render();
+}
+
+function updateRaceClockUI() {
+  if (raceStartTime) {
+    startRaceBtn.style.display = "none";
+    resetRaceBtn.style.display = "inline-block";
+    raceClockHint.textContent = "Løpet er i gang. Trykk «🏁 Mål» per deltaker i lista under når de kommer i mål.";
+    const elapsedSeconds = Math.max(0, (Date.now() - new Date(raceStartTime).getTime()) / 1000);
+    raceClockTime.textContent = fcFormatClock(elapsedSeconds);
+  } else {
+    startRaceBtn.style.display = "inline-block";
+    resetRaceBtn.style.display = "none";
+    raceClockTime.textContent = "–";
+    raceClockHint.textContent = 'Trykk «🏁 Start løpet» når konkurranseklassen starter (planlagt kl. 11:00).';
+  }
+}
+
+setInterval(() => {
+  if (!raceStartTime) return;
+  const elapsedSeconds = Math.max(0, (Date.now() - new Date(raceStartTime).getTime()) / 1000);
+  raceClockTime.textContent = fcFormatClock(elapsedSeconds);
+}, 1000);
+
+startRaceBtn.addEventListener("click", async () => {
+  const res = await authFetch("/api/race/start", { method: "POST" });
+  if (!res.ok) return;
+  const race = await res.json();
+  raceStartTime = race.startTime;
+  updateRaceClockUI();
+  render();
+});
+
+resetRaceBtn.addEventListener("click", async () => {
+  if (!confirm("Nullstille starttidspunktet for løpet?")) return;
+  const res = await authFetch("/api/race/reset", { method: "POST" });
+  if (!res.ok) return;
+  const race = await res.json();
+  raceStartTime = race.startTime;
+  updateRaceClockUI();
+  render();
+});
+
+async function handleFinish(id) {
+  const res = await authFetch(`/api/participants/${id}/mal`, { method: "POST" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    if (res.status !== 401) alert(body.error || "Kunne ikke registrere mål.");
+    return;
+  }
+  const updated = await res.json();
+  const idx = participants.findIndex((p) => p.id === id);
+  if (idx !== -1) participants[idx] = updated;
+  render();
+}
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const kjonnInput = form.querySelector('input[name="kjonn"]:checked');
@@ -119,6 +186,7 @@ form.addEventListener("submit", async (e) => {
   const payload = {
     fornavn: fornavnInput.value.trim(),
     etternavn: document.getElementById("etternavn").value.trim(),
+    klubb: document.getElementById("klubb").value.trim(),
     kjonn: kjonnInput ? kjonnInput.value : "",
     ovelse: ovelseInput ? ovelseInput.value : "",
   };
@@ -205,6 +273,8 @@ function render() {
       editable: true,
       onEdit: handleEdit,
       onDelete: handleDelete,
+      onFinish: handleFinish,
+      raceStarted: !!raceStartTime,
     });
   }
 

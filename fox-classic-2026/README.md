@@ -31,16 +31,19 @@ og `ARRANGOR_PASSORD`.
 
 ## Funksjonalitet
 
-- Påmeldingsskjema (fornavn, etternavn, kjønn, øvelse) som tømmes automatisk etter
-  hver registrering, slik at det er raskt å legge til flere deltakere på rad.
+- Påmeldingsskjema (fornavn, etternavn, klubb/team, kjønn, øvelse) som tømmes
+  automatisk etter hver registrering, slik at det er raskt å legge til flere
+  deltakere på rad. Klubb/team er valgfritt.
 - Påmeldingslisten er delt og synlig for alle som åpner siden (lagres på serveren,
   ikke i den enkelte nettlesers lokale lagring).
 - Filtrering på kjønn og øvelse, med løpende telling.
 - Eksport til Excel (.xlsx) av hele eller filtrert liste.
 - Egen resultatliste (rangert etter tid) for "Konkurranse med tid".
-- Arrangører kan registrere tid, redigere deltakerfelt og slette deltakere fra
-  `/arrangor` – et første steg mot en fremtidig stoppeklokke-funksjon for
-  tidtaking på løpsdagen.
+- **Løpsklokke og "Mål"-knapp på arrangørsiden:** arrangør trykker "Start løpet"
+  når konkurranseklassen starter, og trykker "🏁 Mål" for hver deltaker når de
+  kommer i mål – tiden regnes automatisk ut fra starttidspunktet. Manuell
+  inntasting av tid (tt:mm:ss) er fortsatt mulig for korrigering. Trim-deltakere
+  får "Fullført" ved samme knappetrykk, uten at noen tid vises eller lagres.
 - Reve-maskoten er med på begge sider (favicon, header og på arrangørens
   "rev-hi"-innlogging), med et lite lekent preg på tekst og knapper.
 
@@ -81,6 +84,6 @@ arrangører må da logge inn på nytt.
 
 ## Mulig utvidelse
 
-Datamodellen har allerede et `tid`-felt per deltaker i konkurranseøvelsen, slik at
-en fremtidig stoppeklokke-funksjon for løpsdagen kan bygges videre på dette uten
-å endre datastrukturen.
+Løpsstart lagres i `data/race.json` (samme persistente volum som deltakerne),
+uavhengig av `data/participants.json`. En fremtidig utvidelse kan f.eks. bygge
+videre på dette med splittider eller strekk-tider per deltaker.

@@ -6,6 +6,7 @@ const ExcelJS = require("exceljs");
 
 const DATA_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "participants.json");
+const RACE_FILE = path.join(DATA_DIR, "race.json");
 
 const KJONN_VALUES = ["Mann", "Kvinne"];
 const OVELSE_VALUES = ["Trim uten tid", "Konkurranse med tid"];
@@ -28,7 +29,31 @@ function saveParticipants(list) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(list, null, 2));
 }
 
+function loadRace() {
+  try {
+    const raw = fs.readFileSync(RACE_FILE, "utf8");
+    return JSON.parse(raw);
+  } catch (err) {
+    if (err.code === "ENOENT") return { startTime: null };
+    throw err;
+  }
+}
+
+function saveRace(state) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(RACE_FILE, JSON.stringify(state, null, 2));
+}
+
+function formatElapsed(ms) {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
+}
+
 let participants = loadParticipants();
+let race = loadRace();
 
 function validateParticipant(body) {
   const fornavn = String(body.fornavn || "").trim();
@@ -128,9 +153,11 @@ app.post("/api/participants", (req, res) => {
     id: crypto.randomUUID(),
     fornavn: String(item.fornavn).trim(),
     etternavn: String(item.etternavn).trim(),
+    klubb: item.klubb ? String(item.klubb).trim() || null : null,
     kjonn: String(item.kjonn).trim(),
     ovelse: String(item.ovelse).trim(),
     tid: null,
+    fullfort: false,
     registrertTidspunkt: new Date().toISOString(),
   }));
 
@@ -157,6 +184,10 @@ app.patch("/api/participants/:id", requireArrangor, (req, res) => {
     if (!etternavn) return res.status(400).json({ error: "Etternavn er påkrevd." });
     updates.etternavn = etternavn;
   }
+  if ("klubb" in req.body) {
+    const klubb = String(req.body.klubb || "").trim();
+    updates.klubb = klubb || null;
+  }
   if ("kjonn" in req.body) {
     const kjonn = String(req.body.kjonn || "").trim();
     if (!KJONN_VALUES.includes(kjonn)) {
@@ -178,8 +209,47 @@ app.patch("/api/participants/:id", requireArrangor, (req, res) => {
     }
     updates.tid = tid || null;
   }
+  if ("fullfort" in req.body) {
+    updates.fullfort = Boolean(req.body.fullfort);
+  }
 
   Object.assign(participant, updates);
+  saveParticipants(participants);
+  res.json(participant);
+});
+
+app.get("/api/race", (req, res) => {
+  res.json(race);
+});
+
+app.post("/api/race/start", requireArrangor, (req, res) => {
+  race = { startTime: new Date().toISOString() };
+  saveRace(race);
+  res.json(race);
+});
+
+app.post("/api/race/reset", requireArrangor, (req, res) => {
+  race = { startTime: null };
+  saveRace(race);
+  res.json(race);
+});
+
+app.post("/api/participants/:id/mal", requireArrangor, (req, res) => {
+  const participant = participants.find((p) => p.id === req.params.id);
+  if (!participant) {
+    return res.status(404).json({ error: "Fant ikke deltaker." });
+  }
+
+  if (participant.ovelse === "Konkurranse med tid") {
+    if (!race.startTime) {
+      return res.status(400).json({ error: "Løpet er ikke startet ennå." });
+    }
+    const elapsedMs = Date.now() - new Date(race.startTime).getTime();
+    participant.tid = formatElapsed(elapsedMs);
+  } else {
+    participant.fullfort = true;
+  }
+
   saveParticipants(participants);
   res.json(participant);
 });
@@ -209,6 +279,7 @@ app.get("/api/export", async (req, res) => {
   sheet.columns = [
     { header: "Fornavn", key: "fornavn", width: 18 },
     { header: "Etternavn", key: "etternavn", width: 18 },
+    { header: "Klubb/team", key: "klubb", width: 20 },
     { header: "Kjønn", key: "kjonn", width: 10 },
     { header: "Øvelse", key: "ovelse", width: 22 },
     { header: "Tid", key: "tid", width: 12 },
@@ -217,12 +288,14 @@ app.get("/api/export", async (req, res) => {
   sheet.getRow(1).font = { bold: true };
 
   for (const p of rows) {
+    const tidText = p.ovelse === "Trim uten tid" ? (p.fullfort ? "Fullført" : "") : p.tid || "";
     sheet.addRow({
       fornavn: p.fornavn,
       etternavn: p.etternavn,
+      klubb: p.klubb || "",
       kjonn: p.kjonn,
       ovelse: p.ovelse,
-      tid: p.tid || "",
+      tid: tidText,
       registrertTidspunkt: new Date(p.registrertTidspunkt).toLocaleString("nb-NO"),
     });
   }

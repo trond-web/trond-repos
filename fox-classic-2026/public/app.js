@@ -25,6 +25,7 @@ form.addEventListener("submit", async (e) => {
   const payload = {
     fornavn: fornavnInput.value.trim(),
     etternavn: document.getElementById("etternavn").value.trim(),
+    klubb: document.getElementById("klubb").value.trim(),
     kjonn: kjonnInput ? kjonnInput.value : "",
     ovelse: ovelseInput ? ovelseInput.value : "",
   };
