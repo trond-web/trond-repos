@@ -394,6 +394,13 @@ th {
   text-decoration: underline;
 }
 
+.site-credit {
+  text-align: center;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 #loginCard {
   border: 2px dashed var(--orange);
   text-align: center;
