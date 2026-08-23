@@ -35,16 +35,43 @@ body {
   padding: 24px 16px 32px;
 }
 
-.mascot {
+.mascot-wrap {
+  position: relative;
   width: 140px;
-  height: auto;
   margin: 0 auto 4px;
+}
+
+.mascot {
+  width: 100%;
+  height: auto;
+  margin: 0 auto;
   display: block;
   animation: mascot-bob 2.6s ease-in-out infinite;
 }
 
+.hero > .mascot {
+  margin-bottom: 4px;
+}
+
+.mascot-wink {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .mascot-small {
   width: 90px;
+}
+
+.mascot-wrap.celebrate {
+  animation: fox-runoff 2s ease forwards;
+}
+
+.mascot-wrap.celebrate .mascot-wink {
+  animation: fox-wink 1.3s ease-in-out forwards;
 }
 
 @keyframes mascot-bob {
@@ -57,8 +84,53 @@ body {
   }
 }
 
+@keyframes fox-wink {
+  0%, 5%, 12%, 20%, 27%, 100% {
+    opacity: 0;
+  }
+  8%, 16% {
+    opacity: 1;
+  }
+}
+
+@keyframes fox-runoff {
+  0%, 18% {
+    transform: translateX(0) translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  21.5% {
+    transform: translateX(-6px) translateY(2px) rotate(-4deg) scale(0.97, 1.05);
+    opacity: 1;
+  }
+  32.5% {
+    transform: translateX(50px) translateY(-8px) rotate(6deg) scale(1.02);
+    opacity: 1;
+  }
+  45% {
+    transform: translateX(150px) translateY(-14px) rotate(4deg) scale(0.85);
+    opacity: 1;
+  }
+  57% {
+    transform: translateX(260px) translateY(-4px) rotate(2deg) scale(0.55);
+    opacity: 0.5;
+  }
+  65%, 78% {
+    transform: translateX(340px) translateY(0) rotate(0deg) scale(0.35);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mascot {
+    animation: none;
+  }
+
+  .mascot-wrap.celebrate,
+  .mascot-wrap.celebrate .mascot-wink {
     animation: none;
   }
 }

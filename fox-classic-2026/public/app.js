@@ -9,8 +9,23 @@ const participantsTable = document.getElementById("participantsTable");
 const emptyState = document.getElementById("emptyState");
 const counts = document.getElementById("counts");
 const resultsContainer = document.getElementById("resultsContainer");
+const mascotWrap = document.getElementById("mascotWrap");
 
 let participants = [];
+
+function celebrateMascot() {
+  if (!mascotWrap) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  mascotWrap.classList.remove("celebrate");
+  void mascotWrap.offsetWidth; // restart the animation even if it's already running
+  mascotWrap.classList.add("celebrate");
+}
+
+if (mascotWrap) {
+  mascotWrap.addEventListener("animationend", (e) => {
+    if (e.target === mascotWrap) mascotWrap.classList.remove("celebrate");
+  });
+}
 
 async function loadParticipants() {
   participants = await fcFetchParticipants();
@@ -52,6 +67,7 @@ form.addEventListener("submit", async (e) => {
   form.querySelector(`input[name="kjonn"][value="${CSS.escape(kjonnValue)}"]`).checked = true;
   form.querySelector(`input[name="ovelse"][value="${CSS.escape(ovelseValue)}"]`).checked = true;
   showMessage(`🦊 ${payload.fornavn} ${payload.etternavn} er meldt på og klar for løypa!`, false);
+  celebrateMascot();
   fornavnInput.focus();
 });
 
