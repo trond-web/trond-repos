@@ -5,7 +5,8 @@ Enkel påmeldingsløsning for **Fox Classic 2026**, et terrengløp lørdag 19. s
 - **Distanse:** 5,3 km
 - **Start/mål:** Rud-Øde
 - **Pris:** Gratis
-- **Øvelser:** Trim uten tidtaking, og Konkurranse med tidtaking (start kl. 11:00)
+- **Øvelser:** Trim uten tidtaking (fri start 09:45–10:30), og Konkurranse med
+  tidtaking (start kl. 11:00)
 
 ## Tre sider
 
@@ -49,6 +50,8 @@ og `ARRANGOR_PASSORD`.
   ikke i den enkelte nettlesers lokale lagring).
 - Filtrering på kjønn og øvelse, med løpende telling.
 - Eksport til Excel (.xlsx) av hele eller filtrert liste.
+- "Slett alle deltakere"-knapp på arrangørsiden (med bekreftelsesdialog) for å
+  nullstille hele påmeldingslisten, f.eks. mellom en test og selve arrangementet.
 - Egen resultatliste (rangert etter tid) for "Konkurranse med tid".
 - **Løpsklokke og "Mål"-knapp på arrangørsiden:** arrangør trykker "Start løpet"
   når konkurranseklassen starter, og trykker "🏁 Mål" for hver deltaker når de

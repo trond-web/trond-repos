@@ -75,6 +75,7 @@ function render() {
 
   if (filtered.length === 0) {
     participantsTable.style.display = "none";
+    participantsBody.innerHTML = "";
     emptyState.style.display = "block";
   } else {
     participantsTable.style.display = "table";

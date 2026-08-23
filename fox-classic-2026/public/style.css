@@ -195,6 +195,23 @@ select {
   background: #f1f5f9;
 }
 
+.btn-danger {
+  background: none;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.btn-danger:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.danger-zone {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
+}
+
 .btn-small {
   padding: 6px 14px;
   font-size: 0.85rem;

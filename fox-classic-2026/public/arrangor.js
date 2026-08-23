@@ -14,6 +14,7 @@ const fornavnInput = document.getElementById("fornavn");
 const filterKjonn = document.getElementById("filterKjonn");
 const filterOvelse = document.getElementById("filterOvelse");
 const exportBtn = document.getElementById("exportBtn");
+const deleteAllBtn = document.getElementById("deleteAllBtn");
 const participantsBody = document.getElementById("participantsBody");
 const participantsTable = document.getElementById("participantsTable");
 const emptyState = document.getElementById("emptyState");
@@ -260,11 +261,28 @@ async function handleDelete(id) {
   }
 }
 
+deleteAllBtn.addEventListener("click", async () => {
+  if (participants.length === 0) return;
+  const count = participants.length;
+  if (!confirm(`Slette ALLE ${count} deltakere fra påmeldingslisten? Dette kan ikke angres.`)) return;
+
+  const res = await authFetch("/api/participants", { method: "DELETE" });
+  if (!res.ok && res.status !== 401) {
+    alert("Kunne ikke slette deltakere.");
+    return;
+  }
+  if (res.ok) {
+    participants = [];
+    render();
+  }
+});
+
 function render() {
   const filtered = fcFilterParticipants(participants, filterKjonn.value, filterOvelse.value);
 
   if (filtered.length === 0) {
     participantsTable.style.display = "none";
+    participantsBody.innerHTML = "";
     emptyState.style.display = "block";
   } else {
     participantsTable.style.display = "table";

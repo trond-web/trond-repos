@@ -266,6 +266,12 @@ app.post("/api/participants/:id/mal", requireArrangor, (req, res) => {
   res.json(participant);
 });
 
+app.delete("/api/participants", requireArrangor, (req, res) => {
+  participants = [];
+  saveParticipants(participants);
+  res.status(204).end();
+});
+
 app.delete("/api/participants/:id", requireArrangor, (req, res) => {
   const before = participants.length;
   participants = participants.filter((p) => p.id !== req.params.id);
