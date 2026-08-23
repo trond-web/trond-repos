@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tretetthet fra flyfoto</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>🌲 Tretetthet fra flyfoto</h1>
+    <p class="subtitle">Last opp et flyfoto og få et estimat på antall trær per dekar. Kartdel og stedsnavnsøk er rettet mot Østlandet.</p>
+  </header>
+
+  <section class="card">
+    <h2>1. Finn området på kartet (Østlandet)</h2>
+    <p class="hint">
+      Søk opp et stedsnavn eller klikk i kartet for å notere posisjon. Bruk knappene for å åpne offisielle,
+      frie datakilder for det valgte området i en ny fane, hent ned et flyfoto derfra, og last det opp under.
+    </p>
+    <div class="search-row">
+      <input type="text" id="placeSearch" placeholder="Søk stedsnavn, f.eks. Lillestrøm, Hamar, Drammen …" autocomplete="off">
+      <button id="placeSearchBtn" class="btn btn-secondary" type="button">Søk</button>
+    </div>
+    <ul id="placeResults" class="place-results"></ul>
+    <div id="map"></div>
+    <div class="selected-position" id="selectedPosition">Ingen posisjon valgt ennå.</div>
+    <div class="source-links">
+      <a id="linkNorgeIBilder" href="https://norgeibilder.no/" target="_blank" rel="noopener">Åpne Norge i bilder ↗</a>
+      <a id="linkKilden" href="https://kilden.nibio.no/" target="_blank" rel="noopener">Åpne Kilden / NIBIO skogressurskart (SR16) ↗</a>
+      <a id="linkNorgeskart" href="https://norgeskart.no/" target="_blank" rel="noopener">Åpne Norgeskart ↗</a>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2. Last opp flyfoto</h2>
+    <div id="dropZone" class="drop-zone">
+      <p>Dra og slipp et flyfoto her, eller</p>
+      <label class="btn btn-primary file-label">
+        Velg fil
+        <input type="file" id="fileInput" accept="image/*" hidden>
+      </label>
+      <p class="hint">JPG, PNG eller lignende. Bildet bør være rett ovenfra (ortogonalt), slik ekte ortofoto er.</p>
+    </div>
+  </section>
+
+  <section class="card" id="calibrationSection" hidden>
+    <h2>3. Kalibrer skala (meter per piksel)</h2>
+    <p class="hint">
+      For å regne ut areal i dekar må vi vite bakkeoppløsningen på bildet (GSD). Velg et vanlig
+      Geovekst/Norge i bilder-alternativ, skriv inn en kjent verdi, eller mål opp en kjent avstand direkte på bildet.
+    </p>
+    <div class="calib-row">
+      <label for="gsdPreset">Vanlige oppløsninger (Østlandet ortofoto)</label>
+      <select id="gsdPreset">
+        <option value="">– velg –</option>
+        <option value="0.1">0,10 m/piksel (svært høy oppløsning)</option>
+        <option value="0.2">0,20 m/piksel (typisk by-/tettstedsortofoto)</option>
+        <option value="0.25">0,25 m/piksel</option>
+        <option value="0.5">0,50 m/piksel (typisk landsdekkende ortofoto)</option>
+        <option value="custom">Egendefinert …</option>
+      </select>
+      <input type="number" id="gsdCustom" step="0.001" min="0.001" placeholder="m/piksel" hidden>
+    </div>
+    <div class="calib-row">
+      <button id="calibrateLineBtn" class="btn btn-secondary" type="button">Mål avstand på bildet i stedet</button>
+      <span id="calibrateLineStatus" class="hint"></span>
+    </div>
+  </section>
+
+  <section class="card" id="analysisSection" hidden>
+    <h2>4. Kjør trededeteksjon</h2>
+    <div class="preview-wrap">
+      <canvas id="sourceCanvas"></canvas>
+      <canvas id="overlayCanvas"></canvas>
+    </div>
+    <div class="controls-grid">
+      <div class="control">
+        <label for="crownSlider">Forventet krondiameter: <span id="crownValue">3.0</span> m</label>
+        <input type="range" id="crownSlider" min="1" max="15" step="0.5" value="3">
+      </div>
+      <div class="control">
+        <label for="sensSlider">Grønnhetsterskel (finjustering): <span id="sensValue">0</span></label>
+        <input type="range" id="sensSlider" min="-40" max="40" step="1" value="0">
+      </div>
+    </div>
+    <button id="runBtn" class="btn btn-primary" type="button" disabled>Kjør analyse</button>
+    <p id="runStatus" class="hint"></p>
+  </section>
+
+  <section class="card" id="resultSection" hidden>
+    <h2>5. Resultat</h2>
+    <div class="stats" id="stats">
+      <div class="stat">
+        <span class="stat-value" id="statCount">0</span>
+        <span class="stat-label">Registrerte trær</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="statArea">0</span>
+        <span class="stat-label">Dekar dekket</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="statDensity">0</span>
+        <span class="stat-label">Trær per dekar</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="statPerHa">0</span>
+        <span class="stat-label">Trær per hektar</span>
+      </div>
+    </div>
+    <button id="downloadReportBtn" class="btn btn-ghost btn-small" type="button">Last ned rapport (.txt)</button>
+    <p class="disclaimer">
+      Dette er et automatisert estimat basert på en grønnhetsindeks og lokale
+      toppunkter i kronedekket, ikke en sertifisert skogtakst. Tett/overlappende kronedekke,
+      skygge og skrå bilder gir mindre nøyaktig telling. Sammenlign gjerne med offisielle tall fra
+      NIBIOs skogressurskart (SR16) via Kilden for arealer på Østlandet.
+    </p>
+  </section>
+
+  <footer>
+    <p>
+      Kartlag: <a href="https://kartverket.no/api-og-data/apne-kartdata" target="_blank" rel="noopener">Kartverket – Åpne kartdata</a> (topografisk WMTS-cache) og
+      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-bidragsytere.
+      Stedsnavnsøk: <a href="https://ws.geonorge.no/stedsnavn/v1/" target="_blank" rel="noopener">Geonorge Stedsnavn-API</a>.
+      Flyfoto og skogdata for egen innhenting: <a href="https://norgeibilder.no/" target="_blank" rel="noopener">Norge i bilder</a> (Kartverket/Geovekst) og
+      <a href="https://kilden.nibio.no/" target="_blank" rel="noopener">Kilden (NIBIO)</a>.
+    </p>
+  </footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="app.js"></script>
+</body>
+</html>
