@@ -31,6 +31,7 @@ function fcCounts(participants) {
     total: participants.length,
     trim: participants.filter((p) => p.ovelse === "Trim uten tid").length,
     konkurranse: participants.filter((p) => p.ovelse === "Konkurranse med tid").length,
+    tilskuer: participants.filter((p) => p.ovelse === "Tilskuer").length,
   };
 }
 
@@ -55,7 +56,7 @@ function fcRenderTable(tbody, participants, options) {
     row.appendChild(fcKlubbCell(p, editable, options));
     row.appendChild(fcSelectOrTextCell(p, "kjonn", ["Mann", "Kvinne"], editable, options));
     row.appendChild(
-      fcSelectOrTextCell(p, "ovelse", ["Trim uten tid", "Konkurranse med tid"], editable, options)
+      fcSelectOrTextCell(p, "ovelse", ["Trim uten tid", "Konkurranse med tid", "Tilskuer"], editable, options)
     );
     row.appendChild(fcStatusCell(p, editable, options));
 

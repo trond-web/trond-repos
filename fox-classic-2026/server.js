@@ -9,7 +9,7 @@ const DATA_FILE = path.join(DATA_DIR, "participants.json");
 const RACE_FILE = path.join(DATA_DIR, "race.json");
 
 const KJONN_VALUES = ["Mann", "Kvinne"];
-const OVELSE_VALUES = ["Trim uten tid", "Konkurranse med tid"];
+const OVELSE_VALUES = ["Trim uten tid", "Konkurranse med tid", "Tilskuer"];
 const TID_PATTERN = /^([0-9]{1,2}:)?[0-5]?[0-9]:[0-5][0-9]$/;
 const ARRANGOR_PASSORD = process.env.ARRANGOR_PASSORD || "";
 const ARRANGOR_BRUKERNAVN = process.env.ARRANGOR_BRUKERNAVN || "admin";
@@ -65,7 +65,7 @@ function validateParticipant(body) {
   if (!etternavn) return "Etternavn er påkrevd.";
   if (!KJONN_VALUES.includes(kjonn)) return "Kjønn må være Mann eller Kvinne.";
   if (!OVELSE_VALUES.includes(ovelse)) {
-    return "Øvelse må være Trim uten tid eller Konkurranse med tid.";
+    return "Øvelse må være Trim uten tid, Konkurranse med tid eller Tilskuer.";
   }
   return null;
 }
@@ -224,7 +224,7 @@ app.patch("/api/participants/:id", requireArrangor, (req, res) => {
   if ("ovelse" in req.body) {
     const ovelse = String(req.body.ovelse || "").trim();
     if (!OVELSE_VALUES.includes(ovelse)) {
-      return res.status(400).json({ error: "Øvelse må være Trim uten tid eller Konkurranse med tid." });
+      return res.status(400).json({ error: "Øvelse må være Trim uten tid, Konkurranse med tid eller Tilskuer." });
     }
     updates.ovelse = ovelse;
   }
@@ -333,7 +333,7 @@ app.get("/api/export", async (req, res) => {
   sheet.getRow(1).font = { bold: true };
 
   for (const p of rows) {
-    const tidText = p.ovelse === "Trim uten tid" ? (p.fullfort ? "Fullført" : "") : p.tid || "";
+    const tidText = p.ovelse === "Konkurranse med tid" ? p.tid || "" : p.fullfort ? "Fullført" : "";
     sheet.addRow({
       startnummer: p.startnummer || "",
       fornavn: p.fornavn,

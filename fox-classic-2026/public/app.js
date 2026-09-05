@@ -100,7 +100,7 @@ function render() {
   }
 
   const c = fcCounts(filtered);
-  counts.textContent = `Totalt: ${c.total} · Trim: ${c.trim} · Konkurranse: ${c.konkurranse}`;
+  counts.textContent = `Totalt: ${c.total} · Trim: ${c.trim} · Konkurranse: ${c.konkurranse} · Tilskuer: ${c.tilskuer}`;
 
   fcRenderResults(resultsContainer, participants);
 }
