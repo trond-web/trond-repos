@@ -450,6 +450,24 @@ th {
   font-variant-numeric: tabular-nums;
 }
 
+.race-clock-override {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.race-clock-override label {
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.race-clock-override .edit-input {
+  width: auto;
+  min-width: 0;
+}
+
 .page-footer {
   text-align: center;
   margin-top: 8px;
@@ -535,6 +553,10 @@ th {
 }
 
 .race-clock-card .race-clock {
+  justify-content: center;
+}
+
+.race-clock-card .race-clock-override {
   justify-content: center;
 }
 

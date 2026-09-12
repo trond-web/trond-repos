@@ -273,6 +273,20 @@ function fcTidToSeconds(tid) {
   return parts[0] * 60 + parts[1];
 }
 
+/**
+ * Combines a <input type="time"> value ("HH:MM" or "HH:MM:SS") with today's
+ * date into a Date object. Returns null if the value is empty or invalid.
+ */
+function fcTimeInputToDate(timeValue) {
+  if (!timeValue) return null;
+  const parts = timeValue.split(":").map(Number);
+  if (parts.length < 2 || parts.some((n) => isNaN(n))) return null;
+  const [hours, minutes, seconds = 0] = parts;
+  const date = new Date();
+  date.setHours(hours, minutes, seconds, 0);
+  return date;
+}
+
 function fcFormatClock(totalSeconds) {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);

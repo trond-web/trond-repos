@@ -249,7 +249,15 @@ app.get("/api/race", (req, res) => {
 });
 
 app.post("/api/race/start", requireArrangor, (req, res) => {
-  race = { startTime: new Date().toISOString() };
+  let startTime = new Date();
+  if (req.body && req.body.startTime) {
+    const parsed = new Date(req.body.startTime);
+    if (isNaN(parsed.getTime())) {
+      return res.status(400).json({ error: "Ugyldig starttid." });
+    }
+    startTime = parsed;
+  }
+  race = { startTime: startTime.toISOString() };
   saveRace(race);
   res.json(race);
 });
