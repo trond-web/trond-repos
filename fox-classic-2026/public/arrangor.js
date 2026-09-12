@@ -24,8 +24,6 @@ const raceClockTime = document.getElementById("raceClockTime");
 const startRaceBtn = document.getElementById("startRaceBtn");
 const resetRaceBtn = document.getElementById("resetRaceBtn");
 const raceClockHint = document.getElementById("raceClockHint");
-const overrideTimeInput = document.getElementById("overrideTimeInput");
-const overrideTimeBtn = document.getElementById("overrideTimeBtn");
 
 let participants = [];
 let credentials = null;
@@ -164,29 +162,6 @@ resetRaceBtn.addEventListener("click", async () => {
   if (!res.ok) return;
   const race = await res.json();
   raceStartTime = race.startTime;
-  updateRaceClockUI();
-  render();
-});
-
-overrideTimeBtn.addEventListener("click", async () => {
-  const startTime = fcTimeInputToDate(overrideTimeInput.value);
-  if (!startTime) {
-    alert("Angi et gyldig klokkeslett.");
-    return;
-  }
-  const res = await authFetch("/api/race/start", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ startTime: startTime.toISOString() }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    alert(body.error || "Kunne ikke sette starttid.");
-    return;
-  }
-  const race = await res.json();
-  raceStartTime = race.startTime;
-  overrideTimeInput.value = "";
   updateRaceClockUI();
   render();
 });
