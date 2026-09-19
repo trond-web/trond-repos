@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fox Classic 2027 – Påmelding</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="apple-touch-icon" href="images/favicon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <div class="mascot-wrap" id="mascotWrap">
+      <img src="images/fox-mascot.png" alt="Fox Classic-reven klar for løp" class="mascot" id="mascotImg">
+      <svg class="mascot-wink" id="mascotWink" viewBox="0 0 480 720" aria-hidden="true" focusable="false">
+        <ellipse cx="282" cy="140" rx="30" ry="30" fill="#e2831f"></ellipse>
+        <path d="M 254 140 Q 282 160 310 140" fill="none" stroke="#1a1206" stroke-width="9" stroke-linecap="round"></path>
+      </svg>
+    </div>
+    <h1>🦊 Fox Classic 2027</h1>
+    <p class="subtitle">Terrengløp · lørdag 18. september 2027</p>
+    <ul class="facts">
+      <li><strong>Distanse:</strong> 5,3 km</li>
+      <li><strong>Start/mål:</strong> Rud-Øde</li>
+      <li><strong>Pris:</strong> Gratis</li>
+      <li><strong>Trim uten tidtaking:</strong> fri start mellom 09:45–10:30, løp i eget tempo</li>
+      <li><strong>Konkurranse med tidtaking:</strong> start kl. 11:00</li>
+      <li><strong>Barn 300 meter:</strong> egen kort løype for barn, ingen tidtaking</li>
+      <li><strong>Tilskuer:</strong> meld deg på for å heie – ingen løp eller tid registreres</li>
+      <li><strong>Påmeldingsfrist:</strong> helst innen 15. september, men det går fint an å melde seg på helt fram til start</li>
+    </ul>
+  </header>
+
+  <p class="results-link-wrap"><a href="/resultater" class="btn btn-primary">🏆 Se resultater →</a></p>
+
+  <section class="card">
+    <h2>Meld på deltaker</h2>
+    <form id="registrationForm" class="registration-form">
+      <div class="field">
+        <label for="fornavn">Fornavn</label>
+        <input type="text" id="fornavn" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="etternavn">Etternavn</label>
+        <input type="text" id="etternavn" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="klubb">Klubb/team <span class="optional-label">(valgfritt)</span></label>
+        <input type="text" id="klubb" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Kjønn</label>
+        <div class="radio-group">
+          <label class="radio-option"><input type="radio" name="kjonn" value="Mann" required> Mann</label>
+          <label class="radio-option"><input type="radio" name="kjonn" value="Kvinne"> Kvinne</label>
+        </div>
+      </div>
+      <div class="field">
+        <label>Øvelse</label>
+        <div class="radio-group">
+          <label class="radio-option"><input type="radio" name="ovelse" value="Trim uten tid" required> Trim uten tid</label>
+          <label class="radio-option"><input type="radio" name="ovelse" value="Konkurranse med tid"> Konkurranse med tid</label>
+          <label class="radio-option"><input type="radio" name="ovelse" value="Barn 300 meter"> Barn 300 meter</label>
+          <label class="radio-option"><input type="radio" name="ovelse" value="Tilskuer"> Tilskuer</label>
+        </div>
+      </div>
+      <p class="form-message" id="formMessage" role="status"></p>
+      <button type="submit" class="btn btn-primary">🦊 Meld på!</button>
+      <p class="form-hint">Skjemaet tømmes automatisk slik at du raskt kan legge til flere deltakere.</p>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="list-header">
+      <h2>Påmeldte</h2>
+      <div class="counts" id="counts"></div>
+    </div>
+
+    <div class="filters">
+      <div class="field">
+        <label for="filterKjonn">Filtrer på kjønn</label>
+        <select id="filterKjonn">
+          <option value="">Alle</option>
+          <option value="Mann">Mann</option>
+          <option value="Kvinne">Kvinne</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filterOvelse">Filtrer på øvelse</label>
+        <select id="filterOvelse">
+          <option value="">Alle</option>
+          <option value="Trim uten tid">Trim uten tid</option>
+          <option value="Konkurranse med tid">Konkurranse med tid</option>
+          <option value="Barn 300 meter">Barn 300 meter</option>
+          <option value="Tilskuer">Tilskuer</option>
+        </select>
+      </div>
+      <button id="exportBtn" class="btn btn-secondary">Eksporter til Excel</button>
+    </div>
+
+    <div class="table-wrap">
+      <table id="participantsTable">
+        <thead>
+          <tr>
+            <th>Startnr</th>
+            <th>Fornavn</th>
+            <th>Etternavn</th>
+            <th>Klubb/team</th>
+            <th>Kjønn</th>
+            <th>Øvelse</th>
+            <th>Tid</th>
+          </tr>
+        </thead>
+        <tbody id="participantsBody"></tbody>
+      </table>
+      <p class="empty-state" id="emptyState">Ingen påmeldte enda. Bli den første reven i løypa! 🦊</p>
+    </div>
+  </section>
+
+  <p class="page-footer"><a href="/arrangor">🔒 Rev-hiet for arrangører →</a></p>
+  <p class="site-credit">Utviklet av Reven 🦊 i tett samarbeid med Claude · v1.0.0 · 2027</p>
+</div>
+
+<script src="common.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
