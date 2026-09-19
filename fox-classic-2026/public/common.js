@@ -220,12 +220,14 @@ function fcStatusCell(p, editable, options) {
   return td;
 }
 
-function fcRenderResults(container, participants) {
+function fcRenderResults(container, participants, filterKjonn) {
   container.innerHTML = "";
+  const inClass = (p) =>
+    p.ovelse === "Konkurranse med tid" && (!filterKjonn || p.kjonn === filterKjonn);
   const finished = participants
-    .filter((p) => p.ovelse === "Konkurranse med tid" && p.tid)
+    .filter((p) => inClass(p) && p.tid)
     .sort((a, b) => fcTidToSeconds(a.tid) - fcTidToSeconds(b.tid));
-  const waiting = participants.filter((p) => p.ovelse === "Konkurranse med tid" && !p.tid);
+  const waiting = participants.filter((p) => inClass(p) && !p.tid);
 
   if (finished.length === 0) {
     const empty = document.createElement("p");

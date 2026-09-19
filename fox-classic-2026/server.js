@@ -138,6 +138,10 @@ app.get("/arrangor/kamera", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "kamera.html"));
 });
 
+app.get("/resultater", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "resultater.html"));
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/api/participants", (req, res) => {

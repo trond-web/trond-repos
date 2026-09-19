@@ -8,7 +8,6 @@ const participantsBody = document.getElementById("participantsBody");
 const participantsTable = document.getElementById("participantsTable");
 const emptyState = document.getElementById("emptyState");
 const counts = document.getElementById("counts");
-const resultsContainer = document.getElementById("resultsContainer");
 const mascotWrap = document.getElementById("mascotWrap");
 
 let participants = [];
@@ -101,8 +100,6 @@ function render() {
 
   const c = fcCounts(filtered);
   counts.textContent = `Totalt: ${c.total} · Trim: ${c.trim} · Konkurranse: ${c.konkurranse} · Tilskuer: ${c.tilskuer}`;
-
-  fcRenderResults(resultsContainer, participants);
 }
 
 loadParticipants();
