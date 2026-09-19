@@ -342,7 +342,8 @@ select {
   min-width: 160px;
 }
 
-.table-wrap {
+.table-wrap,
+#resultsContainer {
   overflow-x: auto;
 }
 

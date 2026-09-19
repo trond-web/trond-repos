@@ -239,7 +239,7 @@ function fcRenderResults(container, participants, filterKjonn) {
     const table = document.createElement("table");
     const thead = document.createElement("thead");
     const headRow = document.createElement("tr");
-    for (const heading of ["Plass", "Startnr", "Fornavn", "Etternavn", "Klubb", "Kjønn", "Tid"]) {
+    for (const heading of ["Plass", "Startnr", "Fornavn", "Etternavn", "Klubb", "Kjønn", "Tid", "Diff"]) {
       const th = document.createElement("th");
       th.textContent = heading;
       headRow.appendChild(th);
@@ -247,10 +247,12 @@ function fcRenderResults(container, participants, filterKjonn) {
     thead.appendChild(headRow);
     table.appendChild(thead);
 
+    const leaderSeconds = fcTidToSeconds(finished[0].tid);
     const tbody = document.createElement("tbody");
     finished.forEach((p, i) => {
       const row = document.createElement("tr");
-      for (const value of [i + 1, p.startnummer || "–", p.fornavn, p.etternavn, p.klubb || "–", p.kjonn, p.tid]) {
+      const diff = fcFormatDiff(fcTidToSeconds(p.tid) - leaderSeconds);
+      for (const value of [i + 1, p.startnummer || "–", p.fornavn, p.etternavn, p.klubb || "–", p.kjonn, p.tid, diff]) {
         const td = document.createElement("td");
         td.textContent = value;
         row.appendChild(td);
@@ -280,4 +282,17 @@ function fcFormatClock(totalSeconds) {
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = Math.floor(totalSeconds % 60);
   return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
+}
+
+/**
+ * Formats a gap to the leader in seconds as "+mm:ss" (or "+h:mm:ss" past
+ * one hour). Returns "–" for the leader itself (zero gap).
+ */
+function fcFormatDiff(totalSeconds) {
+  if (totalSeconds <= 0) return "–";
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  const mmss = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return "+" + (h > 0 ? `${h}:${mmss}` : mmss);
 }
