@@ -142,6 +142,10 @@ app.get("/resultater", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "resultater.html"));
 });
 
+app.get("/historikk", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "historikk.html"));
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/api/participants", (req, res) => {
