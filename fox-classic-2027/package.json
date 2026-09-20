@@ -1,7 +1,7 @@
 {
-  "name": "fox-classic-2026",
-  "version": "1.5.1",
-  "description": "Påmeldingsløsning for Fox Classic 2026",
+  "name": "fox-classic-2027",
+  "version": "1.0.0",
+  "description": "Påmeldingsløsning for Fox Classic 2027",
   "private": true,
   "main": "server.js",
   "scripts": {

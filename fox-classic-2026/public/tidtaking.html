@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fox Classic 2026 – Tidtaking</title>
+<link rel="icon" type="image/png" href="/images/favicon.png">
+<link rel="apple-touch-icon" href="/images/favicon-192.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app app-narrow">
+  <header class="hero hero-compact">
+    <h1>🏁 Tidtaking</h1>
+    <p class="subtitle">Fox Classic 2026</p>
+  </header>
+
+  <section class="card" id="loginCard">
+    <h2>🦊🔒 Rev-hiet</h2>
+    <p class="form-hint">Kun for arrangører – logg inn for å komme videre.</p>
+    <form id="loginForm" class="registration-form">
+      <div class="field">
+        <label for="brukernavnInput">Brukernavn</label>
+        <input type="text" id="brukernavnInput" required autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="passordInput">Passord</label>
+        <input type="password" id="passordInput" required autocomplete="current-password">
+      </div>
+      <p class="form-message" id="loginMessage" role="status"></p>
+      <button type="submit" class="btn btn-primary">🦊 Logg inn</button>
+    </form>
+  </section>
+
+  <div id="mainContent" style="display: none;">
+    <div class="list-header">
+      <p class="form-hint">🦊 Innlogget som arrangør.</p>
+      <button id="logoutBtn" class="btn btn-ghost btn-small">Logg ut</button>
+    </div>
+
+    <section class="card race-clock-card">
+      <div class="race-clock">
+        <div class="race-clock-time" id="raceClockTime">–</div>
+        <button id="startRaceBtn" class="btn btn-primary">🏁 Start løpet</button>
+        <button id="resetRaceBtn" class="btn btn-ghost" style="display: none;">Nullstill start</button>
+      </div>
+      <p class="form-hint" id="raceClockHint">Trykk når konkurranseklassen starter.</p>
+    </section>
+
+    <section class="card">
+      <h2>Finn deltaker</h2>
+      <form id="searchForm" class="registration-form" autocomplete="off">
+        <div class="field">
+          <label for="startnrInput">Startnummer</label>
+          <input type="text" id="startnrInput" inputmode="numeric" placeholder="f.eks. 42" autofocus class="big-input">
+        </div>
+        <div class="field">
+          <label for="ovelseFilter">Øvelse</label>
+          <select id="ovelseFilter">
+            <option value="">Alle</option>
+            <option value="Trim uten tid">Trim uten tid</option>
+            <option value="Konkurranse med tid">Konkurranse med tid</option>
+            <option value="Tilskuer">Tilskuer</option>
+          </select>
+        </div>
+      </form>
+      <p class="form-hint">Skriv startnummer for å snevre inn listen under. Trykk Enter for å registrere mål direkte hvis det kun er ett treff i "Venter"-lista. Deltakere uten startnummer vises ikke her – tildel startnummer på oversiktssiden først.</p>
+    </section>
+
+    <p class="confirm-banner" id="confirmBanner" style="display: none;"></p>
+
+    <div class="tab-bar">
+      <button id="tabVenterBtn" type="button" class="tab-btn tab-btn-active">⏳ Venter <span id="ventendeCount"></span></button>
+      <button id="tabIMalBtn" type="button" class="tab-btn">✅ I mål <span id="iMalCount"></span></button>
+    </div>
+
+    <div id="searchResults"></div>
+  </div>
+
+  <p class="page-footer"><a href="/arrangor">← Full oversikt</a></p>
+</div>
+
+<script src="/common.js"></script>
+<script src="/tidtaking.js"></script>
+</body>
+</html>
