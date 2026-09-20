@@ -44,6 +44,21 @@ body {
   margin: 0 0 24px;
 }
 
+.next-year-banner {
+  background: #fdf1e4;
+  border: 1px solid var(--orange);
+  color: var(--orange-dark);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-weight: 600;
+  text-align: center;
+  margin: 0 0 16px;
+}
+
+.next-year-banner a {
+  color: var(--orange-dark);
+}
+
 .mascot-wrap {
   position: relative;
   width: 140px;
