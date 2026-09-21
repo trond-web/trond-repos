@@ -181,6 +181,7 @@ app.put("/api/menu", requireAuth, (req, res) => {
         description: String(rawItem.description || "").trim(),
         sizes,
         hasStrength: !!rawItem.hasStrength,
+        appliesTo: Array.isArray(rawItem.appliesTo) ? rawItem.appliesTo.filter((v) => typeof v === "string") : [],
       });
     }
 

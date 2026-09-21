@@ -34,6 +34,9 @@
   function buildItemBlock(item) {
     const block = el("div", { class: "admin-item" });
     block.dataset.itemId = item.id || uuid();
+    // appliesTo (which item types a "Tillegg og sauser" entry shows up under) has no
+    // editor UI yet, so stash it here and pass it through unchanged on save.
+    block.dataset.appliesTo = JSON.stringify(Array.isArray(item.appliesTo) ? item.appliesTo : []);
 
     const nameInput = el("input", { type: "text", class: "item-name-input", placeholder: "Navn på rett", value: item.name || "" });
     const descInput = el("input", { type: "text", class: "item-desc-input", placeholder: "Beskrivelse (valgfritt)", value: item.description || "" });
@@ -130,12 +133,15 @@
             price: Number(sizeBlock.querySelector(".price").value),
           });
         });
+        let appliesTo = [];
+        try { appliesTo = JSON.parse(itemBlock.dataset.appliesTo || "[]"); } catch (err) { appliesTo = []; }
         items.push({
           id: itemBlock.dataset.itemId,
           name: itemNameInput.value.trim(),
           description: itemDescInput.value.trim(),
           sizes,
           hasStrength: itemBlock.querySelector(".item-strength-checkbox").checked,
+          appliesTo,
         });
       });
       categories.push({

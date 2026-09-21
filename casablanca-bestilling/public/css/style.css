@@ -313,12 +313,35 @@ textarea {
 }
 
 .item-row {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.item-row-main {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 18px;
-  border-top: 1px solid var(--border);
   flex-wrap: wrap;
+}
+
+.item-addons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 8px;
+}
+
+.addon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.addon-chip input {
+  margin: 0;
 }
 
 .item-info {

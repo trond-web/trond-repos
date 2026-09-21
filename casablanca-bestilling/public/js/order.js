@@ -1,5 +1,7 @@
 (function () {
   const STRENGTH_VALUES = ["Mild", "Medium", "Sterk"];
+  const ADDON_CATEGORY_NAME = "Tillegg og sauser";
+  const ADDON_CONTEXT_BY_CATEGORY = { Pizza: "pizza", Hamburgermeny: "burger", Kebabmeny: "kebab" };
 
   let menu = { categories: [] };
   let orders = [];
@@ -49,6 +51,21 @@
       if (item) return { item, category };
     }
     return null;
+  }
+
+  function getAddonsForCategory(categoryName) {
+    const context = ADDON_CONTEXT_BY_CATEGORY[categoryName];
+    if (!context) return [];
+    const addonCategory = menu.categories.find((c) => c.name === ADDON_CATEGORY_NAME);
+    if (!addonCategory) return [];
+    const addons = [];
+    addonCategory.items.forEach((item) => {
+      if ((item.appliesTo || []).includes(context)) {
+        const size = item.sizes[0];
+        addons.push({ itemId: item.id, sizeId: size.id, itemName: item.name, price: size.price });
+      }
+    });
+    return addons;
   }
 
   // ---------- Menu rendering ----------
@@ -109,6 +126,12 @@
       qtyInput.value = v;
     }});
 
+    const addons = getAddonsForCategory(category.name);
+    const addonCheckboxes = addons.map((addon) => {
+      const checkbox = el("input", { type: "checkbox" });
+      return { addon, checkbox };
+    });
+
     const addBtn = el("button", { class: "btn btn-primary btn-sm", type: "button", text: "Legg til" });
     addBtn.addEventListener("click", () => {
       const size = item.sizes.find((s) => s.id === sizeSelect.value) || item.sizes[0];
@@ -122,22 +145,48 @@
         price: size.price,
         strength: item.hasStrength ? strengthSelect.value : null,
       }, qty);
+      let addedExtras = 0;
+      addonCheckboxes.forEach(({ addon, checkbox }) => {
+        if (!checkbox.checked) return;
+        addToCart({
+          itemId: addon.itemId,
+          sizeId: addon.sizeId,
+          itemName: addon.itemName,
+          categoryName: ADDON_CATEGORY_NAME,
+          sizeLabel: "",
+          price: addon.price,
+        }, qty);
+        checkbox.checked = false;
+        addedExtras += 1;
+      });
       qtyInput.value = "1";
-      showToast(`${item.name} lagt til`);
+      showToast(`${item.name}${addedExtras ? " + tillegg" : ""} lagt til`);
     });
 
+    const addonsRow = addonCheckboxes.length
+      ? el("div", { class: "item-addons" }, addonCheckboxes.map(({ addon, checkbox }) =>
+          el("label", { class: "addon-chip" }, [
+            checkbox,
+            document.createTextNode(`${addon.itemName} (+${formatKr(addon.price)})`),
+          ])
+        ))
+      : null;
+
     const row = el("div", { class: "item-row" }, [
-      el("div", { class: "item-info" }, [
-        el("div", { class: "name", text: item.name }),
-        item.description ? el("div", { class: "desc", text: item.description }) : null,
-        !hasMultipleSizes ? el("div", { class: "desc", text: formatKr(item.sizes[0].price) }) : null,
+      el("div", { class: "item-row-main" }, [
+        el("div", { class: "item-info" }, [
+          el("div", { class: "name", text: item.name }),
+          item.description ? el("div", { class: "desc", text: item.description }) : null,
+          !hasMultipleSizes ? el("div", { class: "desc", text: formatKr(item.sizes[0].price) }) : null,
+        ]),
+        el("div", { class: "item-controls" }, [
+          hasMultipleSizes ? sizeSelect : null,
+          item.hasStrength ? strengthSelect : null,
+          el("div", { class: "qty-stepper" }, [decBtn, qtyInput, incBtn]),
+          addBtn,
+        ]),
       ]),
-      el("div", { class: "item-controls" }, [
-        hasMultipleSizes ? sizeSelect : null,
-        item.hasStrength ? strengthSelect : null,
-        el("div", { class: "qty-stepper" }, [decBtn, qtyInput, incBtn]),
-        addBtn,
-      ]),
+      addonsRow,
     ]);
     return row;
   }
