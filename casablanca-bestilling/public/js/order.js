@@ -2,6 +2,11 @@
   const STRENGTH_VALUES = ["Mild", "Medium", "Sterk"];
   const ADDON_CATEGORY_NAME = "Tillegg og sauser";
   const ADDON_CONTEXT_BY_CATEGORY = { Pizza: "pizza", Hamburgermeny: "burger", Kebabmeny: "kebab" };
+  const FUN_EMOJIS = ["🎉", "😋", "🕺", "🔥", "👌", "🙌"];
+
+  function funEmoji() {
+    return FUN_EMOJIS[Math.floor(Math.random() * FUN_EMOJIS.length)];
+  }
 
   let menu = { categories: [] };
   let orders = [];
@@ -160,7 +165,7 @@
         addedExtras += 1;
       });
       qtyInput.value = "1";
-      showToast(`${item.name}${addedExtras ? " + tillegg" : ""} lagt til`);
+      showToast(`${item.name}${addedExtras ? " + tillegg" : ""} lagt til ${funEmoji()}`);
     });
 
     const addonsRow = addonCheckboxes.length
@@ -501,6 +506,10 @@
   document.addEventListener("DOMContentLoaded", async () => {
     const ok = await requireAuth();
     if (!ok) return;
+
+    if (new Date().getDay() === 5) {
+      document.getElementById("fridayBanner").classList.remove("hidden");
+    }
 
     document.getElementById("personName").value = localStorage.getItem(NAME_KEY) || "";
     document.getElementById("submitOrderBtn").addEventListener("click", submitOrder);
