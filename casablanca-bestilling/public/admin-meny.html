@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rediger meny – Casablanca-bestilling</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <h1>🍕 Rediger meny</h1>
+      <span class="tag">Gran kommune IKT</span>
+    </div>
+    <nav class="nav">
+      <a href="index.html" class="btn btn-ghost btn-sm">← Til bestilling</a>
+      <button id="logoutBtn" class="btn btn-ghost btn-sm">Logg ut</button>
+    </nav>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>Meny</h2>
+      <span class="muted" id="updatedInfo"></span>
+    </div>
+    <p class="muted">
+      Oppdater menyen her hver tirsdag, eller når Casablanca Kjøkken endrer priser. Endringer vises for alle
+      med det samme etter lagring.
+    </p>
+    <div id="categoriesContainer"></div>
+    <button id="addCategoryBtn" class="btn btn-secondary btn-sm">+ Ny kategori</button>
+  </div>
+
+  <div class="card" style="position: sticky; bottom: 16px;">
+    <p class="form-message" id="saveMessage"></p>
+    <button id="saveMenuBtn" class="btn btn-primary" style="width:100%; justify-content:center;">Lagre meny</button>
+  </div>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/menu-admin.js"></script>
+</body>
+</html>

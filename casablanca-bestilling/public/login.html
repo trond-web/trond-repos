@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logg inn – Casablanca-bestilling</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="login-shell">
+  <div class="card login-card">
+    <div class="emoji">🍕</div>
+    <h1>Casablanca-bestilling</h1>
+    <p class="muted">Intern bestillingsløsning for IKT-enheten, Gran kommune</p>
+    <form id="loginForm">
+      <div class="field">
+        <label for="username">Brukernavn</label>
+        <input type="text" id="username" autocomplete="username" required autofocus>
+      </div>
+      <div class="field">
+        <label for="password">Passord</label>
+        <input type="password" id="password" autocomplete="current-password" required>
+      </div>
+      <p class="form-message" id="formMessage" role="alert"></p>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Logg inn</button>
+    </form>
+  </div>
+</div>
+<script src="js/login.js"></script>
+</body>
+</html>

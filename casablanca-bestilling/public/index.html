@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casablanca-bestilling – Gran kommune IKT</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <h1>🍕 Casablanca-bestilling</h1>
+      <span class="tag">Gran kommune IKT</span>
+    </div>
+    <nav class="nav">
+      <a href="admin-meny.html" class="btn btn-ghost btn-sm">Rediger meny</a>
+      <button id="logoutBtn" class="btn btn-ghost btn-sm">Logg ut</button>
+    </nav>
+  </div>
+
+  <p class="muted" id="menuUpdatedInfo"></p>
+
+  <div class="layout">
+    <div>
+      <div class="card" id="menuCard">
+        <h2>Meny</h2>
+        <div id="menuContainer"></div>
+      </div>
+    </div>
+
+    <div class="cart-panel">
+      <div class="card">
+        <h2>Din bestilling</h2>
+        <div class="field">
+          <label for="personName">Navn</label>
+          <input type="text" id="personName" placeholder="Fornavn Etternavn" autocomplete="name">
+        </div>
+        <div id="cartLines"><p class="empty-hint">Ingen retter valgt ennå.</p></div>
+        <div class="cart-total"><span>Sum</span><span id="cartTotal">0 kr</span></div>
+        <div class="field" style="margin-top:12px;">
+          <label for="orderComment">Kommentar (valgfritt)</label>
+          <textarea id="orderComment" placeholder="F.eks. allergier"></textarea>
+        </div>
+        <p class="form-message" id="cartMessage"></p>
+        <button id="submitOrderBtn" class="btn btn-primary" style="width:100%; justify-content:center;">Send bestilling</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>Bestillinger denne runden</h2>
+      <span class="badge" id="orderCountBadge">0 bestillinger</span>
+    </div>
+    <div id="ordersContainer"><p class="empty-hint">Ingen har bestilt ennå.</p></div>
+  </div>
+
+  <div class="card">
+    <h2>Sum per person</h2>
+    <table id="personTotalsTable">
+      <thead><tr><th>Navn</th><th>Antall retter</th><th>Å betale</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>Samlet bestilling til Casablanca</h2>
+      <div class="row-actions">
+        <button id="copySummaryBtn" class="btn btn-secondary btn-sm">Kopier oversikt</button>
+        <button id="emailBtn" class="btn btn-primary btn-sm">Lag e-post</button>
+      </div>
+    </div>
+    <table id="aggregateTable">
+      <thead><tr><th>Rett</th><th>Antall</th><th>Stk.pris</th><th>Sum</th></tr></thead>
+      <tbody></tbody>
+      <tfoot><tr><td colspan="3">Totalt</td><td id="grandTotal">0 kr</td></tr></tfoot>
+    </table>
+    <p class="muted" style="margin-top:10px;">
+      Når bestillingen er ringt/sendt inn og betalingen er samlet inn, kan runden avsluttes for å starte en ny, tom liste.
+      Tidligere runder blir liggende i historikken.
+    </p>
+    <button id="closeRoundBtn" class="btn btn-danger btn-sm">Avslutt runde og arkiver</button>
+  </div>
+
+  <footer class="hint">Casablanca Kjøkken · Storgata 31, 2750 Gran · tlf. 947 90 306</footer>
+</div>
+
+<div class="modal-backdrop hidden" id="emailModal">
+  <div class="modal">
+    <h2>E-post til Casablanca Kjøkken</h2>
+    <div class="field">
+      <label for="emailTo">Til</label>
+      <input type="text" id="emailTo" value="issam@casablanca-kjokken.no">
+    </div>
+    <div class="field">
+      <label for="emailSubject">Emne</label>
+      <input type="text" id="emailSubject">
+    </div>
+    <div class="field">
+      <label for="emailBody">Innhold</label>
+      <pre class="email-preview" id="emailBody"></pre>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="closeEmailModal">Lukk</button>
+      <button class="btn btn-secondary" id="copyEmailBtn">Kopier tekst</button>
+      <a class="btn btn-primary" id="openMailBtn" href="#">Åpne i e-postprogram</a>
+    </div>
+  </div>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/order.js"></script>
+</body>
+</html>

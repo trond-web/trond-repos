@@ -1,0 +1,1854 @@
+{
+  "updatedAt": "2026-09-21T11:11:38.143Z",
+  "categories": [
+    {
+      "id": "41fb32a3-be5d-4fc9-ad9c-699398289fa9",
+      "name": "Pizza",
+      "note": "Medium eller Stor størrelse. Priser i kr.",
+      "items": [
+        {
+          "id": "da5a0738-8fc3-4853-9df4-b28029dd7c94",
+          "name": "01 Den Enkle",
+          "description": "Ost, tomatsaus og oregano",
+          "sizes": [
+            {
+              "id": "8234953e-9fa2-493a-b54a-7f1cd6ccb093",
+              "label": "Medium",
+              "price": 169
+            },
+            {
+              "id": "73505939-648c-4280-a275-51e2492b358a",
+              "label": "Stor",
+              "price": 219
+            }
+          ]
+        },
+        {
+          "id": "9eab160b-ac9e-460e-9038-1d80a63fd022",
+          "name": "02 Drømmen",
+          "description": "Kjøttdeig, mais og paprika",
+          "sizes": [
+            {
+              "id": "5174ff43-8a00-48c2-bb32-00d83b1bf800",
+              "label": "Medium",
+              "price": 199
+            },
+            {
+              "id": "a2b81ba3-8681-4f67-b8a0-5ee4f10f8143",
+              "label": "Stor",
+              "price": 289
+            }
+          ]
+        },
+        {
+          "id": "5e44aaf5-6437-4df8-ba87-b4fd18078d66",
+          "name": "03 Snadder",
+          "description": "Kjøttdeig, bacon, løk og ananas",
+          "sizes": [
+            {
+              "id": "04ca9e4b-a180-465c-af9e-ae8c40c4da54",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "2c83c4bb-1f7d-4953-9145-d453e2904005",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "c6a6388f-30b7-4867-a151-02f7ae44d822",
+          "name": "04 Kos",
+          "description": "Salsasaus, kjøttdeig, skinke, marinert biff, champignon og løk",
+          "sizes": [
+            {
+              "id": "f8f4c3c9-8380-496e-8864-947572e833fb",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "2473f9a6-8fa0-4204-9664-ae4fe4bfea4d",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "33c8dd12-7389-493f-a729-ec26ca6db635",
+          "name": "05 Kokkens Favoritt",
+          "description": "Kjøttdeig, grillpølse, løk, paprika og grillkrydder",
+          "sizes": [
+            {
+              "id": "3fe155b8-d1e2-466b-b55a-9c9eef379629",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "7ef675e6-6e98-4839-b5c7-de9b21a3dc49",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "d3fc5ac5-f969-457f-b416-f9a45a78f913",
+          "name": "06 Sult",
+          "description": "Hotsaus, kjøttdeig, kjøttbolle, løk, paprika, champignon og jalapeños",
+          "sizes": [
+            {
+              "id": "deff8446-c204-4e38-8389-88c469808974",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "66288ed2-6640-4332-adb1-4efd965cbf84",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "4ce9bb67-ab88-4a33-a391-3c96aafd2175",
+          "name": "07 Tiddelibom",
+          "description": "Kjøttdeig, pepperoni, salami, løk og ananas",
+          "sizes": [
+            {
+              "id": "a0525ea3-d1f2-46b7-8e7e-af6db6943f17",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "7cf904fa-d0a4-4a92-ab2a-0025a1971f0f",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "b34abc40-7b47-44ea-9aad-95d1c53ef394",
+          "name": "08 Spesial",
+          "description": "BBQ-marinert kylling, pepperoni, crispy bacon og skivede tomater",
+          "sizes": [
+            {
+              "id": "5a36aa94-adab-4fa0-8d98-db7049642793",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "b31f5dba-6144-4288-9783-a6b97c21a1b0",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "f897008c-7560-49fe-a1fa-edcab13c470f",
+          "name": "09 Meksikaner",
+          "description": "Marinert kylling, marinert biff, hvitløk, cheddarost, mais og jalapeños",
+          "sizes": [
+            {
+              "id": "022b0e36-bf26-4048-9b7a-14facdbdf1c9",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "4a733dd2-b530-4ae4-b002-849032a3556c",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "6cac3ec8-4a05-4579-8f5f-1c6ecbdc2d1f",
+          "name": "10 Tacokyllingen",
+          "description": "Tacosaus, marinert kylling, jalapeño, paprika og cashewnøtter",
+          "sizes": [
+            {
+              "id": "f9b9a2e6-fe62-4700-b4ba-33780e7a40ea",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "b8d303d7-caf5-4e9e-a3f3-81d6998d52b0",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "10fc2a18-dfe6-4894-9be8-bbb14ad884bf",
+          "name": "11 Capri",
+          "description": "Marinert kylling, løk, mais, champignon og peanøtter",
+          "sizes": [
+            {
+              "id": "66491fe5-a712-4fd0-bf88-1f1bf85d81af",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "09b43293-c64b-4136-be3c-cf8b23d97b14",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "997be9ef-3d3c-4ac4-a347-eda2f2cc2af7",
+          "name": "12 Luksuskylling",
+          "description": "Marinert kylling, bacon, løk og paprika",
+          "sizes": [
+            {
+              "id": "8770ff45-67a5-42d7-b986-6fd640528602",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "4f449d92-50ca-4f19-aa68-a93b509269d2",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "3bbd5677-88bf-428a-bbfb-8fe7d6508343",
+          "name": "13 Kyllingfarmen",
+          "description": "Marinert kylling, skinke, paprika, pesto og tomater i skiver",
+          "sizes": [
+            {
+              "id": "d873b428-ea0b-4f0b-ad2c-f7fe23168d67",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "82aef1ad-d39c-43a8-8f28-dc2f4c9d6086",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "7bb13850-1a39-4ba7-b441-c7990e330daf",
+          "name": "14 Hot Kylling",
+          "description": "Hotsaus, marinert kylling, bacon, jalapeños og ananas",
+          "sizes": [
+            {
+              "id": "7996e668-425d-48d1-8eba-0b03f88e5e66",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "6ceaeef7-c1cd-4ffb-b908-35f2d2932741",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "21ff1f36-f444-4464-b5b7-01ea689eeec3",
+          "name": "15 Biffen",
+          "description": "Marinert biff i strimler, bacon, mais og hvitløk",
+          "sizes": [
+            {
+              "id": "f0425964-9314-4a31-9064-c6acb113f1a9",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "2ce74ec0-1494-427d-ad22-394672aceab0",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "72211b16-1404-4d02-8fc7-d260317ced2a",
+          "name": "16 Den Marinerte",
+          "description": "BBQ-marinert biff i strimler, champignon, paprika og løk",
+          "sizes": [
+            {
+              "id": "002e0aa7-f3ef-4481-97e0-98cc6e0e27e0",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "9b0a8f48-3ee9-4c20-877a-9ba026ee74f2",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "92289116-b857-494b-bfc4-3f8895617a1c",
+          "name": "17 Hottenbiff",
+          "description": "Hotsaus, pepperbiff, pepperoni, løk, jalapeños og paprika",
+          "sizes": [
+            {
+              "id": "7b83b7db-8cf8-41fd-a9e1-2f5c42327dc4",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "cc3a3304-7266-43d3-826f-2d1905c41524",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "689ffdd5-041d-4fbb-815d-1a1d6cd65b3a",
+          "name": "18 Peppersvennen",
+          "description": "Biff i strimler, champignon, løk og paprika. Toppes med pommes frites og bearnaisesaus",
+          "sizes": [
+            {
+              "id": "5d68077e-b6a1-44bf-b187-96a6129f2058",
+              "label": "Medium",
+              "price": 229
+            },
+            {
+              "id": "d5d3f65e-7270-4861-bb15-e6feab10c4a7",
+              "label": "Stor",
+              "price": 349
+            }
+          ]
+        },
+        {
+          "id": "299fe1fc-9edb-403c-9fd9-8333eac396ba",
+          "name": "19 Casablanca Mix",
+          "description": "Pepperoni, salami, biffkjøtt, kylling, kjøttbolle, bacon, tacokjøttdeig og skinke",
+          "sizes": [
+            {
+              "id": "59378c8a-7c4a-4c68-a603-f3781dc24f86",
+              "label": "Medium",
+              "price": 249
+            },
+            {
+              "id": "89ddbc65-865a-4910-b010-ed79af5cd360",
+              "label": "Stor",
+              "price": 349
+            }
+          ]
+        },
+        {
+          "id": "afd79a42-b401-4e58-a6c3-bd4de8fa0a0c",
+          "name": "20 Kebaben",
+          "description": "Kebabkjøtt, mais, paprika, rødløk og jalapeño. Toppes med dressing mild/medium/sterk",
+          "sizes": [
+            {
+              "id": "ebeac053-0b57-45e8-ba76-91ce40ef8331",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "ce8aef3e-dc4f-424c-9fc4-61fab717a0f7",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "4b295157-467c-4b85-83fe-219794437310",
+          "name": "21 Tacopizza",
+          "description": "Tacokjøtt, tortillachips, jalapeños, mais og paprika",
+          "sizes": [
+            {
+              "id": "f638f026-bc63-4a7e-8905-35be555a0309",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "e8f4daa3-b977-47d5-bebd-96de4df5e551",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "a4a12c10-35ec-4822-9f7a-09738cad82a0",
+          "name": "22 Bolla",
+          "description": "Skinke, kjøttboller, løk, champignon og paprika",
+          "sizes": [
+            {
+              "id": "8ef7e9a0-9dd7-46cf-a192-e23fd8fbfeec",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "237ece5d-499c-4351-80cb-5a5664527281",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "a4474f3a-3724-44f5-9878-add11f2ff538",
+          "name": "23 Tomasso",
+          "description": "Ost, tomatsaus, skinke og bacon",
+          "sizes": [
+            {
+              "id": "2c5d003d-19c7-4d0c-8170-7415bdb0b0e0",
+              "label": "Medium",
+              "price": 199
+            },
+            {
+              "id": "cc8f97fc-605e-438e-9e28-af6a40288d09",
+              "label": "Stor",
+              "price": 289
+            }
+          ]
+        },
+        {
+          "id": "10a86ca8-3618-49ac-90fe-08c4d366b8eb",
+          "name": "24 Vegetarianeren",
+          "description": "Ananas, champignon, løk, mais, oliven og paprika",
+          "sizes": [
+            {
+              "id": "0edf9853-f19c-44b1-95ba-f787e87dd5b7",
+              "label": "Medium",
+              "price": 209
+            },
+            {
+              "id": "5728f70d-f58a-47fe-899c-27238d92831d",
+              "label": "Stor",
+              "price": 299
+            }
+          ]
+        },
+        {
+          "id": "345ce904-b207-420d-a089-9dcfbe2e652e",
+          "name": "25 Norge Pizza",
+          "description": "Kebabkjøtt, toppes med pommes frites og dressing mild/medium/sterk",
+          "sizes": [
+            {
+              "id": "834c5dc3-b72a-4823-83b6-02880451e30b",
+              "label": "Medium",
+              "price": 219
+            },
+            {
+              "id": "3a36186c-9377-4708-8764-da14c27656b0",
+              "label": "Stor",
+              "price": 319
+            }
+          ]
+        },
+        {
+          "id": "146e36fd-62d7-40de-8b01-fe6fc657328e",
+          "name": "26 Asil Pizza",
+          "description": "Marinert kylling, toppes med pommes frites og dressing mild/medium/sterk",
+          "sizes": [
+            {
+              "id": "f38ca433-2ae2-4b35-bb41-4c3fb2fbb010",
+              "label": "Medium",
+              "price": 219
+            },
+            {
+              "id": "ff68ff14-6458-49a1-8c78-d49807c1e1d1",
+              "label": "Stor",
+              "price": 319
+            }
+          ]
+        },
+        {
+          "id": "5cca6280-3b90-4c79-9082-d8b497f9cd34",
+          "name": "27 Ali Pizza",
+          "description": "Biffkjøtt, toppes med pommes frites og bearnaisesaus",
+          "sizes": [
+            {
+              "id": "3372dbc7-661f-46ba-a57d-d1079fc3e612",
+              "label": "Medium",
+              "price": 219
+            },
+            {
+              "id": "6add944d-6a23-4407-8d43-7b4be3a5b929",
+              "label": "Stor",
+              "price": 319
+            }
+          ]
+        },
+        {
+          "id": "b1e9eb94-a50e-40c4-b504-1185fdc9c6dc",
+          "name": "28 Adam Pizza",
+          "description": "Kyllingshawarma, toppes med pommes frites og dressing mild/medium/sterk",
+          "sizes": [
+            {
+              "id": "24b69874-5341-4cb9-82a3-fc2c69946bdf",
+              "label": "Medium",
+              "price": 219
+            },
+            {
+              "id": "2755b93e-c01a-410a-ae74-d041b768c16a",
+              "label": "Stor",
+              "price": 319
+            }
+          ]
+        },
+        {
+          "id": "4d668cb2-c216-4660-bcd6-6b3e0adbd003",
+          "name": "29 Valgfri Pizza",
+          "description": "Skinke/Pepperoni/Bacon/Kjøttdeig",
+          "sizes": [
+            {
+              "id": "c092f9fd-5f59-41d3-ae31-3060ba231de8",
+              "label": "Medium",
+              "price": 189
+            },
+            {
+              "id": "2d5224b8-11dd-4bba-9ddf-4d445b096424",
+              "label": "Stor",
+              "price": 269
+            }
+          ]
+        },
+        {
+          "id": "0929db30-a781-4f8a-813e-19f93c3d3106",
+          "name": "30 Min Pizza",
+          "description": "Valgfri garnityr, med 5 valg",
+          "sizes": [
+            {
+              "id": "f0789489-eb9b-46ba-90ec-77a7f42ec368",
+              "label": "Medium",
+              "price": 229
+            },
+            {
+              "id": "23366b6e-07a2-43c8-8452-805cdac3d38a",
+              "label": "Stor",
+              "price": 339
+            }
+          ]
+        },
+        {
+          "id": "4c79fb16-8a44-4896-9c98-747a298fbc5d",
+          "name": "31 Fifty-Fifty",
+          "description": "To halve pizza fra menyen (gjelder ikke nr. 19 og 29)",
+          "sizes": [
+            {
+              "id": "846fbf9e-1fc8-4dbf-888b-82f35753dfdf",
+              "label": "Medium",
+              "price": 249
+            },
+            {
+              "id": "f9af1793-2432-4642-ac95-b35d96e4aed0",
+              "label": "Stor",
+              "price": 349
+            }
+          ]
+        },
+        {
+          "id": "db82a260-7457-4c11-9a26-2dc0a49bc675",
+          "name": "32 Mix Pizza",
+          "description": "Kebabkjøtt og kyllingkebab, toppes med pommes frites og dressing mild/medium/sterk",
+          "sizes": [
+            {
+              "id": "43f8f970-47e3-462f-b9fc-9028a4d54223",
+              "label": "Medium",
+              "price": 229
+            },
+            {
+              "id": "760aee78-493f-4ffe-8f04-372df69681ed",
+              "label": "Stor",
+              "price": 329
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "973e7756-ce27-4453-b287-66d47112c98b",
+      "name": "Hamburgermeny",
+      "note": "Vektangivelse er kjøttvekt.",
+      "items": [
+        {
+          "id": "0f66b266-309e-4f49-bd8e-a8a16e4ac658",
+          "name": "Hamburger",
+          "description": "",
+          "sizes": [
+            {
+              "id": "55a9b9fa-bd39-4acf-950a-843f8c01743a",
+              "label": "100g",
+              "price": 129
+            },
+            {
+              "id": "fc05e464-f293-4a10-81ed-f1ff217e4556",
+              "label": "160g",
+              "price": 149
+            },
+            {
+              "id": "d5a213a6-8cb7-44f3-87e3-e088c98ea84c",
+              "label": "190g",
+              "price": 159
+            },
+            {
+              "id": "130f5044-2275-4c28-ac38-fb694f0b866c",
+              "label": "250g",
+              "price": 189
+            },
+            {
+              "id": "87dee77e-34a2-4461-8eee-dfc6ce8af9c4",
+              "label": "333g",
+              "price": 209
+            }
+          ]
+        },
+        {
+          "id": "1e6ae99e-a431-4353-9de3-6b188f803abe",
+          "name": "Cheeseburger",
+          "description": "",
+          "sizes": [
+            {
+              "id": "8897e9d1-16f3-47c4-bde3-1d5c029ca0c5",
+              "label": "100g",
+              "price": 139
+            },
+            {
+              "id": "42dbdf24-4941-4150-9765-9f850f8ca272",
+              "label": "160g",
+              "price": 159
+            },
+            {
+              "id": "b5ea3706-71e4-4bc5-b3d0-9d989ae99e59",
+              "label": "190g",
+              "price": 169
+            },
+            {
+              "id": "eaf52411-8854-4be5-ab48-e96312c498e0",
+              "label": "250g",
+              "price": 199
+            },
+            {
+              "id": "c0cd4d73-6840-4ca3-a171-71d65c748806",
+              "label": "333g",
+              "price": 219
+            }
+          ]
+        },
+        {
+          "id": "b3acf1b9-1fac-472d-a1f7-1f1f77034d5b",
+          "name": "BBQ-burger",
+          "description": "",
+          "sizes": [
+            {
+              "id": "8e741577-a1ef-4732-a916-d6f7a81fb9a1",
+              "label": "100g",
+              "price": 149
+            },
+            {
+              "id": "209512af-b2e4-4cbc-922a-475762a63c59",
+              "label": "160g",
+              "price": 169
+            },
+            {
+              "id": "83a54f12-db8c-4193-8a98-c57793b6387c",
+              "label": "190g",
+              "price": 179
+            },
+            {
+              "id": "2dae9da0-19aa-4a57-8fe4-7171ba709453",
+              "label": "250g",
+              "price": 209
+            },
+            {
+              "id": "71447c45-a734-4dac-9f5a-9de4c4afc155",
+              "label": "333g",
+              "price": 229
+            }
+          ]
+        },
+        {
+          "id": "76971050-3471-49fe-aee5-1b42b5257a32",
+          "name": "Hamburgermiddag",
+          "description": "Med pommes frites",
+          "sizes": [
+            {
+              "id": "fb74e54b-ad5b-4631-91ec-2e30ff255ad9",
+              "label": "100g",
+              "price": 169
+            },
+            {
+              "id": "790956ca-47c2-42e0-a667-c3120ef3c738",
+              "label": "160g",
+              "price": 189
+            },
+            {
+              "id": "f5049b63-b97e-4fb5-8e3a-0ba290985353",
+              "label": "190g",
+              "price": 199
+            },
+            {
+              "id": "9d426bfd-8776-4107-b523-7f410cbc06b9",
+              "label": "250g",
+              "price": 219
+            },
+            {
+              "id": "feba4e8a-d2a1-47d8-89a8-4ee498f5f32e",
+              "label": "333g",
+              "price": 239
+            }
+          ]
+        },
+        {
+          "id": "be47f196-96f2-41a4-84a3-f0b36a12f090",
+          "name": "Cheeseburgermiddag",
+          "description": "Med pommes frites",
+          "sizes": [
+            {
+              "id": "2370dd0d-5404-4575-bbf9-aa85a022271e",
+              "label": "100g",
+              "price": 179
+            },
+            {
+              "id": "9501b938-666f-4da4-81fa-2b2a3529e908",
+              "label": "160g",
+              "price": 199
+            },
+            {
+              "id": "be21785b-0a99-4622-af39-a44f6b218fd8",
+              "label": "190g",
+              "price": 209
+            },
+            {
+              "id": "dc37273e-2501-4620-befb-173a50af3818",
+              "label": "250g",
+              "price": 229
+            },
+            {
+              "id": "d5352262-c4ed-46e1-86d1-3ea382bceb60",
+              "label": "333g",
+              "price": 249
+            }
+          ]
+        },
+        {
+          "id": "974f5a4f-318b-480f-8fb0-220b86eecb63",
+          "name": "BBQ-burgermiddag",
+          "description": "Med pommes frites",
+          "sizes": [
+            {
+              "id": "6733992c-ab77-4ede-80b2-a7c27f6b0b19",
+              "label": "100g",
+              "price": 189
+            },
+            {
+              "id": "c0ee1f1b-461b-4a43-b942-5f0f4592a119",
+              "label": "160g",
+              "price": 209
+            },
+            {
+              "id": "f64ba0ca-0b06-4d8d-87c9-c9398b57fc0b",
+              "label": "190g",
+              "price": 219
+            },
+            {
+              "id": "29bbf9fd-12b4-49ed-b748-831f68241546",
+              "label": "250g",
+              "price": 239
+            },
+            {
+              "id": "d4137754-162f-4bd4-956b-6c9c09f98cee",
+              "label": "333g",
+              "price": 259
+            }
+          ]
+        },
+        {
+          "id": "4ef43cd3-8be1-4d65-b0e8-1fc89bcc9146",
+          "name": "Løvburger",
+          "description": "150g",
+          "sizes": [
+            {
+              "id": "6c26ab3a-e1f1-442f-8afc-b2daba9a6a58",
+              "label": "Burger",
+              "price": 159
+            },
+            {
+              "id": "a4558d6b-b6f6-4442-9ed3-31ffaac935c0",
+              "label": "Tallerken",
+              "price": 209
+            }
+          ]
+        },
+        {
+          "id": "2c1cf248-4434-4100-93b8-2c184b6fb7c3",
+          "name": "Cheeseløvburger",
+          "description": "150g",
+          "sizes": [
+            {
+              "id": "5b8313c5-b99a-4102-9036-cf1884371d82",
+              "label": "Burger",
+              "price": 169
+            },
+            {
+              "id": "4ad89178-4963-4cc8-913e-bedff4416dc6",
+              "label": "Tallerken",
+              "price": 219
+            }
+          ]
+        },
+        {
+          "id": "2f62be23-b71d-4724-a13c-00c93b1a4757",
+          "name": "Fishburger",
+          "description": "120g",
+          "sizes": [
+            {
+              "id": "48ee572a-7062-492f-bd8a-8ebd3cc47e59",
+              "label": "Burger",
+              "price": 139
+            },
+            {
+              "id": "1f7322ac-9fa7-48d3-bbef-1a5321fb2d70",
+              "label": "Tallerken",
+              "price": 179
+            }
+          ]
+        },
+        {
+          "id": "1969cfc5-fab6-499a-8a38-1b71b38d1157",
+          "name": "Kylling Burger",
+          "description": "150g",
+          "sizes": [
+            {
+              "id": "5b3ee27f-4eee-4f1a-86ba-c113395d9729",
+              "label": "Burger",
+              "price": 149
+            },
+            {
+              "id": "0a1f9049-6a83-43f2-89b0-c90e6e17598c",
+              "label": "Tallerken",
+              "price": 199
+            }
+          ]
+        },
+        {
+          "id": "a829838d-eaba-432f-88fa-7f5e6c9c58ba",
+          "name": "Biffburger",
+          "description": "200g",
+          "sizes": [
+            {
+              "id": "2db9b0e8-8783-41a3-b8fc-5660ca6e4fca",
+              "label": "Burger",
+              "price": 169
+            },
+            {
+              "id": "b6b38c06-6f0b-44a2-8c23-ed01483e9551",
+              "label": "Tallerken",
+              "price": 219
+            }
+          ]
+        },
+        {
+          "id": "50e81445-8a48-44f5-8d9c-515b73efe43e",
+          "name": "BBQ Biffburger",
+          "description": "200g",
+          "sizes": [
+            {
+              "id": "1b14c167-90e2-40a1-a4ca-53a5ec2142a2",
+              "label": "Burger",
+              "price": 199
+            },
+            {
+              "id": "619611ce-444d-44ff-a605-3f63f2f077b2",
+              "label": "Tallerken",
+              "price": 249
+            }
+          ]
+        },
+        {
+          "id": "7bfe122f-f439-49a4-a496-b4de909f862d",
+          "name": "Gourmet Biffburgermiddag",
+          "description": "",
+          "sizes": [
+            {
+              "id": "9f12bb51-0261-4bd3-a00f-de89217fd2c1",
+              "label": "Tallerken",
+              "price": 329
+            }
+          ]
+        },
+        {
+          "id": "28b0ed16-ee41-4a4a-85f2-2f542bed72ef",
+          "name": "Cheesebiffburger",
+          "description": "200g",
+          "sizes": [
+            {
+              "id": "ca59c24e-e365-492f-95c3-f120a32537b2",
+              "label": "Burger",
+              "price": 179
+            },
+            {
+              "id": "d064c606-2062-4771-abfe-828501ee077e",
+              "label": "Tallerken",
+              "price": 229
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "63678289-7651-4e52-875e-2240da565d1c",
+      "name": "Kebabmeny",
+      "note": "",
+      "items": [
+        {
+          "id": "c66bc73e-10fe-42e7-b8e3-51199c23545c",
+          "name": "Kebab i pitabrød",
+          "description": "",
+          "sizes": [
+            {
+              "id": "aac4ef50-7f9e-452c-a88d-ad7d5af0a122",
+              "label": "Liten",
+              "price": 139
+            },
+            {
+              "id": "e8c23b58-3eda-4616-abbd-2dcc57cc8d9c",
+              "label": "Stor",
+              "price": 159
+            }
+          ]
+        },
+        {
+          "id": "c675fdcd-4dd0-4f25-8bc6-f38d9435a235",
+          "name": "Biffkebab i pitabrød",
+          "description": "",
+          "sizes": [
+            {
+              "id": "4f149745-0360-4848-b9f3-087df6224d39",
+              "label": "Stor",
+              "price": 199
+            }
+          ]
+        },
+        {
+          "id": "1142b0e0-cca8-43be-a5a7-82a556a6f477",
+          "name": "Dønerkebab i pitabrød",
+          "description": "",
+          "sizes": [
+            {
+              "id": "080a6749-d32f-4574-ad0b-6965105d6426",
+              "label": "Liten",
+              "price": 169
+            },
+            {
+              "id": "db9e75bb-f40d-4d09-8b4a-5074307a5660",
+              "label": "Stor",
+              "price": 189
+            }
+          ]
+        },
+        {
+          "id": "4b3d6cb4-1bc1-41aa-a614-a436d41492ae",
+          "name": "Kebab mix i pitabrød",
+          "description": "",
+          "sizes": [
+            {
+              "id": "1e48f1ef-d945-4881-874b-5c3a2958d26f",
+              "label": "Liten",
+              "price": 159
+            },
+            {
+              "id": "0abdd4db-037b-4a9c-b84a-c2bb6d659884",
+              "label": "Stor",
+              "price": 179
+            }
+          ]
+        },
+        {
+          "id": "7acc2552-e195-4e68-8926-e33f8332fb1c",
+          "name": "Kyllingkebab i pitabrød",
+          "description": "",
+          "sizes": [
+            {
+              "id": "3e36966d-40ab-4267-bc83-8a42116983c8",
+              "label": "Liten",
+              "price": 149
+            },
+            {
+              "id": "ec6d9824-52d2-4db2-ba68-7dec53db402b",
+              "label": "Stor",
+              "price": 169
+            }
+          ]
+        },
+        {
+          "id": "99ea83fe-507b-4888-bc46-2955a082de0e",
+          "name": "Rullekebab",
+          "description": "",
+          "sizes": [
+            {
+              "id": "ec9a5c8e-d29a-41e3-8c4d-647da74511ba",
+              "label": "Liten",
+              "price": 149
+            },
+            {
+              "id": "e87b919b-1631-48f7-a380-f63c50fbd654",
+              "label": "Stor",
+              "price": 169
+            }
+          ]
+        },
+        {
+          "id": "0b7f634c-fbdc-49ee-b067-22f67ab5d146",
+          "name": "Rulle biffkebab",
+          "description": "",
+          "sizes": [
+            {
+              "id": "c270b100-f62c-4d84-8074-97ef7fe9091c",
+              "label": "Stor",
+              "price": 219
+            }
+          ]
+        },
+        {
+          "id": "d3407b34-efdd-4231-ba26-4a4c1c286388",
+          "name": "Rulle dønerkebab",
+          "description": "",
+          "sizes": [
+            {
+              "id": "7ce696e4-dd1f-4a19-9abc-f3cbe11ed0f4",
+              "label": "Liten",
+              "price": 179
+            },
+            {
+              "id": "d29ba442-2581-4318-a0c6-d5a568d7b33d",
+              "label": "Stor",
+              "price": 199
+            }
+          ]
+        },
+        {
+          "id": "657d4ee5-472d-403e-810e-97d8ab79b2c2",
+          "name": "Rullekebab mix",
+          "description": "",
+          "sizes": [
+            {
+              "id": "ad4fb0fa-1a09-4218-b2ca-7aad07d70829",
+              "label": "Liten",
+              "price": 179
+            },
+            {
+              "id": "2d397e82-ddc7-443f-a46e-92df36d5a567",
+              "label": "Stor",
+              "price": 199
+            }
+          ]
+        },
+        {
+          "id": "cd16130c-7162-4bd4-b165-a9afad75b0f0",
+          "name": "Rullekyllingkebab",
+          "description": "",
+          "sizes": [
+            {
+              "id": "05a8950e-965f-41ab-a499-1aed015b97f4",
+              "label": "Liten",
+              "price": 159
+            },
+            {
+              "id": "a8377edf-c313-44a7-afba-32210d652a94",
+              "label": "Stor",
+              "price": 189
+            }
+          ]
+        },
+        {
+          "id": "8dff5040-22b0-409d-ad46-71e54d6c06db",
+          "name": "Kebabmiddag",
+          "description": "Med pommes frites",
+          "sizes": [
+            {
+              "id": "581d67ed-590b-497a-a2af-d205e7963442",
+              "label": "Liten",
+              "price": 189
+            },
+            {
+              "id": "15d5d198-65c6-44c4-8696-1d8a7c1c2b3c",
+              "label": "Stor",
+              "price": 219
+            }
+          ]
+        },
+        {
+          "id": "59d8cacd-e8ba-4aee-a658-e5bd3ba93fd7",
+          "name": "Dønerkebabmiddag",
+          "description": "Med pommes frites",
+          "sizes": [
+            {
+              "id": "0f3da884-444d-48a1-a56c-b7d402509354",
+              "label": "Liten",
+              "price": 219
+            },
+            {
+              "id": "b2b49677-4f40-4288-9f66-91f5ca95f0cf",
+              "label": "Stor",
+              "price": 249
+            }
+          ]
+        },
+        {
+          "id": "a5d080c5-bcc0-457d-b840-f39c4376bdc7",
+          "name": "Kebabmiddag mix",
+          "description": "Med pommes frites",
+          "sizes": [
+            {
+              "id": "bb6b677b-bc03-4767-ac6c-1c9a1859dad4",
+              "label": "Liten",
+              "price": 219
+            },
+            {
+              "id": "17f05cc2-1b1c-4668-a2fe-9e07870ee789",
+              "label": "Stor",
+              "price": 249
+            }
+          ]
+        },
+        {
+          "id": "9af61112-00c7-440d-9901-0dcfebea9478",
+          "name": "Kyllingkebabmiddag",
+          "description": "Med pommes frites",
+          "sizes": [
+            {
+              "id": "dda2cc75-7cff-476b-bab6-176e3139e78b",
+              "label": "Liten",
+              "price": 199
+            },
+            {
+              "id": "22944ff9-331c-4e9a-b580-df43d65924a6",
+              "label": "Stor",
+              "price": 239
+            }
+          ]
+        },
+        {
+          "id": "62580b0f-5378-48d0-ae78-64cccb1139ef",
+          "name": "Kyllingsnadder i rull",
+          "description": "",
+          "sizes": [
+            {
+              "id": "939ec745-ff5c-4ae8-a31d-52eec90d9bf5",
+              "label": "",
+              "price": 189
+            }
+          ]
+        },
+        {
+          "id": "b24eb6df-d1aa-4970-acb3-ccf367b0ea9c",
+          "name": "Løvbab i rull",
+          "description": "",
+          "sizes": [
+            {
+              "id": "d9d1dbcb-556e-4101-8031-e7a6794f6026",
+              "label": "Liten",
+              "price": 149
+            },
+            {
+              "id": "6e31e2f5-2094-496a-9226-da32856ec069",
+              "label": "Stor",
+              "price": 249
+            }
+          ]
+        },
+        {
+          "id": "80eb87fd-38c0-4f33-bc4c-c3194be9d591",
+          "name": "Shawarma rull",
+          "description": "",
+          "sizes": [
+            {
+              "id": "40b73fec-47ec-44f3-b8b2-ce6a8112fe03",
+              "label": "",
+              "price": 199
+            }
+          ]
+        },
+        {
+          "id": "5f92e8fa-9ed1-4c18-8ba7-eb8e306b0ed5",
+          "name": "Shawarma middag",
+          "description": "Med pommes frites",
+          "sizes": [
+            {
+              "id": "ea40ed52-1759-43f4-8f95-2ee01b26c04c",
+              "label": "",
+              "price": 249
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dafc2270-d84b-4e8b-af11-799194121a59",
+      "name": "Middagsretter",
+      "note": "",
+      "items": [
+        {
+          "id": "cfbe9e93-02ed-4379-a957-5ee083b3a328",
+          "name": "Biffsnaddermiddag",
+          "description": "",
+          "sizes": [
+            {
+              "id": "165739bf-e38d-427c-9c00-78d99307c02d",
+              "label": "Enkel",
+              "price": 249
+            },
+            {
+              "id": "e0ff4009-206c-4e49-ae7b-51729425ef22",
+              "label": "Dobbel",
+              "price": 329
+            }
+          ]
+        },
+        {
+          "id": "51bb5ff6-2589-45ec-af11-86d1c80226ad",
+          "name": "Kyllingsnaddermiddag",
+          "description": "",
+          "sizes": [
+            {
+              "id": "7e8194b2-8960-40af-966c-ce6912dfd514",
+              "label": "Enkel",
+              "price": 249
+            },
+            {
+              "id": "63f5cc43-6db7-401d-8213-f848ab96c4ca",
+              "label": "Dobbel",
+              "price": 329
+            }
+          ]
+        },
+        {
+          "id": "b082e27a-395a-4dce-a9bb-55df933ad256",
+          "name": "Løvstekmiddag",
+          "description": "150g",
+          "sizes": [
+            {
+              "id": "2e96e7ca-f531-4e13-861a-0085a001df59",
+              "label": "Enkel",
+              "price": 209
+            },
+            {
+              "id": "0cae82aa-d9c2-439b-b715-210943374f66",
+              "label": "Dobbel",
+              "price": 319
+            }
+          ]
+        },
+        {
+          "id": "e6f49be7-aa3c-42cf-a298-b8eed0adec09",
+          "name": "Fish & Chips middag",
+          "description": "",
+          "sizes": [
+            {
+              "id": "5fa205e0-5416-460c-b3de-dad2c2712069",
+              "label": "Enkel",
+              "price": 189
+            },
+            {
+              "id": "5369781d-5357-4674-a4ff-4df9b544c038",
+              "label": "Dobbel",
+              "price": 239
+            }
+          ]
+        },
+        {
+          "id": "8bb3a96c-99c7-4ee7-ac62-22f104d05c45",
+          "name": "Aryes",
+          "description": "",
+          "sizes": [
+            {
+              "id": "dc914c3e-344c-4ad7-8823-1b44aacee141",
+              "label": "Dobbel",
+              "price": 239
+            }
+          ]
+        },
+        {
+          "id": "81a9692b-d14a-403e-9723-52d3f6c51aa2",
+          "name": "Kyllingspyd",
+          "description": "",
+          "sizes": [
+            {
+              "id": "261abd38-c9af-4bee-9704-c0b8109744a1",
+              "label": "4 stk",
+              "price": 209
+            },
+            {
+              "id": "d28ccbde-4c80-4566-acfa-a82caaa2f5f5",
+              "label": "8 stk",
+              "price": 319
+            }
+          ]
+        },
+        {
+          "id": "36e73262-d93e-424f-9909-164d63129c20",
+          "name": "Halv kylling tallerken",
+          "description": "",
+          "sizes": [
+            {
+              "id": "a88cc1f6-6c77-43f7-9a28-6dd135c66558",
+              "label": "",
+              "price": 239
+            }
+          ]
+        },
+        {
+          "id": "0e3d24d5-7994-4832-b7fc-fcc0a1e0abe2",
+          "name": "Kyllingnugget middag",
+          "description": "10 stk",
+          "sizes": [
+            {
+              "id": "db1bc394-0ca8-4ab1-a8c8-0b808cf2d887",
+              "label": "",
+              "price": 209
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "165f3dce-22c4-4167-ba5b-7d4a19fe4620",
+      "name": "Vegetarmeny",
+      "note": "",
+      "items": [
+        {
+          "id": "8d671f64-261f-44ee-85eb-4a589769db72",
+          "name": "Falafel",
+          "description": "",
+          "sizes": [
+            {
+              "id": "28efd254-b5aa-4776-92e3-a9e519211c70",
+              "label": "Vanlig",
+              "price": 149
+            },
+            {
+              "id": "88e8bfce-abba-4761-8059-193860a1f09b",
+              "label": "Tallerken",
+              "price": 189
+            }
+          ]
+        },
+        {
+          "id": "148874f0-be72-4201-be40-be77cf830706",
+          "name": "Vegetarburger",
+          "description": "150g",
+          "sizes": [
+            {
+              "id": "ccb7f592-e2ae-42c6-ad6a-f5e3f5138e5b",
+              "label": "Vanlig",
+              "price": 149
+            },
+            {
+              "id": "27beffad-7e21-4add-924e-54b32473ae12",
+              "label": "Tallerken",
+              "price": 189
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "663dda6d-0036-4745-bf87-1894062bccec",
+      "name": "Barnemeny",
+      "note": "",
+      "items": [
+        {
+          "id": "d46ad245-9db1-4a2a-8548-dcf0e6969444",
+          "name": "5 kyllingnuggets",
+          "description": "Med pommes frites",
+          "sizes": [
+            {
+              "id": "537cb389-7986-448c-9026-222cb1f19b4c",
+              "label": "",
+              "price": 119
+            }
+          ]
+        },
+        {
+          "id": "ef1dcb83-9a17-4ea9-b929-054a0acab843",
+          "name": "Hamburger",
+          "description": "100g, med pommes frites plain",
+          "sizes": [
+            {
+              "id": "aaf160f8-eb61-4d2a-b88e-fc65a5bf4935",
+              "label": "",
+              "price": 139
+            }
+          ]
+        },
+        {
+          "id": "b29c96dd-edb6-465c-bf91-d3a885632a77",
+          "name": "Barnekebab",
+          "description": "Med pommes frites",
+          "sizes": [
+            {
+              "id": "977658b3-9f9b-44aa-a469-64064af52de7",
+              "label": "",
+              "price": 139
+            }
+          ]
+        },
+        {
+          "id": "5cd2b15e-46e9-4163-82c4-930af2ee296e",
+          "name": "Pølse",
+          "description": "Med pommes frites",
+          "sizes": [
+            {
+              "id": "bc9806e1-a031-42af-9a4e-63656d63debf",
+              "label": "",
+              "price": 119
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "e8639b42-c297-4975-a89a-f18d2482203c",
+      "name": "Små retter",
+      "note": "",
+      "items": [
+        {
+          "id": "272f600b-fadb-4a46-840c-2ca43d63eb34",
+          "name": "Kyllingsalat",
+          "description": "",
+          "sizes": [
+            {
+              "id": "cab72083-a726-4013-a609-8f0f3e636c18",
+              "label": "",
+              "price": 219
+            }
+          ]
+        },
+        {
+          "id": "97c74e17-0b02-494b-af39-4748ce1cf592",
+          "name": "Kebabsalat",
+          "description": "",
+          "sizes": [
+            {
+              "id": "fa574e2a-c27c-4a64-8775-eab28a43d1e5",
+              "label": "",
+              "price": 209
+            }
+          ]
+        },
+        {
+          "id": "ae25d7e7-8c5b-40d2-b2f2-1c818a80bcf7",
+          "name": "Løkringer",
+          "description": "15 stk",
+          "sizes": [
+            {
+              "id": "9f643695-8e6c-4912-bb64-81c71f12752b",
+              "label": "",
+              "price": 169
+            }
+          ]
+        },
+        {
+          "id": "8331713d-57f9-4e51-acca-180c1624a165",
+          "name": "Rekersalat",
+          "description": "",
+          "sizes": [
+            {
+              "id": "9969e1c9-5ae6-493f-8d6c-ba7790da2cab",
+              "label": "",
+              "price": 169
+            }
+          ]
+        },
+        {
+          "id": "3443ed13-0b0d-4897-8898-cc38b43bfac8",
+          "name": "Homos-kebab",
+          "description": "",
+          "sizes": [
+            {
+              "id": "170b91e2-c34c-492e-ab14-ce92507e311d",
+              "label": "",
+              "price": 199
+            }
+          ]
+        },
+        {
+          "id": "afced0e0-02a5-444f-ac9c-e334190984c0",
+          "name": "Homos-kyllingkebab",
+          "description": "",
+          "sizes": [
+            {
+              "id": "b7c895ef-4e44-405e-8b8c-51089f5eec05",
+              "label": "",
+              "price": 219
+            }
+          ]
+        },
+        {
+          "id": "2627f840-c84d-4dda-be1f-1060ed60bbb6",
+          "name": "Kyllingnugget",
+          "description": "10 stk",
+          "sizes": [
+            {
+              "id": "dfc8a6d6-ce80-459f-b5af-2509dee409af",
+              "label": "",
+              "price": 149
+            }
+          ]
+        },
+        {
+          "id": "801d75a1-0a15-4dc4-b80c-407a4979a3aa",
+          "name": "Pommes frites",
+          "description": "",
+          "sizes": [
+            {
+              "id": "e7c054d5-7707-4186-8c33-ee5605a02d58",
+              "label": "Liten",
+              "price": 59
+            },
+            {
+              "id": "0c736cf4-e8fd-4300-975b-3a4ca1409c7d",
+              "label": "Stor",
+              "price": 99
+            }
+          ]
+        },
+        {
+          "id": "dcd8908c-3df0-4c8f-9108-df368bd6b820",
+          "name": "Søtpotet",
+          "description": "",
+          "sizes": [
+            {
+              "id": "699d7574-ff45-4156-8d10-1f67ceec00fd",
+              "label": "Liten",
+              "price": 65
+            },
+            {
+              "id": "a7ee7271-423e-4261-baf2-f13cb4ba555a",
+              "label": "Stor",
+              "price": 119
+            }
+          ]
+        },
+        {
+          "id": "fcc34a52-5cd6-4b0f-a8d6-0f905e3f8fa9",
+          "name": "Mozzarella Sticks",
+          "description": "Pris per stk",
+          "sizes": [
+            {
+              "id": "31549a3e-263f-4715-99c6-6a9743c9b3c9",
+              "label": "",
+              "price": 13
+            }
+          ]
+        },
+        {
+          "id": "d3ce1863-9f62-4725-904f-9734f416438b",
+          "name": "Cheese Nuggets Chili",
+          "description": "Pris per stk",
+          "sizes": [
+            {
+              "id": "afee3fad-3a85-4b33-8a44-e1da25c514b0",
+              "label": "",
+              "price": 13
+            }
+          ]
+        },
+        {
+          "id": "dcc47cf6-a8e4-4783-8226-591ee54e0554",
+          "name": "Løkringer",
+          "description": "Pris per stk",
+          "sizes": [
+            {
+              "id": "0062233e-2377-415f-8a94-7ce0fe89ed67",
+              "label": "",
+              "price": 13
+            }
+          ]
+        },
+        {
+          "id": "cda09aa7-3a23-49b1-ad6d-fd8326506b26",
+          "name": "Fingermix",
+          "description": "",
+          "sizes": [
+            {
+              "id": "59cb62c6-2152-4734-bdfc-e7f2cf1b0f8c",
+              "label": "",
+              "price": 229
+            }
+          ]
+        },
+        {
+          "id": "d6877606-c3df-405b-a847-90770d37e496",
+          "name": "Bakt potet med kylling",
+          "description": "",
+          "sizes": [
+            {
+              "id": "53825b2a-30db-4a52-a900-f3814eee861f",
+              "label": "",
+              "price": 179
+            }
+          ]
+        },
+        {
+          "id": "943d01ac-f00c-4cb7-87d3-daf6c9a201f2",
+          "name": "Bakt potet med kebab",
+          "description": "",
+          "sizes": [
+            {
+              "id": "62031144-64d1-40df-92e9-becd35dc340d",
+              "label": "",
+              "price": 179
+            }
+          ]
+        },
+        {
+          "id": "b3a5df27-b875-42ff-8fc6-f5ffba34684b",
+          "name": "Bakt potet med skinke",
+          "description": "",
+          "sizes": [
+            {
+              "id": "9406f813-ee22-41c2-b0ee-800a037dc149",
+              "label": "",
+              "price": 159
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2bfeed3e-ae6b-4436-81bf-1fc4554dbe11",
+      "name": "Tillegg og sauser",
+      "note": "Ekstra tilbehør til pizza, burger og kebab.",
+      "items": [
+        {
+          "id": "3b05eea5-ad3e-4e2a-a2e1-1756cf2c5772",
+          "name": "Ekstra ost",
+          "description": "Pizza",
+          "sizes": [
+            {
+              "id": "4d171cd9-5586-472c-b991-4b46584ceb42",
+              "label": "",
+              "price": 69
+            }
+          ]
+        },
+        {
+          "id": "6692215a-db01-40b1-9ba7-71296265bc7b",
+          "name": "Ekstra ost",
+          "description": "Burger",
+          "sizes": [
+            {
+              "id": "e7c08776-e553-4142-954c-7cbda9071505",
+              "label": "",
+              "price": 20
+            }
+          ]
+        },
+        {
+          "id": "4b7e12fb-176e-4ce6-a974-b764d3f9d878",
+          "name": "Ekstra ost",
+          "description": "Kebab",
+          "sizes": [
+            {
+              "id": "9fc9fde4-6072-410c-8a75-b85e0de9549a",
+              "label": "",
+              "price": 39
+            }
+          ]
+        },
+        {
+          "id": "7cb5ce10-e570-4dc6-b3db-086add7d880c",
+          "name": "Ekstra kjøtt/bacon",
+          "description": "Pizza",
+          "sizes": [
+            {
+              "id": "da5cba3b-31fb-4a2b-9ad2-1050ec6cd644",
+              "label": "",
+              "price": 69
+            }
+          ]
+        },
+        {
+          "id": "5962c98c-c2e9-42cc-82ae-241c06eba0f0",
+          "name": "Ekstra kjøtt/bacon",
+          "description": "Burger",
+          "sizes": [
+            {
+              "id": "555154ba-f3b8-43e3-82f5-c1a437f1ff94",
+              "label": "",
+              "price": 29
+            }
+          ]
+        },
+        {
+          "id": "bb47a8ce-0928-4646-8f71-0243dd60992b",
+          "name": "Ekstra kjøtt/bacon",
+          "description": "Kebab",
+          "sizes": [
+            {
+              "id": "85bba2bf-cbb6-49d7-8cd6-66b9ae2a0d85",
+              "label": "",
+              "price": 69
+            }
+          ]
+        },
+        {
+          "id": "846e4737-fa9a-412e-95db-40e574130d55",
+          "name": "Ekstra ananas",
+          "description": "Burger",
+          "sizes": [
+            {
+              "id": "15a46660-16cf-41f8-83f5-25c65c216337",
+              "label": "",
+              "price": 20
+            }
+          ]
+        },
+        {
+          "id": "9cb59c0b-18c7-4a8b-94fb-8e9ac494bbf6",
+          "name": "Ekstra grønnsaker",
+          "description": "Burger",
+          "sizes": [
+            {
+              "id": "9f428006-a2e9-4276-8e0e-fa07957d34bf",
+              "label": "",
+              "price": 20
+            }
+          ]
+        },
+        {
+          "id": "3e2494dc-a384-44f2-9d9c-4fd66c0fb761",
+          "name": "Krydder i boks",
+          "description": "Pizza",
+          "sizes": [
+            {
+              "id": "00594718-e2bf-48dc-9d6e-2c24cae64e07",
+              "label": "",
+              "price": 29
+            }
+          ]
+        },
+        {
+          "id": "52b78169-c764-428a-975e-762dcb251f6f",
+          "name": "Pitabrød",
+          "description": "Ekstra, kebab",
+          "sizes": [
+            {
+              "id": "f1850329-3d4e-4150-97a8-f5659d9b7d08",
+              "label": "",
+              "price": 20
+            }
+          ]
+        },
+        {
+          "id": "121539eb-28f7-43b2-88cc-5cf993fc86a2",
+          "name": "Hamburgerbrød",
+          "description": "Ekstra",
+          "sizes": [
+            {
+              "id": "23069c85-90a7-465f-9185-b330207f584a",
+              "label": "",
+              "price": 29
+            }
+          ]
+        },
+        {
+          "id": "c62c75b5-f60d-4897-9a4f-819caa1566fe",
+          "name": "Glutenfri burgerbrød",
+          "description": "",
+          "sizes": [
+            {
+              "id": "978884ee-da79-4a50-bdaf-8d8414e79042",
+              "label": "",
+              "price": 39
+            }
+          ]
+        },
+        {
+          "id": "feb36cb7-9b19-4937-b1f0-85c214c1c675",
+          "name": "Glutenfri pizzabunn",
+          "description": "Kun medium",
+          "sizes": [
+            {
+              "id": "cbd8a986-741e-40d2-85a2-cb624d866163",
+              "label": "",
+              "price": 129
+            }
+          ]
+        },
+        {
+          "id": "31c78095-6d05-42bc-acc6-61f58b91d814",
+          "name": "Rømmedressing i boks",
+          "description": "",
+          "sizes": [
+            {
+              "id": "8e0fa2cb-df5e-4575-b7c3-67b0f3702fe8",
+              "label": "",
+              "price": 29
+            }
+          ]
+        },
+        {
+          "id": "31e34979-f9e6-48f5-9a60-dc370277cb3a",
+          "name": "Kebabdressing i boks",
+          "description": "",
+          "sizes": [
+            {
+              "id": "0f39ead6-b740-48bb-828c-0274202cd9aa",
+              "label": "",
+              "price": 29
+            }
+          ]
+        },
+        {
+          "id": "4a34196a-22d0-41ea-a7cf-a22eaa1d3e43",
+          "name": "Bearnaisesaus i boks",
+          "description": "",
+          "sizes": [
+            {
+              "id": "3874e2e8-4dc5-49fd-9c8c-bc54125ba41c",
+              "label": "",
+              "price": 29
+            }
+          ]
+        },
+        {
+          "id": "6df0db92-06ef-481c-b0ae-e62a05f3373c",
+          "name": "Hamburgerdressing i boks",
+          "description": "",
+          "sizes": [
+            {
+              "id": "e98e0388-6ae0-4648-8d0e-f85eb441dbfa",
+              "label": "",
+              "price": 29
+            }
+          ]
+        },
+        {
+          "id": "b1188cb8-328d-4a21-acf7-e23834eef18f",
+          "name": "BBQ-saus i boks",
+          "description": "",
+          "sizes": [
+            {
+              "id": "77decac9-d18e-4cf7-9738-c1eb9a940663",
+              "label": "",
+              "price": 29
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "7f548e83-22cf-4baf-a23d-dc7e306b5442",
+      "name": "Drikke",
+      "note": "",
+      "items": [
+        {
+          "id": "feb6f3d6-fc1a-4288-860b-81ed6ba39cbf",
+          "name": "Mineralvann/brus",
+          "description": "",
+          "sizes": [
+            {
+              "id": "d1e71d3e-73e6-48c3-9b44-33918df3d7e5",
+              "label": "0,5 L",
+              "price": 45
+            },
+            {
+              "id": "cd06e5e5-4047-4983-afee-497c804e2480",
+              "label": "1,5 L",
+              "price": 75
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
