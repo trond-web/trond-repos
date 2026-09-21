@@ -885,7 +885,8 @@
             }
           ]
         }
-      ]
+      ],
+      "imageUrl": "images/hamburgermeny.jpg"
     },
     {
       "id": "63678289-7651-4e52-875e-2240da565d1c",
@@ -1191,7 +1192,8 @@
           ],
           "hasStrength": true
         }
-      ]
+      ],
+      "imageUrl": "images/kebabmeny.jpg"
     },
     {
       "id": "dafc2270-d84b-4e8b-af11-799194121a59",
@@ -1319,7 +1321,8 @@
             }
           ]
         }
-      ]
+      ],
+      "imageUrl": "images/middagsretter.jpg"
     },
     {
       "id": "165f3dce-22c4-4167-ba5b-7d4a19fe4620",
@@ -1360,7 +1363,8 @@
             }
           ]
         }
-      ]
+      ],
+      "imageUrl": "images/vegetarmeny.jpg"
     },
     {
       "id": "663dda6d-0036-4745-bf87-1894062bccec",
@@ -1871,7 +1875,8 @@
             }
           ]
         }
-      ]
+      ],
+      "imageUrl": "images/drikke.jpg"
     }
   ]
 }

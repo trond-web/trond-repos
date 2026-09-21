@@ -72,6 +72,10 @@
       ]);
       details.appendChild(summary);
 
+      if (category.imageUrl) {
+        details.appendChild(el("img", { class: "category-image", src: category.imageUrl, alt: category.name, loading: "lazy" }));
+      }
+
       category.items.forEach((item) => {
         details.appendChild(renderItemRow(item, category));
       });

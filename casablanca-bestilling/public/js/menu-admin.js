@@ -70,8 +70,9 @@
     const block = el("div", { class: "admin-category" });
     block.dataset.categoryId = category.id || uuid();
 
-    const nameInput = el("input", { type: "text", placeholder: "Kategorinavn", value: category.name || "" });
-    const noteInput = el("input", { type: "text", placeholder: "Notat (valgfritt)", value: category.note || "" });
+    const nameInput = el("input", { type: "text", class: "category-name-input", placeholder: "Kategorinavn", value: category.name || "" });
+    const noteInput = el("input", { type: "text", class: "category-note-input", placeholder: "Notat (valgfritt)", value: category.note || "" });
+    const imageInput = el("input", { type: "text", class: "category-image-input", placeholder: "Bilde-URL (valgfritt)", value: category.imageUrl || "", style: "margin-bottom:10px;" });
     const removeBtn = el("button", {
       type: "button",
       class: "btn btn-danger btn-sm",
@@ -93,6 +94,7 @@
 
     block.append(
       el("div", { class: "admin-category-header" }, [nameInput, noteInput, removeBtn]),
+      imageInput,
       itemsContainer,
       addItemBtn
     );
@@ -113,7 +115,9 @@
   function collectMenu() {
     const categories = [];
     document.querySelectorAll("#categoriesContainer > .admin-category").forEach((catBlock) => {
-      const [nameInput, noteInput] = catBlock.querySelectorAll(".admin-category-header input");
+      const nameInput = catBlock.querySelector(".category-name-input");
+      const noteInput = catBlock.querySelector(".category-note-input");
+      const imageInput = catBlock.querySelector(".category-image-input");
       const items = [];
       catBlock.querySelectorAll(".admin-item").forEach((itemBlock) => {
         const itemNameInput = itemBlock.querySelector(".item-name-input");
@@ -138,6 +142,7 @@
         id: catBlock.dataset.categoryId,
         name: nameInput.value.trim(),
         note: noteInput.value.trim(),
+        imageUrl: imageInput.value.trim(),
         items,
       });
     });

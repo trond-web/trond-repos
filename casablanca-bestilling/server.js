@@ -188,6 +188,7 @@ app.put("/api/menu", requireAuth, (req, res) => {
       id: rawCategory.id && String(rawCategory.id).trim() ? String(rawCategory.id) : crypto.randomUUID(),
       name: categoryName,
       note: String(rawCategory.note || "").trim(),
+      imageUrl: String(rawCategory.imageUrl || "").trim(),
       items,
     });
   }

@@ -304,6 +304,14 @@ textarea {
   font-size: 0.82rem;
 }
 
+.category-image {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-top: 1px solid var(--border);
+}
+
 .item-row {
   display: flex;
   align-items: center;
