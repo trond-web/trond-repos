@@ -10,8 +10,7 @@ Intern bestillingsløsning for IKT-enheten i Gran kommune, for felles matbestill
 - **Delt oversikt:** Alle bestillinger denne runden vises samlet, med hva hver enkelt har
   bestilt og hva de skal betale.
 - **Samlet bestilling:** En egen tabell viser alle retter summert på tvers av alle
-  bestillinger – klar til å ringes eller sendes inn til restauranten. En knapp genererer
-  ferdig e-posttekst (mottaker fylles inn selv), og en annen knapp kopierer en intern
+  bestillinger – klar til å ringes inn til restauranten. En knapp kopierer en intern
   oversikt (samlet bestilling + hva hver person skal betale) for f.eks. Teams eller
   e-post internt.
 - **Rediger egen bestilling:** Den som har lagt inn en bestilling kan redigere eller slette

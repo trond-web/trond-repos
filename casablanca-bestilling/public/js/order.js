@@ -384,7 +384,7 @@
     }
   }
 
-  // ---------- Email / summary ----------
+  // ---------- Summary ----------
 
   function buildAggregateText() {
     const rows = getAggregateRows();
@@ -408,31 +408,6 @@
       if (cells.length === 3) parts.push(`${cells[0].textContent}: ${cells[2].textContent}`);
     });
     return parts.join("\n");
-  }
-
-  function openEmailModal() {
-    const today = new Date().toLocaleDateString("nb-NO");
-    document.getElementById("emailSubject").value = `Bestilling fra Gran kommune IKT – ${today}`;
-    document.getElementById("emailBody").textContent =
-      `Hei,\n\nVi ønsker å bestille følgende til henting/levering:\n\n${buildAggregateText()}\n\nMvh Gran kommune IKT`;
-    document.getElementById("emailModal").classList.remove("hidden");
-  }
-
-  function wireEmailModal() {
-    document.getElementById("emailBtn").addEventListener("click", openEmailModal);
-    document.getElementById("closeEmailModal").addEventListener("click", () => {
-      document.getElementById("emailModal").classList.add("hidden");
-    });
-    document.getElementById("copyEmailBtn").addEventListener("click", async () => {
-      await navigator.clipboard.writeText(document.getElementById("emailBody").textContent);
-      showToast("E-posttekst kopiert");
-    });
-    document.getElementById("openMailBtn").addEventListener("click", (e) => {
-      const to = encodeURIComponent(document.getElementById("emailTo").value);
-      const subject = encodeURIComponent(document.getElementById("emailSubject").value);
-      const body = encodeURIComponent(document.getElementById("emailBody").textContent);
-      e.currentTarget.href = `mailto:${to}?subject=${subject}&body=${body}`;
-    });
   }
 
   async function closeRound() {
@@ -463,7 +438,6 @@
       await navigator.clipboard.writeText(buildInternalSummaryText());
       showToast("Oversikt kopiert");
     });
-    wireEmailModal();
 
     try {
       menu = await api("/api/menu");

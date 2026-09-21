@@ -69,7 +69,6 @@
       <h2>Samlet bestilling til Casablanca</h2>
       <div class="row-actions">
         <button id="copySummaryBtn" class="btn btn-secondary btn-sm">Kopier oversikt</button>
-        <button id="emailBtn" class="btn btn-primary btn-sm">Lag e-post</button>
       </div>
     </div>
     <table id="aggregateTable">
@@ -85,29 +84,6 @@
   </div>
 
   <footer class="hint">Casablanca Kjøkken · Storgata 31, 2750 Gran · tlf. 947 90 306</footer>
-</div>
-
-<div class="modal-backdrop hidden" id="emailModal">
-  <div class="modal">
-    <h2>E-post med bestillingen</h2>
-    <div class="field">
-      <label for="emailTo">Til</label>
-      <input type="text" id="emailTo" placeholder="f.eks. e-post eller telefonnummer til Casablanca Kjøkken">
-    </div>
-    <div class="field">
-      <label for="emailSubject">Emne</label>
-      <input type="text" id="emailSubject">
-    </div>
-    <div class="field">
-      <label for="emailBody">Innhold</label>
-      <pre class="email-preview" id="emailBody"></pre>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" id="closeEmailModal">Lukk</button>
-      <button class="btn btn-secondary" id="copyEmailBtn">Kopier tekst</button>
-      <a class="btn btn-primary" id="openMailBtn" href="#">Åpne i e-postprogram</a>
-    </div>
-  </div>
 </div>
 
 <script src="js/common.js"></script>
