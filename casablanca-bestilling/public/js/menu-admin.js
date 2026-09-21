@@ -35,8 +35,8 @@
     const block = el("div", { class: "admin-item" });
     block.dataset.itemId = item.id || uuid();
 
-    const nameInput = el("input", { type: "text", placeholder: "Navn på rett", value: item.name || "" });
-    const descInput = el("input", { type: "text", placeholder: "Beskrivelse (valgfritt)", value: item.description || "" });
+    const nameInput = el("input", { type: "text", class: "item-name-input", placeholder: "Navn på rett", value: item.name || "" });
+    const descInput = el("input", { type: "text", class: "item-desc-input", placeholder: "Beskrivelse (valgfritt)", value: item.description || "" });
     const removeBtn = el("button", { type: "button", class: "btn btn-danger btn-sm", text: "Slett rett", onclick: () => block.remove() });
 
     const sizesContainer = el("div", { class: "admin-sizes" });
@@ -51,9 +51,17 @@
     });
     sizesContainer.appendChild(addSizeBtn);
 
+    const strengthCheckbox = el("input", { type: "checkbox", class: "item-strength-checkbox" });
+    strengthCheckbox.checked = !!item.hasStrength;
+    const strengthLabel = el("label", { class: "muted", style: "display:flex; align-items:center; gap:6px; margin-top:8px;" }, [
+      strengthCheckbox,
+      document.createTextNode("Kunden velger styrke (mild/medium/sterk)"),
+    ]);
+
     block.append(
       el("div", { class: "admin-item-row" }, [nameInput, descInput, removeBtn]),
-      sizesContainer
+      sizesContainer,
+      strengthLabel
     );
     return block;
   }
@@ -108,7 +116,8 @@
       const [nameInput, noteInput] = catBlock.querySelectorAll(".admin-category-header input");
       const items = [];
       catBlock.querySelectorAll(".admin-item").forEach((itemBlock) => {
-        const [itemNameInput, itemDescInput] = itemBlock.querySelectorAll(".admin-item-row input");
+        const itemNameInput = itemBlock.querySelector(".item-name-input");
+        const itemDescInput = itemBlock.querySelector(".item-desc-input");
         const sizes = [];
         itemBlock.querySelectorAll(".admin-size").forEach((sizeBlock) => {
           sizes.push({
@@ -122,6 +131,7 @@
           name: itemNameInput.value.trim(),
           description: itemDescInput.value.trim(),
           sizes,
+          hasStrength: itemBlock.querySelector(".item-strength-checkbox").checked,
         });
       });
       categories.push({

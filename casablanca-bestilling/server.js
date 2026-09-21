@@ -14,6 +14,8 @@ const USERNAME = process.env.CASABLANCA_USERNAME || "IKT";
 const PASSWORD = process.env.CASABLANCA_PASSWORD || "Kebabhverfredag";
 const SESSION_SECRET = process.env.SESSION_SECRET || "casablanca-gran-ikt-hemmelighet";
 
+const STRENGTH_VALUES = ["Mild", "Medium", "Sterk"];
+
 function readJson(file, fallback) {
   try {
     return JSON.parse(fs.readFileSync(file, "utf8"));
@@ -71,6 +73,7 @@ function buildMenuIndex() {
           categoryName: category.name,
           sizeLabel: size.label,
           price: size.price,
+          hasStrength: !!item.hasStrength,
         });
       }
     }
@@ -177,6 +180,7 @@ app.put("/api/menu", requireAuth, (req, res) => {
         name: itemName,
         description: String(rawItem.description || "").trim(),
         sizes,
+        hasStrength: !!rawItem.hasStrength,
       });
     }
 
@@ -224,6 +228,7 @@ function buildLines(rawLines, index) {
       sizeLabel: info.sizeLabel,
       price: info.price,
       qty,
+      strength: info.hasStrength ? (STRENGTH_VALUES.includes(rawLine.strength) ? rawLine.strength : "Medium") : null,
       notes: String(rawLine.notes || "").trim().slice(0, 200),
     });
   }

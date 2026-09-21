@@ -1,7 +1,9 @@
 (function () {
+  const STRENGTH_VALUES = ["Mild", "Medium", "Sterk"];
+
   let menu = { categories: [] };
   let orders = [];
-  let cart = []; // { itemId, sizeId, itemName, categoryName, sizeLabel, price, qty, notes }
+  let cart = []; // { itemId, sizeId, itemName, categoryName, sizeLabel, price, qty, strength, notes }
   let editingOrderId = null;
 
   const TOKENS_KEY = "casablanca_tokens";
@@ -86,6 +88,13 @@
       sizeSelect.appendChild(opt);
     });
 
+    const strengthSelect = el("select", { "aria-label": "Styrke for " + item.name });
+    STRENGTH_VALUES.forEach((value) => {
+      const opt = el("option", { value, text: value });
+      if (value === "Medium") opt.selected = true;
+      strengthSelect.appendChild(opt);
+    });
+
     const qtyInput = el("input", { type: "number", value: "1", min: "1", max: "50" });
     const decBtn = el("button", { type: "button", text: "−", onclick: () => {
       const v = Math.max(1, parseInt(qtyInput.value || "1", 10) - 1);
@@ -107,6 +116,7 @@
         categoryName: category.name,
         sizeLabel: size.label,
         price: size.price,
+        strength: item.hasStrength ? strengthSelect.value : null,
       }, qty);
       qtyInput.value = "1";
       showToast(`${item.name} lagt til`);
@@ -120,6 +130,7 @@
       ]),
       el("div", { class: "item-controls" }, [
         hasMultipleSizes ? sizeSelect : null,
+        item.hasStrength ? strengthSelect : null,
         el("div", { class: "qty-stepper" }, [decBtn, qtyInput, incBtn]),
         addBtn,
       ]),
@@ -129,8 +140,14 @@
 
   // ---------- Cart ----------
 
+  function lineLabel(line) {
+    let label = line.sizeLabel ? `${line.itemName} (${line.sizeLabel})` : line.itemName;
+    if (line.strength) label += ` – ${line.strength}`;
+    return label;
+  }
+
   function addToCart(line, qty) {
-    const existing = cart.find((l) => l.itemId === line.itemId && l.sizeId === line.sizeId);
+    const existing = cart.find((l) => l.itemId === line.itemId && l.sizeId === line.sizeId && l.strength === line.strength);
     if (existing) {
       existing.qty = Math.min(50, existing.qty + qty);
     } else {
@@ -146,7 +163,7 @@
       container.appendChild(el("p", { class: "empty-hint", text: "Ingen retter valgt ennå." }));
     } else {
       cart.forEach((line, idx) => {
-        const label = line.sizeLabel ? `${line.itemName} (${line.sizeLabel})` : line.itemName;
+        const label = lineLabel(line);
         const lineTotal = line.price * line.qty;
         const row = el("div", { class: "cart-line" }, [
           el("span", { text: `${line.qty}× ${label}` }),
@@ -196,6 +213,7 @@
       sizeLabel: l.sizeLabel,
       price: l.price,
       qty: l.qty,
+      strength: l.strength || null,
       notes: l.notes || "",
     }));
     renderCart();
@@ -243,8 +261,7 @@
         .forEach((order) => {
           const isOwner = !!tokens[order.id];
           const lines = el("ul", {}, order.lines.map((l) => {
-            const label = l.sizeLabel ? `${l.itemName} (${l.sizeLabel})` : l.itemName;
-            return el("li", { text: `${l.qty}× ${label} – ${formatKr(l.price * l.qty)}${l.notes ? " – " + l.notes : ""}` });
+            return el("li", { text: `${l.qty}× ${lineLabel(l)} – ${formatKr(l.price * l.qty)}${l.notes ? " – " + l.notes : ""}` });
           }));
 
           const actions = el("div", { class: "row-actions" });
@@ -299,11 +316,12 @@
     const byLine = new Map();
     orders.forEach((order) => {
       order.lines.forEach((l) => {
-        const key = `${l.itemId}:${l.sizeId}`;
+        const key = `${l.itemId}:${l.sizeId}:${l.strength || ""}`;
         const entry = byLine.get(key) || {
           itemName: l.itemName,
           categoryName: l.categoryName,
           sizeLabel: l.sizeLabel,
+          strength: l.strength,
           price: l.price,
           qty: 0,
         };
@@ -323,7 +341,7 @@
     const rows = getAggregateRows();
     let grand = 0;
     rows.forEach((row) => {
-      const label = row.sizeLabel ? `${row.itemName} (${row.sizeLabel})` : row.itemName;
+      const label = lineLabel(row);
       const sum = row.price * row.qty;
       grand += sum;
       tbody.appendChild(el("tr", {}, [
@@ -359,7 +377,7 @@
     const payload = {
       person,
       comment,
-      lines: cart.map((l) => ({ itemId: l.itemId, sizeId: l.sizeId, qty: l.qty, notes: l.notes || "" })),
+      lines: cart.map((l) => ({ itemId: l.itemId, sizeId: l.sizeId, qty: l.qty, strength: l.strength || null, notes: l.notes || "" })),
     };
 
     try {
@@ -391,7 +409,7 @@
     if (rows.length === 0) return "Ingen retter bestilt ennå.";
     let grand = 0;
     const lines = rows.map((row) => {
-      const label = row.sizeLabel ? `${row.itemName} (${row.sizeLabel})` : row.itemName;
+      const label = lineLabel(row);
       const sum = row.price * row.qty;
       grand += sum;
       return `${row.qty}x ${label} – ${formatKr(sum)}`;

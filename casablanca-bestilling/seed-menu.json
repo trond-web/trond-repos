@@ -344,7 +344,8 @@
               "label": "Stor",
               "price": 299
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "4b295157-467c-4b85-83fe-219794437310",
@@ -429,7 +430,8 @@
               "label": "Stor",
               "price": 319
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "146e36fd-62d7-40de-8b01-fe6fc657328e",
@@ -446,7 +448,8 @@
               "label": "Stor",
               "price": 319
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "5cca6280-3b90-4c79-9082-d8b497f9cd34",
@@ -480,7 +483,8 @@
               "label": "Stor",
               "price": 319
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "4d668cb2-c216-4660-bcd6-6b3e0adbd003",
@@ -548,7 +552,8 @@
               "label": "Stor",
               "price": 329
             }
-          ]
+          ],
+          "hasStrength": true
         }
       ]
     },
@@ -902,7 +907,8 @@
               "label": "Stor",
               "price": 159
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "c675fdcd-4dd0-4f25-8bc6-f38d9435a235",
@@ -914,7 +920,8 @@
               "label": "Stor",
               "price": 199
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "1142b0e0-cca8-43be-a5a7-82a556a6f477",
@@ -931,7 +938,8 @@
               "label": "Stor",
               "price": 189
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "4b3d6cb4-1bc1-41aa-a614-a436d41492ae",
@@ -948,7 +956,8 @@
               "label": "Stor",
               "price": 179
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "7acc2552-e195-4e68-8926-e33f8332fb1c",
@@ -965,7 +974,8 @@
               "label": "Stor",
               "price": 169
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "99ea83fe-507b-4888-bc46-2955a082de0e",
@@ -982,7 +992,8 @@
               "label": "Stor",
               "price": 169
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "0b7f634c-fbdc-49ee-b067-22f67ab5d146",
@@ -994,7 +1005,8 @@
               "label": "Stor",
               "price": 219
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "d3407b34-efdd-4231-ba26-4a4c1c286388",
@@ -1011,7 +1023,8 @@
               "label": "Stor",
               "price": 199
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "657d4ee5-472d-403e-810e-97d8ab79b2c2",
@@ -1028,7 +1041,8 @@
               "label": "Stor",
               "price": 199
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "cd16130c-7162-4bd4-b165-a9afad75b0f0",
@@ -1045,7 +1059,8 @@
               "label": "Stor",
               "price": 189
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "8dff5040-22b0-409d-ad46-71e54d6c06db",
@@ -1062,7 +1077,8 @@
               "label": "Stor",
               "price": 219
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "59d8cacd-e8ba-4aee-a658-e5bd3ba93fd7",
@@ -1079,7 +1095,8 @@
               "label": "Stor",
               "price": 249
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "a5d080c5-bcc0-457d-b840-f39c4376bdc7",
@@ -1096,7 +1113,8 @@
               "label": "Stor",
               "price": 249
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "9af61112-00c7-440d-9901-0dcfebea9478",
@@ -1113,7 +1131,8 @@
               "label": "Stor",
               "price": 239
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "62580b0f-5378-48d0-ae78-64cccb1139ef",
@@ -1125,7 +1144,8 @@
               "label": "",
               "price": 189
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "b24eb6df-d1aa-4970-acb3-ccf367b0ea9c",
@@ -1142,7 +1162,8 @@
               "label": "Stor",
               "price": 249
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "80eb87fd-38c0-4f33-bc4c-c3194be9d591",
@@ -1154,7 +1175,8 @@
               "label": "",
               "price": 199
             }
-          ]
+          ],
+          "hasStrength": true
         },
         {
           "id": "5f92e8fa-9ed1-4c18-8ba7-eb8e306b0ed5",
@@ -1166,7 +1188,8 @@
               "label": "",
               "price": 249
             }
-          ]
+          ],
+          "hasStrength": true
         }
       ]
     },
