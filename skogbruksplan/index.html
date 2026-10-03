@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skogbruksplan</title>
+<meta name="description" content="Forvaltning av skogbruksplandata: kart, bestandsliste, tiltaksplan, framskriving, økonomi og feltregistrering – lokalt og offline.">
+<meta name="theme-color" content="#1f5130">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌲</text></svg>">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topp">
+  <div class="merke">🌲 <span id="eiendomNavn">Skogbruksplan</span></div>
+  <nav class="faner" role="tablist">
+    <button role="tab" data-fane="oversikt" class="aktiv">Oversikt</button>
+    <button role="tab" data-fane="bestand">Bestand</button>
+    <button role="tab" data-fane="tiltak">Tiltak</button>
+    <button role="tab" data-fane="framskriving">Framskriving</button>
+    <button role="tab" data-fane="felt">Felt</button>
+    <button role="tab" data-fane="data">Data</button>
+  </nav>
+</header>
+
+<main class="hoved">
+  <section class="kartdel">
+    <div id="kart"></div>
+    <div class="kartverktoy">
+      <label><span class="etikett-tekst">Farge etter</span>
+        <select id="fargeEtter">
+          <option value="hogstklasse">Hogstklasse</option>
+          <option value="treslag">Treslag</option>
+          <option value="bonitet">Bonitet</option>
+          <option value="volum">Volum per daa</option>
+          <option value="tiltak">Planlagte tiltak</option>
+          <option value="framskrevet">Hogstklasse om … år (Framskriving)</option>
+        </select>
+      </label>
+      <button id="tegnBtn" class="knapp" type="button" title="Tegn nytt bestand i kartet">✏️ Tegn bestand</button>
+      <button id="posBtn" class="knapp" type="button" title="Vis min posisjon">📍</button>
+    </div>
+    <div id="tegnHjelp" class="tegn-hjelp" hidden>
+      Klikk i kartet for å sette hjørnepunkter. <button id="tegnFerdig" class="knapp primar" type="button">Fullfør</button> <button id="tegnAvbryt" class="knapp" type="button">Avbryt</button>
+    </div>
+    <div id="kartLegend" class="kart-legend"></div>
+  </section>
+
+  <section class="panel">
+    <!-- OVERSIKT -->
+    <div class="fane" id="fane-oversikt">
+      <div class="kpi-rad" id="kpi"></div>
+      <div class="kort">
+        <h3>Areal per hogstklasse og treslag (daa)</h3>
+        <div id="hkDiagram"></div>
+      </div>
+      <div class="kort">
+        <h3>Neste tiltak</h3>
+        <div id="nesteTiltak"></div>
+      </div>
+      <p class="fotnote">Alle tall beregnes direkte fra bestandsdataene. Tilvekst og verdier er forenklede estimater – satsene kan justeres under <a href="#" data-gaa="data">Data → Innstillinger</a>.</p>
+    </div>
+
+    <!-- BESTAND -->
+    <div class="fane" id="fane-bestand" hidden>
+      <div class="verktoyrad">
+        <input type="search" id="bestandSok" placeholder="Søk nr, merknad …">
+        <select id="bestandFilterHk"><option value="">Alle hogstklasser</option></select>
+        <select id="bestandFilterTs"><option value="">Alle treslag</option></select>
+      </div>
+      <div id="bestandDetalj" class="kort" hidden></div>
+      <div class="tabell-wrap">
+        <table class="tabell" id="bestandTabell">
+          <thead><tr>
+            <th data-sort="nr">Nr</th><th data-sort="areal" class="tall">Daa</th><th data-sort="treslag">Tsl</th>
+            <th data-sort="bonitet" class="tall">Bon</th><th data-sort="hogstklasse">HK</th><th data-sort="alder" class="tall">Alder</th>
+            <th data-sort="volumDaa" class="tall">m³/daa</th><th data-sort="volum" class="tall">m³</th><th data-sort="hogstmoden" class="tall">Hogstmoden</th>
+          </tr></thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- TILTAK -->
+    <div class="fane" id="fane-tiltak" hidden>
+      <div class="verktoyrad">
+        <select id="tiltakFilterStatus">
+          <option value="planlagt">Planlagte</option><option value="utfort">Utførte</option><option value="">Alle</option>
+        </select>
+        <select id="tiltakFilterType"><option value="">Alle typer</option></select>
+        <button id="foreslaBtn" class="knapp" type="button">💡 Foreslå tiltak</button>
+      </div>
+      <div id="forslagListe"></div>
+      <div id="tiltakListe"></div>
+    </div>
+
+    <!-- FRAMSKRIVING -->
+    <div class="fane" id="fane-framskriving" hidden>
+      <div class="kort">
+        <div class="verktoyrad">
+          <label>Periode <select id="frPeriode"><option>10</option><option selected>20</option><option>30</option><option>50</option></select> år</label>
+          <label class="avkrysning"><input type="checkbox" id="frFolgPlan" checked> Følg tiltaksplanen</label>
+        </div>
+        <label class="glider">Vis kartet i år <b id="frAarTekst"></b>
+          <input type="range" id="frAar" min="0" max="20" value="0">
+        </label>
+      </div>
+      <div class="kort"><h3>Stående volum (m³)</h3><div id="frVolum"></div></div>
+      <div class="kort"><h3>Avvirkning og tilvekst per år (m³)</h3><div id="frAvv"></div></div>
+      <div class="kort"><h3>Tabell</h3><div class="tabell-wrap"><table class="tabell" id="frTabell"></table></div></div>
+    </div>
+
+    <!-- FELT -->
+    <div class="fane" id="fane-felt" hidden>
+      <div class="kort">
+        <h3>Hvor er jeg?</h3>
+        <p id="gpsStatus" class="hint">Trykk på knappen for å slå på GPS. Appen viser hvilket bestand du står i.</p>
+        <button id="gpsBtn" class="knapp primar" type="button">Start GPS</button>
+        <div id="gpsBestand"></div>
+      </div>
+      <div class="kort">
+        <h3>Ny registrering</h3>
+        <form id="regSkjema" class="skjema">
+          <label>Kategori
+            <select name="kategori">
+              <option>Observasjon</option><option>Skade (vind/snø/råte)</option><option>Barkbille</option><option>Viltskade</option>
+              <option>Miljøverdi</option><option>Grense/merke</option><option>Vei/grøft</option><option>Kontroll etter tiltak</option>
+            </select>
+          </label>
+          <label>Beskrivelse <textarea name="tekst" rows="2"></textarea></label>
+          <label>Bilde <input type="file" name="bilde" accept="image/*" capture="environment"></label>
+          <p class="hint">Posisjon tas fra GPS, eller klikk i kartet før du lagrer.</p>
+          <button class="knapp primar" type="submit">Lagre registrering</button>
+        </form>
+      </div>
+      <div class="kort">
+        <h3>Registreringer</h3>
+        <div id="regListe"></div>
+      </div>
+    </div>
+
+    <!-- DATA -->
+    <div class="fane" id="fane-data" hidden>
+      <div class="kort">
+        <h3>Eiendom</h3>
+        <form id="eiendomSkjema" class="skjema to-kol">
+          <label>Navn <input name="navn"></label>
+          <label>Eier <input name="eier"></label>
+          <label>Kommune <input name="kommune"></label>
+          <label>Gnr/bnr <input name="gnrbnr"></label>
+          <label>Takstår <input name="takstAar" type="number"></label>
+        </form>
+      </div>
+      <div class="kort">
+        <h3>Importer skogbruksplan</h3>
+        <p class="hint">SOSI (.sos), GeoJSON eller CSV/Excel-eksport (bestandsliste). Feltnavn som BESTANDNR, TRESLAG, BONITET, HOGSTKLASSE, ALDER, VOLUM osv. gjenkjennes automatisk.</p>
+        <div class="skjema to-kol">
+          <label>Koordinatsystem
+            <select id="impKoord">
+              <option value="auto">Automatisk</option><option value="UTM32">EUREF89 UTM32</option><option value="UTM33">EUREF89 UTM33</option>
+              <option value="UTM35">EUREF89 UTM35</option><option value="WGS84">WGS84 (grader)</option>
+            </select>
+          </label>
+          <label>Ved import
+            <select id="impModus"><option value="flett">Flett med eksisterende (oppdater på bestandsnr)</option><option value="erstatt">Erstatt alle bestand</option></select>
+          </label>
+        </div>
+        <div id="slippSone" class="slipp-sone">Dra filer hit, eller <label class="lenke">velg fil<input type="file" id="impFil" multiple accept=".sos,.sosi,.geojson,.json,.csv,.txt,.tsv" hidden></label></div>
+        <div id="impResultat"></div>
+      </div>
+      <div class="kort">
+        <h3>Eksport og sikkerhetskopi</h3>
+        <div class="knapperad">
+          <button class="knapp" data-eksport="backup" type="button">💾 Full sikkerhetskopi (.json)</button>
+          <button class="knapp" data-eksport="geojson" type="button">GeoJSON (WGS84)</button>
+          <button class="knapp" data-eksport="sosi32" type="button">SOSI (UTM32)</button>
+          <button class="knapp" data-eksport="sosi33" type="button">SOSI (UTM33)</button>
+          <button class="knapp" data-eksport="csv" type="button">Bestandsliste (CSV)</button>
+          <button class="knapp" data-eksport="tiltakcsv" type="button">Tiltaksplan (CSV)</button>
+          <button class="knapp" data-eksport="rapport" type="button">🖨️ Rapport / PDF</button>
+        </div>
+        <div class="knapperad">
+          <label class="knapp">Gjenopprett sikkerhetskopi<input type="file" id="gjenopprettFil" accept=".json" hidden></label>
+          <button class="knapp" id="demoBtn" type="button">Last demo-eiendom</button>
+          <button class="knapp fare" id="slettAltBtn" type="button">Slett alt</button>
+        </div>
+      </div>
+      <div class="kort">
+        <h3>Offline-kart</h3>
+        <p class="hint">Last ned kartfliser for eiendommen slik at kartet virker uten dekning i skogen.</p>
+        <div class="knapperad">
+          <button class="knapp" id="offlineBtn" type="button">⬇️ Last ned kart for eiendommen</button>
+          <span id="offlineStatus" class="hint"></span>
+        </div>
+      </div>
+      <div class="kort">
+        <h3>Innstillinger – priser og modell</h3>
+        <form id="innstSkjema" class="skjema tre-kol"></form>
+        <details>
+          <summary>Laveste hogstalder per bonitet</summary>
+          <div id="hogstalderTabell" class="tabell-wrap"></div>
+        </details>
+        <button id="innstNullstill" class="knapp" type="button">Tilbakestill standardverdier</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="rapport" class="rapport"></div>
+<div id="melding" class="melding" role="status" hidden></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
