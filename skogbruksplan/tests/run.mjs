@@ -146,6 +146,12 @@ test('demo-data gir fornuftig sammendrag', () => {
   assert.ok(s.areal > 300 && s.volum > 1000, JSON.stringify(s));
 });
 
+test('lite volum i gammel skog gir kontroll, ikke hogst', () => {
+  const b = normaliserBestand({ nr: '9', treslag: 'G', bonitet: 14, alder: 93, volum_daa: 6, areal: 5 });
+  const f = foreslaaTiltak(b, undefined, 2026);
+  assert.equal(f.length, 1); assert.equal(f[0].type, 'annet');
+});
+
 test('hogstforslag spres jevnt over år', () => {
   const d = lagDemo(2026);
   const f = foreslaaForEiendom(d.bestand, undefined, 2026);

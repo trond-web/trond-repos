@@ -35,7 +35,8 @@ export function lesGeojson(tekst, valgtKoordsys = 'auto', iAar) {
     koordsys = bb ? gjettKoordsys(bb[0], bb[1]) : 'WGS84';
   }
   if (!koordsys) throw new Error('Klarte ikke å avgjøre koordinatsystem. Velg det manuelt.');
-  return { ...featuresTilBestand(features, koordsys, iAar), koordsys, advarsler: [] };
+  const eiendomsgrense = gj.eiendomsgrense ? tilWgs84(gj.eiendomsgrense, koordsys) : null;
+  return { ...featuresTilBestand(features, koordsys, iAar), koordsys, advarsler: [], eiendomsgrense, metadata: gj.metadata || null };
 }
 
 export function lesSosi(buffer, valgtKoordsys = 'auto', iAar) {

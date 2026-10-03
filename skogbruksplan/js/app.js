@@ -150,8 +150,13 @@ function stilFor(b) {
   };
 }
 
+let grenseLag = null;
 function tegnBestandKart(zoom = false) {
   bestandLag.clearLayers(); lagPerBestand.clear();
+  if (grenseLag) { grenseLag.remove(); grenseLag = null; }
+  if (S.eiendom.grense) {
+    grenseLag = L.geoJSON(S.eiendom.grense, { style: { color: '#d03b3b', weight: 2.5, dashArray: '8 5', fill: false }, interactive: false }).addTo(kart);
+  }
   for (const b of S.bestand) {
     if (!b.geometri) continue;
     const lag = L.geoJSON(b.geometri, { style: () => stilFor(b) });
@@ -176,7 +181,7 @@ function oppdaterEtiketter() {
 }
 
 function zoomTilAlle() {
-  const bb = bbox(S.bestand.map((b) => b.geometri));
+  const bb = bbox([...S.bestand.map((b) => b.geometri), S.eiendom.grense]);
   if (bb) kart.fitBounds([[bb[1], bb[0]], [bb[3], bb[2]]], { padding: [20, 20] });
 }
 
@@ -575,16 +580,23 @@ function tegnRegistreringer() {
 }
 
 // ---------------------------------------------------------------- import / eksport
-async function importerFiler(filer) {
+async function importerFiler(filer, tvingModus = null) {
   const ut = [];
   let samlet = S.bestand;
   for (const fil of filer) {
     try {
       const r = await lesFil(fil, $('#impKoord').value, IAAR);
-      const modus = ut.length ? 'flett' : $('#impModus').value;
+      const modus = ut.length ? 'flett' : (tvingModus || $('#impModus').value);
       const res = slaaSammen(samlet, r.bestand, modus);
       samlet = res.liste;
       ut.push(`<div>✅ <b>${esc(fil.name)}</b>: ${r.bestand.length} bestand lest${r.koordsys ? ` (${r.koordsys})` : ''} – ${res.lagtTil} nye, ${res.oppdatert} oppdatert${r.hoppetOver ? `, ${r.hoppetOver} objekter uten flate hoppet over` : ''}.</div>`);
+      if (r.eiendomsgrense) {
+        S.eiendom.grense = r.eiendomsgrense;
+        const m = r.metadata;
+        if (m?.eiendom && !S.eiendom.gnrbnr) S.eiendom.gnrbnr = m.eiendom.split(' ').pop();
+        if (m?.merk) ut.push(`<div class="hint">ℹ️ ${esc(m.merk)}</div>`);
+        tegnEiendom();
+      }
       for (const a of (r.advarsler || []).slice(0, 5)) ut.push(`<div class="hint">⚠️ ${esc(a)}</div>`);
     } catch (e) {
       ut.push(`<div>❌ <b>${esc(fil.name)}</b>: ${esc(e.message)}</div>`);
@@ -736,7 +748,7 @@ function endret({ kart: kartEndret = false, zoom = false } = {}) {
 function lastDemo() {
   if (S.bestand.length && !confirm('Erstatte dagens data med demo-eiendommen?')) return;
   const d = lagDemo(IAAR);
-  S.eiendom = { ...S.eiendom, ...d.eiendom }; S.bestand = d.bestand; S.registreringer = [];
+  S.eiendom = { ...S.eiendom, ...d.eiendom, grense: null }; S.bestand = d.bestand; S.registreringer = [];
   valgtId = null; forslag = [];
   tegnEiendom(); tegnRegistreringer();
   endret({ kart: true, zoom: true });
@@ -814,9 +826,21 @@ function kobleHendelser() {
     e.target.value = '';
   });
   $('#demoBtn').addEventListener('click', lastDemo);
+  $$('[data-eksempel]').forEach((knapp) => knapp.addEventListener('click', async () => {
+    if (S.bestand.length && !confirm('Erstatte dagens bestand med denne planen?')) return;
+    try {
+      const svar = await fetch(knapp.dataset.eksempel);
+      if (!svar.ok) throw new Error(`HTTP ${svar.status}`);
+      const navn = knapp.dataset.eksempel.split('/').pop();
+      S.eiendom = { ...S.eiendom, navn: knapp.dataset.navn, kommune: knapp.dataset.kommune, gnrbnr: '', takstAar: IAAR };
+      S.registreringer = []; valgtId = null; forslag = [];
+      await importerFiler([new File([await svar.blob()], navn)], 'erstatt');
+      tegnEiendom(); tegnRegistreringer(); visFane('oversikt');
+    } catch (e) { melding(`Kunne ikke hente planen: ${e.message}`); }
+  }));
   $('#slettAltBtn').addEventListener('click', () => {
     if (!confirm('Slette alle bestand, tiltak og registreringer? Ta gjerne en sikkerhetskopi først.')) return;
-    S.bestand = []; S.registreringer = []; valgtId = null; forslag = [];
+    S.bestand = []; S.registreringer = []; S.eiendom.grense = null; valgtId = null; forslag = [];
     tegnRegistreringer(); endret({ kart: true });
   });
   $('#offlineBtn').addEventListener('click', lastNedOfflineKart);

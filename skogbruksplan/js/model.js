@@ -322,7 +322,11 @@ export function foreslaaTiltak(b, inn = STANDARD_INNSTILLINGER, iAar = new Date(
   const har = (type) => (b.tiltak || []).some((t) => t.type === type && t.status !== 'utfort');
   if (b.miljo) return forslag; // aldri foreslå hogst i miljøfigurer
 
-  if (hk === 5 || (minAlder && s.alder >= minAlder)) {
+  const hogstmoden = hk === 5 || (minAlder && s.alder >= minAlder);
+  if (hogstmoden && b.volumDaa !== null && b.volumDaa !== undefined && b.volumDaa < 8) {
+    // Gammel nok, men lite volum: trolig allerede hogd, glissen eller feil i data. Hogst lønner seg ikke.
+    if (!har('annet')) forslag.push({ type: 'annet', aar: iAar, prioritet: 2, kommentar: `Kontroller i felt: alder ${Math.round(s.alder)} år, men bare ${String(runde(b.volumDaa, 1)).replace(".", ",")} m³/daa – hogd, glissen eller feil alder?` });
+  } else if (hogstmoden) {
     if (!har('sluttavvirkning')) {
       const overmoden = minAlder && s.alder >= minAlder + 20;
       forslag.push({ type: 'sluttavvirkning', aar: iAar, prioritet: overmoden ? 1 : 2, kommentar: `Alder ${Math.round(s.alder)} år ≥ laveste hogstalder ${minAlder ?? '?'} år` });

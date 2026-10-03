@@ -43,3 +43,26 @@ Tilvekst, verdier og CO₂ er **forenklede estimater** til planlegging, ikke tak
 - `js/model.js`: normalisering av felt, hogstmodenhet, tilvekst, framskriving, økonomi og tiltaksforslag.
 - `sw.js`: service worker som gjør appen og nedlastede kartfliser tilgjengelige offline.
 - Tester: `node tests/run.mjs`
+
+## Plan fra åpne data (`verktoy/lag_plan_fra_apne_data.py`)
+
+Lager et utkast til skogbruksplan for én eiendom ut fra gårds- og bruksnummer:
+
+| Kilde | Brukes til |
+|---|---|
+| Kartverket, eiendom-API | Eiendomsgrensen (matrikkelens teiger) |
+| NIBIO WMS `skogbruksplan` / `hogstklasser` | Bestandsgrenser, bestandsnr, hogstklasse, bonitet og alder (fremskrevet) fra tidligere skogbruksplan |
+| NIBIO SR16 vektor (`SRVTRESLAG`) | Volum u.b., middelhøyde, treantall, treslag og trealder. Verdiene er arealvektet innenfor hvert bestand. Skog som ikke var med i den gamle planen, blir egne bestand (`S1`, `S2` …) |
+| NIBIO MiS (`Nokkelbiotop`) | Miljøfigurer |
+
+```
+pip install shapely pyproj requests
+python3 verktoy/lag_plan_fra_apne_data.py --kommune 3238 --gnr 29 --bnr 2 --ut data/nannestad-29-2.geojson
+```
+
+Skriptet sammenligner den gamle planen med SR16. Bestand som var hogstklasse IV–V, men som har lite volum i SR16,
+merkes som «mulig hogd» eller «trolig hogd eller glissen». Avvik i treslag merkes også. Hogstklasse skrives ikke
+til filen, så appen beregner den fra dagens alder. Hogstklassen fra planen ligger i feltet `PLAN_HOGSTKLASSE`.
+
+`data/nannestad-29-2.geojson` er laget slik (Nannestad 29/2) og kan lastes med knappen under **Data**.
+Resultatet er et **utkast** som må kontrolleres i felt.
