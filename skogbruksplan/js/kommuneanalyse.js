@@ -11,6 +11,7 @@ const KARTVERKET = 'https://api.kartverket.no';
 const NIBIO = 'https://wms.nibio.no/cgi-bin';
 const VERN = 'https://kart.miljodirektoratet.no/arcgis/rest/services/vern/MapServer/0/query';
 const RUTE_M = 2500;
+const KML_MAKS = 1000;
 
 export const STANDARD_KRITERIER = {
   minAreal: 2,                 // daa – mindre flater vises ikke
@@ -171,18 +172,29 @@ export async function hentKommunedata(kommune, { hent = fetch, framdrift = () =>
   framdrift({ steg: 'sr16', tekst: `Henter SR16 i ${alleRuter.length} ruter …`, andel: 0 });
   let lastet = 0;
   const kmz = typeof DecompressionStream !== 'undefined';
-  const hentGeometri = async (tjeneste, lag, base) => (kmz
-    ? pakkUtKmz(await hentData(hent, `${NIBIO}/${tjeneste}?${base}&REQUEST=GetMap&LAYERS=${lag}&WIDTH=2000&HEIGHT=2000&FORMAT=kmz`, 'arrayBuffer'))
-    : hentTekst(hent, `${NIBIO}/${tjeneste}?${base}&REQUEST=GetMap&LAYERS=${lag}&WIDTH=2000&HEIGHT=2000&FORMAT=kml`));
+  const hentEn = async (tjeneste, lag, b) => {
+    const base = `SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&STYLES=`;
+    return kmz
+      ? pakkUtKmz(await hentData(hent, `${NIBIO}/${tjeneste}?${base}&REQUEST=GetMap&LAYERS=${lag}&WIDTH=2000&HEIGHT=2000&FORMAT=kmz`, 'arrayBuffer'))
+      : hentTekst(hent, `${NIBIO}/${tjeneste}?${base}&REQUEST=GetMap&LAYERS=${lag}&WIDTH=2000&HEIGHT=2000&FORMAT=kml`);
+  };
+  // NIBIO gir maks 1000 objekter per KML-svar; ved taket deles ruten i fire, og svarene slås sammen.
+  const hentGeometri = async (tjeneste, lag, b, dybde = 0) => {
+    const kml = await hentEn(tjeneste, lag, b);
+    if ((kml.match(/<Placemark>/g) || []).length < KML_MAKS || dybde >= 4) return kml;
+    const mx = (b[0] + b[2]) / 2; const my = (b[1] + b[3]) / 2;
+    const deler = await Promise.all([[b[0], b[1], mx, my], [mx, b[1], b[2], my], [b[0], my, mx, b[3]], [mx, my, b[2], b[3]]].map((d) => hentGeometri(tjeneste, lag, d, dybde + 1)));
+    return deler.join('\n');
+  };
   await parallelt(alleRuter, parallelle, async (b) => {
     const bb = b.map((v) => v.toFixed(1)).join(',');
     const base = `SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:25833&BBOX=${bb}&STYLES=`;
     const gfi = `${NIBIO}/sr16?${base}&REQUEST=GetFeatureInfo&LAYERS=SRVTRESLAG&QUERY_LAYERS=SRVTRESLAG&WIDTH=1000&HEIGHT=1000&X=500&Y=500&RADIUS=bbox&FEATURE_COUNT=100000&INFO_FORMAT=`;
     const [kml, ider, html, misKml] = await Promise.all([
-      hentGeometri('sr16', 'SRVTRESLAG', base),
+      hentGeometri('sr16', 'SRVTRESLAG', b),
       hentTekst(hent, `${gfi}text/plain`).then((t) => [...t.matchAll(/Feature (\d+):/g)].map((m) => m[1])),
       hentTekst(hent, `${gfi}text/html`),
-      hentGeometri('mis', 'Nokkelbiotop', base).catch(() => ''),
+      hentGeometri('mis', 'Nokkelbiotop', b).catch(() => ''),
     ]);
     lastet += kml.length / 8 + html.length / 14; // grovt anslag på overført mengde (komprimert)
     let attr = parseHtmlAlle(html, ider);

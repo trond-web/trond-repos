@@ -1029,16 +1029,19 @@ async function hentDataForAktivPlan(hvilke, logg) {
   return r;
 }
 
-function lastTurf() {
-  if (window.turf) return Promise.resolve(window.turf);
+function lastSkript(src, globalNavn) {
+  if (window[globalNavn]) return Promise.resolve(window[globalNavn]);
   return new Promise((res, rej) => {
     const sk = document.createElement('script');
-    sk.src = 'https://unpkg.com/@turf/turf@7.2.0/turf.min.js';
-    sk.onload = () => res(window.turf);
+    sk.src = src;
+    sk.onload = () => res(window[globalNavn]);
     sk.onerror = () => rej(new Error('Kunne ikke laste geometribiblioteket. Sjekk nettforbindelsen.'));
     document.head.appendChild(sk);
   });
 }
+const lastTurf = () => lastSkript('https://unpkg.com/@turf/turf@7.2.0/turf.min.js', 'turf');
+// Rask polygonklipping (brukes av genereringen); Turf er reserve hvis den ikke lastes.
+const lastKlipping = () => lastSkript('https://unpkg.com/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js', 'polygonClipping').catch(() => null);
 
 // Brukes fra kommuneanalysen: fyll inn skjemaet og start genereringen for eiendommen.
 async function lagPlanFor({ kommunenr, gnr, bnr, fnr }) {
@@ -1073,8 +1076,8 @@ async function startGenerering(e) {
   };
   let aktivtSteg = 'eiendom';
   try {
-    const turf = await lastTurf();
-    const plan = await genererPlan({ kommune, gnr, bnr, festenr }, { turf, iAar: IAAR, logg: (st, status, t) => { aktivtSteg = st; logg(st, status, t); } });
+    const [turf, klipping] = await Promise.all([lastTurf(), lastKlipping()]);
+    const plan = await genererPlan({ kommune, gnr, bnr, festenr }, { turf, klipping, iAar: IAAR, logg: (st, status, t) => { aktivtSteg = st; logg(st, status, t); } });
     const ny = { versjon: 1, planId: nyId('p'), eiendom: plan.eiendom, bestand: plan.bestand, registreringer: [], innstillinger: klon(S.innstillinger), metadata: plan.metadata, datakilder: { ...plan.kilder } };
     // Alt datagrunnlag for PEFC, veier og verdi hentes med en gang. Feil her stopper ikke planen.
     const dgSteg = ['miljo', 'nvdb', 'ssb'];

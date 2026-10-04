@@ -60,6 +60,13 @@ Appen henter dataene direkte fra Kartverket og NIBIO i nettleseren (`js/generato
 Underveis vises fremdriften for hvert steg. Når planen er ferdig, vises et sammendrag og knappen
 **«Åpne skogbruksplanen»**. Alle planer lagres lokalt under «Mine skogbruksplaner», og du kan bytte mellom dem.
 
+Store eiendommer støttes:
+- **Oppdeling ved 1000-taket:** NIBIOs kartjeneste gir maks 1000 flater per svar. Treffes taket, deles området i fire ruter (gjentatt ved behov). Ruter utenfor teigene hoppes over.
+- **Raskere henting:** attributter hentes samlet per rute, ikke én forespørsel per flate.
+- **Rask geometri:** polygonklipping gjøres med `polygon-clipping`, med Turf som reserve.
+- **Delte bestand:** bestand som NIBIO har lagret som flere flater med samme nummer, slås sammen. Har delene ulike data, får de bokstav etter nummeret (f.eks. 1-45a og 1-45b).
+- **Eksempel:** Flå 22/1 (12 teiger, 11 455 daa) gir 563 bestand på 9 822 daa skog.
+
 ## Spør AI (fanen «Spør AI»)
 
 En chat der du stiller spørsmål om skogbruksplanen og får svar fra Claude (Anthropic, modell `claude-opus-5-5`). Svaret strømmes inn mens det skrives.

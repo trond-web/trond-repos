@@ -3,11 +3,13 @@
 //   NIBIO SR16 vektor (volum, høyde, treantall, treslag, alder) og NIBIO MiS (nøkkelbiotoper).
 // Geometrioperasjoner gjøres med Turf (sendes inn, slik at modulen også kan kjøres i Node).
 import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST } from './model.js';
-import { geoTilUtm } from './proj.js';
+import { geoTilUtm, utmTilGeo, punktIGeometri } from './proj.js';
 
 const KARTVERKET = 'https://api.kartverket.no';
 const NIBIO = 'https://wms.nibio.no/cgi-bin';
 const PLAN_TRESLAG = { Gran: 'G', Furu: 'F', Lauv: 'L', Bjørk: 'L' };
+// NIBIOs MapServer gir maks 1000 objekter per KML-svar. Treffes taket, deles området i fire og hentes på nytt.
+export const KML_MAKS = 1000;
 
 export async function hentKommuner(hent = fetch) {
   return JSON.parse(await hentTekst(hent, `${KARTVERKET}/kommuneinfo/v1/kommuner`, 20000)).map((k) => ({ nr: k.kommunenummer, navn: k.kommunenavnNorsk || k.kommunenavn }))
@@ -93,14 +95,20 @@ async function parallelt(liste, antall, fn, framdrift) {
   return ut;
 }
 
-export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, hent = fetch, logg = () => {}, minDaa = 1, iAar = new Date().getFullYear() }) {
+export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, klipping = null, hent = fetch, logg = () => {}, minDaa = 1, iAar = new Date().getFullYear() }) {
   const T = turf;
   const trygg = (fn) => { try { return fn(); } catch { return null; } };
   const arealM2 = (g) => (g ? T.area(g) : 0);
-  const snitt = (a, b) => trygg(() => T.intersect(T.featureCollection([a, b])));
-  const minus = (a, b) => trygg(() => T.difference(T.featureCollection([a, b])));
-  const forening = (liste) => (liste.length === 1 ? liste[0] : trygg(() => T.union(T.featureCollection(liste))) || liste[0]);
   const feat = (geometry, properties = {}) => ({ type: 'Feature', geometry, properties });
+  // polygon-clipping er mange ganger raskere enn Turf 7s polygonoperasjoner; Turf brukes hvis det mangler.
+  const PC = klipping;
+  const fraPC = (mp) => (mp && mp.length ? feat(mp.length === 1 ? { type: 'Polygon', coordinates: mp[0] } : { type: 'MultiPolygon', coordinates: mp }) : null);
+  const koord = (f) => f.geometry.coordinates;
+  // Feiler polygon-clipping på en vanskelig geometri, prøves Turf før vi gir opp.
+  const medReserve = (pc, tf) => { if (PC) { try { return pc(); } catch { /* prøv Turf */ } } return trygg(tf); };
+  const snitt = (a, b) => medReserve(() => fraPC(PC.intersection(koord(a), koord(b))), () => T.intersect(T.featureCollection([a, b])));
+  const minus = (a, b) => medReserve(() => fraPC(PC.difference(koord(a), koord(b))), () => T.difference(T.featureCollection([a, b])));
+  const forening = (liste) => (liste.length === 1 ? liste[0] : medReserve(() => fraPC(PC.union(...liste.map(koord))), () => T.union(T.featureCollection(liste))) || liste[0]);
 
   // 1. Eiendom
   logg('eiendom', 'aktiv', `Henter eiendomsgrense for ${kommune.navn} ${gnr}/${bnr}${festenr ? `/${festenr}` : ''} fra Kartverket …`);
@@ -119,9 +127,57 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, he
   const hjorner = [[minx, miny], [minx, maxy], [maxx, miny], [maxx, maxy]].map(([x, y]) => geoTilUtm(x, y, 33));
   const ux = hjorner.map((h) => h[0]); const uy = hjorner.map((h) => h[1]);
   const ub = [Math.min(...ux), Math.min(...uy), Math.max(...ux), Math.max(...uy)];
-  const bredde = 2000; const hoyde = Math.max(200, Math.round((bredde * (ub[3] - ub[1])) / (ub[2] - ub[0])));
-  const kmlUrl = (tjeneste, lag) => `${NIBIO}/${tjeneste}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${lag}&STYLES=&SRS=EPSG:25833&BBOX=${ub.join(',')}&WIDTH=${bredde}&HEIGHT=${hoyde}&FORMAT=kml`;
-  const iEiendom = (o) => { const s = snitt(feat(o.geometry), eiendom); return s && arealM2(s) > 20; };
+  const bredde = 2000;
+  const kmlUrl = (tjeneste, lag, b = ub) => {
+    const h = Math.max(200, Math.round((bredde * (b[3] - b[1])) / (b[2] - b[0])));
+    return `${NIBIO}/${tjeneste}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${lag}&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&WIDTH=${bredde}&HEIGHT=${h}&FORMAT=kml`;
+  };
+  // Avgrensningsbokser per teig gir rask utsortering før den dyre geometrisjekken.
+  const teigBokser = teiger.map((t) => T.bbox(t.geometry));
+  const boksTreff = (bb) => teigBokser.some((t) => bb[0] <= t[2] && t[0] <= bb[2] && bb[1] <= t[3] && t[1] <= bb[3]);
+  // Klipper mot bare de teigene som kan overlappe – mye raskere enn mot hele eiendommen for store eiendommer.
+  const teigFeat = teiger.map((t) => feat(t.geometry));
+  // Kanter (som [x1, y1, x2, y2]) for hver teig, brukt til en rask og eksakt test før klipping.
+  const ringer = (g) => (g.type === 'Polygon' ? g.coordinates : g.coordinates.flat());
+  const kanter = (g) => ringer(g).flatMap((r) => r.slice(1).map((p, j) => [r[j][0], r[j][1], p[0], p[1]]));
+  const teigKanter = teiger.map((t) => kanter(t.geometry));
+  const krysser = (a, b) => {
+    const d1 = (b[2] - b[0]) * (a[1] - b[1]) - (b[3] - b[1]) * (a[0] - b[0]);
+    const d2 = (b[2] - b[0]) * (a[3] - b[1]) - (b[3] - b[1]) * (a[2] - b[0]);
+    const d3 = (a[2] - a[0]) * (b[1] - a[1]) - (a[3] - a[1]) * (b[0] - a[0]);
+    const d4 = (a[2] - a[0]) * (b[3] - a[1]) - (a[3] - a[1]) * (b[2] - a[0]);
+    return (d1 * d2 <= 0) && (d3 * d4 <= 0);
+  };
+  const klipp = (geom) => {
+    const bb = T.bbox(geom); const f = feat(geom);
+    const aktuelle = teigFeat.map((t, i) => i).filter((i) => { const t = teigBokser[i]; return bb[0] <= t[2] && t[0] <= bb[2] && bb[1] <= t[3] && t[1] <= bb[3]; });
+    const fk = kanter(geom);
+    const maaKlippes = [];
+    for (const i of aktuelle) {
+      // Teigkanter innenfor flatens boks; krysser ingen av dem flatens kanter, ligger flaten helt inne i eller helt utenfor teigen.
+      const tk = teigKanter[i].filter((e) => Math.max(e[0], e[2]) >= bb[0] && Math.min(e[0], e[2]) <= bb[2] && Math.max(e[1], e[3]) >= bb[1] && Math.min(e[1], e[3]) <= bb[3]);
+      if (tk.some((e) => fk.some((g) => krysser(g, e)))) { maaKlippes.push(i); continue; }
+      if (tk.length && punktIGeometri([tk[0][0], tk[0][1]], geom)) { maaKlippes.push(i); continue; } // hull eller teig inni flaten
+      if (punktIGeometri(fk[0].slice(0, 2), teiger[i].geometry)) return f;
+    }
+    const deler = maaKlippes.map((i) => snitt(f, teigFeat[i])).filter(Boolean);
+    return deler.length ? forening(deler) : null;
+  };
+  const iEiendom = (o) => { if (!boksTreff(T.bbox(o.geometry))) return false; o.klipp = klipp(o.geometry); return o.klipp && arealM2(o.klipp) > 20; };
+  // Henter alle flater i et område, med oppdeling når svaret er kuttet ved KML_MAKS. Ruter utenfor eiendommen hoppes over.
+  const hentKml = async (tjeneste, lag, b = ub, dybde = 0, ruter = []) => {
+    const flater = parseKml(await hentTekst(hent, kmlUrl(tjeneste, lag, b)));
+    if (flater.length < KML_MAKS || dybde >= 5) { ruter.push(b); return flater; }
+    const mx = (b[0] + b[2]) / 2; const my = (b[1] + b[3]) / 2;
+    const deler = [[b[0], b[1], mx, my], [mx, b[1], b[2], my], [b[0], my, mx, b[3]], [mx, my, b[2], b[3]]].filter((d) => {
+      const h = [[d[0], d[1]], [d[0], d[3]], [d[2], d[1]], [d[2], d[3]]].map(([x, y]) => utmTilGeo(x, y, 33));
+      const gb = [Math.min(...h.map((p) => p[0])), Math.min(...h.map((p) => p[1])), Math.max(...h.map((p) => p[0])), Math.max(...h.map((p) => p[1]))];
+      return boksTreff(gb) && trygg(() => T.booleanIntersects(T.bboxPolygon(gb), eiendom)) !== false;
+    });
+    const sett = new Map();
+    for (const d of deler) for (const f of await hentKml(tjeneste, lag, d, dybde + 1, ruter)) if (!sett.has(f.id)) sett.set(f.id, f);
+    return [...sett.values()];
+  };
   // Punkter godt inne i polygonet (lengst fra kanten først), slik at punktspørringen ikke treffer naboflaten.
   const indrePunkter = (geom) => {
     const f = feat(geom);
@@ -134,6 +190,29 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, he
     return kandidater.filter((p) => T.booleanPointInPolygon(p, f))
       .map((p) => ({ p, d: Math.min(...linjer.map((l) => trygg(() => T.pointToLineDistance(p, l, { units: 'meters' })) ?? 0)) }))
       .sort((a, b) => b.d - a.d).slice(0, 3).map((k) => k.p.geometry.coordinates);
+  };
+  // Attributter for alle flater i hver rute med én spørring (GML, RADIUS=bbox). Svaret mangler av og til
+  // enkelte flater ved rutekanten; de hentes etterpå med punktspørring.
+  const masseAttributter = async (tjeneste, lag, ruter, idfelt) => {
+    const alle = new Map();
+    await parallelt(ruter, 3, async (b) => {
+      const url = `${NIBIO}/${tjeneste}?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&STYLES=&REQUEST=GetFeatureInfo&LAYERS=${lag}&QUERY_LAYERS=${lag}&WIDTH=1000&HEIGHT=1000&X=500&Y=500&RADIUS=bbox&FEATURE_COUNT=100000&INFO_FORMAT=application/vnd.ogc.gml`;
+      let tekst = '';
+      try { tekst = await hentTekst(hent, url, 90000); } catch { return; }
+      for (const del of tekst.split(`<${lag}_feature>`).slice(1)) {
+        const a = {};
+        for (const [, k, v] of del.split(`</${lag}_feature>`)[0].matchAll(/<(\w+)>([^<]*)<\/\1>/g)) a[k] = v;
+        if (a[idfelt]) alle.set(String(a[idfelt]), a);
+      }
+    });
+    return alle;
+  };
+  const hentAttributter = async (tjeneste, lag, objekter, ruter, idfelt, steg, tekst) => {
+    logg(steg, 'aktiv', `${tekst} …`);
+    const m = await masseAttributter(tjeneste, lag, ruter, idfelt);
+    const mangler = [];
+    for (const o of objekter) { o.attr = m.get(String(o.id)) || null; if (!o.attr) mangler.push(o); }
+    if (mangler.length) await attributter(tjeneste, lag, mangler, idfelt === 'gid' ? 'gid' : null, steg, tekst);
   };
   const attributter = async (tjeneste, lag, objekter, idfelt, steg, tekst) => parallelt(objekter, 6, async (o) => {
     o.attr = null;
@@ -148,14 +227,16 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, he
 
   // 2. Tidligere skogbruksplan
   logg('plan', 'aktiv', 'Henter bestand fra tidligere skogbruksplan (NIBIO) …');
-  const plan = parseKml(await hentTekst(hent, kmlUrl('skogbruksplan', 'hogstklasser'))).filter(iEiendom);
-  await attributter('skogbruksplan', 'hogstklasser', plan, null, 'plan', 'Henter bestandsdata');
+  const planRuter = [];
+  const plan = (await hentKml('skogbruksplan', 'hogstklasser', ub, 0, planRuter)).filter(iEiendom);
+  if (plan.length) await hentAttributter('skogbruksplan', 'hogstklasser', plan, planRuter, 'sl_sdeid', 'plan', 'Henter bestandsdata');
   logg('plan', 'ok', plan.length ? `Tidligere skogbruksplan: ${plan.length} bestand` : 'Ingen tidligere skogbruksplan i NIBIOs data – bruker bare SR16');
 
   // 3. SR16
   logg('sr16', 'aktiv', 'Henter skogressurskart SR16 …');
-  const sr16 = parseKml(await hentTekst(hent, kmlUrl('sr16', 'SRVTRESLAG'))).filter(iEiendom);
-  await attributter('sr16', 'SRVTRESLAG', sr16, 'gid', 'sr16', 'Henter SR16-verdier');
+  const sr16Ruter = [];
+  const sr16 = (await hentKml('sr16', 'SRVTRESLAG', ub, 0, sr16Ruter)).filter(iEiendom);
+  if (sr16.length) await hentAttributter('sr16', 'SRVTRESLAG', sr16, sr16Ruter, 'gid', 'sr16', 'Henter SR16-verdier');
   const sr16Data = sr16.filter((s) => s.attr);
   sr16Data.forEach((s) => { s.bbox = T.bbox(s.geometry); });
   // Fjernmålingsår og årsversjon finnes bare i HTML-svaret; én spørring over hele eiendommen holder.
@@ -171,24 +252,37 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, he
   // 4. MiS
   logg('mis', 'aktiv', 'Henter miljøregistreringer (MiS) …');
   let mis = [];
-  try { mis = parseKml(await hentTekst(hent, kmlUrl('mis', 'Nokkelbiotop'))).filter(iEiendom); } catch { /* MiS er valgfritt */ }
+  try { mis = (await hentKml('mis', 'Nokkelbiotop')).filter(iEiendom); } catch { /* MiS er valgfritt */ }
   const misUnion = mis.length ? forening(mis.map((m) => feat(m.geometry))) : null;
+  const misBb = misUnion ? T.bbox(misUnion) : null;
   logg('mis', 'ok', `MiS-nøkkelbiotoper: ${mis.length}`);
 
   // 5. Sett sammen bestand
   logg('bygg', 'aktiv', 'Setter sammen bestand og sammenligner plan med SR16 …');
   const kandidater = [];
+  const overlapper = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
+  // NIBIO lagrer noen bestand som flere separate flater med samme bestandsnummer. Like data → slås sammen.
+  const likeData = (a, b) => ['hogstkl_verdi', 'bonitet_beskrivelse', 'bontre_beskrivelse', 'alder_korr', 'alder'].every((f) => (a[f] ?? '') === (b[f] ?? ''));
+  const perNr = new Map();
   for (const p of plan) {
-    const g = snitt(feat(p.geometry), eiendom);
-    if (g) kandidater.push({ kilde: 'plan', g, attr: p.attr || {} });
+    if (!p.klipp) continue;
+    const a = p.attr || {}; const nr = a.teig_best_nr;
+    const finnes = nr && (perNr.get(nr) || []).find((x) => likeData(x.attr, a));
+    if (finnes) { finnes.deler.push(p.klipp); continue; }
+    const kand = { kilde: 'plan', deler: [p.klipp], attr: a };
+    if (nr) perNr.set(nr, [...(perNr.get(nr) || []), kand]);
+    kandidater.push(kand);
   }
-  const planUnion = kandidater.length ? forening(kandidater.map((k) => k.g)) : null;
+  for (const kand of kandidater) { kand.g = kand.deler.length > 1 ? forening(kand.deler) : kand.deler[0]; kand.bb = T.bbox(kand.g); delete kand.deler; }
+  // Samme nummer med ulike data blir egne bestand med bokstav etter nummeret.
+  for (const liste of perNr.values()) if (liste.length > 1) liste.forEach((kand, i) => { kand.nrTillegg = String.fromCharCode(97 + i); });
+  const planKand = [...kandidater];
   for (const s of sr16Data) {
-    let rest = snitt(feat(s.geometry), eiendom);
-    if (rest && planUnion) rest = minus(rest, planUnion);
+    let rest = s.klipp;
+    // Trekk fra bare planbestand som kan overlappe (ikke hele planen samlet).
+    for (const p of planKand) { if (!rest) break; if (overlapper(s.bbox, p.bb)) rest = minus(rest, p.g); }
     if (rest && arealM2(rest) / 1000 >= minDaa) kandidater.push({ kilde: 'sr16', g: rest, attr: {} });
   }
-  const overlapper = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
 
   const bestand = [];
   let lopenr = 0;
@@ -223,7 +317,7 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, he
 
     let nr; let bonitet; let planTs = null; let alder; let hkPlan = null; let regaar = null;
     if (k.kilde === 'plan') {
-      nr = k.attr.teig_best_nr || `P${bestand.length + 1}`;
+      nr = k.attr.teig_best_nr ? `${k.attr.teig_best_nr}${k.nrTillegg || ''}` : `P${bestand.length + 1}`;
       bonitet = tall((k.attr.bonitet_beskrivelse || '').replace('Bonitet', '')) ?? (srBon ? Math.round(srBon) : null);
       planTs = PLAN_TRESLAG[k.attr.bontre_beskrivelse] || null;
       alder = tall(k.attr.alder_korr) ?? tall(k.attr.alder);
@@ -245,7 +339,7 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, he
       merknader.push(`Avvik: HK ${hkPlan} i planen (${regaar}), men SR16 viser ${komma(volub)} m³/daa og ${komma(hoydeM)} m høyde – trolig hogd eller glissen, kontroller`);
     }
     if (planTs && srTreslag && planTs !== srTreslag && dekning > 0.5) merknader.push(`Treslag: plan ${planTs}, SR16 ${srTreslag}`);
-    const miljoSnitt = misUnion ? arealM2(snitt(k.g, misUnion)) : 0;
+    const miljoSnitt = misUnion && overlapper(bb, misBb) ? arealM2(snitt(k.g, misUnion)) : 0;
     const miljo = miljoSnitt > Math.max(500, 0.2 * areal);
     if (miljo) merknader.push('Overlapper MiS-nøkkelbiotop');
     if (!deler.length) merknader.push('Ingen SR16-data – volum er ikke kjent');

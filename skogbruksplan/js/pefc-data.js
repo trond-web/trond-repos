@@ -21,7 +21,11 @@ async function hentJson(hent, url) {
       const r = await hent(url, { signal: ctrl.signal });
       if (!r.ok) throw new Error(`${new URL(url).host} svarte ${r.status}`);
       return await r.json();
-    } catch (e) { if (i === 2) throw e; await new Promise((res) => setTimeout(res, 1000 * (i + 1))); } finally { clearTimeout(t); }
+    } catch (e) {
+      const feil = ctrl.signal.aborted ? new Error(`${new URL(url).host} svarte ikke innen 45 sekunder`) : e;
+      if (i === 2) throw feil;
+      await new Promise((res) => setTimeout(res, 1000 * (i + 1)));
+    } finally { clearTimeout(t); }
   }
 }
 
@@ -32,8 +36,17 @@ function bboxAv(geom) {
 }
 
 async function arcgis(hent, tjeneste, bb, where = '1=1') {
-  const q = new URLSearchParams({ where, geometry: bb.join(','), geometryType: 'esriGeometryEnvelope', inSR: '4326', outSR: '4326', spatialRel: 'esriSpatialRelIntersects', outFields: '*', returnGeometry: 'true', f: 'geojson' });
-  return (await hentJson(hent, `${MD}/${tjeneste}/query?${q}`)).features || [];
+  // Tjenesten gir et begrenset antall objekter per svar; bla videre så lenge den melder at grensen er nådd.
+  const ut = [];
+  for (let side = 0; side < 20; side++) {
+    const q = new URLSearchParams({ where, geometry: bb.join(','), geometryType: 'esriGeometryEnvelope', inSR: '4326', outSR: '4326', spatialRel: 'esriSpatialRelIntersects', outFields: '*', returnGeometry: 'true', f: 'geojson' });
+    if (side) q.set('resultOffset', String(ut.length));
+    const d = await hentJson(hent, `${MD}/${tjeneste}/query?${q}`);
+    const f = d.features || [];
+    ut.push(...f);
+    if (!f.length || !(d.exceededTransferLimit || d.properties?.exceededTransferLimit)) break;
+  }
+  return ut;
 }
 
 export async function hentMiljodata(grense, { hent = fetch, logg = () => {} } = {}) {
@@ -97,8 +110,14 @@ export async function hentMiljodata(grense, { hent = fetch, logg = () => {} } = 
     }
   });
   await steg('kultur', 'Kulturminner (sikringssoner)', 'Riksantikvaren', async () => {
-    const d = await hentJson(hent, `https://api.ra.no/LokaliteterEnkeltminnerOgSikringssoner/collections/sikringssoner/items?f=json&limit=500&bbox=${bb.join(',')}`);
-    for (const f of d.features || []) {
+    const alle = [];
+    let url = `https://api.ra.no/LokaliteterEnkeltminnerOgSikringssoner/collections/sikringssoner/items?f=json&limit=500&bbox=${bb.join(',')}`;
+    for (let side = 0; url && side < 20; side++) {
+      const d = await hentJson(hent, url);
+      alle.push(...(d.features || []));
+      url = (d.links || []).find((l) => l.rel === 'next')?.href || null;
+    }
+    for (const f of alle) {
       const p = f.properties;
       // Beskrivelsen starter ofte med en lokal kode som «R01.1:»; den fjernes, og første setning brukes som navn.
       const tekst = (p.informasjon || '').replace(/^\s*[A-ZÆØÅ]?\d+(\.\d+)?\s*[:.]\s*/, '').trim();
