@@ -5,6 +5,7 @@ import { parseSosi, lagSosi } from '../js/sosi.js';
 import { normaliserBestand, framskriv, foreslaaForEiendom, foreslaaTiltak, laavesteHogstalder, sammendrag, tolkHogstklasse, tolkTreslag } from '../js/model.js';
 import { lesGeojson, lesCsv, lesSosi, slaaSammen } from '../js/importers.js';
 import { lagDemo } from '../js/demo.js';
+import { finnKommune } from '../js/generator.js';
 
 let ok = 0;
 const test = (navn, fn) => { try { fn(); ok++; console.log(`✓ ${navn}`); } catch (e) { console.error(`✗ ${navn}\n  ${e.stack}`); process.exitCode = 1; } };
@@ -163,6 +164,16 @@ test('hogstforslag spres jevnt over år', () => {
     const h = hogst.find((x) => x.b === p.b);
     if (h) assert.equal(p.aar, h.aar + 1);
   }
+});
+
+test('kommune tolkes fra navn eller nummer', () => {
+  const k = [{ nr: '3238', navn: 'Nannestad' }, { nr: '3240', navn: 'Eidsvoll' }, { nr: '3901', navn: 'Horten' }];
+  assert.equal(finnKommune('nannestad', k).nr, '3238');
+  assert.equal(finnKommune('Eidsvoll (3240)', k).nr, '3240');
+  assert.equal(finnKommune('3238', k).navn, 'Nannestad');
+  assert.equal(finnKommune('Nannestad (3238)', []).navn, 'Nannestad');
+  assert.equal(finnKommune('Eid', k).nr, '3240');
+  assert.equal(finnKommune('Ukjentby', k), null);
 });
 
 console.log(`\n${ok} tester bestått`);

@@ -44,7 +44,14 @@ Tilvekst, verdier og CO₂ er **forenklede estimater** til planlegging, ikke tak
 - `sw.js`: service worker som gjør appen og nedlastede kartfliser tilgjengelige offline.
 - Tester: `node tests/run.mjs`
 
-## Plan fra åpne data (`verktoy/lag_plan_fra_apne_data.py`)
+## Lag plan fra gårds- og bruksnummer (i appen)
+
+Under **Planer** skriver du inn kommune (navn eller nummer), gårdsnummer, bruksnummer og eventuelt festenummer.
+Appen henter dataene direkte fra Kartverket og NIBIO i nettleseren (`js/generator.js`, med Turf til geometri).
+Underveis vises fremdriften for hvert steg. Når planen er ferdig, vises et sammendrag og knappen
+**«Åpne skogbruksplanen»**. Alle planer lagres lokalt under «Mine skogbruksplaner», og du kan bytte mellom dem.
+
+## Plan fra åpne data med Python (`verktoy/lag_plan_fra_apne_data.py`)
 
 Lager et utkast til skogbruksplan for én eiendom ut fra gårds- og bruksnummer:
 

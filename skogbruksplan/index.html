@@ -15,6 +15,7 @@
 <header class="topp">
   <div class="merke">🌲 <span id="eiendomNavn">Skogbruksplan</span></div>
   <nav class="faner" role="tablist">
+    <button role="tab" data-fane="planer">Planer</button>
     <button role="tab" data-fane="oversikt" class="aktiv">Oversikt</button>
     <button role="tab" data-fane="bestand">Bestand</button>
     <button role="tab" data-fane="tiltak">Tiltak</button>
@@ -48,6 +49,33 @@
   </section>
 
   <section class="panel">
+    <!-- PLANER -->
+    <div class="fane" id="fane-planer" hidden>
+      <div class="kort">
+        <h3>Lag skogbruksplan for en eiendom</h3>
+        <p class="hint">Planen settes sammen av åpne data: eiendomsgrensen fra Kartverket, bestand fra en tidligere skogbruksplan (NIBIO), oppdaterte skogdata fra SR16 og nøkkelbiotoper fra MiS. Det tar vanligvis under ett minutt.</p>
+        <form id="genSkjema" class="skjema gen-skjema">
+          <label class="hel">Kommune
+            <input id="genKommune" name="kommune" list="kommuneListe" placeholder="Navn eller kommunenummer, f.eks. Nannestad" autocomplete="off" required>
+            <datalist id="kommuneListe"></datalist>
+          </label>
+          <label>Gårdsnummer <input id="genGnr" name="gnr" type="number" min="1" inputmode="numeric" required></label>
+          <label>Bruksnummer <input id="genBnr" name="bnr" type="number" min="1" inputmode="numeric" required></label>
+          <label>Festenummer <input id="genFnr" name="fnr" type="number" min="0" inputmode="numeric" placeholder="Valgfritt"></label>
+          <div class="hel knapperad"><button id="genBtn" class="knapp primar" type="submit">Lag skogbruksplan</button></div>
+        </form>
+      </div>
+      <div id="genFramdrift" class="kort" hidden>
+        <h3 id="genTittel">Lager skogbruksplan …</h3>
+        <ol id="genSteg" class="gen-steg"></ol>
+        <div id="genResultat"></div>
+      </div>
+      <div class="kort">
+        <h3>Mine skogbruksplaner</h3>
+        <div id="planListe"></div>
+      </div>
+    </div>
+
     <!-- OVERSIKT -->
     <div class="fane" id="fane-oversikt">
       <div class="kpi-rad" id="kpi"></div>

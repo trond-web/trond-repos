@@ -149,6 +149,22 @@ input[type="checkbox"], input[type="range"] { padding: 0; }
 .status-utfort { opacity: .65; }
 .forslag { border-style: dashed; }
 
+.gen-skjema { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gen-steg { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.gen-steg li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; color: var(--text-2); }
+.gen-steg li.ok { color: var(--text); }
+.gen-steg li.feil { color: var(--danger); }
+.gen-steg .ikon { font-weight: 700; text-align: center; }
+.gen-steg li.ok .ikon { color: var(--good); }
+.gen-steg li.aktiv .ikon { animation: puls 1s ease-in-out infinite alternate; }
+@keyframes puls { from { opacity: .3; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .gen-steg li.aktiv .ikon { animation: none; } }
+.gen-resultat { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--grid); display: grid; gap: 12px; }
+.gen-resultat .knapp.primar { font-size: 15px; padding: 10px 16px; justify-self: start; }
+.plan-rad { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--grid); }
+.plan-rad:last-child { border-bottom: 0; }
+.plan-rad .navn { font-weight: 600; }
+.merke-aktiv { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 99px; padding: 2px 8px; margin-left: 6px; }
 .slipp-sone { border: 2px dashed var(--border); border-radius: 12px; padding: 22px; text-align: center; color: var(--text-2); margin-top: 10px; }
 .slipp-sone.over { border-color: var(--accent); background: var(--accent-soft); }
 
@@ -210,5 +226,6 @@ input[type="checkbox"], input[type="range"] { padding: 0; }
 }
 @media (max-width: 480px) {
   .skjema.to-kol, .skjema.tre-kol { grid-template-columns: 1fr; }
+  .gen-skjema { grid-template-columns: 1fr 1fr; }
   .panel { padding: 16px; }
 }

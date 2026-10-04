@@ -7,7 +7,8 @@ import {
 } from './model.js';
 import { lesFil, slaaSammen } from './importers.js';
 import { lagDemo } from './demo.js';
-import { lagre, hent } from './store.js';
+import { lagre, hent, listPlaner, lagrePlan, hentPlan, slettPlan } from './store.js';
+import { genererPlan, hentKommuner, finnKommune } from './generator.js';
 import { stabletSoyle, linje, fmt } from './charts.js';
 
 const IAAR = new Date().getFullYear();
@@ -41,7 +42,12 @@ function sortNr(a, b) { return String(a).localeCompare(String(b), 'nb', { numeri
 let lagreTimer;
 function lagreSnart() {
   clearTimeout(lagreTimer);
-  lagreTimer = setTimeout(() => lagre(S).catch((e) => melding(`Kunne ikke lagre: ${e.message}`)), 300);
+  lagreTimer = setTimeout(async () => {
+    try {
+      await lagre(S);
+      if (S.planId) { await lagrePlan(S); tegnPlanListe(); }
+    } catch (e) { melding(`Kunne ikke lagre: ${e.message}`); }
+  }, 300);
 }
 let meldingTimer;
 function melding(tekst, ms = 3500) {
@@ -242,6 +248,7 @@ function visFane(navn) {
   $$('.faner button').forEach((b) => b.classList.toggle('aktiv', b.dataset.fane === navn));
   $$('.fane').forEach((f) => { f.hidden = f.id !== `fane-${navn}`; });
   if (navn === 'framskriving') tegnFramskriving();
+  if (navn === 'planer') { tegnPlanListe(); lastKommuner(); }
   if (window.innerWidth <= 860) $('.panel').scrollIntoView({ behavior: 'smooth' });
   setTimeout(() => kart.invalidateSize(), 50);
 }
@@ -258,7 +265,7 @@ function tegnOversikt() {
     kpi(`${fmt(s.verdiHogstmoden / 1e6, 2)} mill`, 'kr rotnetto i HK V', 'Estimat med dagens priser'),
     kpi(fmt(s.co2), 't CO₂ bundet per år', 'Grovt estimat fra tilvekst'),
     kpi(fmt(planlagt.length), 'planlagte tiltak', `${planlagt.filter((t) => t.aar <= IAAR).length} forfalt/i år`),
-  ].join('') : '<div class="kort tom">Ingen bestand ennå. Gå til <a href="#" data-gaa="data">Data</a> for å importere en skogbruksplan (SOSI, GeoJSON eller CSV), tegn bestand i kartet, eller <a href="#" id="demoLenke">last en demo-eiendom</a>.</div>';
+  ].join('') : '<div class="kort tom">Ingen bestand ennå. <a href="#" data-gaa="planer">Lag en skogbruksplan</a> fra kommune, gårds- og bruksnummer, importer en plan under <a href="#" data-gaa="data">Data</a>, tegn bestand i kartet, eller <a href="#" id="demoLenke">last en demo-eiendom</a>.</div>';
   const demoLenke = $('#demoLenke'); if (demoLenke) demoLenke.onclick = (e) => { e.preventDefault(); lastDemo(); };
 
   const serier = Object.entries(TRESLAG).map(([k, v]) => ({ key: k, navn: v, farge: css(`--ts-${k.toLowerCase()}`) }));
@@ -745,19 +752,153 @@ function endret({ kart: kartEndret = false, zoom = false } = {}) {
   if (valgtId && !finnBestand(valgtId)) { valgtId = null; visDetalj(); }
 }
 
-function lastDemo() {
-  if (S.bestand.length && !confirm('Erstatte dagens data med demo-eiendommen?')) return;
+async function lastDemo() {
   const d = lagDemo(IAAR);
-  S.eiendom = { ...S.eiendom, ...d.eiendom, grense: null }; S.bestand = d.bestand; S.registreringer = [];
+  await nyArbeidsplan({ ...d.eiendom, grense: null });
+  S.bestand = d.bestand;
   valgtId = null; forslag = [];
   tegnEiendom(); tegnRegistreringer();
   endret({ kart: true, zoom: true });
   melding('Demo-eiendom lastet. Prøv «Foreslå tiltak» og Framskriving!');
 }
 
+// ---------------------------------------------------------------- planer: generering og bytte mellom planer
+let kommuner = null;
+let genererer = false;
+
+async function lastKommuner() {
+  if (kommuner?.length) return kommuner;
+  try {
+    kommuner = await hentKommuner();
+    $('#kommuneListe').innerHTML = kommuner.map((k) => `<option value="${esc(k.navn)} (${k.nr})"></option>`).join('');
+  } catch { kommuner = []; } // uten listen kan man fortsatt skrive kommunenummeret
+  return kommuner;
+}
+
+// Lagrer planen som er åpen (slik at ingenting går tapt) og starter en tom plan med ny id.
+async function nyArbeidsplan(eiendom) {
+  await lagreAktivPlan();
+  S = { versjon: 1, planId: nyId('p'), eiendom: { navn: '', kommune: '', gnrbnr: '', eier: '', takstAar: IAAR, grense: null, ...eiendom }, bestand: [], registreringer: [], innstillinger: S.innstillinger };
+  valgtId = null; forslag = []; avsluttGrenseRedigering();
+}
+
+async function lagreAktivPlan() {
+  clearTimeout(lagreTimer);
+  if (!S.bestand.length && !S.registreringer.length) return;
+  if (!S.planId) S.planId = nyId('p');
+  await lagrePlan(S);
+}
+
+async function aapnePlan(id) {
+  if (id === S.planId) { visFane('oversikt'); zoomTilAlle(); return; }
+  const plan = await hentPlan(id);
+  if (!plan) { melding('Fant ikke planen. Den kan være slettet.'); tegnPlanListe(); return; }
+  await lagreAktivPlan();
+  S = { ...plan, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...plan.innstillinger } };
+  valgtId = null; forslag = []; avsluttGrenseRedigering();
+  tegnEiendom(); tegnInnstillinger(); tegnRegistreringer();
+  endret({ kart: true, zoom: true });
+  visFane('oversikt');
+  melding(`Åpnet ${S.eiendom.navn || 'planen'}.`);
+}
+
+async function tegnPlanListe() {
+  const liste = await listPlaner();
+  $('#planListe').innerHTML = liste.length ? liste.map((p) => `
+    <div class="plan-rad" data-plan="${esc(p.id)}">
+      <div><div class="navn">${esc(p.navn)}${p.id === S.planId ? '<span class="merke-aktiv">Åpen</span>' : ''}</div>
+      <div class="hint">${fmt(p.areal)} daa · ${p.antall} bestand · endret ${new Date(p.endret).toLocaleDateString('nb-NO')}</div></div>
+      <div class="knapperad" style="margin:0"><button class="knapp liten primar" data-plan-handling="aapne" type="button">Åpne</button><button class="knapp liten fare" data-plan-handling="slett" type="button">Slett</button></div>
+    </div>`).join('') : '<div class="tom">Ingen lagrede planer ennå. Lag en over, eller importer en plan under Data.</div>';
+}
+
+const GEN_STEG = [
+  ['eiendom', 'Eiendomsgrense (Kartverket)'], ['plan', 'Tidligere skogbruksplan (NIBIO)'],
+  ['sr16', 'Skogressurskart SR16 (NIBIO)'], ['mis', 'Miljøregistreringer (MiS)'], ['bygg', 'Bestand og sammenligning'],
+];
+
+function lastTurf() {
+  if (window.turf) return Promise.resolve(window.turf);
+  return new Promise((res, rej) => {
+    const sk = document.createElement('script');
+    sk.src = 'https://unpkg.com/@turf/turf@7.2.0/turf.min.js';
+    sk.onload = () => res(window.turf);
+    sk.onerror = () => rej(new Error('Kunne ikke laste geometribiblioteket. Sjekk nettforbindelsen.'));
+    document.head.appendChild(sk);
+  });
+}
+
+async function startGenerering(e) {
+  e.preventDefault();
+  if (genererer) return;
+  const kommune = finnKommune($('#genKommune').value, await lastKommuner());
+  const gnr = parseInt($('#genGnr').value, 10); const bnr = parseInt($('#genBnr').value, 10);
+  const festenr = parseInt($('#genFnr').value, 10) || 0;
+  if (!kommune) { melding('Fant ikke kommunen. Skriv navnet eller det firesifrede kommunenummeret.'); $('#genKommune').focus(); return; }
+  if (!gnr || !bnr) { melding('Fyll inn gårds- og bruksnummer.'); return; }
+
+  genererer = true;
+  $('#genBtn').disabled = true; $('#genBtn').textContent = 'Lager plan …';
+  $('#genFramdrift').hidden = false;
+  $('#genTittel').textContent = `Lager skogbruksplan for ${kommune.navn} ${gnr}/${bnr}${festenr ? `/${festenr}` : ''}`;
+  $('#genSteg').innerHTML = GEN_STEG.map(([id, navn]) => `<li data-steg="${id}"><span class="ikon">○</span><span><b>${navn}</b><br><span class="tekst hint">Venter</span></span></li>`).join('');
+  $('#genResultat').innerHTML = '';
+  $('#genFramdrift').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const logg = (steg, status, tekst) => {
+    const li = $(`#genSteg [data-steg="${steg}"]`); if (!li) return;
+    li.className = status;
+    li.querySelector('.ikon').textContent = status === 'ok' ? '✓' : status === 'feil' ? '✕' : '●';
+    li.querySelector('.tekst').textContent = tekst;
+  };
+  let aktivtSteg = 'eiendom';
+  try {
+    const turf = await lastTurf();
+    const plan = await genererPlan({ kommune, gnr, bnr, festenr }, { turf, iAar: IAAR, logg: (st, status, t) => { aktivtSteg = st; logg(st, status, t); } });
+    const ny = { versjon: 1, planId: nyId('p'), eiendom: plan.eiendom, bestand: plan.bestand, registreringer: [], innstillinger: klon(S.innstillinger), metadata: plan.metadata };
+    await lagrePlan(ny);
+    await tegnPlanListe();
+    const vol = ny.bestand.reduce((s, b) => s + (b.volumDaa || 0) * b.areal, 0);
+    const kontroll = ny.bestand.filter((b) => /hogd/.test(b.merknad)).length;
+    const m = plan.metadata;
+    $('#genTittel').textContent = `Skogbruksplan for ${ny.eiendom.navn} er klar`;
+    $('#genResultat').innerHTML = `<div class="gen-resultat">
+      <div class="nokkeltall" style="margin:0">
+        <div><b>${fmt(m.skogDaa)} daa</b><span>skog av ${fmt(m.eiendomDaa)} daa</span></div>
+        <div><b>${ny.bestand.length}</b><span>bestand</span></div>
+        <div><b>${fmt(vol)} m³</b><span>stående volum (SR16)</span></div>
+        <div><b>${kontroll}</b><span>trolig hogd siden forrige takst – kontroller</span></div>
+      </div>
+      <p class="hint" style="margin:0">${m.antallFraPlan ? `Bestandsgrenser fra skogbruksplan registrert ${esc(m.planRegistrert || '')}, oppdatert med SR16.` : 'Fant ingen tidligere skogbruksplan – bestandene er laget fra SR16-flater.'} Utkastet må kontrolleres i felt før det brukes som grunnlag for hogst.</p>
+      <button class="knapp primar" type="button" id="aapneNyPlan">Åpne skogbruksplanen for ${esc(ny.eiendom.navn)} →</button>
+    </div>`;
+    $('#aapneNyPlan').onclick = () => aapnePlan(ny.planId);
+    $('#aapneNyPlan').focus();
+  } catch (err) {
+    logg(aktivtSteg, 'feil', err.message);
+    $('#genTittel').textContent = 'Kunne ikke lage planen';
+    $('#genResultat').innerHTML = `<p class="hint">${esc(err.message)} Prøv igjen, eller kontroller at eiendommen finnes i Kartverkets eiendomskart.</p>`;
+  } finally {
+    genererer = false;
+    $('#genBtn').disabled = false; $('#genBtn').textContent = 'Lag skogbruksplan';
+  }
+}
+
 // ---------------------------------------------------------------- oppkobling
 function kobleHendelser() {
   $$('.faner button').forEach((b) => b.addEventListener('click', () => visFane(b.dataset.fane)));
+  $('#genSkjema').addEventListener('submit', startGenerering);
+  $('#genKommune').addEventListener('focus', lastKommuner, { once: true });
+  $('#planListe').addEventListener('click', async (e) => {
+    const rad = e.target.closest('.plan-rad'); const h = e.target.dataset.planHandling; if (!rad || !h) return;
+    if (h === 'aapne') aapnePlan(rad.dataset.plan);
+    if (h === 'slett') {
+      const navn = rad.querySelector('.navn').firstChild.textContent;
+      if (!confirm(`Slette planen «${navn}»? Dette kan ikke angres.`)) return;
+      await slettPlan(rad.dataset.plan);
+      if (rad.dataset.plan === S.planId) S.planId = null;
+      tegnPlanListe();
+    }
+  });
   document.addEventListener('click', (e) => {
     const g = e.target.closest('[data-gaa]'); if (g) { e.preventDefault(); visFane(g.dataset.gaa); }
     const v = e.target.closest('[data-vis]'); if (v) { e.preventDefault(); velgBestand(v.dataset.vis); visFane('bestand'); }
@@ -827,20 +968,19 @@ function kobleHendelser() {
   });
   $('#demoBtn').addEventListener('click', lastDemo);
   $$('[data-eksempel]').forEach((knapp) => knapp.addEventListener('click', async () => {
-    if (S.bestand.length && !confirm('Erstatte dagens bestand med denne planen?')) return;
     try {
       const svar = await fetch(knapp.dataset.eksempel);
       if (!svar.ok) throw new Error(`HTTP ${svar.status}`);
       const navn = knapp.dataset.eksempel.split('/').pop();
-      S.eiendom = { ...S.eiendom, navn: knapp.dataset.navn, kommune: knapp.dataset.kommune, gnrbnr: '', takstAar: IAAR };
-      S.registreringer = []; valgtId = null; forslag = [];
+      await nyArbeidsplan({ navn: knapp.dataset.navn, kommune: knapp.dataset.kommune, gnrbnr: '', takstAar: IAAR });
       await importerFiler([new File([await svar.blob()], navn)], 'erstatt');
       tegnEiendom(); tegnRegistreringer(); visFane('oversikt');
     } catch (e) { melding(`Kunne ikke hente planen: ${e.message}`); }
   }));
   $('#slettAltBtn').addEventListener('click', () => {
     if (!confirm('Slette alle bestand, tiltak og registreringer? Ta gjerne en sikkerhetskopi først.')) return;
-    S.bestand = []; S.registreringer = []; S.eiendom.grense = null; valgtId = null; forslag = [];
+    if (S.planId) slettPlan(S.planId).then(tegnPlanListe);
+    S.bestand = []; S.registreringer = []; S.eiendom.grense = null; S.planId = null; valgtId = null; forslag = [];
     tegnRegistreringer(); endret({ kart: true });
   });
   $('#offlineBtn').addEventListener('click', lastNedOfflineKart);
@@ -862,6 +1002,8 @@ async function start() {
   tegnEiendom(); tegnInnstillinger(); tegnRegistreringer();
   endret({ kart: true, zoom: true });
   if (!lagret) lagreSnart();
+  tegnPlanListe();
+  if (!S.bestand.length) visFane('planer');
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
