@@ -1,4 +1,4 @@
-import { arealM2, punktIGeometri, bbox, fraWgs84 } from './proj.js';
+import { arealM2, punktIGeometri, bbox, fraWgs84, etikettPunkt } from './proj.js';
 import { lagSosi } from './sosi.js';
 import {
   TRESLAG, HOGSTKLASSER, HK_NAVN, HK_ROMERTALL, BONITETER, TILTAKSTYPER, STANDARD_INNSTILLINGER,
@@ -81,6 +81,8 @@ function filnavn(ending) {
 let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks. veier)
 let kart; let bestandLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
+const etikettPerBestand = new Map();
+let etikettLag; let flyfotoAktiv = false;
 
 function initKart() {
   kart = L.map('kart', { zoomControl: false, attributionControl: false, preferCanvas: false }).setView([60.85, 11.2], 9);
@@ -105,6 +107,7 @@ function initKart() {
   };
   graa.addTo(kart);
   bestandLag = L.featureGroup().addTo(kart);
+  etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
   L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto }, { ...overlays, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
@@ -115,6 +118,13 @@ function initKart() {
     settValgtPunkt(e.latlng);
   });
   kart.on('zoomend', oppdaterEtiketter);
+  kart.on('overlayadd overlayremove', oppdaterEtiketter);
+  // På flyfoto tegnes bestandene som i skogbruksplankart: gule grenser og hvit tekst.
+  kart.on('baselayerchange', (e) => {
+    flyfotoAktiv = e.layer === flyfoto;
+    kart.getContainer().classList.toggle('flyfoto', flyfotoAktiv);
+    oppdaterStiler();
+  });
 }
 
 function settValgtPunkt(ll) {
@@ -175,14 +185,14 @@ function stilFor(b) {
   const farge = fargeFor(b);
   const valgt = b.id === valgtId;
   return {
-    color: valgt ? '#ffd400' : '#1b1c19', weight: valgt ? 3.5 : 1.2, opacity: 0.9,
-    fillColor: farge || '#999', fillOpacity: farge ? (HK_FARGER.includes(farge) ? 0.85 : 0.7) : 0.08,
+    color: valgt ? (flyfotoAktiv ? '#36e0ff' : '#ffd400') : flyfotoAktiv ? '#e6e04b' : '#1b1c19', weight: valgt ? 3.5 : flyfotoAktiv ? 1.6 : 1.2, opacity: 0.9,
+    fillColor: farge || '#999', fillOpacity: !farge ? 0.08 : flyfotoAktiv ? 0.3 : HK_FARGER.includes(farge) ? 0.85 : 0.7,
   };
 }
 
 let grenseLag = null;
 function tegnBestandKart(zoom = false) {
-  bestandLag.clearLayers(); lagPerBestand.clear();
+  bestandLag.clearLayers(); lagPerBestand.clear(); etikettLag.clearLayers(); etikettPerBestand.clear();
   terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null;
   if (grenseLag) { grenseLag.remove(); grenseLag = null; }
   if (S.eiendom.grense) {
@@ -192,9 +202,10 @@ function tegnBestandKart(zoom = false) {
     if (!b.geometri) continue;
     const lag = L.geoJSON(b.geometri, { style: () => stilFor(b) });
     lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } velgBestand(b.id, { zoom: false }); visFane('bestand'); });
-    lag.bindTooltip(esc(b.nr || '?'), { permanent: true, direction: 'center', className: 'bestand-etikett' });
     lag.addTo(bestandLag);
     lagPerBestand.set(b.id, lag);
+    const pt = etikettPunkt(b.geometri);
+    if (pt) etikettPerBestand.set(b.id, L.tooltip({ permanent: true, direction: 'center', className: 'bestand-etikett', interactive: false }).setLatLng([pt[1], pt[0]]).setContent(etikettHtml(b)).addTo(etikettLag));
   }
   oppdaterEtiketter();
   tegnLegend();
@@ -203,13 +214,31 @@ function tegnBestandKart(zoom = false) {
 
 function oppdaterStiler() {
   terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null;
-  for (const b of S.bestand) lagPerBestand.get(b.id)?.setStyle(stilFor(b));
+  for (const b of S.bestand) { lagPerBestand.get(b.id)?.setStyle(stilFor(b)); etikettPerBestand.get(b.id)?.setContent(etikettHtml(b)); }
   tegnLegend();
 }
 
+// Etikett som i skogbruksplankart: bestandsnr, hogstklasse/ treslag+bonitet og areal (daa).
+function etikettHtml(b) {
+  const h = hk(b);
+  const ts = b.treslag ? `${b.treslag}${b.bonitet ?? ''}` : '';
+  return `<b>${esc(b.nr || '?')}</b><span class="mer">${h || '–'}/ ${esc(ts)}</span><span class="mer">${fmt(b.areal || 0, 2)}</span>`;
+}
 function oppdaterEtiketter() {
-  const vis = kart.getZoom() >= 14;
-  bestandLag.eachLayer((l) => { const t = l.getTooltip(); if (t) { if (vis) l.openTooltip(); else l.closeTooltip(); } });
+  const z = kart.getZoom();
+  const vis = z >= 14 && kart.hasLayer(bestandLag);
+  if (vis && !kart.hasLayer(etikettLag)) etikettLag.addTo(kart);
+  if (!vis && kart.hasLayer(etikettLag)) etikettLag.remove();
+  kart.getContainer().classList.toggle('etiketter-full', z >= 15);
+  if (!vis) return;
+  // Små flater på skjermen får bare bestandsnummer, eller ingen etikett, så etikettene ikke flyter over hverandre.
+  for (const [id, t] of etikettPerBestand) {
+    const el = t.getElement(); const lag = lagPerBestand.get(id); if (!el || !lag) continue;
+    const bb = lag.getBounds(); const a = kart.latLngToLayerPoint(bb.getNorthWest()); const b = kart.latLngToLayerPoint(bb.getSouthEast());
+    const bredde = Math.abs(b.x - a.x); const hoyde = Math.abs(b.y - a.y);
+    el.classList.toggle('etikett-liten', bredde < 64 || hoyde < 48);
+    el.classList.toggle('etikett-skjult', bredde < 22 || hoyde < 16);
+  }
 }
 
 function zoomTilAlle() {

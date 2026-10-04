@@ -152,7 +152,14 @@ kbd { font: 500 11px/1 var(--font-mono); color: var(--text-2); background: var(-
 .legend-knapp { border: 0; background: none; color: var(--text); font: 600 12px var(--font-body); padding: 0; cursor: pointer; }
 .legend-innhold { margin-top: 6px; }
 .kart-legend i, .legend i, .viz-tip i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; flex: none; }
-.bestand-etikett { background: none; border: 0; box-shadow: none; font: 700 11.5px var(--font-body); color: #10241c; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff; }
+.bestand-etikett { background: none; border: 0; box-shadow: none; padding: 0; font: 700 11.5px/1.15 var(--font-body); color: #10241c; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 6px #fff; text-align: center; pointer-events: none; font-variant-numeric: tabular-nums; }
+.bestand-etikett b, .bestand-etikett span { display: block; }
+.bestand-etikett b { font-size: 12.5px; }
+.bestand-etikett .mer { display: none; font-weight: 600; }
+.etiketter-full .bestand-etikett .mer { display: block; }
+.etiketter-full .bestand-etikett.etikett-liten .mer { display: none; }
+.bestand-etikett.etikett-skjult { display: none; }
+.flyfoto .bestand-etikett { color: #fff; text-shadow: 0 0 2px #000, 0 0 3px #000, 0 0 6px rgba(0,0,0,.8); }
 .bestand-etikett::before { display: none; }
 
 /* Leaflet i SkogIQ-drakt. I mørkt tema gjøres topografikartet mørkt (ikke flyfoto eller fagkart). */

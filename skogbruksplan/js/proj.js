@@ -159,3 +159,42 @@ export function bbox(geoms) {
   }
   return minx === Infinity ? null : [minx, miny, maxx, maxy];
 }
+
+// Punkt godt inne i flaten (for etiketter): det punktet som ligger lengst fra kantene, funnet med
+// grovt rutenett og to forfininger. For multipolygon brukes den største delen. Gir [lon, lat].
+export function etikettPunkt(geom) {
+  if (!geom) return null;
+  const rings = geom.type === 'Polygon' ? geom.coordinates
+    : geom.type === 'MultiPolygon' ? geom.coordinates.reduce((a, p) => (arealM2({ type: 'Polygon', coordinates: p }) > arealM2({ type: 'Polygon', coordinates: a }) ? p : a))
+      : null;
+  if (!rings) return null;
+  const poly = { type: 'Polygon', coordinates: rings };
+  const [minx, miny, maxx, maxy] = bbox([poly]);
+  const kx = Math.cos(((miny + maxy) / 2) * DEG); // lengdegrader er kortere enn breddegrader
+  const kantAvstand = ([x, y]) => {
+    let best = Infinity;
+    for (const r of rings) for (let i = 0; i < r.length - 1; i++) {
+      const ax = r[i][0] * kx; const ay = r[i][1]; const bx = r[i + 1][0] * kx; const by = r[i + 1][1];
+      const px = x * kx; const dx = bx - ax; const dy = by - ay;
+      const t = dx || dy ? Math.max(0, Math.min(1, ((px - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy))) : 0;
+      const d = Math.hypot(px - ax - t * dx, y - ay - t * dy);
+      if (d < best) best = d;
+    }
+    return best;
+  };
+  let best = null; let bestD = -1;
+  let [x0, y0, x1, y1] = [minx, miny, maxx, maxy];
+  for (let runde = 0; runde < 3; runde++) {
+    const n = 14; const sx = (x1 - x0) / n; const sy = (y1 - y0) / n;
+    for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) {
+      const p = [x0 + i * sx, y0 + j * sy];
+      if (!punktIGeometri(p, poly)) continue;
+      const d = kantAvstand(p);
+      if (d > bestD) { bestD = d; best = p; }
+    }
+    if (!best) break;
+    [x0, y0, x1, y1] = [best[0] - sx, best[1] - sy, best[0] + sx, best[1] + sy];
+  }
+  if (best) return best;
+  const [x, y] = rings[0][0]; return [x, y];
+}

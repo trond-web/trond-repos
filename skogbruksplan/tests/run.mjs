@@ -1,6 +1,6 @@
 // Kjør med: node tests/run.mjs
 import assert from 'node:assert/strict';
-import { utmTilGeo, geoTilUtm, arealM2, punktIGeometri } from '../js/proj.js';
+import { utmTilGeo, geoTilUtm, arealM2, punktIGeometri, etikettPunkt } from '../js/proj.js';
 import { parseSosi, lagSosi } from '../js/sosi.js';
 import { STANDARD_INNSTILLINGER, normaliserBestand, framskriv, foreslaaForEiendom, treslagFraSR16, foreslaaTiltak, laavesteHogstalder, sammendrag, tolkHogstklasse, tolkTreslag } from '../js/model.js';
 import { lesGeojson, lesCsv, lesSosi, slaaSammen } from '../js/importers.js';
@@ -405,6 +405,14 @@ test('Datagrunnlag: alder på kilder og feil som ikke stopper', async () => {
   const r = await hentDatagrunnlag(plan, { hvilke: ['nvdb', 'ssb'], kommunenr: '3238', nyId: () => `id${n++}`, hent: async () => { throw new Error('nede'); } });
   assert.equal(r.feil.length, 2);
   assert.ok(plan.datakilder && !plan.datakilder.ssb);
+});
+
+test('Etikettpunkt ligger inne i en L-formet flate', () => {
+  const L = { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 2], [2, 2], [2, 10], [0, 10], [0, 0]]].map((r) => r.map(([x, y]) => [11 + x / 1000, 60 + y / 2000])) };
+  const p = etikettPunkt(L);
+  assert.ok(punktIGeometri(p, L));
+  const mp = { type: 'MultiPolygon', coordinates: [L.coordinates, [[[12, 61], [12.0001, 61], [12.0001, 61.0001], [12, 61]]]] };
+  assert.ok(punktIGeometri(etikettPunkt(mp), L), 'bruker største del');
 });
 
 await Promise.all(venter);
