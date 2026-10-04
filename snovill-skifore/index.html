@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snøvill Skiføre</title>
+<meta name="description" content="Snøvill sin skiføre-radar for Sjusjøen, Øyerfjellet og Nordseter – 10 dagers sannsynlighet for skiføre fra Yr, Storm, Netatmo og Sporet.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2a78d6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Snøvill">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="snowCanvas" aria-hidden="true"></canvas>
+
+<div class="app">
+  <header class="hero">
+    <div class="hero-mascot" id="mascot" aria-hidden="true">⛄</div>
+    <div class="hero-text">
+      <h1>Snøvill Skiføre</h1>
+      <p class="tagline" id="tagline">Hei, Snøvill! Jeg rister værmodellene og ser om det blir skiføre …</p>
+    </div>
+    <div class="hero-meter" id="heroMeter" role="img" aria-label="Snøvill-indeks">
+      <div class="meter-ring"><span id="heroIndex">–</span><small>%</small></div>
+      <div class="meter-label">Snøvill-indeks<br><small>beste sjanse neste 10 dager</small></div>
+    </div>
+  </header>
+
+  <nav class="toolbar">
+    <div class="sources" id="sourceStatus" aria-live="polite"></div>
+    <div class="toolbar-actions">
+      <button class="btn" id="refreshBtn" type="button">🔄 Oppdater</button>
+      <button class="btn btn-ghost" id="settingsBtn" type="button" aria-expanded="false" aria-controls="settings">⚙️ Innstillinger</button>
+    </div>
+  </nav>
+
+  <section class="card settings" id="settings" hidden>
+    <h2>⚙️ Innstillinger</h2>
+    <div class="settings-grid">
+      <label class="field">
+        <span>Snødybde som trengs for oppkjørte spor</span>
+        <span class="range-row"><input type="range" id="thresholdInput" min="10" max="50" step="5" value="25"> <output id="thresholdOut">25 cm</output></span>
+      </label>
+      <div class="field">
+        <span>Snødybde i dag (start for beregningen)</span>
+        <div id="baseDepthInputs" class="base-depth"></div>
+        <small class="hint">«Auto» gjetter ut fra når Sporet sist meldte preparering.</small>
+      </div>
+      <label class="field">
+        <span>Netatmo access token (valgfritt)</span>
+        <input type="password" id="netatmoToken" placeholder="Lim inn token fra dev.netatmo.com" autocomplete="off">
+        <small class="hint">Lag en app på <a href="https://dev.netatmo.com/apps" target="_blank" rel="noopener">dev.netatmo.com</a>, bruk «Token generator» med scope <code>read_station</code>. Tokenet lagres kun i din nettleser og varer ca. 3 timer.</small>
+      </label>
+    </div>
+    <div class="settings-actions">
+      <button class="btn" id="saveSettings" type="button">Lagre og regn ut på nytt</button>
+    </div>
+  </section>
+
+  <section class="best-day card" id="bestDay" hidden></section>
+
+  <section class="card watch" id="watch">
+    <div class="watch-head">
+      <div>
+        <h2>🔔 Løypevarsler</h2>
+        <p class="hint">Få beskjed når løypemaskinen har kjørt spor i nærheten av deg (data fra Sporet.no).</p>
+      </div>
+      <button class="btn" id="watchToggle" type="button" aria-pressed="false">Slå på varsler</button>
+    </div>
+    <div class="watch-controls">
+      <label class="field-inline">
+        <span>Hvor?</span>
+        <select id="watchPlace">
+          <option value="me">📍 Der jeg er</option>
+          <option value="sjusjoen">Sjusjøen</option>
+          <option value="oyerfjellet">Øyerfjellet</option>
+          <option value="nordseter">Nordseter</option>
+        </select>
+      </label>
+      <label class="field-inline">
+        <span>Radius</span>
+        <select id="watchRadius">
+          <option value="3">3 km</option>
+          <option value="5">5 km</option>
+          <option value="10" selected>10 km</option>
+          <option value="20">20 km</option>
+        </select>
+      </label>
+      <button class="btn btn-ghost" id="watchTest" type="button">🧪 Test varsel</button>
+    </div>
+    <p class="watch-status" id="watchStatus" aria-live="polite">Varsler er av.</p>
+    <ul class="watch-list" id="watchList"></ul>
+    <details class="watch-help">
+      <summary>Hvordan virker varslene?</summary>
+      <ul>
+        <li>Mens appen er åpen (også i bakgrunnen) sjekkes Sporet hvert 5. minutt, og du får varsel når en løype innenfor radiusen er kjørt de siste 6 timene.</li>
+        <li><strong>Android / Chrome / Edge:</strong> installer appen («Legg til på startskjermen»). Da kan nettleseren også sjekke av og til når appen er lukket. Hvor ofte bestemmer nettleseren selv, ofte noen ganger i døgnet.</li>
+        <li><strong>iPhone:</strong> åpne siden i Safari → Del → «Legg til på Hjem-skjerm», og åpne appen derfra. Varsler virker fra iOS 16.4 mens appen er åpen.</li>
+        <li><strong>Push også når appen er lukket:</strong> installer <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a>-appen og abonner på Snøvill-emnet ditt. En GitHub-jobb sjekker Sporet hvert 10. minutt for Sjusjøen, Øyerfjellet og Nordseter og sender push (stille om natta).</li>
+        <li>Posisjonen din brukes bare i nettleseren og sendes kun som et kartutsnitt til Sporet.no.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section id="resorts" class="resorts" aria-live="polite">
+    <div class="loading card"><span class="spinner"></span> Henter snødrømmer fra Yr, Storm, Netatmo og Sporet …</div>
+  </section>
+
+  <section class="card chart-card">
+    <div class="chart-head">
+      <h2>❄️ Beregnet snødybde – neste 10 dager</h2>
+      <div class="legend" id="chartLegend"></div>
+    </div>
+    <div class="chart-wrap" id="chartWrap">
+      <svg id="depthChart" role="img" aria-label="Linjediagram over beregnet snødybde per sted"></svg>
+      <div class="tooltip" id="chartTip" hidden></div>
+    </div>
+    <details class="table-view">
+      <summary>Vis som tabell</summary>
+      <div id="depthTable"></div>
+    </details>
+  </section>
+
+  <section class="card how">
+    <h2>🧪 Hvordan regner Snøvill-maskinen?</h2>
+    <ol>
+      <li><strong>Yr (MET Norge)</strong> og <strong>Storm (StormGeo via TV 2 Vær)</strong> gir nedbør og temperatur time for time for hvert sted.</li>
+      <li>Nedbøren deles i snø og regn etter temperatur (helt snø under 0 °C, helt regn over +2 °C). 1 mm nedbør ≈ 1 cm snø.</li>
+      <li>En liten snømodell legger på nysnø, smelter med plussgrader (≈1,2 cm per graddøgn), lar regn spise snø og lar snøen sette seg ~3 % i døgnet.</li>
+      <li>For å få en <em>sannsynlighet</em> kjøres 30 varianter: begge modellene × fem temperaturavvik (som vokser jo lenger frem vi ser) × tre nedbørsmengder. Andelen varianter som gir nok snø = sjansen for skiføre.</li>
+      <li><strong>Sporet.no</strong> viser når løypene sist ble kjørt, og brukes til å gjette hvor mye snø som ligger der i dag. <strong>Netatmo</strong> viser hva hyttenaboene måler akkurat nå.</li>
+    </ol>
+    <p class="hint">Dette er en morsom gjetning, ikke en garanti. Snøvill tar ikke ansvar for bortkastede feriedager eller ødelagte skisåler. 😇</p>
+  </section>
+
+  <footer>
+    Data: <a href="https://api.met.no" target="_blank" rel="noopener">MET Norge / Yr</a> (CC BY 4.0) ·
+    <a href="https://www.tv2.no/vaer" target="_blank" rel="noopener">Storm / TV 2 Vær</a> ·
+    <a href="https://weathermap.netatmo.com" target="_blank" rel="noopener">Netatmo</a> ·
+    <a href="https://sporet.no" target="_blank" rel="noopener">Sporet.no</a>
+  </footer>
+</div>
+
+<script src="sporet-watch.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "appUrl": "https://trond-web.github.io/trond-repos/snovill-skifore/",
+  "stilleTimer": { "fra": 22, "til": 6 },
+  "steder": [
+    { "navn": "Sjusjøen", "lat": 61.1547, "lon": 10.7019, "radiusKm": 5 },
+    { "navn": "Øyerfjellet", "lat": 61.2788, "lon": 10.564, "radiusKm": 5 },
+    { "navn": "Nordseter", "lat": 61.1864, "lon": 10.6194, "radiusKm": 4 }
+  ]
+}
