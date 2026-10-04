@@ -158,7 +158,15 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, he
   await attributter('sr16', 'SRVTRESLAG', sr16, 'gid', 'sr16', 'Henter SR16-verdier');
   const sr16Data = sr16.filter((s) => s.attr);
   sr16Data.forEach((s) => { s.bbox = T.bbox(s.geometry); });
-  logg('sr16', 'ok', `SR16: ${sr16Data.length} skogflater`);
+  // Fjernmålingsår og årsversjon finnes bare i HTML-svaret; én spørring over hele eiendommen holder.
+  let sr16Aar = null;
+  try {
+    const html = await hentTekst(hent, `${NIBIO}/sr16?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:25833&BBOX=${ub.join(',')}&STYLES=&REQUEST=GetFeatureInfo&LAYERS=SRVTRESLAG&QUERY_LAYERS=SRVTRESLAG&WIDTH=1000&HEIGHT=1000&X=500&Y=500&RADIUS=bbox&FEATURE_COUNT=5000&INFO_FORMAT=text/html`);
+    const aar = [...html.matchAll(/3D-fjernmålingsår<\/td><td><b>(\d{4})/g)].map((m) => +m[1]).sort((a, b) => a - b);
+    const versjon = [...html.matchAll(/Årsversjon<\/td><td><b>(\d{4})/g)].map((m) => +m[1]);
+    if (aar.length) sr16Aar = { fra: aar[0], til: aar.at(-1), median: aar[Math.floor(aar.length / 2)], versjon: versjon.length ? Math.max(...versjon) : null };
+  } catch { /* årstall er nyttig, men ikke nødvendig */ }
+  logg('sr16', 'ok', `SR16: ${sr16Data.length} skogflater${sr16Aar ? `, målt ${sr16Aar.fra === sr16Aar.til ? sr16Aar.fra : `${sr16Aar.fra}–${sr16Aar.til}`}` : ''}`);
 
   // 4. MiS
   logg('mis', 'aktiv', 'Henter miljøregistreringer (MiS) …');
@@ -277,7 +285,16 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, he
   logg('bygg', 'ok', `${bestand.length} bestand på ${skogDaa.toFixed(0)} daa skog${flagget ? `, ${flagget} merket for kontroll` : ''}`);
   if (!bestand.length) throw new Error('Fant ingen skogdata innenfor eiendommen. Er eiendommen skogkledd?');
 
+  const naa = new Date().toISOString();
+  const oppdatert = teiger.map((t) => t.properties?.oppdateringsdato).filter(Boolean).sort();
+  const planAar = [...new Set(plan.map((p) => p.attr?.regaar_korr).filter(Boolean))].sort();
+  const kilder = {
+    eiendom: { id: 'eiendom', navn: 'Eiendomsgrense (matrikkelen)', eier: 'Kartverket', hentet: naa, antall: teiger.length, dataFra: oppdatert[0]?.slice(0, 10) || null, dataTil: oppdatert.at(-1)?.slice(0, 10) || null, krav: [3] },
+    plan: { id: 'plan', navn: 'Tidligere skogbruksplan', eier: 'NIBIO', hentet: naa, antall: plan.length, dataFra: planAar[0] ? `${planAar[0]}` : null, dataTil: planAar.at(-1) ? `${planAar.at(-1)}` : null, krav: [3] },
+    sr16: { id: 'sr16', navn: 'Skogressurskart SR16', eier: 'NIBIO', hentet: naa, antall: sr16Data.length, dataFra: sr16Aar ? `${sr16Aar.fra}` : null, dataTil: sr16Aar ? `${sr16Aar.til}` : null, versjon: sr16Aar?.versjon || null, krav: [3] },
+  };
   return {
+    kilder,
     eiendom: {
       navn: `${kommune.navn} ${gnr}/${bnr}${festenr ? `/${festenr}` : ''}`,
       kommune: kommune.navn, kommunenr: kommune.nr, gnrbnr: `${gnr}/${bnr}${festenr ? `/${festenr}` : ''}`,
@@ -287,7 +304,8 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, he
     metadata: {
       laget: new Date().toISOString(),
       eiendomDaa, skogDaa, antallFraPlan: plan.length, antallSr16: sr16Data.length, mis: mis.length,
-      planRegistrert: [...new Set(plan.map((p) => p.attr?.regaar_korr).filter(Boolean))].join(', ') || null,
+      planRegistrert: planAar.join(', ') || null,
+      sr16Aar,
       kilder: ['Kartverket eiendom-API', 'NIBIO skogbruksplan/hogstklasser', 'NIBIO SR16 (SRV)', 'NIBIO MiS'],
     },
   };

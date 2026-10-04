@@ -60,6 +60,27 @@ Appen henter dataene direkte fra Kartverket og NIBIO i nettleseren (`js/generato
 Underveis vises fremdriften for hvert steg. Når planen er ferdig, vises et sammendrag og knappen
 **«Åpne skogbruksplanen»**. Alle planer lagres lokalt under «Mine skogbruksplaner», og du kan bytte mellom dem.
 
+## Datagrunnlag (dashboard i PEFC-fanen)
+
+Når en plan lages fra kommune/gnr/bnr hentes alt datagrunnlaget automatisk: eiendomsgrense (Kartverket), tidligere skogbruksplan, SR16 og MiS (NIBIO), verneområder, naturtyper (DN-HB13, NiN, utvalgte), artsområder og friluftslivsområder (Miljødirektoratet), kulturminner (Riksantikvaren), skogsbilveier (NVDB) og tømmerpriser (SSB). Dashboardet «Datagrunnlag» viser for hver kilde når den sist ble hentet, hvor gamle selve dataene er, og hvilke PEFC-kravpunkter den dekker:
+
+- grønn = hentet siste 90 dager, gul = 90–365 dager, rød = eldre, mangler eller feilet
+- egne varsler når SR16 er målt for over 10 år siden eller forrige takst er over 15 år gammel
+- manuelle registreringer (takst, MiS-år, rovfugl/tiurleik, vurderte kravpunkter, klareringer) vises ved siden av
+- «Oppdater alle» henter miljødata, veier og priser på nytt
+
+## Verdiberegning (fanen «Verdi»)
+
+- **Slaktverdi**: stående volum × rotnetto (pris − driftskostnad), totalt og for hogstklasse V.
+- **Jordverdi** (Faustmann): LEV = (R(T) − Σ K·(1+r)^(T−t)) / ((1+r)^T − 1), med optimal omløpstid, aldri under PEFCs nedre aldersgrense.
+- **Skogverdi** (forventningsverdi): per bestand nåverdien av hogst på beste tidspunkt pluss jordverdien etterpå.
+- **Eiendomsverdi**: skogverdi + kapitaliserte andre inntekter og faste kostnader, inkludert planlagt veivedlikehold.
+- **Nåverdi av tiltaksplanen** i valgt horisont.
+- Følsomhetstabell for renten (2–5 %), verdi per hogstklasse og en sorterbar tabell per bestand med optimalt hogstår.
+- Tømmerprisene kalibreres mot SSBs gjennomsnittspris (tabell 03794/03895) for kommunen, eller for fylket når kommunen har solgt under 5000 m³, med samme forhold mellom treslagene som før.
+- Bestand i nøkkelbiotoper, BVO og verneområder regnes uten tømmerproduksjon.
+- Alle beløp er reelle og før skatt. Dette er et estimat, ikke en takst.
+
 ## PEFC skogstandard (fanen «PEFC»)
 
 Bygger på **Norsk PEFC Skogstandard, PEFC N 02:2022** (gjeldende fra 1. mars 2023). Kravpunktene, aldertabellen og

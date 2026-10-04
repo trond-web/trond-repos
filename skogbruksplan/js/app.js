@@ -14,6 +14,9 @@ import { initVeier } from './veier-ui.js';
 import { lagInnsikt } from './innsikt.js';
 import { initKommando } from './kommando.js';
 import { initPefc } from './pefc-ui.js';
+import { initVerdi, utenProduksjon } from './verdi-ui.js';
+import { hentDatagrunnlag } from './datagrunnlag.js';
+import { kalibrerPriser, verdiberegning, STANDARD_VERDI } from './verdi.js';
 import { VEIKLASSER, VEDLIKEHOLDSTYPER } from './veier.js';
 import { KRAVPUNKTER } from './pefc.js';
 
@@ -269,7 +272,8 @@ function avsluttGrenseRedigering() { redigerMarkorer.forEach((m) => m.remove());
 let kommuneVisning = null;
 let veiVisning = null;
 let pefcVisning = null;
-const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', pefc: 'PEFC skogstandard', felt: 'Felt', data: 'Data og oppsett' };
+let verdiVisning = null;
+const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', pefc: 'PEFC skogstandard', felt: 'Felt', data: 'Data og oppsett' };
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 function visFane(navn) {
@@ -281,6 +285,7 @@ function visFane(navn) {
   $$('.faner button').forEach((b) => b.classList.toggle('aktiv', b.dataset.fane === navn));
   $$('.fane').forEach((f) => { f.hidden = f.id !== `fane-${navn}`; });
   if (navn === 'framskriving') tegnFramskriving();
+  if (navn === 'verdi') verdiVisning?.tegn();
   if (navn === 'planer') { tegnPlanListe(); lastKommuner(); }
   $('#faneTittel').textContent = FANE_TITLER[navn] || navn;
   $('.panel-innhold').scrollTop = 0;
@@ -714,6 +719,21 @@ function pefcRapport() {
     ${aktuelle.length ? `<h3>Avvik og oppfølging</h3><table><tr><th>Krav</th><th>Funn</th><th>Beskrivelse</th></tr>${aktuelle.map((f) => `<tr><td>K${f.krav}</td><td>${esc(f.tittel)}</td><td>${esc(f.tekst)}</td></tr>`).join('')}</table>` : ''}`;
 }
 
+function verdiRapport() {
+  if (!S.bestand.length) return '';
+  const v = { ...STANDARD_VERDI, ...S.verdi };
+  const r = verdiberegning(S, v, { iAar: IAAR, utenProduksjonIder: utenProduksjon(S) });
+  const m = (x) => `${fmt(x / 1e6, 2)} mill kr`;
+  return `<h2>Verdiberegning</h2><table>
+    <tr><td>Eiendomsverdi (${fmt(v.rente, 1)} % rente)</td><td class="tall">${m(r.eiendom)}</td></tr>
+    <tr><td>Skogverdi (forventningsverdi)</td><td class="tall">${m(r.skog)}</td></tr>
+    <tr><td>Slaktverdi, alt stående volum</td><td class="tall">${m(r.slakt)}</td></tr>
+    <tr><td>Slaktverdi, hogstklasse V</td><td class="tall">${m(r.hogstmodenSlakt)}</td></tr>
+    <tr><td>Jordverdi</td><td class="tall">${m(r.jord)}</td></tr>
+    <tr><td>Nåverdi av tiltaksplanen, ${v.horisont} år</td><td class="tall">${m(r.plan)}</td></tr></table>
+    <p>Tømmerpriser: gran ${fmt(S.innstillinger.pris.G)}, furu ${fmt(S.innstillinger.pris.F)}, lauv ${fmt(S.innstillinger.pris.L)} kr/m³${v.ssb ? ` (SSB ${v.ssb.aar})` : ''}. Reelle verdier før skatt – et beregnet estimat, ikke en takst.</p>`;
+}
+
 function skrivRapport() {
   const s = sammendrag(S.bestand, inn());
   const e = S.eiendom;
@@ -736,6 +756,7 @@ function skrivRapport() {
     ${(S.veier?.veier || []).length ? `<h2>Veier</h2><table><tr><th>Vei</th><th>Klasse</th><th>Status</th><th class="tall">Lengde m</th><th>Tilstand</th><th>Eiere</th></tr>
     ${S.veier.veier.map((v) => `<tr><td>${esc(v.navn)}</td><td>${esc(VEIKLASSER_NAVN(v.klasse))}</td><td>${esc(v.status)}</td><td class="tall">${fmt(v.lengde)}</td><td>${esc(v.tilstand || '')}</td><td>${esc((v.eiere || []).map((x) => `${x.navn} ${x.andel} %`).join(', '))}</td></tr>`).join('')}</table>
     ${(S.veier.vedlikehold || []).filter((l) => l.status === 'planlagt').length ? `<h3>Planlagt veivedlikehold</h3><table><tr><th>År</th><th>Vei</th><th>Tiltak</th><th class="tall">Kostnad kr</th></tr>${S.veier.vedlikehold.filter((l) => l.status === 'planlagt').sort((a, b) => a.aar - b.aar).map((l) => `<tr><td>${l.aar}</td><td>${esc(S.veier.veier.find((v) => v.id === l.veiId)?.navn)}</td><td>${esc(VEDLIKEHOLD_NAVN(l.type))}</td><td class="tall">${fmt(l.kostnad)}</td></tr>`).join('')}</table>` : ''}` : ''}
+    ${verdiRapport()}
     ${pefcRapport()}
     <p style="font-size:9pt;color:#555">Volum- og verdiberegninger er forenklede estimater basert på registrerte data og innstilte priser.</p>`;
   window.print();
@@ -817,6 +838,7 @@ function endret({ kart: kartEndret = false, zoom = false } = {}) {
   tegnBestandTabell();
   tegnTiltak();
   if (!$('#fane-framskriving').hidden) tegnFramskriving();
+  if (!$('#fane-verdi').hidden && !document.activeElement?.closest?.('#fane-verdi')) verdiVisning?.tegn();
   if (valgtId && !finnBestand(valgtId)) { valgtId = null; visDetalj(); }
 }
 
@@ -883,7 +905,18 @@ async function tegnPlanListe() {
 const GEN_STEG = [
   ['eiendom', 'Eiendomsgrense (Kartverket)'], ['plan', 'Tidligere skogbruksplan (NIBIO)'],
   ['sr16', 'Skogressurskart SR16 (NIBIO)'], ['mis', 'Miljøregistreringer (MiS)'], ['bygg', 'Bestand og sammenligning'],
+  ['miljo', 'Miljødata til PEFC (NIBIO, Miljødirektoratet, Riksantikvaren)'], ['nvdb', 'Skogsbilveier (NVDB)'], ['ssb', 'Tømmerpriser (SSB)'],
 ];
+
+// Henter PEFC-miljødata, veier og tømmerpriser for planen som er åpen (fra PEFC-, Veier- og Verdi-fanen).
+async function hentDataForAktivPlan(hvilke, logg) {
+  let kommunenr = S.eiendom.kommunenr;
+  if (!kommunenr && S.eiendom.kommune) kommunenr = finnKommune(S.eiendom.kommune, await lastKommuner())?.nr;
+  const r = await hentDatagrunnlag(S, { hvilke, nyId, kommunenr, logg });
+  if (kommunenr && !S.eiendom.kommunenr) S.eiendom.kommunenr = kommunenr;
+  endret({ kart: true });
+  return r;
+}
 
 function lastTurf() {
   if (window.turf) return Promise.resolve(window.turf);
@@ -931,7 +964,16 @@ async function startGenerering(e) {
   try {
     const turf = await lastTurf();
     const plan = await genererPlan({ kommune, gnr, bnr, festenr }, { turf, iAar: IAAR, logg: (st, status, t) => { aktivtSteg = st; logg(st, status, t); } });
-    const ny = { versjon: 1, planId: nyId('p'), eiendom: plan.eiendom, bestand: plan.bestand, registreringer: [], innstillinger: klon(S.innstillinger), metadata: plan.metadata };
+    const ny = { versjon: 1, planId: nyId('p'), eiendom: plan.eiendom, bestand: plan.bestand, registreringer: [], innstillinger: klon(S.innstillinger), metadata: plan.metadata, datakilder: { ...plan.kilder } };
+    // Alt datagrunnlag for PEFC, veier og verdi hentes med en gang. Feil her stopper ikke planen.
+    const dgSteg = ['miljo', 'nvdb', 'ssb'];
+    dgSteg.forEach((st) => logg(st, 'aktiv', 'Henter …'));
+    const dg = await hentDatagrunnlag(ny, { hvilke: dgSteg, nyId, kommunenr: kommune.nr, logg: (st, t, ok) => logg(st, ok === true ? 'ok' : ok === false ? 'feil' : 'aktiv', t) });
+    let kalibrert = null;
+    if (ny.verdi?.ssb) {
+      kalibrert = kalibrerPriser(ny.verdi.ssb, ny.innstillinger.pris);
+      if (kalibrert) ny.innstillinger.pris = { ...ny.innstillinger.pris, G: kalibrert.G, F: kalibrert.F, L: kalibrert.L };
+    }
     await lagrePlan(ny);
     await tegnPlanListe();
     const vol = ny.bestand.reduce((s, b) => s + (b.volumDaa || 0) * b.areal, 0);
@@ -944,7 +986,10 @@ async function startGenerering(e) {
         <div><b>${ny.bestand.length}</b><span>bestand</span></div>
         <div><b>${fmt(vol)} m³</b><span>stående volum (SR16)</span></div>
         <div><b>${kontroll}</b><span>trolig hogd siden forrige takst – kontroller</span></div>
+        <div><b>${(ny.pefc?.objekter || []).length}</b><span>miljøobjekter til PEFC</span></div>
+        <div><b>${fmt((ny.veier?.veier || []).reduce((s, v) => s + v.lengde, 0) / 1000, 1)} km</b><span>vei fra NVDB</span></div>
       </div>
+      <p class="hint" style="margin:0">${kalibrert ? `Tømmerpriser kalibrert mot SSB (${esc(kalibrert.grunnlag.navn)}, ${fmt(kalibrert.grunnlag.pris)} kr/m³): gran ${fmt(kalibrert.G)}, furu ${fmt(kalibrert.F)}, lauv ${fmt(kalibrert.L)} kr/m³.` : 'Tømmerpriser fra SSB kunne ikke hentes – standardpriser er brukt.'}${dg.feil.length ? ` Noen kilder svarte ikke (${esc(dg.feil.join('; '))}) – prøv «Oppdater alle» i PEFC-fanen senere.` : ''}</p>
       <p class="hint" style="margin:0">${m.antallFraPlan ? `Bestandsgrenser fra skogbruksplan registrert ${esc(m.planRegistrert || '')}, oppdatert med SR16.` : 'Fant ingen tidligere skogbruksplan – bestandene er laget fra SR16-flater.'} Utkastet må kontrolleres i felt før det brukes som grunnlag for hogst.</p>
       <button class="knapp primar" type="button" id="aapneNyPlan">Åpne skogbruksplanen for ${esc(ny.eiendom.navn)} →</button>
     </div>`;
@@ -961,7 +1006,7 @@ async function startGenerering(e) {
 }
 
 // ---------------------------------------------------------------- kommandopalett
-const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', pefc: '◈', felt: '◉', data: '⛁' };
+const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', pefc: '◈', felt: '◉', data: '⛁' };
 let planlisteCache = [];
 function kommandoValg(q) {
   listPlaner().then((l) => { planlisteCache = l; });
@@ -979,6 +1024,8 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Analyser en kommune', under: 'Hogstmoden skog, lukket hogst, ungskogpleie', sok: 'kommuneanalyse', utfor: () => { visFane('kommune'); $('#komKommune').focus(); } },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Hent veier fra NVDB', sok: 'vei skogsbilvei', utfor: () => { visFane('veier'); $('#veiNvdbBtn').click(); } },
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'Hent miljødata (PEFC)', under: 'Nøkkelbiotoper, naturtyper, friluftsliv, kulturminner', sok: 'pefc sertifisering miljø nøkkelbiotop', utfor: () => { visFane('pefc'); $('#pefcHentBtn').click(); } },
+    { gruppe: 'Handlinger', ikon: '◈', tittel: 'Oppdater alt datagrunnlag', under: 'Miljødata, NVDB-veier og SSB-priser', sok: 'pefc data oppdater sist hentet ssb nvdb', utfor: () => { visFane('pefc'); $('#pefcOppdaterAlle')?.click(); } },
+    { gruppe: 'Handlinger', ikon: '¤', tittel: 'Verdiberegning', under: 'Eiendomsverdi, slaktverdi, jordverdi og nåverdi', sok: 'verdi nåverdi slaktverdi takst lev faustmann', utfor: () => visFane('verdi') },
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'PEFC-status og avvik', sok: 'pefc skogstandard krav avvik sertifisering', utfor: () => visFane('pefc') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Ta sikkerhetskopi', sok: 'backup eksport lagre', utfor: () => eksporter('backup') },
@@ -1034,6 +1081,12 @@ function kobleHendelser() {
   pefcVisning = initPefc({
     kart, hentPlan: () => S, endret, melding, nyId,
     settKartKlikk: (fn) => { kartKlikk = fn; },
+    visBestand: (id) => { velgBestand(id); visFane('bestand'); },
+    hentData: hentDataForAktivPlan,
+  });
+  verdiVisning = initVerdi({
+    hentPlan: () => S, endret: () => { lagreSnart(); tegnOversikt(); }, melding, iAar: IAAR,
+    hentSsb: () => hentDataForAktivPlan(['ssb']),
     visBestand: (id) => { velgBestand(id); visFane('bestand'); },
   });
   kommuneVisning = initKommune({ kart, melding, innstillinger: inn, lastKommuner, finnKommune, lagPlanFor });

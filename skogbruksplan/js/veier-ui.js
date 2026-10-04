@@ -2,7 +2,7 @@
 // (bom, stikkrenne, snuplass …), vedlikeholdslogg og -plan, kostnadsfordeling mellom eiere og terrengtransport.
 import {
   VEIKLASSER, TILSTAND, PUNKTTYPER, VEDLIKEHOLDSTYPER, STANDARD_VEIINNSTILLINGER,
-  lengdeM, terrengtransport, foreslaaVedlikehold, vedlikeholdKostnad, fordelKostnad, nyVeiKostnad, hentNvdbVeier,
+  lengdeM, terrengtransport, foreslaaVedlikehold, vedlikeholdKostnad, fordelKostnad, nyVeiKostnad, hentNvdbVeier, tomtVeiregister,
 } from './veier.js';
 import { fmt } from './charts.js';
 
@@ -13,9 +13,7 @@ const opsj = (liste, valgt) => liste.map(([v, t]) => `<option value="${esc(v)}" 
 const IAAR = new Date().getFullYear();
 const STATUS = { eksisterende: 'Eksisterende', planlagt: 'Planlagt ny vei', bygges: 'Under bygging' };
 
-export function tomtVeiregister() {
-  return { veier: [], punkter: [], vedlikehold: [], innstillinger: klon(STANDARD_VEIINNSTILLINGER) };
-}
+export { tomtVeiregister };
 
 export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk, visBestand }) {
   const lag = L.layerGroup().addTo(kart);
@@ -314,6 +312,7 @@ export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk
     const knapp = $('#veiNvdbBtn'); knapp.disabled = true;
     try {
       const res = await hentNvdbVeier(grense, { medPrivate: $('#veiMedPrivate').checked, logg: (t) => { $('#veiNvdbStatus').textContent = t; } });
+      S.datakilder = { ...(S.datakilder || {}), nvdb: res.kilde };
       const r = reg();
       let nye = 0; let oppdatert = 0;
       for (const v of res.veier) {

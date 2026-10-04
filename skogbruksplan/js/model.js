@@ -23,9 +23,9 @@ export const TILTAKSTYPER = {
 };
 
 export const STANDARD_INNSTILLINGER = {
-  pris: { G: 480, F: 440, L: 330 },            // kr/m³ snittpris tømmer+massevirke
-  drift: { G: 160, F: 165, L: 180 },           // kr/m³ hogst og utkjøring, sluttavvirkning
-  driftTynning: 250,                           // kr/m³ i tynning
+  pris: { G: 620, F: 570, L: 430 },            // kr/m³ snittpris tømmer+massevirke (kalibreres mot SSB når planen lages)
+  drift: { G: 180, F: 185, L: 200 },           // kr/m³ hogst og utkjøring, sluttavvirkning
+  driftTynning: 280,                           // kr/m³ i tynning
   tynningUttak: 0.25,                          // andel av volum som tas ut i tynning
   kostPerDaa: { planting: 1900, suppleringsplanting: 800, markberedning: 450, ungskogpleie: 650, stammekvisting: 900, gjodsling: 600, groftrensk: 300 },
   skogfondProsent: 15,                         // 4–40 % i henhold til skogfondsordningen

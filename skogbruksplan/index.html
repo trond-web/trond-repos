@@ -28,6 +28,7 @@
     <button role="tab" data-fane="tiltak" title="Tiltak"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11"/><circle cx="5" cy="18" r="1.3"/></svg><span>Tiltak</span></button>
     <button role="tab" data-fane="framskriving" title="Framskriving"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18"/><path d="M4 16c3-1 4-6 7-6s4 3 9-6"/><path d="M16 4h4v4"/></svg><span>Prognose</span></button>
     <button role="tab" data-fane="veier" title="Veier"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21 10.5 3M16 21 13.5 3"/><path d="M12 7v2M12 12.5v2M12 18v2"/></svg><span>Veier</span></button>
+    <button role="tab" data-fane="verdi" title="Verdi"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="10" cy="7" rx="6" ry="2.5"/><path d="M4 7v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V7"/><path d="M8 16.3c.6.1 1.3.2 2 .2 3.3 0 6-1.1 6-2.5"/><path d="M14 13.6c.6-.1 1.3-.1 2-.1 2.2 0 4 .8 4 1.8v3.2c0 1-1.8 1.8-4 1.8s-4-.8-4-1.8v-1.5"/></svg><span>Verdi</span></button>
     <button role="tab" data-fane="pefc" title="PEFC skogstandard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg><span>PEFC</span></button>
     <button role="tab" data-fane="felt" title="Felt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span>Felt</span></button>
     <button role="tab" data-fane="data" title="Data"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.5"/><path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13"/><path d="M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5"/></svg><span>Data</span></button>
@@ -263,6 +264,10 @@
     <!-- PEFC -->
     <div class="fane" id="fane-pefc" hidden>
       <section class="kort pefc-topp"><div id="pefcStatus" class="pefc-status"></div></section>
+      <section class="kort" aria-labelledby="dgTittel">
+        <h3 id="dgTittel">Datagrunnlag</h3>
+        <div id="pefcDatagrunnlag"></div>
+      </section>
       <div class="kort">
         <h3>Offentlige miljødata</h3>
         <p class="hint">Henter nøkkelbiotoper (MiS), verneområder, viktige naturtyper (A/B og NiN), utvalgte naturtyper, funksjonsområder for rødlistede og prioriterte arter, viktige friluftslivsområder og kulturminner for eiendommen. Rovfuglreir og tiurleiker er ikke åpent tilgjengelige, og må registreres manuelt.</p>
@@ -301,6 +306,43 @@
         <div id="pefcKrav"></div>
       </div>
       <p class="fotnote">Basert på Norsk PEFC Skogstandard (PEFC N 02:2022), gjeldende fra 1. mars 2023. SkogIQ kontrollerer det som kan kontrolleres med planens data, og gir sjekklister for resten. Skogeier er ansvarlig for etterlevelsen, og gruppesertifikatholderen kan ha egne rutiner og krav.</p>
+    </div>
+
+    <!-- VERDI -->
+    <div class="fane" id="fane-verdi" hidden>
+      <div class="kpi-rad" id="verdiKpi"></div>
+      <div class="kort">
+        <h3>Forutsetninger</h3>
+        <div id="verdiForutsetninger" class="skjema to-kol"></div>
+      </div>
+      <div class="kort">
+        <h3>Tømmerpriser og driftskostnader</h3>
+        <div id="verdiPriser"></div>
+      </div>
+      <div class="kort">
+        <h3>Skogverdi per hogstklasse <span class="hint">(1000 kr)</span></h3>
+        <div id="verdiDiagram"></div>
+      </div>
+      <div class="kort">
+        <h3>Følsomhet for renten</h3>
+        <div id="verdiFolsomhet"></div>
+      </div>
+      <div class="kort">
+        <h3>Verdi per bestand</h3>
+        <div id="verdiTabell"></div>
+      </div>
+      <details class="kort metode">
+        <summary><b>Slik regnes verdiene</b></summary>
+        <ul class="hint">
+          <li><b>Slaktverdi</b>: stående volum × rotnetto (tømmerpris − driftskostnad). Det du ville fått om alt ble hogd i dag.</li>
+          <li><b>Jordverdi</b> (Faustmann): nåverdien av uendelig mange omløp fra snaumark, med planting og ungskogpleie som kostnader. Omløpstiden velges optimalt, men aldri under PEFCs nedre aldersgrense.</li>
+          <li><b>Skogverdi</b> (forventningsverdi): for hvert bestand nåverdien av hogst på beste tidspunkt (tidligst ved PEFCs nedre aldersgrense) pluss jordverdien etterpå. Volumet framskrives med samme vekstkurver som framskrivingen.</li>
+          <li><b>Eiendomsverdi</b>: skogverdi + andre årlige inntekter og kostnader (inkl. veivedlikehold) kapitalisert med renten.</li>
+          <li><b>Nåverdi av tiltaksplanen</b>: netto kontantstrøm fra planlagte tiltak i horisonten, diskontert.</li>
+          <li>Bestand i nøkkelbiotoper, BVO og verneområder regnes uten tømmerproduksjon.</li>
+          <li>Alle beløp er reelle (uten prisstigning) og før skatt. Skogfond, tilskudd, jakt og bygninger er ikke med med mindre du legger dem inn som andre inntekter. Verdien er et beregnet estimat – ikke en takst.</li>
+        </ul>
+      </details>
     </div>
 
     <!-- FELT -->

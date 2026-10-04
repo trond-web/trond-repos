@@ -4,7 +4,7 @@ import {
   STANDARD, TEMA, KRAVPUNKTER, ALDERSTABELL, ROVFUGLER, OBJEKTTYPER, KLARERING, HOGSTFORMER, FORYNGELSE,
   tomPefc, kontroller, kravStatus, klareringStatus, periodeTekst, arealDaa,
 } from './pefc.js';
-import { hentMiljodata } from './pefc-data.js';
+import { KILDEREKKEFOLGE } from './datagrunnlag.js';
 import { TILTAKSTYPER } from './model.js';
 import { fmt } from './charts.js';
 
@@ -18,7 +18,17 @@ const STATUS = {
   'ikke-vurdert': { navn: 'Ikke vurdert', farge: 'var(--border-sterk)' }, info: { navn: 'Info', farge: 'var(--accent)' },
 };
 
-export function initPefc({ kart, hentPlan, endret, melding, nyId, settKartKlikk, visBestand }) {
+// Status for én datakilde ut fra når den ble hentet og hvor gamle dataene er.
+export function kildeStatus(k, naa = Date.now()) {
+  if (!k || !k.hentet) return { niva: 'mangler', tekst: 'Ikke hentet' };
+  if (k.feil) return { niva: 'feil', tekst: 'Feil ved henting' };
+  const dager = Math.floor((naa - new Date(k.hentet).getTime()) / 86400000);
+  const niva = dager > 365 ? 'gammel' : dager > 90 ? 'bor' : 'fersk';
+  return { niva, dager, tekst: dager === 0 ? 'Hentet i dag' : dager === 1 ? 'Hentet i går' : `Hentet for ${dager} dager siden` };
+}
+const NIVA = { fersk: { navn: 'Oppdatert', farge: 'var(--good)' }, bor: { navn: 'Bør oppdateres', farge: 'var(--warning)' }, gammel: { navn: 'Utdatert', farge: 'var(--critical)' }, mangler: { navn: 'Mangler', farge: 'var(--critical)' }, feil: { navn: 'Feil', farge: 'var(--critical)' }, manuell: { navn: 'Manuell', farge: 'var(--accent)' } };
+
+export function initPefc({ kart, hentPlan, endret, melding, nyId, settKartKlikk, visBestand, hentData }) {
   const lag = L.layerGroup();
   let funn = []; let status = {};
   let valgtObjekt = null; let aapenKlarering = null; let tegner = null; let synlig = false;
@@ -158,9 +168,64 @@ export function initPefc({ kart, hentPlan, endret, melding, nyId, settKartKlikk,
       <p class="hint">Kilde: ${o.kilde === 'offentlig' ? 'offentlig register' : 'registrert i SkogIQ'}${o.lenke ? ` · <a href="${esc(o.lenke)}" target="_blank" rel="noopener">faktaark ↗</a>` : ''}${o.beskrivelse ? `<br>${esc(o.beskrivelse.slice(0, 400))}` : ''}</p>`;
   }
 
+  function datagrunnlagHtml() {
+    const S = hentPlan(); const p = P();
+    const dk = S.datakilder || {};
+    const aar = (a) => (a ? String(a).slice(0, 4) : null);
+    const periode = (k) => (k?.dataFra ? (aar(k.dataFra) === aar(k.dataTil) ? aar(k.dataFra) : `${aar(k.dataFra)}–${aar(k.dataTil)}`) : null);
+    const navn = { eiendom: 'Eiendomsgrense', plan: 'Tidligere skogbruksplan', sr16: 'Skogressurskart SR16', nvdb: 'Skogsbilveier', mis: 'Nøkkelbiotoper (MiS)', vern: 'Verneområder', hb13: 'Naturtyper (DN-HB13)', nin: 'Naturtyper (NiN)', utvalgte: 'Utvalgte naturtyper', art: 'Artsområder', friluft: 'Friluftslivsområder', kultur: 'Kulturminner', ssb: 'Tømmerpriser' };
+    const eier = { eiendom: 'Kartverket', plan: 'NIBIO', sr16: 'NIBIO', nvdb: 'Statens vegvesen', mis: 'NIBIO', vern: 'Miljødirektoratet', hb13: 'Miljødirektoratet', nin: 'Miljødirektoratet', utvalgte: 'Miljødirektoratet', art: 'Miljødirektoratet', friluft: 'Miljødirektoratet', kultur: 'Riksantikvaren', ssb: 'SSB' };
+    // Advarsler om alder på selve dataene
+    const dataVarsel = (id, k) => {
+      const til = Number(aar(k?.dataTil));
+      if (id === 'sr16' && til && IAAR - til > 10) return `Målt ${periode(k)} – skog kan være hogd siden`;
+      if (id === 'plan' && til && IAAR - til > 15) return `Taksert ${periode(k)} – over 15 år gammel`;
+      return null;
+    };
+    const fliser = KILDEREKKEFOLGE.map((id) => {
+      const k = dk[id]; const st = kildeStatus(k);
+      const varsel = dataVarsel(id, k);
+      return `<div class="kilde" data-niva="${st.niva}">
+        <div class="kilde-topp"><span class="prikk" style="--farge:${NIVA[st.niva].farge}"></span><b>${esc(navn[id])}</b></div>
+        <div class="kilde-eier">${esc(eier[id])}</div>
+        <div class="kilde-hentet">${esc(st.tekst)}${k?.hentet ? ` <span class="hint">${new Date(k.hentet).toLocaleDateString('nb-NO')}</span>` : ''}</div>
+        <div class="kilde-info">${k ? `${id === 'ssb' ? (k.merknad || 'Priser') : `${k.antall ?? 0} ${k.antall === 1 ? 'objekt' : 'objekter'}`}${periode(k) ? ` · data ${periode(k)}` : ''}${k.versjon ? ` · versjon ${k.versjon}` : ''}` : '–'}</div>
+        ${k?.merknad ? `<div class="kilde-info">${esc(k.merknad)}</div>` : ''}
+        ${varsel ? `<div class="kilde-varsel">${esc(varsel)}</div>` : ''}
+        ${k?.feil ? `<div class="kilde-varsel">${esc(k.feil)}</div>` : ''}
+        ${(k?.krav || []).length ? `<div class="kilde-krav">${k.krav.map(kravChip).join('')}</div>` : ''}
+      </div>`;
+    }).join('');
+    // Manuelle registreringer som standarden krever oppdatert
+    const siste = (liste) => liste.filter(Boolean).sort().at(-1) || null;
+    const kravDato = siste(Object.values(p.kravstatus || {}).map((m) => m?.dato));
+    const klarDato = siste(Object.values(p.klareringer || {}).map((k) => k?.dato));
+    const rovDato = siste(p.objekter.filter((o) => ['rovfuglreir', 'tiurleik'].includes(o.type)).map((o) => o.registrert));
+    const mr = p.eiendom.miljoregistreringAar;
+    const manuelle = [
+      ['Skogbruksplan (takst)', S.eiendom?.takstAar, S.eiendom?.takstAar ? (IAAR - S.eiendom.takstAar > 15 ? 'bor' : 'fersk') : 'mangler', 'K3: revideres hvert 15.–20. år'],
+      ['Miljøregistrering (MiS)', mr, mr ? (IAAR - mr > 15 ? 'bor' : 'fersk') : 'mangler', 'K22: revisjon vurderes hvert 15. år'],
+      ['Rovfugl og tiurleik', rovDato ? new Date(rovDato).toLocaleDateString('nb-NO') : null, rovDato ? 'manuell' : 'mangler', 'K24/K25: ikke åpne data – sjekk kilder før hogst'],
+      ['Egenvurdering av kravpunkter', kravDato ? new Date(kravDato).toLocaleDateString('nb-NO') : null, kravDato ? 'manuell' : 'mangler', `${Object.values(p.kravstatus || {}).filter((m) => m?.status).length} av 30 vurdert`],
+      ['Klarering før hogst', klarDato ? new Date(klarDato).toLocaleDateString('nb-NO') : null, klarDato ? 'manuell' : 'mangler', 'Sist oppdaterte klarering'],
+    ];
+    const tell = KILDEREKKEFOLGE.map((id) => kildeStatus(dk[id]).niva);
+    const ferske = tell.filter((n) => n === 'fersk').length;
+    const eldst = KILDEREKKEFOLGE.filter((id) => dk[id]?.hentet).sort((a, b) => dk[a].hentet.localeCompare(dk[b].hentet))[0];
+    return `<div class="datagrunnlag-topp">
+        <div><b>${ferske} av ${KILDEREKKEFOLGE.length} kilder oppdatert siste 90 dager</b><div class="hint">${eldst ? `Eldste henting: ${esc(navn[eldst])}, ${new Date(dk[eldst].hentet).toLocaleDateString('nb-NO')}.` : 'Ingen kilder er hentet ennå.'} Dataene hentes automatisk når planen lages.</div></div>
+        <button type="button" class="knapp primar" id="pefcOppdaterAlle">Oppdater alle</button>
+      </div>
+      <div id="pefcOppdaterStatus" class="hint"></div>
+      <div class="kilder">${fliser}</div>
+      <h4 class="pefc-tema">Manuelle registreringer</h4>
+      <div class="manuelle">${manuelle.map(([n, v, niva, tekst]) => `<div class="manuell"><span class="prikk" style="--farge:${NIVA[niva].farge}"></span><span><b>${esc(n)}</b><span class="hint"> ${esc(tekst)}</span></span><span class="verdi">${v ? esc(v) : 'Ikke registrert'}</span></div>`).join('')}</div>`;
+  }
+
   function tegn() {
     if (!$('#fane-pefc') || $('#fane-pefc').hidden) return;
     const p = P();
+    $('#pefcDatagrunnlag').innerHTML = datagrunnlagHtml();
     const tell = { ok: 0, 'ikke-relevant': 0, varsel: 0, avvik: 0, 'ikke-vurdert': 0 };
     for (const k of KRAVPUNKTER) tell[status[k.nr].status]++;
     const ivaretatt = tell.ok + tell['ikke-relevant'];
@@ -249,22 +314,18 @@ export function initPefc({ kart, hentPlan, endret, melding, nyId, settKartKlikk,
       for (const n of aapne) panel.querySelector(`.pefc-krav[data-krav="${n}"]`)?.setAttribute('open', '');
     }
   });
-  $('#pefcHentBtn').addEventListener('click', async () => {
-    const S = hentPlan();
-    const grense = S.eiendom.grense || (S.bestand.length ? { type: 'MultiPolygon', coordinates: S.bestand.filter((b) => b.geometri).flatMap((b) => (b.geometri.type === 'Polygon' ? [b.geometri.coordinates] : b.geometri.coordinates)) } : null);
-    if (!grense) { melding('Planen mangler eiendomsgrense og bestand.'); return; }
-    const knapp = $('#pefcHentBtn'); knapp.disabled = true;
+  async function oppdater(hvilke, statusEl) {
+    const knapper = ['#pefcHentBtn', '#pefcOppdaterAlle'].map((x) => $(x)).filter(Boolean);
+    knapper.forEach((k) => { k.disabled = true; });
     try {
-      const r = await hentMiljodata(grense, { logg: (t) => { $('#pefcHentStatus').textContent = t; } });
-      const p = P();
-      // Erstatt tidligere hentede offentlige objekter, behold egne registreringer.
-      p.objekter = [...p.objekter.filter((o) => o.kilde !== 'offentlig'), ...r.objekter.map((o) => ({ id: nyId('po'), ...o }))];
-      p.hentet = new Date().toISOString();
-      if (r.objekter.some((o) => o.type === 'noekkelbiotop') && !p.eiendom.miljoregistreringAar) melding('Nøkkelbiotoper hentet. Legg inn året for miljøregistreringen under Eiendom.');
-      lagre(true);
-      if (r.feil.length) $('#pefcHentStatus').textContent += ` Feil: ${r.feil.join('; ')}`;
-    } catch (err) { $('#pefcHentStatus').textContent = `Kunne ikke hente: ${err.message}`; } finally { knapp.disabled = false; }
-  });
+      const r = await hentData(hvilke, (kilde, tekst) => { const el = $(statusEl); if (el) el.textContent = tekst; });
+      beregn(); tegnKart(); tegn();
+      const el = $(statusEl);
+      if (el) el.textContent = r.feil.length ? `Ferdig, med feil: ${r.feil.join('; ')}` : 'Oppdatert.';
+    } catch (e) { const el = $(statusEl); if (el) el.textContent = `Kunne ikke oppdatere: ${e.message}`; } finally { knapper.forEach((k) => { k.disabled = false; }); }
+  }
+  $('#pefcHentBtn').addEventListener('click', () => oppdater(['miljo'], '#pefcHentStatus'));
+  panel.addEventListener('click', (e) => { if (e.target.id === 'pefcOppdaterAlle') oppdater(['miljo', 'nvdb', 'ssb'], '#pefcOppdaterStatus'); });
   $('#pefcNyBtn').addEventListener('click', () => startTegning($('#pefcNyType').value));
   $('#pefcTegnFerdig').addEventListener('click', fullfor);
   $('#pefcTegnAvbryt').addEventListener('click', stopp);

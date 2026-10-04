@@ -55,6 +55,10 @@ export const STANDARD_VEIINNSTILLINGER = {
   maksTerrengtransport: 500,                                // m – lengre avstand regnes som lang terrengtransport
 };
 
+export function tomtVeiregister() {
+  return { veier: [], punkter: [], vedlikehold: [], innstillinger: JSON.parse(JSON.stringify(STANDARD_VEIINNSTILLINGER)) };
+}
+
 // ---------- geometri (meter, via UTM33) ----------
 const tilM = ([lon, lat]) => geoTilUtm(lon, lat, 33);
 function linjer(geom) {
@@ -268,5 +272,7 @@ export async function hentNvdbVeier(grense, { hent = fetch, medPrivate = true, l
     }),
   ];
   logg(`Fant ${veier.length} veier (${Math.round(veier.reduce((s, v) => s + v.lengde, 0))} m) og ${punkter.length} punkter`);
-  return { veier, punkter };
+  const datoer = segmenter.map((x) => x.metadata?.startdato).filter(Boolean).sort();
+  const kilde = { id: 'nvdb', navn: 'Skogsbilveier (NVDB)', eier: 'Statens vegvesen', hentet: new Date().toISOString(), antall: veier.length + punkter.length, dataFra: datoer[0] || null, dataTil: datoer.at(-1) || null, krav: [3, 5] };
+  return { veier, punkter, kilde };
 }

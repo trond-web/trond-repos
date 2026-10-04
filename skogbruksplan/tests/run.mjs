@@ -9,6 +9,9 @@ import { finnKommune } from '../js/generator.js';
 import { klassifiser, parseHtmlAlle, pakkUtKmz, parseKml } from '../js/kommuneanalyse.js';
 import zlib from 'node:zlib';
 import { pefcAlder, avstand, kontroller, kravStatus, klareringStatus, tomPefc, KRAVPUNKTER, ROVFUGLER, arealDaa } from '../js/pefc.js';
+import { jordverdi, bestandsverdi, verdiberegning, kalibrerPriser, folsomhet, STANDARD_VERDI } from '../js/verdi.js';
+import { kildeStatus } from '../js/pefc-ui.js';
+import { hentDatagrunnlag } from '../js/datagrunnlag.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
 
 let ok = 0;
@@ -350,6 +353,58 @@ test('PEFC: kantsone, kulturminne og status per kravpunkt', () => {
   assert.equal(kravStatus(f, P)[2].status, 'ok');
   const kl = klareringStatus(b.tiltak[0], b, f, P);
   assert.equal(kl.klar, false); assert.ok(kl.mangler > 10);
+});
+
+test('Verdi: jordverdi følger Faustmann og omløpet respekterer PEFC', () => {
+  const inn = STANDARD_INNSTILLINGER;
+  const { lev, omlop } = jordverdi('G', 17, inn, STANDARD_VERDI);
+  assert.ok(omlop >= pefcAlder(17).nedre, `omløp ${omlop}`);
+  assert.ok(lev > 0, `LEV ${lev}`);
+  // Høyere rente gir lavere jordverdi
+  assert.ok(jordverdi('G', 17, inn, { ...STANDARD_VERDI, rente: 5 }).lev < lev);
+});
+
+test('Verdi: bestandsverdi, slaktverdi og eiendomsverdi', () => {
+  const inn = STANDARD_INNSTILLINGER;
+  const gammel = normaliserBestand({ id: 'a', nr: '1', areal: 10, treslag: 'G', bonitet: 17, alder: 110, volumDaa: 30 });
+  const ung = normaliserBestand({ id: 'b', nr: '2', areal: 10, treslag: 'G', bonitet: 17, alder: 20, volumDaa: 3 });
+  const vg = bestandsverdi(gammel, inn, STANDARD_VERDI, { iAar: 2026 });
+  assert.ok(vg.perDaa >= vg.slaktPerDaa, 'forventningsverdi ≥ slaktverdi for moden skog');
+  assert.ok(vg.hogstAar >= 2026 && vg.hogstAar <= 2036, `hogstår ${vg.hogstAar}`);
+  const vu = bestandsverdi(ung, inn, STANDARD_VERDI, { iAar: 2026 });
+  assert.ok(vu.alderVedHogst >= pefcAlder(17).nedre, 'ikke hogst under nedre aldersgrense');
+  assert.ok(vu.perDaa > vu.slaktPerDaa, 'ung skog er verdt mer enn slaktverdien');
+  const S = { bestand: [gammel, ung], innstillinger: inn, veier: { vedlikehold: [{ status: 'planlagt', aar: 2027, kostnad: 5000 }] } };
+  const r = verdiberegning(S, { ...STANDARD_VERDI, annenInntekt: 3000 }, { iAar: 2026 });
+  assert.ok(Math.abs(r.skog - (vg.perDaa + vu.perDaa) * 10) < 1);
+  assert.equal(r.veiPerAar, 1000);
+  assert.ok(Math.abs(r.eiendom - (r.skog + 2000 / 0.03)) < 1);
+  const uten = verdiberegning(S, STANDARD_VERDI, { iAar: 2026, utenProduksjonIder: new Set([gammel.id]) });
+  assert.equal(uten.rader[0].verdi, 0);
+  const fs = folsomhet(S, STANDARD_VERDI, [2, 4], { iAar: 2026 });
+  assert.ok(fs[0].skog > fs[1].skog);
+});
+
+test('Verdi: kalibrering mot SSB-pris beholder forholdet mellom treslag', () => {
+  const reg = (nr, pris) => ({ nr, navn: nr, pris, volum: 10000, perTreslag: { G: 8000, F: 2000, L: 0 } });
+  const d = { aar: 2025, kommune: reg('3238', 500), fylke: reg('32', 480), land: reg('0', 470), grunnlag: '3238' };
+  const k = kalibrerPriser(d, { G: 600, F: 400, L: 300 });
+  assert.ok(Math.abs((0.8 * k.G + 0.2 * k.F) - 500) < 2);
+  assert.ok(Math.abs(k.G / k.F - 1.5) < 0.01);
+});
+
+test('Datagrunnlag: alder på kilder og feil som ikke stopper', async () => {
+  const naa = Date.parse('2026-10-04T12:00:00Z');
+  assert.equal(kildeStatus(null).niva, 'mangler');
+  assert.equal(kildeStatus({ hentet: '2026-10-01T12:00:00Z' }, naa).niva, 'fersk');
+  assert.equal(kildeStatus({ hentet: '2026-03-01T12:00:00Z' }, naa).niva, 'bor');
+  assert.equal(kildeStatus({ hentet: '2024-01-01T12:00:00Z' }, naa).niva, 'gammel');
+  assert.equal(kildeStatus({ hentet: '2026-10-01T12:00:00Z', feil: 'x' }, naa).niva, 'feil');
+  const plan = { eiendom: { grense: { type: 'Polygon', coordinates: [[[11, 60], [11.01, 60], [11.01, 60.01], [11, 60]]] } }, bestand: [] };
+  let n = 0;
+  const r = await hentDatagrunnlag(plan, { hvilke: ['nvdb', 'ssb'], kommunenr: '3238', nyId: () => `id${n++}`, hent: async () => { throw new Error('nede'); } });
+  assert.equal(r.feil.length, 2);
+  assert.ok(plan.datakilder && !plan.datakilder.ssb);
 });
 
 await Promise.all(venter);

@@ -465,6 +465,23 @@ progress { accent-color: var(--accent); height: 8px; }
 .pefc-krav-innhold p { margin: 0; }
 .pefc-krav-innhold .lenker a { font-size: 12.5px; }
 
+/* Datagrunnlag */
+.datagrunnlag-topp { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.kilder { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+.kilde { border: 1px solid var(--border); border-radius: 12px; padding: 10px; background: var(--surface); display: grid; gap: 3px; align-content: start; font-size: 12.5px; }
+.kilde[data-niva="gammel"], .kilde[data-niva="mangler"], .kilde[data-niva="feil"] { border-color: color-mix(in srgb, var(--critical) 35%, var(--border)); }
+.kilde-topp { display: flex; align-items: center; gap: 7px; }
+.kilde-topp b { font-size: 13px; line-height: 1.25; }
+.kilde .prikk, .manuell .prikk { width: 9px; height: 9px; border-radius: 50%; background: var(--farge); flex: none; }
+.kilde-eier { font: 500 10.5px var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.kilde-hentet { font-weight: 600; }
+.kilde-info { color: var(--text-2); }
+.kilde-varsel { color: var(--serious); font-weight: 500; }
+.kilde-krav { margin-top: 2px; }
+.manuelle { display: grid; gap: 6px; }
+.manuell { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; }
+.manuell .verdi { font-variant-numeric: tabular-nums; color: var(--text-2); white-space: nowrap; }
+
 /* ---------- Kommandopalett ---------- */
 .kommando { position: fixed; inset: 0; z-index: 5000; background: rgba(8, 18, 14, .42); backdrop-filter: blur(3px); display: grid; justify-items: center; align-items: start; padding: 10vh 16px 16px; }
 .kommando[hidden] { display: none; }
@@ -544,3 +561,12 @@ progress { accent-color: var(--accent); height: 8px; }
   .kom-kategorier { grid-template-columns: minmax(0, 1fr); }
   .panel-innhold { padding: 12px 16px 20px; }
 }
+
+/* Verdi */
+.undertittel { margin: 16px 0 8px; font-size: 13px; font-weight: 700; }
+.skjema label.avkryss { flex-direction: row; align-items: center; gap: 8px; }
+.skjema label.avkryss > input { width: auto; flex: none; }
+.skjema label small.hint { font-weight: 400; }
+.metode summary { cursor: pointer; }
+.metode ul { margin: 10px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+.tabell tbody tr.valgt td { font-weight: 600; }
