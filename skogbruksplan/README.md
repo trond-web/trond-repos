@@ -1,4 +1,13 @@
-# 🌲 Skogbruksplan – forvaltning av skogbruksplandata
+# SkogIQ.ai – forvaltning av skogbruksplandata
+
+**Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
+felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
+direkte. På mobil blir arbeidsflaten et bunnark som kan dras opp, og ikonlisten en fanerad. Appen har lyst og mørkt tema,
+og i mørkt tema blir også topografikartet mørkt. Skrifter: Bricolage Grotesque og Schibsted Grotesk.
+
+**Innsikt** på oversikten er regelbaserte funn fra planens egne data (`js/innsikt.js`). Eksempler er hogstmoden skog uten
+planlagt hogst, forfalte tiltak, bestand som trolig er hogd siden takst, ungskogpleie, terrengtransport, veistatus og
+CO₂. Hvert funn har en handling som tar deg dit det kan følges opp. Det brukes ingen språkmodell.
 
 En nettleserapp for å forvalte egen skogbruksplan: kart, bestandsliste, tiltaksplan,
 framskriving av volum og økonomi, og feltregistrering med GPS. Den kjører i nettleseren uten server og

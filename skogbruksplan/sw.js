@@ -1,8 +1,8 @@
 // Service worker: appen og besøkte/nedlastede kartfliser fungerer uten nett.
-const APP = 'skogplan-app-v4';
+const APP = 'skogiq-app-v5';
 const FLISER = 'kartfliser-v1';
 const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg',
-  'js/app.js', 'js/model.js', 'js/proj.js', 'js/sosi.js', 'js/importers.js', 'js/store.js', 'js/charts.js', 'js/demo.js', 'js/generator.js', 'js/kommuneanalyse.js', 'js/kommune-ui.js', 'js/veier.js', 'js/veier-ui.js',
+  'js/app.js', 'js/model.js', 'js/proj.js', 'js/sosi.js', 'js/importers.js', 'js/store.js', 'js/charts.js', 'js/demo.js', 'js/generator.js', 'js/kommuneanalyse.js', 'js/kommune-ui.js', 'js/veier.js', 'js/veier-ui.js', 'js/innsikt.js', 'js/kommando.js',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
 
 self.addEventListener('install', (e) => {
@@ -24,6 +24,10 @@ self.addEventListener('fetch', (e) => {
       if (svar.ok) c.put(e.request.url, svar.clone());
       return svar;
     }));
+    return;
+  }
+  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+    e.respondWith(caches.open(APP).then(async (c) => (await c.match(e.request)) || fetch(e.request).then((svar) => { if (svar.ok) c.put(e.request, svar.clone()); return svar; })));
     return;
   }
   if (url.origin === location.origin || url.hostname === 'unpkg.com') {

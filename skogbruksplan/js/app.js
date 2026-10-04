@@ -11,6 +11,8 @@ import { lagre, hent, listPlaner, lagrePlan, hentPlan, slettPlan } from './store
 import { genererPlan, hentKommuner, finnKommune } from './generator.js';
 import { initKommune } from './kommune-ui.js';
 import { initVeier } from './veier-ui.js';
+import { lagInnsikt } from './innsikt.js';
+import { initKommando } from './kommando.js';
 import { VEIKLASSER, VEDLIKEHOLDSTYPER } from './veier.js';
 
 const VEIKLASSER_NAVN = (k) => (VEIKLASSER[k] || VEIKLASSER[0]).navn;
@@ -76,12 +78,14 @@ let kart; let bestandLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPun
 const lagPerBestand = new Map();
 
 function initKart() {
-  kart = L.map('kart', { zoomControl: true, preferCanvas: false }).setView([60.85, 11.2], 9);
+  kart = L.map('kart', { zoomControl: false, attributionControl: false, preferCanvas: false }).setView([60.85, 11.2], 9);
+  L.control.zoom({ position: 'topleft' }).addTo(kart);
+  L.control.attribution({ position: 'bottomleft', prefix: '<a href="https://leafletjs.com">Leaflet</a>' }).addTo(kart);
   const topo = L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png', {
-    maxZoom: 20, maxNativeZoom: 18, attribution: '© <a href="https://www.kartverket.no/">Kartverket</a>',
+    maxZoom: 20, maxNativeZoom: 18, attribution: '© <a href="https://www.kartverket.no/">Kartverket</a>', className: 'grunnkart',
   });
   const graa = L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png', {
-    maxZoom: 20, maxNativeZoom: 18, attribution: '© <a href="https://www.kartverket.no/">Kartverket</a>',
+    maxZoom: 20, maxNativeZoom: 18, attribution: '© <a href="https://www.kartverket.no/">Kartverket</a>', className: 'grunnkart',
   });
   const flyfoto = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 20, maxNativeZoom: 19, attribution: 'Flyfoto © Esri, Maxar, Earthstar Geographics',
@@ -97,8 +101,8 @@ function initKart() {
   graa.addTo(kart);
   bestandLag = L.featureGroup().addTo(kart);
   regLag = L.featureGroup().addTo(kart);
-  L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto }, { ...overlays, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topright' }).addTo(kart);
-  L.control.scale({ imperial: false }).addTo(kart);
+  L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto }, { ...overlays, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
 
   kart.on('click', (e) => {
     if (kartKlikk) { kartKlikk(e.latlng); return; }
@@ -262,6 +266,9 @@ function avsluttGrenseRedigering() { redigerMarkorer.forEach((m) => m.remove());
 // ---------------------------------------------------------------- faner
 let kommuneVisning = null;
 let veiVisning = null;
+const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', felt: 'Felt', data: 'Data og oppsett' };
+const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
+function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 function visFane(navn) {
   veiVisning?.synlig(navn !== 'kommune');
   if (navn === 'veier') veiVisning?.vis();
@@ -271,12 +278,30 @@ function visFane(navn) {
   $$('.fane').forEach((f) => { f.hidden = f.id !== `fane-${navn}`; });
   if (navn === 'framskriving') tegnFramskriving();
   if (navn === 'planer') { tegnPlanListe(); lastKommuner(); }
-  if (window.innerWidth <= 860) $('.panel').scrollIntoView({ behavior: 'smooth' });
+  $('#faneTittel').textContent = FANE_TITLER[navn] || navn;
+  $('.panel-innhold').scrollTop = 0;
+  if (erMobil() && $('#panel').dataset.ark === 'lav') settArk('halv');
+  if (!erMobil()) document.body.classList.remove('panel-skjult');
   setTimeout(() => kart.invalidateSize(), 50);
 }
 
 // ---------------------------------------------------------------- oversikt
+function tegnInnsikt() {
+  const liste = lagInnsikt(S, { iAar: IAAR, terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
+  $('#innsikt').hidden = !liste.length;
+  $('#innsiktListe').innerHTML = liste.slice(0, 4).map((i) => `<div class="innsikt-kort" style="--farge:${i.farge}"><span class="prikk"></span><div><b>${esc(i.tittel)}</b><span>${esc(i.tekst)}</span></div>${i.handling ? `<button type="button" class="knapp liten" data-innsikt="${esc(i.handling.id)}">${esc(i.handling.tekst)}</button>` : ''}</div>`).join('');
+}
+
+function utforHandling(id) {
+  const [type, verdi] = id.split(/:(.*)/s);
+  if (type === 'fane') visFane(verdi);
+  else if (type === 'foresla') { visFane('tiltak'); lagForslag(); }
+  else if (type === 'bestand') { velgBestand(verdi); visFane('bestand'); }
+  else if (type === 'farge') { $('#fargeEtter').value = verdi; oppdaterStiler(); if (erMobil()) settArk('lav'); }
+}
+
 function tegnOversikt() {
+  tegnInnsikt();
   const s = sammendrag(S.bestand, inn());
   const kpi = (verdi, etikett, under = '') => `<div class="kpi"><div class="verdi">${verdi}</div><div class="etikett">${etikett}</div>${under ? `<div class="under">${under}</div>` : ''}</div>`;
   const planlagt = alleTiltak().filter((t) => t.status !== 'utfort');
@@ -762,8 +787,9 @@ function settSti(obj, sti, verdi) {
 function tegnEiendom() {
   const f = $('#eiendomSkjema');
   for (const [k, v] of Object.entries(S.eiendom)) if (f.elements[k]) f.elements[k].value = v ?? '';
-  $('#eiendomNavn').textContent = S.eiendom.navn || 'Skogbruksplan';
-  document.title = S.eiendom.navn ? `${S.eiendom.navn} – Skogbruksplan` : 'Skogbruksplan';
+  $('#eiendomNavn').textContent = S.eiendom.navn || 'SkogIQ.ai';
+  $('#kommandoHint').textContent = S.eiendom.navn ? `Søk i ${S.eiendom.navn}, planer, kommuner …` : 'Søk bestand, planer, kommuner eller handlinger';
+  document.title = S.eiendom.navn ? `${S.eiendom.navn} · SkogIQ.ai` : 'SkogIQ.ai';
 }
 
 // ---------------------------------------------------------------- oppdatering
@@ -918,9 +944,69 @@ async function startGenerering(e) {
   }
 }
 
+// ---------------------------------------------------------------- kommandopalett
+const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', felt: '◉', data: '⛁' };
+let planlisteCache = [];
+function kommandoValg(q) {
+  listPlaner().then((l) => { planlisteCache = l; });
+  const valg = [];
+  // «Kommune 29/2» → lag plan for eiendommen
+  const m = String(q).match(/^\s*([a-zæøåA-ZÆØÅ][\wæøåÆØÅ .-]*?|\d{4})\s+(\d+)\s*\/\s*(\d+)(?:\s*\/\s*(\d+))?\s*$/);
+  if (m) {
+    valg.push({ gruppe: 'Lag plan', ikon: '✦', tittel: `Lag skogbruksplan for ${m[1].trim()} ${m[2]}/${m[3]}${m[4] ? `/${m[4]}` : ''}`, under: 'Fra Kartverket, NIBIO og SR16', alltid: true,
+      utfor: async () => { const k = finnKommune(m[1], await lastKommuner()); if (!k) { melding('Fant ikke kommunen.'); return; } lagPlanFor({ kommunenr: k.nr, gnr: +m[2], bnr: +m[3], fnr: +(m[4] || 0) }); } });
+  }
+  for (const [k, t] of Object.entries(FANE_TITLER)) valg.push({ gruppe: 'Gå til', ikon: FANE_IKON[k], tittel: t, standard: true, utfor: () => visFane(k) });
+  valg.push(
+    { gruppe: 'Handlinger', ikon: '✦', tittel: 'Foreslå tiltak', under: 'Hogst, planting, ungskogpleie og tynning', standard: true, utfor: () => { visFane('tiltak'); lagForslag(); } },
+    { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag ny skogbruksplan', under: 'Fra kommune, gårds- og bruksnummer', sok: 'generer eiendom gnr bnr', standard: true, utfor: () => { visFane('planer'); $('#genKommune').focus(); } },
+    { gruppe: 'Handlinger', ikon: '✦', tittel: 'Analyser en kommune', under: 'Hogstmoden skog, lukket hogst, ungskogpleie', sok: 'kommuneanalyse', utfor: () => { visFane('kommune'); $('#komKommune').focus(); } },
+    { gruppe: 'Handlinger', ikon: '✦', tittel: 'Hent veier fra NVDB', sok: 'vei skogsbilvei', utfor: () => { visFane('veier'); $('#veiNvdbBtn').click(); } },
+    { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
+    { gruppe: 'Handlinger', ikon: '✦', tittel: 'Ta sikkerhetskopi', sok: 'backup eksport lagre', utfor: () => eksporter('backup') },
+    { gruppe: 'Handlinger', ikon: '✦', tittel: 'Bytt lyst/mørkt tema', sok: 'tema mørk lys dark', utfor: () => $('#temaBtn').click() },
+  );
+  for (const o of $$('#fargeEtter option')) valg.push({ gruppe: 'Farge i kartet', ikon: '◐', tittel: `Farge etter ${o.textContent.toLowerCase()}`, utfor: () => { $('#fargeEtter').value = o.value; $('#fargeEtter').dispatchEvent(new Event('change')); } });
+  for (const p of planlisteCache) valg.push({ gruppe: 'Planer', ikon: '▤', tittel: p.navn, under: `${fmt(p.areal)} daa · ${p.antall} bestand${p.id === S.planId ? ' · åpen' : ''}`, sok: 'plan', utfor: () => aapnePlan(p.id) });
+  for (const b of S.bestand) {
+    const st = startTilstand(b);
+    valg.push({ gruppe: 'Bestand', ikon: '⬡', tittel: `Bestand ${b.nr}`, under: `${fmt(b.areal, 1)} daa · ${TRESLAG[b.treslag] || ''} ${b.bonitet ?? ''} · ${Math.round(st.alder)} år · ${fmt(st.volumDaa, 1)} m³/daa`, sok: `${b.merknad || ''} ${b.teig || ''}`, utfor: () => { velgBestand(b.id); visFane('bestand'); } });
+  }
+  for (const v of S.veier?.veier || []) valg.push({ gruppe: 'Veier', ikon: '‖', tittel: v.navn || 'Vei', under: `${fmt(v.lengde)} m`, sok: 'vei', utfor: () => { visFane('veier'); document.querySelector(`[data-vei="${v.id}"]`)?.click(); } });
+  return valg;
+}
+
 // ---------------------------------------------------------------- oppkobling
 function kobleHendelser() {
   $$('.faner button').forEach((b) => b.addEventListener('click', () => visFane(b.dataset.fane)));
+  $('#innsiktListe').addEventListener('click', (e) => { const k = e.target.closest('[data-innsikt]'); if (k) utforHandling(k.dataset.innsikt); });
+  $('#panelLukk').addEventListener('click', () => { document.body.classList.toggle('panel-skjult'); });
+  $('#temaBtn').addEventListener('click', () => {
+    const naa = document.documentElement.dataset.theme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const ny = naa === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = ny;
+    try { localStorage.setItem('skogiq-tema', ny); } catch { /* valgfritt */ }
+    endret({ kart: true });
+  });
+  // Bunnark på mobil: klikk på hanken bytter høyde, dra for å justere.
+  const hank = $('#arkHank'); const panel = $('#panel');
+  const nivaer = ['lav', 'halv', 'hoy'];
+  let dra = null;
+  hank.addEventListener('pointerdown', (e) => { dra = { y: e.clientY, h: panel.getBoundingClientRect().height, flyttet: false }; hank.setPointerCapture(e.pointerId); panel.style.transition = 'none'; });
+  hank.addEventListener('pointermove', (e) => {
+    if (!dra) return;
+    const dy = dra.y - e.clientY;
+    if (Math.abs(dy) > 4) dra.flyttet = true;
+    panel.style.height = `${Math.max(90, Math.min(window.innerHeight - 70, dra.h + dy))}px`;
+  });
+  hank.addEventListener('pointerup', () => {
+    if (!dra) return;
+    panel.style.transition = ''; const h = panel.getBoundingClientRect().height; panel.style.height = '';
+    if (!dra.flyttet) settArk(nivaer[(nivaer.indexOf(panel.dataset.ark) + 1) % nivaer.length]);
+    else { const andel = h / panel.parentElement.getBoundingClientRect().height; settArk(andel < 0.3 ? 'lav' : andel < 0.72 ? 'halv' : 'hoy'); }
+    dra = null;
+  });
+  initKommando({ hentValg: kommandoValg });
   $('#genSkjema').addEventListener('submit', startGenerering);
   veiVisning = initVeier({
     kart, hentPlan: () => S, endret, melding, nyId,
