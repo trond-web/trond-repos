@@ -130,4 +130,4 @@
   }
 
   global.SporetWatch = { kvGet, kvSet, toUtm33, fetchRoutes, check, message, FRESH_MS };
-})(typeof self !== "undefined" ? self : window);
+})(typeof self !== "undefined" ? self : globalThis);

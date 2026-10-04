@@ -50,6 +50,32 @@ Kortet «Løypevarsler» varsler når løyper nær deg blir kjørt opp:
 
 Felles logikk for side og service worker ligger i `sporet-watch.js`.
 
+### 📲 Push til mobilen via ntfy (også når appen er lukket)
+
+Workflowen `.github/workflows/sporet-varsler.yml` kjører hvert 10. minutt på GitHub Actions,
+sjekker Sporet rundt stedene i [`varsler/steder.json`](varsler/steder.json) og sender push via
+[ntfy](https://ntfy.sh) når løyper blir kjørt.
+
+**Oppsett (én gang):**
+
+1. Installer **ntfy**-appen (App Store / Google Play) og abonner på et emne med et navn som
+   er vanskelig å gjette, f.eks. `snovill-k3x9q7wz2m`. Alle som kjenner navnet kan lese varslene.
+2. Legg emnenavnet inn som repository secret **`NTFY_TOPIC`** under
+   *Settings → Secrets and variables → Actions → New repository secret*.
+3. Merge til `main` (planlagte workflows kjører bare fra standardgrenen).
+4. Test: *Actions → Snøvill løypevarsler → Run workflow* sender et testvarsel.
+
+**Tilpasning:**
+
+- Legg til hytta eller andre steder i `steder.json` (`navn`, `lat`, `lon`, `radiusKm`).
+- `stilleTimer` (norsk tid): varsler i dette tidsrommet sendes med lav prioritet, uten lyd.
+- Egen ntfy-server: sett repository variable `NTFY_SERVER`, og eventuelt secret `NTFY_TOKEN`.
+- «Sist sett» per løype lagres i Actions-cachen mellom kjøringer. Første kjøring lagrer
+  bare en grunnlinje, så du får ikke varsel for gammel preparering.
+- GitHub kan forsinke planlagte kjøringer med noen minutter, og slår dem av etter 60 dager
+  uten aktivitet i repoet (kan slås på igjen under Actions).
+- Lokal test uten å sende: `DRY_RUN=true node snovill-skifore/varsler/sjekk-sporet.mjs`.
+
 ## Kjøre lokalt
 
 ```bash
