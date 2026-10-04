@@ -2,12 +2,11 @@
 //   Kartverket eiendom-API (grense), NIBIO «skogbruksplan/hogstklasser» (bestand fra tidligere plan),
 //   NIBIO SR16 vektor (volum, høyde, treantall, treslag, alder) og NIBIO MiS (nøkkelbiotoper).
 // Geometrioperasjoner gjøres med Turf (sendes inn, slik at modulen også kan kjøres i Node).
-import { normaliserBestand } from './model.js';
+import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST } from './model.js';
 import { geoTilUtm } from './proj.js';
 
 const KARTVERKET = 'https://api.kartverket.no';
 const NIBIO = 'https://wms.nibio.no/cgi-bin';
-const SR16_TRESLAG = { 1: 'G', 2: 'F', 3: 'L' };
 const PLAN_TRESLAG = { Gran: 'G', Furu: 'F', Lauv: 'L', Bjørk: 'L' };
 
 export async function hentKommuner(hent = fetch) {
@@ -203,7 +202,12 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, he
     };
     const dekning = deler.reduce((s, d) => s + d[0], 0) / areal;
     const tsAreal = {};
-    for (const [a, attr] of deler) { const t = SR16_TRESLAG[parseInt(attr.srtreslag, 10)]; if (t) tsAreal[t] = (tsAreal[t] || 0) + a; }
+    const typeAreal = {};
+    for (const [a, attr] of deler) {
+      const t = treslagFraSR16(attr.srtreslag); if (t) tsAreal[t] = (tsAreal[t] || 0) + a;
+      const tekst = SR16_TRESLAG_TEKST[parseInt(attr.srtreslag, 10)]; if (tekst) typeAreal[tekst] = (typeAreal[tekst] || 0) + a;
+    }
+    const srType = Object.keys(typeAreal).sort((x, y) => typeAreal[y] - typeAreal[x])[0] || null;
     const srTreslag = Object.keys(tsAreal).sort((x, y) => tsAreal[y] - tsAreal[x])[0] || null;
     const volub = vektet('srvolub', 0.1); const volmb = vektet('srvolmb', 0.1);
     const hoydeM = vektet('srhoydem', 0.1); const trean = vektet('srtrean', 0.1);
@@ -254,6 +258,7 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, he
       KILDE: k.kilde === 'plan' ? 'Tidligere skogbruksplan (NIBIO) + SR16' : 'SR16',
       PLAN_HOGSTKLASSE: hkPlan,
       PLAN_REGISTRERT: regaar,
+      SR16_SKOGTYPE: srType,
       SR16_ALDER: srAlder ? Math.round(srAlder) : null,
       SR16_BONITET: srBon ? Math.round(srBon) : null,
       SR16_VOLUM_MB_DAA: r1(volmb),

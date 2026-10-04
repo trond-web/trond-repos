@@ -39,6 +39,17 @@ export const STANDARD_INNSTILLINGER = {
   },
 };
 
+// SR16 treslagskode: 1 grandominert, 2 furudominert, 3 barblanding, 4 blanding (bar/lauv), 5 lauvdominert.
+export const SR16_TRESLAG_TEKST = { 1: 'grandominert', 2: 'furudominert', 3: 'barblanding', 4: 'blanding', 5: 'lauvdominert' };
+// Gir G/F/L. Bruker andel per treslag når den finnes (størst andel vinner), ellers koden.
+export function treslagFraSR16(kode, andel = null) {
+  if (andel) {
+    const best = Object.entries(andel).filter(([, v]) => Number.isFinite(v)).sort((a, b) => b[1] - a[1])[0];
+    if (best && best[1] > 0) return best[0];
+  }
+  return { 1: 'G', 2: 'F', 3: 'G', 4: 'L', 5: 'L' }[parseInt(kode, 10)] || null;
+}
+
 // ---------- Normalisering av importerte attributter ----------
 
 const FELT = {

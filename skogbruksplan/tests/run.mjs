@@ -2,13 +2,16 @@
 import assert from 'node:assert/strict';
 import { utmTilGeo, geoTilUtm, arealM2, punktIGeometri } from '../js/proj.js';
 import { parseSosi, lagSosi } from '../js/sosi.js';
-import { normaliserBestand, framskriv, foreslaaForEiendom, foreslaaTiltak, laavesteHogstalder, sammendrag, tolkHogstklasse, tolkTreslag } from '../js/model.js';
+import { normaliserBestand, framskriv, foreslaaForEiendom, treslagFraSR16, foreslaaTiltak, laavesteHogstalder, sammendrag, tolkHogstklasse, tolkTreslag } from '../js/model.js';
 import { lesGeojson, lesCsv, lesSosi, slaaSammen } from '../js/importers.js';
 import { lagDemo } from '../js/demo.js';
 import { finnKommune } from '../js/generator.js';
+import { klassifiser, parseHtmlAlle, pakkUtKmz, parseKml } from '../js/kommuneanalyse.js';
+import zlib from 'node:zlib';
 
 let ok = 0;
-const test = (navn, fn) => { try { fn(); ok++; console.log(`✓ ${navn}`); } catch (e) { console.error(`✗ ${navn}\n  ${e.stack}`); process.exitCode = 1; } };
+const venter = [];
+const test = (navn, fn) => { venter.push((async () => { try { await fn(); ok++; console.log(`✓ ${navn}`); } catch (e) { console.error(`✗ ${navn}\n  ${e.stack}`); process.exitCode = 1; } })()); };
 
 test('UTM32 -> geo kjent punkt (Hamar-området)', () => {
   // Referanse fra pyproj (EPSG:4326 -> EPSG:25832): Ø 612 648,067, N 6 742 287,364
@@ -166,6 +169,12 @@ test('hogstforslag spres jevnt over år', () => {
   }
 });
 
+test('SR16 treslagskoder', () => {
+  assert.equal(treslagFraSR16('1'), 'G'); assert.equal(treslagFraSR16('2'), 'F');
+  assert.equal(treslagFraSR16('3'), 'G'); assert.equal(treslagFraSR16('5'), 'L');
+  assert.equal(treslagFraSR16('3', { G: 42.9, F: 50, L: 7.1 }), 'F');
+});
+
 test('kommune tolkes fra navn eller nummer', () => {
   const k = [{ nr: '3238', navn: 'Nannestad' }, { nr: '3240', navn: 'Eidsvoll' }, { nr: '3901', navn: 'Horten' }];
   assert.equal(finnKommune('nannestad', k).nr, '3238');
@@ -176,4 +185,46 @@ test('kommune tolkes fra navn eller nummer', () => {
   assert.equal(finnKommune('Ukjentby', k), null);
 });
 
+const flate = (o) => ({ id: o.id, areal: 10, treslag: 'G', bonitet: 17, alder: 50, volumDaa: 20, hoyde: 16, overhoyde: 18, treantall: 60, andel: { G: 95, F: 0, L: 5 }, mis: false, vern: null, ...o });
+test('kommuneanalyse: klassifisering', () => {
+  const r = klassifiser([
+    flate({ id: 'hogst', alder: 95, volumDaa: 30 }),
+    flate({ id: 'lite-volum', alder: 95, volumDaa: 8 }),
+    flate({ id: 'vernet', alder: 95, volumDaa: 30, vern: 'Naturreservat: X' }),
+    flate({ id: 'lukket-blandet', bonitet: 14, alder: 80, volumDaa: 18, andel: { G: 60, F: 10, L: 30 } }),
+    flate({ id: 'ensjiktet', bonitet: 14, alder: 80, volumDaa: 18, hoyde: 16, overhoyde: 18 }),
+    flate({ id: 'furu-skjerm', treslag: 'F', bonitet: 11, alder: 110, volumDaa: 12, andel: { G: 0, F: 90, L: 10 } }),
+    flate({ id: 'ung-lauv', alder: 12, hoyde: 4, volumDaa: 2, bonitet: 17, andel: { G: 50, F: 0, L: 50 } }),
+    flate({ id: 'ung-ren', alder: 12, hoyde: 4, volumDaa: 2, bonitet: 17, treantall: 40, andel: { G: 100, F: 0, L: 0 } }),
+    flate({ id: 'liten', areal: 1, alder: 95, volumDaa: 30 }),
+  ]);
+  const ider = (l) => l.map((f) => f.id).sort();
+  assert.deepEqual(ider(r.hogst), ['hogst']);
+  assert.deepEqual(ider(r.lukket), ['furu-skjerm', 'lukket-blandet']);
+  assert.deepEqual(ider(r.ungskog), ['ung-lauv']);
+  assert.ok(r.hogst[0].rotnetto > 0);
+});
+
+test('kommuneanalyse: HTML-attributter kobles til id i rekkefølge', () => {
+  const tab = (alder, gran) => `<table><tr><td>Bestandsalder</td><td><b>${alder}</b><td></td></tr><tr><td>Volum uten bark (m³/ha)</td><td><b>250</b></td></tr><tr><td>Prosentandel gran</td><td><b>${gran}</b><td></td></tr></table>`;
+  const a = parseHtmlAlle(`<html>${tab(80, 90)}${tab(20, 10)}</html>`, ['11', '22']);
+  assert.equal(a[1].gid, '22'); assert.equal(a[1].srtrealder, '20'); assert.equal(a[0].srvolub, '250');
+  assert.equal(parseHtmlAlle(tab(1, 1), ['1', '2']), null, 'ulikt antall skal gi null');
+});
+
+test('kommuneanalyse: KMZ pakkes ut', async () => {
+  const kml = '<kml><Placemark><name>SRVTRESLAG.42</name><Polygon><outerBoundaryIs><LinearRing><coordinates>11,60 11.001,60 11.001,60.001 11,60</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark></kml>';
+  const data = zlib.deflateRawSync(Buffer.from(kml));
+  const navn = Buffer.from('doc.kml');
+  const lok = Buffer.alloc(30); lok.writeUInt32LE(0x04034b50, 0); lok.writeUInt16LE(8, 8); lok.writeUInt32LE(data.length, 18); lok.writeUInt32LE(kml.length, 22); lok.writeUInt16LE(navn.length, 26);
+  const sentral = Buffer.alloc(46); sentral.writeUInt32LE(0x02014b50, 0); sentral.writeUInt16LE(8, 10); sentral.writeUInt32LE(data.length, 20); sentral.writeUInt32LE(kml.length, 24); sentral.writeUInt16LE(navn.length, 28); sentral.writeUInt32LE(0, 42);
+  const cdStart = lok.length + navn.length + data.length;
+  const eocd = Buffer.alloc(22); eocd.writeUInt32LE(0x06054b50, 0); eocd.writeUInt16LE(1, 8); eocd.writeUInt16LE(1, 10); eocd.writeUInt32LE(sentral.length + navn.length, 12); eocd.writeUInt32LE(cdStart, 16);
+  const zip = Buffer.concat([lok, navn, data, sentral, navn, eocd]);
+  const tekst = await pakkUtKmz(zip.buffer.slice(zip.byteOffset, zip.byteOffset + zip.length));
+  assert.equal(tekst, kml);
+  assert.equal(parseKml(tekst).get('42').type, 'Polygon');
+});
+
+await Promise.all(venter);
 console.log(`\n${ok} tester bestått`);

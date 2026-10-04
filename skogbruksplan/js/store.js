@@ -40,6 +40,8 @@ async function les(nokkel) {
 }
 
 export const lagre = (tilstand) => skriv('hoved', tilstand);
+export const lagreVerdi = (nokkel, verdi) => skriv(nokkel, verdi);
+export const hentVerdi = (nokkel) => les(nokkel);
 export const hent = () => les('hoved');
 
 export async function listPlaner() {

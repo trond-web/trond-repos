@@ -16,6 +16,7 @@
   <div class="merke">🌲 <span id="eiendomNavn">Skogbruksplan</span></div>
   <nav class="faner" role="tablist">
     <button role="tab" data-fane="planer">Planer</button>
+    <button role="tab" data-fane="kommune">Kommune</button>
     <button role="tab" data-fane="oversikt" class="aktiv">Oversikt</button>
     <button role="tab" data-fane="bestand">Bestand</button>
     <button role="tab" data-fane="tiltak">Tiltak</button>
@@ -73,6 +74,47 @@
       <div class="kort">
         <h3>Mine skogbruksplaner</h3>
         <div id="planListe"></div>
+      </div>
+    </div>
+
+    <!-- KOMMUNE -->
+    <div class="fane" id="fane-kommune" hidden>
+      <div class="kort">
+        <h3>Finn skogområder i en kommune</h3>
+        <p class="hint">Går gjennom alle skogflatene i SR16 for kommunen og finner hogstmoden skog, skog egnet for lukket hogst og ungskog som trenger pleie. Verneområder og nøkkelbiotoper holdes utenfor hogstforslagene. Første gang tar det rundt ett minutt og laster ned 20–40 MB. Resultatet lagres på enheten.</p>
+        <form id="komSkjema" class="verktoyrad">
+          <input id="komKommune" list="kommuneListe" placeholder="Kommune, f.eks. Nannestad" autocomplete="off" required aria-label="Kommune">
+          <button id="komBtn" class="knapp primar" type="submit">Analyser kommunen</button>
+          <button id="komOppdater" class="knapp" type="submit" title="Hent dataene på nytt i stedet for å bruke lagret analyse">Hent på nytt</button>
+        </form>
+        <div id="komFramdrift" hidden>
+          <progress id="komFramdriftBar" max="1" value="0"></progress>
+          <div id="komFramdriftTekst" class="hint"></div>
+        </div>
+      </div>
+      <div id="komResultat" hidden>
+        <p id="komInfo" class="kom-info"></p>
+        <div class="kom-kategorier" role="tablist">
+          <button type="button" role="tab" data-kategori="hogst"><span class="navn">Sluttavvirkning</span><span class="tall"></span><span class="under"></span></button>
+          <button type="button" role="tab" data-kategori="lukket"><span class="navn">Lukket hogst</span><span class="tall"></span><span class="under"></span></button>
+          <button type="button" role="tab" data-kategori="ungskog"><span class="navn">Ungskogpleie</span><span class="tall"></span><span class="under"></span></button>
+        </div>
+        <div class="kort">
+          <p id="komBeskrivelse" class="hint" style="margin-top:0"></p>
+          <div id="komSum" class="nokkeltall"></div>
+          <div class="verktoyrad">
+            <select id="komTreslag" aria-label="Treslag"><option value="">Alle treslag</option><option value="G">Gran</option><option value="F">Furu</option><option value="L">Lauv</option></select>
+            <button type="button" class="knapp" data-kom-eksport="geojson">Last ned GeoJSON</button>
+            <button type="button" class="knapp" data-kom-eksport="csv">Last ned CSV</button>
+          </div>
+          <details class="kom-kriterier">
+            <summary>Kriterier</summary>
+            <div id="komKriterier" class="skjema tre-kol"></div>
+            <button id="komNullstill" class="knapp liten" type="button">Tilbakestill kriterier</button>
+          </details>
+          <div id="komListe" class="kom-liste"></div>
+        </div>
+        <p class="fotnote">Klikk på en flate i kartet og velg «Finn eiendom» for å se gårds- og bruksnummer og lage en skogbruksplan for eiendommen. Forslagene bygger på SR16 og forenklede kriterier, og må vurderes i felt.</p>
       </div>
     </div>
 

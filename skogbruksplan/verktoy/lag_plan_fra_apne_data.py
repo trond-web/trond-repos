@@ -34,7 +34,8 @@ MIS = 'https://wms.nibio.no/cgi-bin/mis'
 KML_NS = {'k': 'http://www.opengis.net/kml/2.2'}
 TIL_UTM = Transformer.from_crs(4326, EPSG, always_xy=True).transform
 TIL_GEO = Transformer.from_crs(EPSG, 4326, always_xy=True).transform
-SR16_TRESLAG = {1: 'G', 2: 'F', 3: 'L'}
+# 1 grandominert, 2 furudominert, 3 barblanding, 4 blanding, 5 lauvdominert
+SR16_TRESLAG = {1: 'G', 2: 'F', 3: 'G', 4: 'L', 5: 'L'}
 PLAN_TRESLAG = {'Gran': 'G', 'Furu': 'F', 'Lauv': 'L', 'Bjørk': 'L'}
 
 okt = requests.Session()

@@ -51,6 +51,28 @@ Appen henter dataene direkte fra Kartverket og NIBIO i nettleseren (`js/generato
 Underveis vises fremdriften for hvert steg. Når planen er ferdig, vises et sammendrag og knappen
 **«Åpne skogbruksplanen»**. Alle planer lagres lokalt under «Mine skogbruksplaner», og du kan bytte mellom dem.
 
+## Kommuneanalyse (fanen «Kommune»)
+
+Går gjennom alle SR16-skogflatene i en kommune og finner tre typer områder:
+
+| Kategori | Standardkriterier (kan endres i appen) |
+|---|---|
+| **Sluttavvirkning** | Alder ≥ laveste hogstalder for treslag og bonitet, og volum ≥ 15 m³/daa. Bartre. Estimert rotnetto vises. |
+| **Lukket hogst** | Gran, alder ≥ 80 % av hogstalder, bonitet ≤ 17, volum ≥ 10 m³/daa, og flersjiktet (middelhøyde/overhøyde ≤ 0,84) eller blandingsskog (< 75 % gran). Gir bledning eller gruppehogst. Furu som er hogstmoden på bonitet ≤ 14 gir frøtre- eller skjermstilling. |
+| **Ungskogpleie** | Høyde 1,5–7 m, bonitet ≥ 11, og ≥ 30 % lauv eller tett (≥ 100 trær/daa i SR16, som undervurderer småtrær). |
+
+Skogflater i naturvernområder (Miljødirektoratet) og MiS-nøkkelbiotoper får aldri forslag om hogst. Klikk på en flate,
+velg «Finn eiendom» for å se gårds- og bruksnummer fra matrikkelen, og «Lag skogbruksplan» for å lage plan for eiendommen.
+Resultatet kan lastes ned som GeoJSON eller CSV og lagres lokalt per kommune.
+
+Teknisk: kommunen deles i ruter på 2,5 × 2,5 km. For hver rute hentes geometri som KMZ, id-er som `text/plain` og
+attributter som gzip-komprimert HTML fra NIBIOs WMS (`RADIUS=bbox`). Det er rundt åtte ganger mindre data enn GML.
+Rekkefølgen i HTML- og tekstsvaret er kontrollert mot GML. Hele Nannestad (22 000 flater) tar under ett minutt.
+SR16-dataene for Nannestad er stort sett fra 2015. Skog kan være hogd siden, så kontroller mot flyfoto.
+
+SR16s treslagskode er 1 grandominert, 2 furudominert, 3 barblanding, 4 blanding og 5 lauvdominert. Der andelen per
+treslag finnes, brukes den.
+
 ## Plan fra åpne data med Python (`verktoy/lag_plan_fra_apne_data.py`)
 
 Lager et utkast til skogbruksplan for én eiendom ut fra gårds- og bruksnummer:

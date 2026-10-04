@@ -9,6 +9,7 @@ import { lesFil, slaaSammen } from './importers.js';
 import { lagDemo } from './demo.js';
 import { lagre, hent, listPlaner, lagrePlan, hentPlan, slettPlan } from './store.js';
 import { genererPlan, hentKommuner, finnKommune } from './generator.js';
+import { initKommune } from './kommune-ui.js';
 import { stabletSoyle, linje, fmt } from './charts.js';
 
 const IAAR = new Date().getFullYear();
@@ -244,7 +245,10 @@ function startGrenseRedigering(b) {
 function avsluttGrenseRedigering() { redigerMarkorer.forEach((m) => m.remove()); redigerMarkorer = []; }
 
 // ---------------------------------------------------------------- faner
+let kommuneVisning = null;
 function visFane(navn) {
+  if (kommuneVisning) { if (navn === 'kommune') kommuneVisning.vis(); else { kommuneVisning.skjul(); tegnLegend(); } }
+  $('.kartverktoy').hidden = navn === 'kommune';
   $$('.faner button').forEach((b) => b.classList.toggle('aktiv', b.dataset.fane === navn));
   $$('.fane').forEach((f) => { f.hidden = f.id !== `fane-${navn}`; });
   if (navn === 'framskriving') tegnFramskriving();
@@ -828,6 +832,15 @@ function lastTurf() {
   });
 }
 
+// Brukes fra kommuneanalysen: fyll inn skjemaet og start genereringen for eiendommen.
+async function lagPlanFor({ kommunenr, gnr, bnr, fnr }) {
+  const k = (await lastKommuner()).find((x) => x.nr === kommunenr);
+  visFane('planer');
+  $('#genKommune').value = k ? `${k.navn} (${k.nr})` : kommunenr;
+  $('#genGnr').value = gnr; $('#genBnr').value = bnr; $('#genFnr').value = fnr || '';
+  $('#genSkjema').requestSubmit();
+}
+
 async function startGenerering(e) {
   e.preventDefault();
   if (genererer) return;
@@ -887,6 +900,7 @@ async function startGenerering(e) {
 function kobleHendelser() {
   $$('.faner button').forEach((b) => b.addEventListener('click', () => visFane(b.dataset.fane)));
   $('#genSkjema').addEventListener('submit', startGenerering);
+  kommuneVisning = initKommune({ kart, melding, innstillinger: inn, lastKommuner, finnKommune, lagPlanFor });
   $('#genKommune').addEventListener('focus', lastKommuner, { once: true });
   $('#planListe').addEventListener('click', async (e) => {
     const rad = e.target.closest('.plan-rad'); const h = e.target.dataset.planHandling; if (!rad || !h) return;
@@ -989,7 +1003,7 @@ function kobleHendelser() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => { tegnOversikt(); if (!$('#fane-framskriving').hidden) tegnFramskriving(); }, 200);
   });
-  $('#innstSkjema').addEventListener('change', (e) => { settSti(S.innstillinger, e.target.dataset.sti, Number(e.target.value)); endret(); if (valgtId) visDetalj(); });
+  $('#innstSkjema').addEventListener('change', (e) => { settSti(S.innstillinger, e.target.dataset.sti, Number(e.target.value)); endret(); if (valgtId) visDetalj(); kommuneVisning?.oppdaterPriser(); });
   $('#hogstalderTabell').addEventListener('change', (e) => { settSti(S.innstillinger, e.target.dataset.sti, Number(e.target.value)); endret(); if (valgtId) visDetalj(); });
   $('#innstNullstill').addEventListener('click', () => { S.innstillinger = klon(STANDARD_INNSTILLINGER); tegnInnstillinger(); endret(); });
 }
