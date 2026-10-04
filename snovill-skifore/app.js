@@ -1,0 +1,1050 @@
+"use strict";
+
+/* ------------------------------------------------------------------ *
+ *  Snøvill Skiføre – skiføre-radar for Sjusjøen, Øyerfjellet, Nordseter
+ * ------------------------------------------------------------------ */
+
+const DAYS = 10;
+const CACHE_MINUTES = 20;
+const TZ = "Europe/Oslo";
+
+const LOCATIONS = [
+  {
+    id: "sjusjoen",
+    name: "Sjusjøen",
+    lat: 61.1547,
+    lon: 10.7019,
+    altitude: 840,
+    sporetId: 10084,
+    utm: [268780, 6787617],
+    sporetRadius: 3000,
+    emoji: "🌲",
+  },
+  {
+    id: "oyerfjellet",
+    name: "Øyerfjellet",
+    lat: 61.2788,
+    lon: 10.564,
+    altitude: 930,
+    sporetId: 10114,
+    utm: [262311, 6801919],
+    sporetRadius: 4000,
+    emoji: "🏔️",
+  },
+  {
+    id: "nordseter",
+    name: "Nordseter",
+    lat: 61.1864,
+    lon: 10.6194,
+    altitude: 850,
+    sporetId: 10154,
+    utm: [264586, 6791437],
+    sporetRadius: 3000,
+    emoji: "🫎",
+  },
+];
+
+const SERIES_COLORS = ["var(--series-1)", "var(--series-2)", "var(--series-3)"];
+
+const state = {
+  settings: loadSettings(),
+  results: {},
+  sources: {},
+  days: [],
+};
+
+const $ = (id) => document.getElementById(id);
+
+/* ----------------------------- utils ------------------------------ */
+
+const dateKeyFmt = new Intl.DateTimeFormat("sv-SE", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+const weekdayFmt = new Intl.DateTimeFormat("nb-NO", { timeZone: TZ, weekday: "short" });
+const weekdayLongFmt = new Intl.DateTimeFormat("nb-NO", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" });
+const dayMonthFmt = new Intl.DateTimeFormat("nb-NO", { timeZone: TZ, day: "numeric", month: "numeric" });
+
+function dateKey(d) {
+  return dateKeyFmt.format(d);
+}
+
+function nextDays(n) {
+  const out = [];
+  const now = new Date();
+  for (let i = 0; i < n; i++) {
+    // Midt på dagen i UTC gir riktig lokal dato uansett sommertid
+    const d = new Date(now.getTime() + i * 86400000);
+    out.push({ key: dateKey(d), date: d });
+  }
+  // Fjern eventuelle duplikater rundt sommertid-overgang
+  return out.filter((d, i, arr) => i === 0 || d.key !== arr[i - 1].key);
+}
+
+function cap(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function fmt1(n) {
+  return n == null || Number.isNaN(n) ? "–" : (Math.round(n * 10) / 10).toLocaleString("nb-NO");
+}
+
+function fmt0(n) {
+  return n == null || Number.isNaN(n) ? "–" : (Math.round(n) || 0).toLocaleString("nb-NO");
+}
+
+function median(arr) {
+  if (!arr.length) return null;
+  const s = [...arr].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function quantile(arr, q) {
+  if (!arr.length) return null;
+  const s = [...arr].sort((a, b) => a - b);
+  const pos = (s.length - 1) * q;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  return s[lo] + (s[hi] - s[lo]) * (pos - lo);
+}
+
+// Enkel deterministisk "tilfeldighet" så sitatene ikke hopper rundt ved hver oppdatering
+function seededPick(arr, seed) {
+  let h = 2166136261;
+  for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return arr[Math.abs(h) % arr.length];
+}
+
+function timeAgo(date) {
+  const diffH = (Date.now() - date.getTime()) / 3600000;
+  if (diffH < 1) return "under en time siden";
+  if (diffH < 24) return `${Math.round(diffH)} t siden`;
+  const d = Math.round(diffH / 24);
+  if (d === 1) return "i går";
+  if (d < 60) return `${d} dager siden`;
+  return `${Math.round(d / 30)} mnd siden`;
+}
+
+function geohash(lat, lon, precision = 12) {
+  const base32 = "0123456789bcdefghjkmnpqrstuvwxyz";
+  const latR = [-90, 90];
+  const lonR = [-180, 180];
+  let hash = "";
+  let bit = 0;
+  let ch = 0;
+  let even = true;
+  while (hash.length < precision) {
+    const r = even ? lonR : latR;
+    const v = even ? lon : lat;
+    const mid = (r[0] + r[1]) / 2;
+    if (v > mid) {
+      ch |= 1 << (4 - bit);
+      r[0] = mid;
+    } else {
+      r[1] = mid;
+    }
+    even = !even;
+    if (++bit === 5) {
+      hash += base32[ch];
+      bit = 0;
+      ch = 0;
+    }
+  }
+  return hash;
+}
+
+/* --------------------------- storage ------------------------------ */
+
+function storageGet(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function storageSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* privat modus o.l. – appen fungerer uten */
+  }
+}
+
+function loadSettings() {
+  const defaults = { threshold: 25, netatmoToken: "", baseDepth: {} };
+  try {
+    return { ...defaults, ...JSON.parse(storageGet("snovill.settings") || "{}") };
+  } catch {
+    return defaults;
+  }
+}
+
+function saveSettings() {
+  storageSet("snovill.settings", JSON.stringify(state.settings));
+}
+
+async function cached(key, loader, { force = false } = {}) {
+  const ck = "snovill.cache." + key;
+  if (!force) {
+    try {
+      const hit = JSON.parse(storageGet(ck) || "null");
+      if (hit && Date.now() - hit.t < CACHE_MINUTES * 60000) return hit.v;
+    } catch {
+      /* ignorer ødelagt cache */
+    }
+  }
+  const v = await loader();
+  storageSet(ck, JSON.stringify({ t: Date.now(), v }));
+  return v;
+}
+
+async function fetchJson(url, opts = {}) {
+  const res = await fetch(url, opts);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+/* --------------------------- data: Yr ----------------------------- *
+ * MET Norge Locationforecast – samme data som Yr viser.
+ * Returnerer blokker: { start: ISO, hours, precip (mm), temp (°C) }
+ */
+
+async function fetchYr(loc, force) {
+  return cached(`yr.${loc.id}`, async () => {
+    const url = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${loc.lat}&lon=${loc.lon}&altitude=${loc.altitude}`;
+    const data = await fetchJson(url);
+    const ts = data.properties.timeseries;
+    const blocks = [];
+    let coveredUntil = 0;
+    for (let i = 0; i < ts.length; i++) {
+      const t = Date.parse(ts[i].time);
+      if (t < coveredUntil) continue;
+      const next = ts[i + 1];
+      const tNext = next ? Date.parse(next.time) : null;
+      const temp0 = ts[i].data.instant.details.air_temperature;
+      let hours = null;
+      let precip = null;
+      if (ts[i].data.next_1_hours && tNext && tNext - t === 3600000) {
+        hours = 1;
+        precip = ts[i].data.next_1_hours.details.precipitation_amount ?? 0;
+      } else if (ts[i].data.next_6_hours) {
+        hours = 6;
+        precip = ts[i].data.next_6_hours.details.precipitation_amount ?? 0;
+      } else if (ts[i].data.next_1_hours) {
+        hours = 1;
+        precip = ts[i].data.next_1_hours.details.precipitation_amount ?? 0;
+      }
+      if (hours == null) continue;
+      // Snitt av temperaturen ved start og slutt på blokken
+      const endIdx = ts.findIndex((x, j) => j > i && Date.parse(x.time) >= t + hours * 3600000);
+      const temp1 = endIdx > -1 ? ts[endIdx].data.instant.details.air_temperature : temp0;
+      blocks.push({ start: ts[i].time, hours, precip, temp: (temp0 + temp1) / 2 });
+      coveredUntil = t + hours * 3600000;
+    }
+    return { blocks, now: ts[0]?.data.instant.details.air_temperature ?? null };
+  }, { force });
+}
+
+/* -------------------------- data: Storm --------------------------- *
+ * Storm.no er i dag TV 2 Vær, med prognoser fra StormGeo.
+ * GraphQL-endepunktet tar et sted-ID som er base64("#" + geohash).
+ */
+
+const STORM_QUERY = `query($placeId: String!, $from: Date!, $to: Date!, $geoHash: Boolean = true) {
+  forecastByPlaceId(placeId: $placeId, from: $from, to: $to, geoHash: $geoHash) {
+    current { temperature symbol time }
+    days {
+      date
+      dayForecast { minTemperature maxTemperature precipitation symbol }
+      weatherOneHourSteps { startTime endTime precipitation temperature symbol }
+      weatherThreeHourSteps { startTime endTime precipitation temperature symbol }
+      weatherSixHourSteps { startTime endTime precipitation temperature symbol }
+    }
+  }
+}`;
+
+async function fetchStorm(loc, force) {
+  return cached(`storm.${loc.id}`, async () => {
+    const placeId = btoa("#" + geohash(loc.lat, loc.lon));
+    const days = nextDays(16);
+    const body = {
+      query: STORM_QUERY,
+      variables: { placeId, from: days[0].key, to: days[days.length - 1].key },
+    };
+    const data = await fetchJson("https://www.tv2.no/vaer/backend-api", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const fc = data?.data?.forecastByPlaceId;
+    if (!fc) throw new Error("Tomt svar fra Storm");
+    const blocks = [];
+    for (const day of fc.days || []) {
+      const steps =
+        (day.weatherOneHourSteps?.length >= 20 && day.weatherOneHourSteps) ||
+        (day.weatherThreeHourSteps?.length && day.weatherThreeHourSteps) ||
+        (day.weatherSixHourSteps?.length && day.weatherSixHourSteps) ||
+        null;
+      if (steps) {
+        for (const s of steps) {
+          const hours = (Date.parse(s.endTime) - Date.parse(s.startTime)) / 3600000;
+          if (!(hours > 0) || s.temperature == null) continue;
+          blocks.push({ start: s.startTime, hours, precip: s.precipitation ?? 0, temp: s.temperature });
+        }
+      } else if (day.dayForecast) {
+        const df = day.dayForecast;
+        blocks.push({
+          start: `${day.date}T00:00:00+01:00`,
+          hours: 24,
+          precip: df.precipitation ?? 0,
+          temp: (df.minTemperature + df.maxTemperature) / 2,
+          tmin: df.minTemperature,
+          tmax: df.maxTemperature,
+        });
+      }
+    }
+    // Dagene kan overlappe (timesteg for én dag går inn i neste) – behold første dekning
+    blocks.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+    const unique = [];
+    let coveredUntil = 0;
+    for (const b of blocks) {
+      const t = Date.parse(b.start);
+      if (t < coveredUntil) continue;
+      unique.push(b);
+      coveredUntil = t + b.hours * 3600000;
+    }
+    return { blocks: unique, now: fc.current?.temperature ?? null };
+  }, { force });
+}
+
+/* ------------------------- data: Sporet --------------------------- */
+
+async function fetchSporet(loc, force) {
+  return cached(`sporet.${loc.id}`, async () => {
+    const [x, y] = loc.utm;
+    const r = loc.sporetRadius;
+    const url = `https://api.sporet.no/loypeapi/publicfree/skiroutes/detailsbybbox?xMin=${x - r}&yMin=${y - r}&xMax=${x + r}&yMax=${y + r}`;
+    const routes = await fetchJson(url);
+    return routes
+      .filter((rt) => rt.preppedTime)
+      .map((rt) => ({ id: rt.id, name: rt.name, prepped: rt.preppedTime }))
+      .sort((a, b) => Date.parse(b.prepped) - Date.parse(a.prepped));
+  }, { force });
+}
+
+/* ------------------------- data: Netatmo -------------------------- */
+
+async function fetchNetatmo(loc, token) {
+  const d = 0.06;
+  const params = new URLSearchParams({
+    lat_ne: (loc.lat + d).toFixed(4),
+    lon_ne: (loc.lon + d * 2).toFixed(4),
+    lat_sw: (loc.lat - d).toFixed(4),
+    lon_sw: (loc.lon - d * 2).toFixed(4),
+    filter: "true",
+  });
+  const data = await fetchJson(`https://api.netatmo.com/api/getpublicdata?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const temps = [];
+  const rain24 = [];
+  for (const st of data.body || []) {
+    for (const m of Object.values(st.measures || {})) {
+      if (m.type && m.res) {
+        const ti = m.type.indexOf("temperature");
+        if (ti > -1) {
+          const latest = Object.entries(m.res).sort((a, b) => b[0] - a[0])[0];
+          if (latest && typeof latest[1][ti] === "number") temps.push(latest[1][ti]);
+        }
+      }
+      if (typeof m.rain_24h === "number") rain24.push(m.rain_24h);
+    }
+  }
+  return {
+    stations: (data.body || []).length,
+    temp: median(temps),
+    tmin: temps.length ? Math.min(...temps) : null,
+    tmax: temps.length ? Math.max(...temps) : null,
+    rain24: rain24.length ? median(rain24) : null,
+  };
+}
+
+/* ------------------------ snømodell ------------------------------- */
+
+function snowFraction(t) {
+  if (t <= 0) return 1;
+  if (t >= 2) return 0;
+  return 1 - t / 2;
+}
+
+function blocksByDay(blocks) {
+  const map = {};
+  for (const b of blocks) {
+    // Blokken havner på den lokale datoen midt i blokken
+    const mid = new Date(Date.parse(b.start) + (b.hours * 3600000) / 2);
+    (map[dateKey(mid)] ||= []).push(b);
+  }
+  return map;
+}
+
+function daySummary(blocks) {
+  if (!blocks?.length) return null;
+  let precip = 0;
+  let snow = 0;
+  let hours = 0;
+  let tsum = 0;
+  let tmin = Infinity;
+  let tmax = -Infinity;
+  for (const b of blocks) {
+    precip += b.precip;
+    snow += b.precip * snowFraction(b.temp);
+    hours += b.hours;
+    tsum += b.temp * b.hours;
+    tmin = Math.min(tmin, b.tmin ?? b.temp);
+    tmax = Math.max(tmax, b.tmax ?? b.temp);
+  }
+  return { precip, snow, tmean: tsum / hours, tmin, tmax };
+}
+
+/**
+ * Kjører snømodellen gjennom dagene for én variant.
+ * dayBlocks: array (per dag) av blokker; offset: temperaturavvik per dag; pscale: nedbørsskalering.
+ */
+function simulate(dayBlocks, startDepth, offsets, pscale) {
+  let depth = startDepth;
+  const depths = [];
+  const newSnow = [];
+  dayBlocks.forEach((blocks, i) => {
+    const off = offsets[i];
+    let fresh = 0;
+    let rain = 0;
+    let degreeDays = 0;
+    for (const b of blocks || []) {
+      const t = b.temp + off;
+      const p = b.precip * pscale;
+      const f = snowFraction(t);
+      fresh += p * f;
+      rain += p * (1 - f);
+      // Ved døgnsnitt (Storm langt frem) bruk halve spennet for å fange dagsmelting
+      const tWarm = b.hours >= 24 && b.tmax != null ? (b.temp + b.tmax) / 2 + off : t;
+      degreeDays += (Math.max(0, tWarm) * b.hours) / 24;
+    }
+    const melt = degreeDays * 1.2 + (depth > 0 ? rain * 0.15 : 0);
+    depth = Math.max(0, depth * 0.97 + fresh - melt);
+    depths.push(depth);
+    newSnow.push(fresh);
+  });
+  return { depths, newSnow };
+}
+
+const TEMP_STEPS = [-2, -1, 0, 1, 2];
+const PRECIP_SCALES = [0.6, 1, 1.4];
+
+function runEnsemble(sourceDays, days, startDepth, threshold) {
+  const sourceIds = Object.keys(sourceDays).filter((s) => sourceDays[s]);
+  if (!sourceIds.length) return null;
+
+  // Bygg per-kilde lister over blokker per dag, med fallback til den andre kilden
+  const perSource = sourceIds.map((sid) =>
+    days.map((d) => {
+      const own = sourceDays[sid][d.key];
+      if (own?.length) return own;
+      for (const other of sourceIds) if (sourceDays[other][d.key]?.length) return sourceDays[other][d.key];
+      return [];
+    })
+  );
+
+  const scenarios = [];
+  perSource.forEach((dayBlocks, si) => {
+    for (const k of TEMP_STEPS) {
+      const offsets = days.map((_, i) => k * (0.4 + 0.2 * i));
+      for (const ps of PRECIP_SCALES) {
+        scenarios.push({ source: sourceIds[si], k, ps, ...simulate(dayBlocks, startDepth, offsets, ps) });
+      }
+    }
+  });
+
+  const zero = days.map((_, i) => 0 * i);
+  const central = perSource.map((dayBlocks) => simulate(dayBlocks, startDepth, zero, 1));
+
+  return days.map((d, i) => {
+    const depths = scenarios.map((s) => s.depths[i]);
+    const ok = depths.filter((v) => v >= threshold).length;
+    const fresh = scenarios.filter((s) => s.newSnow[i] >= 1).length;
+    const summaries = {};
+    sourceIds.forEach((sid) => {
+      summaries[sid] = daySummary(sourceDays[sid][d.key]);
+    });
+    const sums = Object.values(summaries).filter(Boolean);
+    const avg = (f) => (sums.length ? sums.reduce((a, s) => a + s[f], 0) / sums.length : null);
+    return {
+      key: d.key,
+      date: d.date,
+      prob: Math.round((ok / scenarios.length) * 100),
+      probNewSnow: Math.round((fresh / scenarios.length) * 100),
+      depth: median(central.map((c) => c.depths[i])),
+      depthLo: quantile(depths, 0.1),
+      depthHi: quantile(depths, 0.9),
+      newSnow: median(central.map((c) => c.newSnow[i])),
+      perSource: summaries,
+      tmin: avg("tmin"),
+      tmax: avg("tmax"),
+      precip: avg("precip"),
+    };
+  });
+}
+
+function autoBaseDepth(routes) {
+  if (!routes?.length) return { depth: 0, why: "ingen prepareringsdata" };
+  const newest = Date.parse(routes[0].prepped);
+  const days = (Date.now() - newest) / 86400000;
+  if (days <= 2) return { depth: 35, why: "løyper kjørt siste døgn" };
+  if (days <= 7) return { depth: 25, why: "løyper kjørt siste uke" };
+  if (days <= 21) return { depth: 10, why: "løyper kjørt siste tre uker" };
+  return { depth: 0, why: "barmark siden sist preparering" };
+}
+
+/* ------------------------- moro-tekster --------------------------- */
+
+const LEVELS = [
+  { min: 80, face: "🤩", label: "Fullt Snøvill!", cls: "lvl-5" },
+  { min: 55, face: "😎", label: "Lovende", cls: "lvl-4" },
+  { min: 30, face: "🤔", label: "Kanskje …", cls: "lvl-3" },
+  { min: 10, face: "🙄", label: "Drøm videre", cls: "lvl-2" },
+  { min: 0, face: "🏃", label: "Joggesko", cls: "lvl-1" },
+];
+
+function level(p) {
+  return LEVELS.find((l) => p >= l.min);
+}
+
+const QUIPS = {
+  "lvl-5": [
+    "Ring sjefen. Nå.",
+    "Smør skiene, dette er ikke en øvelse!",
+    "Sporene ligger og venter på deg, Snøvill.",
+    "Kakao på termosen og appelsin i lomma!",
+  ],
+  "lvl-4": [
+    "Dette lukter blåswix.",
+    "Begynner å bli spennende – hold øye med varselet.",
+    "Finn frem skiposen, men ikke pakk bilen ennå.",
+  ],
+  "lvl-3": [
+    "Halvveis snøvill. Kan gå begge veier.",
+    "Værgudene kaster mynt og kron.",
+    "Myrene trenger litt mer pudder først.",
+  ],
+  "lvl-2": [
+    "Rulleskiene kaller fortsatt.",
+    "Mer høstløv enn nysnø her, dessverre.",
+    "Du kan alltids danse snødans i stua.",
+  ],
+  "lvl-1": [
+    "Joggeskoføre. Ta en tur i lyngen.",
+    "Ikke en snøfnugg i sikte. Sukk.",
+    "Perfekt vær for å vokse skiene … til senere.",
+    "Elgen går fortsatt barbeint.",
+  ],
+};
+
+const EXCUSES = [
+  "Hei! Jeg har dessverre fått akutt Snøvill-syndrom. Eneste kjente kur er {km} km klassisk på {sted} {dag}. Er tilbake fullt restituert dagen etter.",
+  "Hei sjef! Jeg skal på et viktig eksternt møte med {sted}-løypene {dag}. Agenda: glid, feste og vaffel.",
+  "Beklager, jeg må jobbe hjemmefra {dag}. «Hjemme» er en hytte på {sted}, og «jobbe» betyr {km} km skøyting.",
+  "Viktig beskjed: Værmodellene viser {pct} % sjanse for skiføre på {sted} {dag}. Det er statistisk uforsvarlig å sitte inne.",
+  "Hei! Jeg tar en avspaseringsdag {dag}. Grunn: {pct} % sjanse for perfekte spor på {sted}. Håper du forstår. ❄️",
+];
+
+function waxTip(day) {
+  if (day.depth < 5 || day.tmax == null) return { name: "Ingen snø", cls: "wax-none", short: "–" };
+  if (day.tmax <= -10) return { name: "Grønn voks", cls: "wax-green", short: "Grønn" };
+  if (day.tmax <= -3) return { name: "Blå voks", cls: "wax-blue", short: "Blå" };
+  if (day.tmax <= 0) return { name: "Fiolett voks", cls: "wax-violet", short: "Fiolett" };
+  if (day.newSnow >= 2 && day.tmax <= 2) return { name: "Rød voks", cls: "wax-red", short: "Rød" };
+  return { name: "Klister (lykke til!)", cls: "wax-klister", short: "Klister" };
+}
+
+/* --------------------------- rendering ---------------------------- */
+
+function renderSources() {
+  const chips = [
+    ["yr", "Yr"],
+    ["storm", "Storm"],
+    ["sporet", "Sporet"],
+    ["netatmo", "Netatmo"],
+  ].map(([id, label]) => {
+    const s = state.sources[id] || { status: "loading" };
+    const icon = { ok: "✓", error: "✗", loading: "…", missing: "🔑" }[s.status];
+    const title = s.note ? ` title="${escapeHtml(s.note)}"` : "";
+    return `<span class="chip chip-${s.status}"${title}><span class="chip-icon">${icon}</span>${label}</span>`;
+  });
+  $("sourceStatus").innerHTML = chips.join("");
+}
+
+function setSource(id, status, note) {
+  state.sources[id] = { status, note };
+  renderSources();
+}
+
+function renderResorts() {
+  const html = LOCATIONS.map((loc, li) => {
+    const r = state.results[loc.id];
+    if (!r) return "";
+    if (!r.days) {
+      return `<article class="card resort"><h2>${loc.emoji} ${loc.name}</h2><p class="error">Fikk ikke værdata akkurat nå. Prøv «Oppdater» om litt.</p></article>`;
+    }
+    const best = r.days.reduce((a, b) => (b.prob > a.prob ? b : a), r.days[0]);
+    const lvl = level(best.prob);
+    const quip = seededPick(QUIPS[lvl.cls], loc.id + best.key + lvl.cls);
+
+    const sporet = r.sporet;
+    let sporetHtml = `<span class="muted">Ingen data</span>`;
+    if (sporet?.length) {
+      const newest = new Date(sporet[0].prepped);
+      const last24 = sporet.filter((s) => Date.now() - Date.parse(s.prepped) < 86400000).length;
+      sporetHtml = `<strong>${timeAgo(newest)}</strong><br><small>${escapeHtml(sporet[0].name)}${last24 ? ` · ${last24} løyper kjørt siste døgn` : ""}</small>`;
+    } else if (sporet && !sporet.length) {
+      sporetHtml = `<span class="muted">Ingen løyper funnet</span>`;
+    }
+
+    let netatmoHtml = `<span class="muted">Legg inn token i ⚙️</span>`;
+    if (r.netatmo?.error) netatmoHtml = `<span class="muted">${escapeHtml(r.netatmo.error)}</span>`;
+    else if (r.netatmo && r.netatmo.temp != null) {
+      netatmoHtml = `<strong>${fmt1(r.netatmo.temp)} °C</strong><br><small>${r.netatmo.stations} stasjoner · ${fmt1(r.netatmo.tmin)} til ${fmt1(r.netatmo.tmax)} °C${r.netatmo.rain24 != null ? ` · ${fmt1(r.netatmo.rain24)} mm siste døgn` : ""}</small>`;
+    } else if (r.netatmo) netatmoHtml = `<span class="muted">Ingen stasjoner i nærheten</span>`;
+
+    const nowHtml = `Yr <strong>${fmt1(r.yrNow)} °C</strong> · Storm <strong>${fmt1(r.stormNow)} °C</strong>`;
+
+    const tiles = r.days
+      .map((d, i) => {
+        const l = level(d.prob);
+        const wax = waxTip(d);
+        const label = i === 0 ? "I dag" : i === 1 ? "I morgen" : cap(weekdayFmt.format(d.date).replace(".", ""));
+        const yr = d.perSource.yr;
+        const st = d.perSource.storm;
+        const fight =
+          yr && st
+            ? `Yr ${fmt1(yr.snow)} cm vs Storm ${fmt1(st.snow)} cm nysnø`
+            : yr
+              ? `Yr ${fmt1(yr.snow)} cm nysnø`
+              : st
+                ? `Storm ${fmt1(st.snow)} cm nysnø`
+                : "";
+        const title = `${weekdayLongFmt.format(d.date)}: ${d.prob} % sjanse for skiføre. Beregnet snødybde ${fmt0(d.depth)} cm (${fmt0(d.depthLo)}–${fmt0(d.depthHi)}). ${fight}. Nedbør ${fmt1(d.precip)} mm. ${wax.name}.`;
+        return `
+          <li class="day ${l.cls}" title="${escapeHtml(title)}" tabindex="0">
+            <span class="day-name">${escapeHtml(label)}</span>
+            <span class="day-date">${dayMonthFmt.format(d.date)}</span>
+            <span class="day-face" aria-hidden="true">${l.face}</span>
+            <span class="day-prob">${d.prob}<small>%</small></span>
+            <span class="bar"><span style="width:${d.prob}%"></span></span>
+            <span class="day-snow">${d.newSnow >= 0.5 ? `❄️ ${fmt0(d.newSnow)} cm` : `<span class="muted">ingen nysnø</span>`}</span>
+            <span class="day-temp">${fmt0(d.tmin)}° / ${fmt0(d.tmax)}°</span>
+            <span class="wax ${wax.cls}">${wax.short}</span>
+          </li>`;
+      })
+      .join("");
+
+    return `
+      <article class="card resort" style="--accent:${SERIES_COLORS[li]}">
+        <header class="resort-head">
+          <div>
+            <h2>${loc.emoji} ${loc.name}</h2>
+            <p class="resort-meta">${loc.altitude} moh · start ${fmt0(r.startDepth)} cm snø (${escapeHtml(r.startWhy)})</p>
+          </div>
+          <div class="resort-verdict ${lvl.cls}">
+            <span class="verdict-face" aria-hidden="true">${lvl.face}</span>
+            <span><strong>${lvl.label}</strong><br><small>${escapeHtml(quip)}</small></span>
+          </div>
+        </header>
+        <div class="resort-stats">
+          <div class="stat"><span class="stat-label">🚜 Sist preparert (Sporet)</span><span class="stat-value">${sporetHtml}</span></div>
+          <div class="stat"><span class="stat-label">🌡️ Hyttenaboene (Netatmo)</span><span class="stat-value">${netatmoHtml}</span></div>
+          <div class="stat"><span class="stat-label">📡 Akkurat nå</span><span class="stat-value">${nowHtml}</span></div>
+        </div>
+        <ol class="days">${tiles}</ol>
+        ${renderSporetList(sporet)}
+      </article>`;
+  }).join("");
+  $("resorts").innerHTML = html;
+}
+
+function renderSporetList(routes) {
+  if (!routes?.length) return "";
+  const items = routes
+    .slice(0, 6)
+    .map((r) => `<li><span>${escapeHtml(r.name)}</span><span class="muted">${timeAgo(new Date(r.prepped))}</span></li>`)
+    .join("");
+  return `<details class="sporet-list"><summary>Løyper i nærheten (${routes.length})</summary><ul>${items}</ul></details>`;
+}
+
+function renderHero() {
+  let bestProb = 0;
+  let best = null;
+  for (const loc of LOCATIONS) {
+    const r = state.results[loc.id];
+    if (!r?.days) continue;
+    for (const d of r.days) {
+      if (d.prob > bestProb) {
+        bestProb = d.prob;
+        best = { loc, day: d };
+      }
+    }
+  }
+  const lvl = level(bestProb);
+  $("heroIndex").textContent = bestProb;
+  $("heroMeter").style.setProperty("--pct", bestProb);
+  $("heroMeter").setAttribute("aria-label", `Snøvill-indeks ${bestProb} prosent`);
+  $("mascot").textContent = bestProb >= 80 ? "⛷️" : bestProb >= 55 ? "⛄" : bestProb >= 30 ? "🌨️" : bestProb >= 10 ? "🍂" : "🏃";
+  $("tagline").textContent = best
+    ? `Hei, Snøvill! ${lvl.label} – beste sjanse er ${best.loc.name} ${dayPhrase(best.day)} (${bestProb} %).`
+    : "Hei, Snøvill! Ingen skiføre i sikte de neste 10 dagene. Rulleskisesongen forlenges. 🛼";
+  setSnowIntensity(bestProb);
+
+  const card = $("bestDay");
+  if (!best || bestProb < 10) {
+    card.hidden = false;
+    card.innerHTML = `<div class="best-body"><span class="best-emoji">🍂</span><div><h2>Ingen skidag i sikte ennå</h2><p>Modellene er enige om at det er for varmt eller for tørt. Smør rulleskiene og sjekk igjen i morgen!</p></div></div>`;
+    return;
+  }
+  card.hidden = false;
+  card.innerHTML = `
+    <div class="best-body">
+      <span class="best-emoji">${lvl.face}</span>
+      <div>
+        <h2>Beste skidag: ${escapeHtml(best.loc.name)} ${escapeHtml(dayPhrase(best.day))}</h2>
+        <p>${bestProb} % sjanse for skiføre · ca. ${fmt0(best.day.depth)} cm snø · ${fmt0(best.day.tmin)}° til ${fmt0(best.day.tmax)}° · ${escapeHtml(waxTip(best.day).name)}</p>
+      </div>
+      <button class="btn btn-accent" id="excuseBtn" type="button">📞 Ta fri-generator</button>
+    </div>
+    <div class="excuse" id="excuseBox" hidden>
+      <p id="excuseText"></p>
+      <button class="btn btn-ghost" id="copyExcuse" type="button">📋 Kopier</button>
+      <button class="btn btn-ghost" id="newExcuse" type="button">🎲 Ny unnskyldning</button>
+    </div>`;
+  const makeExcuse = () => {
+    const tpl = EXCUSES[Math.floor(Math.random() * EXCUSES.length)];
+    $("excuseText").textContent = tpl
+      .replace("{sted}", best.loc.name)
+      .replace("{dag}", dayPhrase(best.day))
+      .replace("{pct}", bestProb)
+      .replace("{km}", 15 + Math.floor(Math.random() * 6) * 5);
+    $("excuseBox").hidden = false;
+  };
+  $("excuseBtn").onclick = makeExcuse;
+  $("newExcuse").onclick = makeExcuse;
+  $("copyExcuse").onclick = async () => {
+    try {
+      await navigator.clipboard.writeText($("excuseText").textContent);
+      $("copyExcuse").textContent = "✅ Kopiert!";
+    } catch {
+      $("copyExcuse").textContent = "Marker og kopier selv 🙃";
+    }
+    setTimeout(() => ($("copyExcuse").textContent = "📋 Kopier"), 2000);
+  };
+}
+
+function dayPhrase(day) {
+  const today = dateKey(new Date());
+  const tomorrow = dateKey(new Date(Date.now() + 86400000));
+  if (day.key === today) return "i dag";
+  if (day.key === tomorrow) return "i morgen";
+  return weekdayLongFmt.format(day.date);
+}
+
+/* ----------------------------- chart ------------------------------ */
+
+function renderChart() {
+  const svg = $("depthChart");
+  const wrap = $("chartWrap");
+  const series = LOCATIONS.map((loc, i) => ({ loc, color: SERIES_COLORS[i], days: state.results[loc.id]?.days })).filter((s) => s.days);
+  if (!series.length) {
+    svg.innerHTML = "";
+    return;
+  }
+  const W = Math.max(320, wrap.clientWidth);
+  const H = 260;
+  const m = { t: 16, r: 16, b: 34, l: 46 };
+  const threshold = state.settings.threshold;
+  const n = series[0].days.length;
+  const maxV = Math.max(threshold + 10, ...series.flatMap((s) => s.days.map((d) => d.depth)));
+  const step = maxV > 80 ? 20 : 10;
+  const yMax = Math.ceil(maxV / step) * step;
+  const x = (i) => m.l + (i * (W - m.l - m.r)) / Math.max(1, n - 1);
+  const y = (v) => m.t + (1 - v / yMax) * (H - m.t - m.b);
+
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("width", W);
+  svg.setAttribute("height", H);
+
+  let out = "";
+  const ticks = yMax / step;
+  for (let k = 0; k <= ticks; k++) {
+    const v = step * k;
+    out += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/>`;
+    out += `<text class="axis" x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${fmt0(v)}${k === ticks ? " cm" : ""}</text>`;
+  }
+  out += `<line class="threshold" x1="${m.l}" x2="${W - m.r}" y1="${y(threshold)}" y2="${y(threshold)}"/>`;
+  out += `<text class="threshold-label" x="${W - m.r}" y="${y(threshold) - 6}" text-anchor="end">Skiføre-grense ${threshold} cm</text>`;
+  series[0].days.forEach((d, i) => {
+    const label = i === 0 ? "I dag" : cap(weekdayFmt.format(d.date).replace(".", ""));
+    out += `<text class="axis axis-x" x="${x(i)}" y="${H - 12}" text-anchor="middle">${escapeHtml(label)}</text>`;
+  });
+
+  for (const s of series) {
+    const pts = s.days.map((d, i) => `${x(i).toFixed(1)},${y(d.depth).toFixed(1)}`).join(" ");
+    out += `<polyline class="line" style="stroke:${s.color}" points="${pts}"/>`;
+  }
+  out += `<line class="crosshair" id="crosshair" y1="${m.t}" y2="${H - m.b}" x1="0" x2="0" visibility="hidden"/>`;
+  for (const s of series) {
+    s.days.forEach((d, i) => {
+      out += `<circle class="dot" data-i="${i}" cx="${x(i)}" cy="${y(d.depth)}" r="4" style="fill:${s.color}" visibility="hidden"/>`;
+    });
+  }
+  out += `<rect class="hit" x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent"/>`;
+  svg.innerHTML = out;
+
+  $("chartLegend").innerHTML = series
+    .map((s) => `<span class="legend-item"><span class="swatch" style="background:${s.color}"></span>${s.loc.name}</span>`)
+    .join("");
+
+  const tip = $("chartTip");
+  const hit = svg.querySelector(".hit");
+  const cross = svg.querySelector("#crosshair");
+  const show = (evt) => {
+    const rect = svg.getBoundingClientRect();
+    const px = ((evt.clientX - rect.left) / rect.width) * W;
+    const i = Math.max(0, Math.min(n - 1, Math.round(((px - m.l) / (W - m.l - m.r)) * (n - 1))));
+    cross.setAttribute("x1", x(i));
+    cross.setAttribute("x2", x(i));
+    cross.setAttribute("visibility", "visible");
+    svg.querySelectorAll(".dot").forEach((c) => c.setAttribute("visibility", +c.dataset.i === i ? "visible" : "hidden"));
+    const rows = series
+      .map(
+        (s) =>
+          `<div class="tip-row"><span class="swatch" style="background:${s.color}"></span>${s.loc.name}<strong>${fmt0(s.days[i].depth)} cm</strong><span class="muted">${s.days[i].prob} %</span></div>`
+      )
+      .join("");
+    tip.innerHTML = `<div class="tip-title">${escapeHtml(cap(weekdayLongFmt.format(series[0].days[i].date)))}</div>${rows}`;
+    tip.hidden = false;
+    const left = (x(i) / W) * rect.width;
+    tip.style.left = `${Math.min(rect.width - tip.offsetWidth - 4, Math.max(4, left + 12))}px`;
+    tip.style.top = `8px`;
+  };
+  hit.addEventListener("pointermove", show);
+  hit.addEventListener("pointerdown", show);
+  hit.addEventListener("pointerleave", () => {
+    tip.hidden = true;
+    cross.setAttribute("visibility", "hidden");
+    svg.querySelectorAll(".dot").forEach((c) => c.setAttribute("visibility", "hidden"));
+  });
+
+  // Tabellvisning
+  const head = series[0].days.map((d) => `<th>${escapeHtml(dayMonthFmt.format(d.date))}</th>`).join("");
+  const body = series
+    .map(
+      (s) =>
+        `<tr><th scope="row">${s.loc.name}</th>${s.days.map((d) => `<td>${fmt0(d.depth)} cm<br><small>${d.prob} %</small></td>`).join("")}</tr>`
+    )
+    .join("");
+  $("depthTable").innerHTML = `<div class="table-scroll"><table><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+/* ---------------------------- settings ---------------------------- */
+
+function renderSettings() {
+  $("thresholdInput").value = state.settings.threshold;
+  $("thresholdOut").textContent = `${state.settings.threshold} cm`;
+  $("netatmoToken").value = state.settings.netatmoToken || "";
+  $("baseDepthInputs").innerHTML = LOCATIONS.map((loc) => {
+    const v = state.settings.baseDepth[loc.id];
+    return `<label class="base-row"><span>${loc.name}</span>
+      <input type="number" min="0" max="300" step="5" inputmode="numeric" data-loc="${loc.id}" placeholder="Auto" value="${v ?? ""}"> cm</label>`;
+  }).join("");
+}
+
+function readSettings() {
+  state.settings.threshold = Number($("thresholdInput").value) || 25;
+  state.settings.netatmoToken = $("netatmoToken").value.trim();
+  const bd = {};
+  document.querySelectorAll("#baseDepthInputs input").forEach((inp) => {
+    if (inp.value !== "") bd[inp.dataset.loc] = Math.max(0, Number(inp.value));
+  });
+  state.settings.baseDepth = bd;
+  saveSettings();
+}
+
+/* ---------------------------- snøfall ----------------------------- */
+
+let snowTarget = 40;
+function setSnowIntensity(pct) {
+  snowTarget = 25 + Math.round(pct * 2.2);
+}
+
+function startSnow() {
+  const canvas = $("snowCanvas");
+  const ctx = canvas.getContext("2d");
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const flakes = [];
+  const resize = () => {
+    canvas.width = window.innerWidth * devicePixelRatio;
+    canvas.height = window.innerHeight * devicePixelRatio;
+  };
+  resize();
+  window.addEventListener("resize", resize);
+  const spawn = (top) => ({
+    x: Math.random() * canvas.width,
+    y: top ? -10 : Math.random() * canvas.height,
+    r: (1 + Math.random() * 2.6) * devicePixelRatio,
+    vy: (0.4 + Math.random() * 1.1) * devicePixelRatio,
+    drift: Math.random() * Math.PI * 2,
+  });
+  const tick = () => {
+    while (flakes.length < snowTarget) flakes.push(spawn(flakes.length > 20));
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--flake").trim() || "#fff";
+    for (let i = flakes.length - 1; i >= 0; i--) {
+      const f = flakes[i];
+      f.y += f.vy;
+      f.drift += 0.01;
+      f.x += Math.sin(f.drift) * 0.4 * devicePixelRatio;
+      if (f.y > canvas.height + 10) {
+        if (flakes.length > snowTarget) flakes.splice(i, 1);
+        else flakes[i] = spawn(true);
+        continue;
+      }
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+/* ------------------------------ main ------------------------------ */
+
+async function loadAll(force = false) {
+  state.days = nextDays(DAYS);
+  ["yr", "storm", "sporet"].forEach((s) => setSource(s, "loading"));
+  setSource("netatmo", state.settings.netatmoToken ? "loading" : "missing", "Legg inn Netatmo-token under Innstillinger");
+  $("refreshBtn").disabled = true;
+
+  const counts = { yr: 0, storm: 0, sporet: 0, netatmo: 0 };
+  const errors = { yr: [], storm: [], sporet: [], netatmo: [] };
+
+  await Promise.all(
+    LOCATIONS.map(async (loc) => {
+      const [yr, storm, sporet, netatmo] = await Promise.allSettled([
+        fetchYr(loc, force),
+        fetchStorm(loc, force),
+        fetchSporet(loc, force),
+        state.settings.netatmoToken ? fetchNetatmo(loc, state.settings.netatmoToken) : Promise.resolve(null),
+      ]);
+      const val = (r, id) => {
+        if (r.status === "fulfilled") {
+          if (r.value != null) counts[id]++;
+          return r.value;
+        }
+        errors[id].push(`${loc.name}: ${r.reason?.message || r.reason}`);
+        return undefined;
+      };
+      const yrV = val(yr, "yr");
+      const stormV = val(storm, "storm");
+      const sporetV = val(sporet, "sporet");
+      const netV = val(netatmo, "netatmo");
+
+      const auto = autoBaseDepth(sporetV);
+      const manual = state.settings.baseDepth[loc.id];
+      const startDepth = manual != null ? manual : auto.depth;
+      const startWhy = manual != null ? "satt manuelt" : auto.why;
+
+      const sourceDays = {
+        yr: yrV ? blocksByDay(yrV.blocks) : null,
+        storm: stormV ? blocksByDay(stormV.blocks) : null,
+      };
+      state.results[loc.id] = {
+        days: runEnsemble(sourceDays, state.days, startDepth, state.settings.threshold),
+        sporet: sporetV,
+        netatmo: netatmo.status === "rejected" ? { error: netatmoError(netatmo.reason) } : netV,
+        yrNow: yrV?.now,
+        stormNow: stormV?.now,
+        startDepth,
+        startWhy,
+        sourceDays,
+      };
+    })
+  );
+
+  for (const id of ["yr", "storm", "sporet"]) {
+    setSource(id, counts[id] ? "ok" : "error", errors[id].join("\n") || `${counts[id]} av ${LOCATIONS.length} steder`);
+  }
+  if (state.settings.netatmoToken) {
+    setSource("netatmo", counts.netatmo ? "ok" : "error", errors.netatmo.join("\n") || "OK");
+  }
+
+  renderResorts();
+  renderHero();
+  renderChart();
+  $("refreshBtn").disabled = false;
+}
+
+function netatmoError(err) {
+  const msg = String(err?.message || err);
+  if (msg.startsWith("401") || msg.startsWith("403")) return "Token utløpt – lag et nytt i ⚙️";
+  return "Netatmo svarte ikke";
+}
+
+// Rask ny beregning uten nytt nettverkskall (når grense/snødybde endres)
+function recompute() {
+  for (const loc of LOCATIONS) {
+    const r = state.results[loc.id];
+    if (!r) continue;
+    const auto = autoBaseDepth(r.sporet);
+    const manual = state.settings.baseDepth[loc.id];
+    r.startDepth = manual != null ? manual : auto.depth;
+    r.startWhy = manual != null ? "satt manuelt" : auto.why;
+    r.days = runEnsemble(r.sourceDays, state.days, r.startDepth, state.settings.threshold);
+  }
+  renderResorts();
+  renderHero();
+  renderChart();
+}
+
+function init() {
+  renderSources();
+  renderSettings();
+  startSnow();
+
+  $("refreshBtn").addEventListener("click", () => loadAll(true));
+  $("settingsBtn").addEventListener("click", () => {
+    const el = $("settings");
+    el.hidden = !el.hidden;
+    $("settingsBtn").setAttribute("aria-expanded", String(!el.hidden));
+  });
+  $("thresholdInput").addEventListener("input", (e) => {
+    $("thresholdOut").textContent = `${e.target.value} cm`;
+  });
+  $("saveSettings").addEventListener("click", () => {
+    const hadToken = state.settings.netatmoToken;
+    readSettings();
+    if (state.settings.netatmoToken !== hadToken) loadAll(false);
+    else recompute();
+    $("settings").hidden = true;
+    $("settingsBtn").setAttribute("aria-expanded", "false");
+  });
+
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(renderChart, 150);
+  });
+
+  loadAll(false);
+}
+
+init();
