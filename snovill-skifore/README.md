@@ -1,6 +1,6 @@
 # ⛷️ Snøvill Skiføre
 
-En morsom skiføre-radar for **Sjusjøen**, **Øyerfjellet** og **Nordseter**. Appen
+En morsom skiføre-radar for **Sjusjøen**, **Øyerfjellet**, **Nordseter** og **Synnfjell**. Appen
 henter vær og løypedata, kjører en liten snømodell og viser **sannsynlighet for
 skiføre de neste 10 dagene**, med smøretips, «Snøvill-indeks» og en
 «Ta fri»-generator for den beste dagen.
@@ -37,7 +37,7 @@ Alle fire tillater kall fra nettleseren (CORS). Svarene mellomlagres i 20 minutt
 
 Kortet «Løypevarsler» varsler når løyper nær deg blir kjørt opp:
 
-- Velg **📍 Der jeg er** (posisjon fra nettleseren) eller ett av de tre stedene, og en radius (3–20 km).
+- Velg **📍 Der jeg er** (posisjon fra nettleseren) eller ett av stedene, og en radius (3–20 km).
 - Appen henter løypene i området fra Sporet (`skiroutes/detailsbybbox`) og husker «sist preparert»
   for hver løype i IndexedDB. Første sjekk lagrer bare en grunnlinje. Etter det varsles løyper
   som har fått nytt prepareringstidspunkt de siste 6 timene.
