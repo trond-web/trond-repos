@@ -122,7 +122,8 @@ function settValgtPunkt(ll) {
 }
 
 let terrengCache = null;
-const HK_FARGER = ['#cde2fb', '#86b6ef', '#3987e5', '#1c5cab', '#0d366b'];
+// Tradisjonelle skogbruksplanfarger: I hvit, II gul, III lys grønn, IV grønn, V rød/oransje.
+const HK_FARGER = ['#fcfdfe', '#f8f6a9', '#d9f6c7', '#9bd47f', '#ef9a7c'];
 function rampe(verdi, min, maks) {
   const steg = ['#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#256abf', '#184f95', '#0d366b'];
   if (verdi === null || verdi === undefined) return null;
@@ -157,7 +158,7 @@ function fargeFor(b) {
 let legendLukket = window.innerWidth <= 860;
 function tegnLegend() {
   const modus = $('#fargeEtter').value;
-  const rad = (farge, tekst) => `<div><i style="background:${farge}"></i>${esc(tekst)}</div>`;
+  const rad = (farge, tekst) => `<div><i style="background:${farge}${HK_FARGER.includes(farge) ? ';box-shadow:inset 0 0 0 1.5px #1b1c19' : ''}"></i>${esc(tekst)}</div>`;
   let html = '';
   if (modus === 'hogstklasse' || modus === 'framskrevet') {
     if (modus === 'framskrevet') html += `<b>Hogstklasse i ${IAAR + Number($('#frAar').value)}</b>`;
@@ -175,7 +176,7 @@ function stilFor(b) {
   const valgt = b.id === valgtId;
   return {
     color: valgt ? '#ffd400' : '#1b1c19', weight: valgt ? 3.5 : 1.2, opacity: 0.9,
-    fillColor: farge || '#999', fillOpacity: farge ? 0.7 : 0.08,
+    fillColor: farge || '#999', fillOpacity: farge ? (HK_FARGER.includes(farge) ? 0.85 : 0.7) : 0.08,
   };
 }
 
