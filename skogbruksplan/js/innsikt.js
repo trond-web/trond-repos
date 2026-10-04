@@ -5,7 +5,7 @@ import { startTilstand, laavesteHogstalder, rotnettoPerM3, foreslaaTiltak, samme
 const FARGE = { handling: 'var(--signal)', advarsel: 'var(--serious)', info: 'var(--accent)', god: 'var(--good)' };
 const tall = (v, d = 0) => Number(v).toLocaleString('nb-NO', { maximumFractionDigits: d });
 
-export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtransport = null, maksTerreng = 500 } = {}) {
+export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtransport = null, maksTerreng = 500, pefcFunn = null } = {}) {
   const inn = S.innstillinger;
   const ut = [];
   if (!S.bestand.length) return ut;
@@ -20,6 +20,13 @@ export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtranspor
     const m3 = moden.reduce((s, b) => s + startTilstand(b).volumDaa * (b.areal || 0), 0);
     const kr = moden.reduce((s, b) => s + startTilstand(b).volumDaa * (b.areal || 0) * rotnettoPerM3(b.treslag, inn), 0);
     ut.push({ vekt: 90, type: 'handling', tittel: `${moden.length} bestand er hogstmodne uten planlagt hogst`, tekst: `Ca. ${tall(m3)} m³ og ${tall(kr / 1000)} k kr i rotnetto.`, handling: { tekst: 'Foreslå tiltak', id: 'foresla' } });
+  }
+
+  // PEFC-avvik
+  if (pefcFunn) {
+    const avvik = pefcFunn.filter((f) => f.nivaa === 'avvik');
+    const krav = [...new Set(avvik.map((f) => f.krav))];
+    if (avvik.length) ut.push({ vekt: 95, type: 'handling', tittel: `${avvik.length} avvik fra PEFC-skogstandarden`, tekst: `Gjelder kravpunkt ${krav.slice(0, 5).join(', ')}${krav.length > 5 ? ' …' : ''}. Må lukkes før hogst og tømmersalg.`, handling: { tekst: 'Se PEFC', id: 'fane:pefc' } });
   }
 
   // 2. Forfalte tiltak

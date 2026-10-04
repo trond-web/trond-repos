@@ -2,12 +2,13 @@
 import assert from 'node:assert/strict';
 import { utmTilGeo, geoTilUtm, arealM2, punktIGeometri } from '../js/proj.js';
 import { parseSosi, lagSosi } from '../js/sosi.js';
-import { normaliserBestand, framskriv, foreslaaForEiendom, treslagFraSR16, foreslaaTiltak, laavesteHogstalder, sammendrag, tolkHogstklasse, tolkTreslag } from '../js/model.js';
+import { STANDARD_INNSTILLINGER, normaliserBestand, framskriv, foreslaaForEiendom, treslagFraSR16, foreslaaTiltak, laavesteHogstalder, sammendrag, tolkHogstklasse, tolkTreslag } from '../js/model.js';
 import { lesGeojson, lesCsv, lesSosi, slaaSammen } from '../js/importers.js';
 import { lagDemo } from '../js/demo.js';
 import { finnKommune } from '../js/generator.js';
 import { klassifiser, parseHtmlAlle, pakkUtKmz, parseKml } from '../js/kommuneanalyse.js';
 import zlib from 'node:zlib';
+import { pefcAlder, avstand, kontroller, kravStatus, klareringStatus, tomPefc, KRAVPUNKTER, ROVFUGLER, arealDaa } from '../js/pefc.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
 
 let ok = 0;
@@ -263,6 +264,92 @@ test('veier: vedlikeholdsforslag og kostnadsfordeling', () => {
   assert.equal(fordelKostnad(800, [])[0].belop, 800);
   const ny = nyVeiKostnad({ klasse: 3, lengde: 1000 }, STANDARD_VEIINNSTILLINGER);
   assert.equal(ny.brutto, 900000); assert.equal(ny.netto, 450000);
+});
+
+const kv = (x0, y0, s = 100) => ({ type: 'Polygon', coordinates: [[[x0, y0], [x0 + s, y0], [x0 + s, y0 + s], [x0, y0 + s], [x0, y0]].map(([x, y]) => utmTilGeo(x, y, 33))] });
+const pkt = (x, y) => ({ type: 'Point', coordinates: utmTilGeo(x, y, 33) });
+const plan = (bestand, ekstra = {}) => ({ eiendom: { takstAar: 2024, grense: kv(279000, 6679000, 3000) }, bestand, veier: { veier: [{ id: 'v' }] }, innstillinger: STANDARD_INNSTILLINGER, ...ekstra });
+const best = (id, x, y, o = {}) => ({ ...normaliserBestand({ nr: id, treslag: 'G', bonitet: 17, alder: 90, volum_daa: 30, areal: 10 }, kv(x, y), 10, 2026), id, ...o });
+
+test('PEFC: 30 kravpunkter og alderstabell fra standarden', () => {
+  assert.equal(KRAVPUNKTER.length, 30);
+  assert.deepEqual(KRAVPUNKTER.map((k) => k.nr), Array.from({ length: 30 }, (_, i) => i + 1));
+  assert.equal(pefcAlder(17).nedre, 60); assert.equal(pefcAlder(17).omlop, 80);
+  assert.equal(pefcAlder(26).nedre, 45); assert.equal(pefcAlder(6).nedre, 95); assert.equal(pefcAlder(11).nedre, 80);
+  assert.equal(ROVFUGLER.hubro.buffer, 400); assert.equal(ROVFUGLER.honsehauk.hensyn, 80); assert.equal(ROVFUGLER.musvak.buffer, 50);
+});
+
+test('PEFC: avstand og areal', () => {
+  assert.equal(avstand(kv(280000, 6680000), kv(280050, 6680050)), 0, 'overlapp');
+  assert.ok(Math.abs(avstand(kv(280000, 6680000), kv(280300, 6680000)) - 200) < 0.5);
+  assert.ok(Math.abs(avstand(kv(280000, 6680000), pkt(280150, 6680050)) - 50) < 0.5);
+  assert.equal(avstand(kv(280000, 6680000), pkt(280050, 6680050)), 0, 'punkt inni');
+  assert.ok(Math.abs(arealDaa(kv(280000, 6680000)) - 10) < 0.01);
+  assert.equal(avstand(kv(280000, 6680000), kv(281000, 6680000), 100), Infinity, 'rask avvisning');
+});
+
+test('PEFC: minstealder for sluttavvirkning (K15)', () => {
+  const ung = best('ung', 280000, 6680000, { alder: 50 });
+  ung.tiltak = [{ id: 't1', type: 'sluttavvirkning', aar: 2026, status: 'planlagt' }];
+  let f = kontroller(plan([ung]), tomPefc(), { iAar: 2026 });
+  assert.ok(f.some((x) => x.krav === 15 && x.nivaa === 'avvik' && x.tiltakId === 't1'), 'G17 50 år < 60');
+  const P = tomPefc(); P.klareringer.t1 = { begrunnelseMinstealder: 'Utilfredsstillende tetthet' };
+  f = kontroller(plan([ung]), P, { iAar: 2026 });
+  assert.ok(!f.some((x) => x.krav === 15 && x.nivaa === 'avvik'), 'begrunnelse lukker avviket');
+});
+
+test('PEFC: foryngelse innen 3 år (K15)', () => {
+  const b = best('h', 280000, 6680000);
+  b.tiltak = [{ id: 's', type: 'sluttavvirkning', aar: 2021, status: 'utfort', utfortDato: '2021-05-01' }];
+  let f = kontroller(plan([b]), tomPefc(), { iAar: 2026 });
+  assert.ok(f.some((x) => x.krav === 15 && x.nivaa === 'avvik' && /Foryngelse/.test(x.tittel)));
+  b.tiltak.push({ id: 'p', type: 'planting', aar: 2022, status: 'utfort' });
+  f = kontroller(plan([b]), tomPefc(), { iAar: 2026 });
+  assert.ok(!f.some((x) => x.krav === 15 && /Foryngelse|Planting/.test(x.tittel)));
+});
+
+test('PEFC: rovfugl, nøkkelbiotop, BVO og livsløpstrær', () => {
+  const b = best('b', 280000, 6680000);
+  b.tiltak = [{ id: 's', type: 'sluttavvirkning', aar: 2026, status: 'planlagt' }];
+  const P = tomPefc();
+  P.objekter.push({ id: 'r', type: 'rovfuglreir', art: 'honsehauk', sisteHekking: 2024, geometri: pkt(280150, 6680050) }); // 50 m unna
+  P.objekter.push({ id: 'n', type: 'noekkelbiotop', geometri: kv(280080, 6680080, 40) });
+  let f = kontroller(plan([b]), P, { iAar: 2026 });
+  assert.ok(f.some((x) => x.krav === 24 && x.nivaa === 'avvik'), 'innenfor 80 m hensynsområde');
+  assert.ok(f.some((x) => x.krav === 24 && x.nivaa === 'varsel' && /1. mars–31. juli/.test(x.tittel)));
+  assert.ok(f.some((x) => x.krav === 22 && x.nivaa === 'avvik' && x.bestandId === 'b'), 'hogst i nøkkelbiotop');
+  P.objekter[0].sisteHekking = 2010; // over 10 år siden
+  f = kontroller(plan([b]), P, { iAar: 2026 });
+  assert.ok(!f.some((x) => x.krav === 24), 'hensyn utløpt');
+  // BVO-krav over 1500 daa
+  const mange = Array.from({ length: 160 }, (_, i) => best(`m${i}`, 282000 + (i % 40) * 100, 6681000 + Math.floor(i / 40) * 100));
+  f = kontroller(plan(mange), tomPefc(), { iAar: 2026 });
+  assert.ok(f.some((x) => x.krav === 23 && x.nivaa === 'avvik'));
+  // Livsløpstrær etter utført hogst
+  const h = best('h', 280000, 6680000); h.tiltak = [{ id: 'u', type: 'sluttavvirkning', aar: 2025, status: 'utfort', utfortDato: '2025-01-01' }, { id: 'p', type: 'planting', aar: 2026, status: 'planlagt' }];
+  const P2 = tomPefc(); P2.objekter.push({ id: 'l', type: 'livslopstre', antall: 9, geometri: pkt(280050, 6680050) });
+  f = kontroller(plan([h]), P2, { iAar: 2026 });
+  assert.ok(f.some((x) => x.krav === 13 && x.nivaa === 'avvik' && /9 av minst 10/.test(x.tekst)));
+  P2.objekter[0].antall = 10;
+  f = kontroller(plan([h]), P2, { iAar: 2026 });
+  assert.ok(f.some((x) => x.krav === 13 && x.nivaa === 'ok'));
+});
+
+test('PEFC: kantsone, kulturminne og status per kravpunkt', () => {
+  const b = best('b', 280000, 6680000); b.tiltak = [{ id: 's', type: 'sluttavvirkning', aar: 2026, status: 'planlagt' }, { id: 'm', type: 'markberedning', aar: 2027, status: 'planlagt' }];
+  const P = tomPefc();
+  P.objekter.push({ id: 'v', type: 'vann', geometri: { type: 'LineString', coordinates: [utmTilGeo(280000, 6680110, 33), utmTilGeo(280100, 6680110, 33)] } });
+  P.objekter.push({ id: 'k', type: 'kulturminne', geometri: kv(280040, 6680040, 5) });
+  const f = kontroller(plan([b]), P, { iAar: 2026 });
+  assert.ok(f.some((x) => x.krav === 27), 'kantsone mot bekk 10 m unna');
+  assert.ok(f.some((x) => x.krav === 30));
+  assert.ok(f.some((x) => x.krav === 16 && /5 m fra kulturminner/.test(x.tekst)));
+  const st = kravStatus(f, P);
+  assert.equal(st[27].status, 'varsel'); assert.equal(st[2].status, 'ikke-vurdert');
+  P.kravstatus[2] = { status: 'ok' };
+  assert.equal(kravStatus(f, P)[2].status, 'ok');
+  const kl = klareringStatus(b.tiltak[0], b, f, P);
+  assert.equal(kl.klar, false); assert.ok(kl.mangler > 10);
 });
 
 await Promise.all(venter);

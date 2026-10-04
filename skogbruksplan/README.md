@@ -40,8 +40,8 @@ Tilvekst, verdier og CO₂ er **forenklede estimater** til planlegging, ikke tak
 
 - Volumutviklingen følger en Chapman–Richards-kurve per treslag og bonitet. Den forankres i registrert volum og alder,
   slik at framskrivingen starter fra dine data.
-- Laveste hogstalder er veiledende verdier etter bonitet. **Kontroller dem mot gjeldende forskrift om bærekraftig skogbruk.**
-  Tabellen kan endres under Innstillinger.
+- Hogstmoden alder følger PEFC N 02:2022: vanlig omløpstid for gran og furu, og nedre aldersgrense for lauv. Tabellen kan
+  endres under Innstillinger, men bør ikke settes lavere enn PEFCs nedre aldersgrense.
 - Priser og kostnader er eksempelverdier. Legg inn tall fra skogeierandelslaget ditt.
 
 ## Teknisk
@@ -59,6 +59,35 @@ Under **Planer** skriver du inn kommune (navn eller nummer), gårdsnummer, bruks
 Appen henter dataene direkte fra Kartverket og NIBIO i nettleseren (`js/generator.js`, med Turf til geometri).
 Underveis vises fremdriften for hvert steg. Når planen er ferdig, vises et sammendrag og knappen
 **«Åpne skogbruksplanen»**. Alle planer lagres lokalt under «Mine skogbruksplaner», og du kan bytte mellom dem.
+
+## PEFC skogstandard (fanen «PEFC»)
+
+Bygger på **Norsk PEFC Skogstandard, PEFC N 02:2022** (gjeldende fra 1. mars 2023). Kravpunktene, aldertabellen og
+sonene rundt rovfuglreir er hentet fra standardteksten (`js/pefc.js`).
+
+- **Status for alle 30 kravpunkter**, gruppert som i standarden. Statusen kombinerer automatiske kontroller med skogeiers
+  egen vurdering, dato og dokumentasjon for hvert kravpunkt.
+- **Automatiske kontroller (20 kravpunkter)**:
+  - Planens alder og innhold (K3), landskapsplan over 10 000 daa (K4), planlagte veier gjennom miljøverdier (K5) og friluftsliv (K6).
+  - Omdisponering over 5 % (K8), verneområder og stier (K11), livsløpstrær med 10 per hektar, kartfestet etter hogst (K13).
+  - Nedre aldersgrense for hogst, foryngelse innen 3 år og vurdering av ungskogpleie (K15).
+  - Markberedning: forbudte arealer og avstander (K16), gjødslingsfri sone (K19), spredningskontroll for utenlandske treslag (K20).
+  - Nøkkelbiotoper og miljøregistrering, og registrerte naturtyper og artsområder (K22), samt 5 % BVO over 1500 daa (K23).
+  - Rovfugl og ugler: hensynsområde og buffersone per art (K24), tiurleik (K25), hekketid (K26) og kantsoner (K27).
+  - Myr og sumpskog (K28), brannflater (K29) og kulturminner (K30).
+- **Klarering før hogst** for hver planlagt sluttavvirkning og tynning. Klareringen viser funnene for bestandet, valg av
+  hogstform og foryngelsesmetode, begrunnelse ved hogst under nedre aldersgrense, og sjekkliste for operativ planlegging
+  med lenker til Artskart, Naturbase, Kulturminnesøk og NVE.
+- **Hent miljødata for eiendommen** fra NIBIO (MiS-nøkkelbiotoper), Miljødirektoratet (verneområder, naturtyper A/B,
+  NiN-naturtyper, utvalgte naturtyper, funksjonsområder for rødlistede og prioriterte arter, viktige friluftslivsområder)
+  og Riksantikvaren (sikringssoner for kulturminner).
+- **Registrer selv**: rovfugl- og uglereir (art og siste hekking gir automatiske soner i kartet), tiurleik, nøkkelbiotop,
+  BVO, livsløpstrær, bekker og vann, myr, stier, kulturminner, friluftsområder, brannflater og utenlandske treslag.
+- PEFC-avvik vises i innsikten på Oversikt og i rapporten.
+
+Appen kan ikke garantere etterlevelse. Den kontrollerer det som kan kontrolleres med planens data, og gir sjekklister
+for resten. Skogeier er ansvarlig, og gruppesertifikatholderen kan ha egne rutiner. Rovfuglreir og tiurleiker er ikke
+åpent tilgjengelige, og bekker og stier hentes ikke automatisk.
 
 ## Skogsbilveier (fanen «Veier»)
 

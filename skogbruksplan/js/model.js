@@ -31,11 +31,13 @@ export const STANDARD_INNSTILLINGER = {
   skogfondProsent: 15,                         // 4–40 % i henhold til skogfondsordningen
   co2PerM3: 1.4,
   hogstFordelingAar: 10,                       // spre foreslått sluttavvirkning over så mange år (1 = alt nå)                               // tonn CO₂ per m³ stammetilvekst inkl. greiner/røtter (grovt)
-  // Laveste hogstalder etter bonitet (H40). Veiledende – kontroller mot gjeldende forskrift.
+  // Alder for når bestandet regnes som hogstmodent, etter bonitet (H40). Fra Norsk PEFC Skogstandard (PEFC N 02:2022,
+  // kravpunkt 15): gran og furu bruker «vanlig omløpstid», lauv bruker «nedre aldersgrense for hogst». Ingen verdier
+  // er lavere enn PEFCs nedre aldersgrense (45–95 år), så appen foreslår aldri sluttavvirkning som bryter standarden.
   hogstalder: {
-    G: { 6: 120, 8: 120, 11: 100, 14: 90, 17: 80, 20: 70, 23: 60, 26: 60 },
-    F: { 6: 140, 8: 120, 11: 100, 14: 90, 17: 80, 20: 70, 23: 60, 26: 60 },
-    L: { 6: 70, 8: 70, 11: 60, 14: 60, 17: 50, 20: 50, 23: 40, 26: 40 },
+    G: { 6: 120, 8: 110, 11: 100, 14: 90, 17: 80, 20: 70, 23: 60, 26: 60 },
+    F: { 6: 120, 8: 110, 11: 100, 14: 90, 17: 80, 20: 70, 23: 60, 26: 60 },
+    L: { 6: 95, 8: 85, 11: 80, 14: 70, 17: 60, 20: 50, 23: 45, 26: 45 },
   },
 };
 

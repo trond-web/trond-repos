@@ -13,7 +13,9 @@ import { initKommune } from './kommune-ui.js';
 import { initVeier } from './veier-ui.js';
 import { lagInnsikt } from './innsikt.js';
 import { initKommando } from './kommando.js';
+import { initPefc } from './pefc-ui.js';
 import { VEIKLASSER, VEDLIKEHOLDSTYPER } from './veier.js';
+import { KRAVPUNKTER } from './pefc.js';
 
 const VEIKLASSER_NAVN = (k) => (VEIKLASSER[k] || VEIKLASSER[0]).navn;
 const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
@@ -266,10 +268,12 @@ function avsluttGrenseRedigering() { redigerMarkorer.forEach((m) => m.remove());
 // ---------------------------------------------------------------- faner
 let kommuneVisning = null;
 let veiVisning = null;
-const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', felt: 'Felt', data: 'Data og oppsett' };
+let pefcVisning = null;
+const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', pefc: 'PEFC skogstandard', felt: 'Felt', data: 'Data og oppsett' };
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 function visFane(navn) {
+  if (pefcVisning) { if (navn === 'pefc') setTimeout(() => pefcVisning.vis(), 0); else pefcVisning.skjul(); }
   veiVisning?.synlig(navn !== 'kommune');
   if (navn === 'veier') veiVisning?.vis();
   if (kommuneVisning) { if (navn === 'kommune') kommuneVisning.vis(); else { kommuneVisning.skjul(); tegnLegend(); } }
@@ -287,7 +291,7 @@ function visFane(navn) {
 
 // ---------------------------------------------------------------- oversikt
 function tegnInnsikt() {
-  const liste = lagInnsikt(S, { iAar: IAAR, terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
+  const liste = lagInnsikt(S, { iAar: IAAR, pefcFunn: pefcVisning?.funn(), terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
   $('#innsikt').hidden = !liste.length;
   $('#innsiktListe').innerHTML = liste.slice(0, 4).map((i) => `<div class="innsikt-kort" style="--farge:${i.farge}"><span class="prikk"></span><div><b>${esc(i.tittel)}</b><span>${esc(i.tekst)}</span></div>${i.handling ? `<button type="button" class="knapp liten" data-innsikt="${esc(i.handling.id)}">${esc(i.handling.tekst)}</button>` : ''}</div>`).join('');
 }
@@ -699,6 +703,17 @@ function eksporter(type) {
   if (type === 'rapport') return skrivRapport();
 }
 
+function pefcRapport() {
+  if (!pefcVisning) return '';
+  const { funn, status, P } = pefcVisning.rapport();
+  const navn = { avvik: 'Avvik', varsel: 'Må følges opp', ok: 'Ivaretatt', 'ikke-relevant': 'Ikke relevant', 'ikke-vurdert': 'Ikke vurdert' };
+  const aktuelle = funn.filter((f) => f.nivaa === 'avvik' || f.nivaa === 'varsel');
+  return `<h2>PEFC – Norsk PEFC Skogstandard (PEFC N 02:2022)</h2>
+    <table><tr><th>Nr</th><th>Kravpunkt</th><th>Status</th><th>Dokumentasjon</th></tr>
+    ${KRAVPUNKTER.map((k) => `<tr><td>${k.nr}</td><td>${esc(k.tittel)}</td><td>${navn[status[k.nr].status]}</td><td>${esc(P.kravstatus?.[k.nr]?.notat || '')}</td></tr>`).join('')}</table>
+    ${aktuelle.length ? `<h3>Avvik og oppfølging</h3><table><tr><th>Krav</th><th>Funn</th><th>Beskrivelse</th></tr>${aktuelle.map((f) => `<tr><td>K${f.krav}</td><td>${esc(f.tittel)}</td><td>${esc(f.tekst)}</td></tr>`).join('')}</table>` : ''}`;
+}
+
 function skrivRapport() {
   const s = sammendrag(S.bestand, inn());
   const e = S.eiendom;
@@ -721,6 +736,7 @@ function skrivRapport() {
     ${(S.veier?.veier || []).length ? `<h2>Veier</h2><table><tr><th>Vei</th><th>Klasse</th><th>Status</th><th class="tall">Lengde m</th><th>Tilstand</th><th>Eiere</th></tr>
     ${S.veier.veier.map((v) => `<tr><td>${esc(v.navn)}</td><td>${esc(VEIKLASSER_NAVN(v.klasse))}</td><td>${esc(v.status)}</td><td class="tall">${fmt(v.lengde)}</td><td>${esc(v.tilstand || '')}</td><td>${esc((v.eiere || []).map((x) => `${x.navn} ${x.andel} %`).join(', '))}</td></tr>`).join('')}</table>
     ${(S.veier.vedlikehold || []).filter((l) => l.status === 'planlagt').length ? `<h3>Planlagt veivedlikehold</h3><table><tr><th>År</th><th>Vei</th><th>Tiltak</th><th class="tall">Kostnad kr</th></tr>${S.veier.vedlikehold.filter((l) => l.status === 'planlagt').sort((a, b) => a.aar - b.aar).map((l) => `<tr><td>${l.aar}</td><td>${esc(S.veier.veier.find((v) => v.id === l.veiId)?.navn)}</td><td>${esc(VEDLIKEHOLD_NAVN(l.type))}</td><td class="tall">${fmt(l.kostnad)}</td></tr>`).join('')}</table>` : ''}` : ''}
+    ${pefcRapport()}
     <p style="font-size:9pt;color:#555">Volum- og verdiberegninger er forenklede estimater basert på registrerte data og innstilte priser.</p>`;
   window.print();
 }
@@ -776,7 +792,7 @@ function tegnInnstillinger() {
   ].join('');
   $('#hogstalderTabell').innerHTML = `<table class="tabell"><thead><tr><th>Bonitet</th>${Object.values(TRESLAG).map((t) => `<th>${t}</th>`).join('')}</tr></thead><tbody>
     ${BONITETER.map((bo) => `<tr><td>${bo}</td>${Object.keys(TRESLAG).map((k) => `<td><input type="number" data-sti="hogstalder.${k}.${bo}" value="${i.hogstalder[k][bo]}" style="width:70px"></td>`).join('')}</tr>`).join('')}
-    </tbody></table><p class="hint">Veiledende verdier. Kontroller mot gjeldende forskrift om bærekraftig skogbruk.</p>`;
+    </tbody></table><p class="hint">Standardverdier fra Norsk PEFC Skogstandard: vanlig omløpstid for gran og furu, nedre aldersgrense for lauv. Ikke sett lavere enn PEFCs nedre aldersgrense (45–95 år etter bonitet).</p>`;
 }
 function settSti(obj, sti, verdi) {
   const deler = sti.split('.'); let o = obj;
@@ -796,7 +812,7 @@ function tegnEiendom() {
 function endret({ kart: kartEndret = false, zoom = false } = {}) {
   frResultat = null;
   lagreSnart();
-  if (kartEndret) { tegnBestandKart(zoom); veiVisning?.oppdater(); } else oppdaterStiler();
+  if (kartEndret) { tegnBestandKart(zoom); veiVisning?.oppdater(); pefcVisning?.oppdater(); } else oppdaterStiler();
   tegnOversikt();
   tegnBestandTabell();
   tegnTiltak();
@@ -945,7 +961,7 @@ async function startGenerering(e) {
 }
 
 // ---------------------------------------------------------------- kommandopalett
-const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', felt: '◉', data: '⛁' };
+const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', pefc: '◈', felt: '◉', data: '⛁' };
 let planlisteCache = [];
 function kommandoValg(q) {
   listPlaner().then((l) => { planlisteCache = l; });
@@ -962,6 +978,8 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag ny skogbruksplan', under: 'Fra kommune, gårds- og bruksnummer', sok: 'generer eiendom gnr bnr', standard: true, utfor: () => { visFane('planer'); $('#genKommune').focus(); } },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Analyser en kommune', under: 'Hogstmoden skog, lukket hogst, ungskogpleie', sok: 'kommuneanalyse', utfor: () => { visFane('kommune'); $('#komKommune').focus(); } },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Hent veier fra NVDB', sok: 'vei skogsbilvei', utfor: () => { visFane('veier'); $('#veiNvdbBtn').click(); } },
+    { gruppe: 'Handlinger', ikon: '◈', tittel: 'Hent miljødata (PEFC)', under: 'Nøkkelbiotoper, naturtyper, friluftsliv, kulturminner', sok: 'pefc sertifisering miljø nøkkelbiotop', utfor: () => { visFane('pefc'); $('#pefcHentBtn').click(); } },
+    { gruppe: 'Handlinger', ikon: '◈', tittel: 'PEFC-status og avvik', sok: 'pefc skogstandard krav avvik sertifisering', utfor: () => visFane('pefc') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Ta sikkerhetskopi', sok: 'backup eksport lagre', utfor: () => eksporter('backup') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Bytt lyst/mørkt tema', sok: 'tema mørk lys dark', utfor: () => $('#temaBtn').click() },
@@ -1009,6 +1027,11 @@ function kobleHendelser() {
   initKommando({ hentValg: kommandoValg });
   $('#genSkjema').addEventListener('submit', startGenerering);
   veiVisning = initVeier({
+    kart, hentPlan: () => S, endret, melding, nyId,
+    settKartKlikk: (fn) => { kartKlikk = fn; },
+    visBestand: (id) => { velgBestand(id); visFane('bestand'); },
+  });
+  pefcVisning = initPefc({
     kart, hentPlan: () => S, endret, melding, nyId,
     settKartKlikk: (fn) => { kartKlikk = fn; },
     visBestand: (id) => { velgBestand(id); visFane('bestand'); },

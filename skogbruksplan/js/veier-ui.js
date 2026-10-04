@@ -44,7 +44,7 @@ export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk
       L.geoJSON(v.geometri, {
         style: { color: valgt ? '#ffd400' : farge, weight: (k.bilvei ? 5 : 3) + (valgt ? 2 : 0), opacity: 0.95, dashArray: v.status === 'planlagt' ? '8 6' : null, lineCap: 'round' },
       }).bindTooltip(`${esc(v.navn || 'Vei')} · ${k.kort} · ${fmt(v.lengde)} m`, { sticky: true })
-        .on('click', (e) => { L.DomEvent.stopPropagation(e); velgVei(v.id); })
+        .on('click', (e) => { L.DomEvent.stopPropagation(e); if (tegner) tegner.klikk(e.latlng); else velgVei(v.id); })
         .addTo(lag);
     }
     for (const p of r.punkter) {
@@ -53,7 +53,7 @@ export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk
       L.marker([p.geometri.coordinates[1], p.geometri.coordinates[0]], {
         icon: L.divIcon({ className: '', html: `<div class="vei-punkt" style="--farge:${farge}">${t.bokstav}</div>`, iconSize: [22, 22], iconAnchor: [11, 11] }),
         title: `${t.navn}: ${p.navn || ''}`,
-      }).on('click', (e) => { L.DomEvent.stopPropagation(e); velgPunkt(p.id); }).addTo(lag);
+      }).on('click', (e) => { L.DomEvent.stopPropagation(e); if (tegner) tegner.klikk(e.latlng); else velgPunkt(p.id); }).addTo(lag);
     }
   }
 
@@ -66,7 +66,7 @@ export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk
     $('#veiTegnFerdig').hidden = modus !== 'vei';
     kart.getContainer().style.cursor = 'crosshair';
     kart.doubleClickZoom.disable();
-    settKartKlikk((ll) => {
+    tegner.klikk = (ll) => {
       if (tegner.modus === 'punkt') {
         const p = { id: nyId('vp'), type: tegner.punkttype, navn: PUNKTTYPER[tegner.punkttype].navn, tilstand: 'ukjent', geometri: { type: 'Point', coordinates: [ll.lng, ll.lat] }, egenskaper: {}, merknad: '' };
         reg().punkter.push(p);
@@ -76,7 +76,8 @@ export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk
       tegner.punkter.push([ll.lng, ll.lat]);
       const lls = tegner.punkter.map(([x, y]) => [y, x]);
       if (tegner.linje) tegner.linje.setLatLngs(lls); else tegner.linje = L.polyline(lls, { color: '#ffd400', weight: 4, dashArray: '6 6' }).addTo(kart);
-    });
+    };
+    settKartKlikk(tegner.klikk);
   }
   function stoppTegning() {
     if (tegner?.linje) tegner.linje.remove();

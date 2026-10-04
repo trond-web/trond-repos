@@ -419,6 +419,52 @@ progress { accent-color: var(--accent); height: 8px; }
 .vei-satser[open] summary { margin-bottom: 10px; }
 #veiTerreng tbody tr { cursor: pointer; }
 
+/* ---------- PEFC ---------- */
+.pefc-status { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: center; }
+.pefc-ring { width: 96px; height: 96px; }
+.pefc-ring circle { transition: stroke-dasharray .4s; }
+.ring-tall { font: 800 24px var(--font-display); fill: var(--text); }
+.ring-under { font: 500 10px var(--font-mono); fill: var(--muted); }
+.pefc-status-tekst { display: grid; gap: 6px; }
+.pefc-status-tekst b { font: 700 16px/1.25 var(--font-display); }
+.pefc-tellere { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12.5px; color: var(--text-2); }
+.pefc-tellere span { display: inline-flex; align-items: center; gap: 5px; }
+.pefc-tellere i { width: 10px; height: 10px; border-radius: 50%; }
+.pefc-pille { font: 600 10.5px/1 var(--font-mono); padding: 4px 8px; border-radius: 99px; border: 1.5px solid var(--farge); color: var(--text); white-space: nowrap; background: color-mix(in srgb, var(--farge) 12%, transparent); }
+.krav-chip { display: inline-block; font: 600 10.5px/1 var(--font-mono); color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 3px 5px; margin-right: 4px; vertical-align: 1px; }
+.pefc-funnliste, .pefc-krav-funn { display: grid; gap: 6px; }
+.pefc-funn { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.pefc-funn .prikk { width: 10px; height: 10px; border-radius: 50%; background: var(--farge); margin-top: 5px; }
+.pefc-funn .tittel { font-weight: 600; }
+.pefc-funn .info { color: var(--text-2); font-size: 12.5px; }
+.pefc-funn .knapper { display: flex; flex-direction: column; gap: 4px; }
+.pefc-funn[data-nivaa="avvik"] { border-color: color-mix(in srgb, var(--critical) 40%, var(--border)); }
+.klarering { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; background: var(--surface); overflow: hidden; }
+.klarering.aapen { border-color: var(--accent); }
+.klarering-topp { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.klarering-innhold { padding: 0 12px 12px; display: grid; gap: 8px; }
+.sjekkliste { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sjekkliste label { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 13px; cursor: pointer; }
+.sjekkliste input { margin-top: 2px; }
+.sjekkliste a { font-size: 12px; white-space: nowrap; }
+.skjema-felt { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 500; color: var(--text-2); }
+.skjema-felt textarea { width: 100%; }
+.pefc-objekter { display: grid; gap: 6px; margin-bottom: 10px; }
+.pefc-gruppe summary { cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 4px 0; }
+.pefc-gruppe summary i { width: 12px; height: 12px; border-radius: 4px; }
+.pefc-objekt { display: block; width: 100%; text-align: left; font: inherit; font-size: 13px; color: var(--text); background: none; border: 0; border-radius: 8px; padding: 6px 8px 6px 22px; cursor: pointer; }
+.pefc-objekt:hover, .pefc-objekt.valgt { background: var(--accent-soft); }
+.pefc-objektdetalj { border-top: 1px solid var(--grid); padding-top: 12px; }
+.pefc-tema { margin: 16px 0 8px; font-size: 13px; color: var(--muted); font: 500 11px var(--font-mono); text-transform: uppercase; letter-spacing: .07em; }
+.pefc-krav { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 6px; background: var(--surface); }
+.pefc-krav summary { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 9px 12px; cursor: pointer; list-style: none; }
+.pefc-krav summary::-webkit-details-marker { display: none; }
+.krav-nr { font: 800 15px var(--font-display); color: var(--muted); }
+.krav-tittel { font-weight: 600; }
+.pefc-krav-innhold { padding: 0 12px 12px; display: grid; gap: 10px; }
+.pefc-krav-innhold p { margin: 0; }
+.pefc-krav-innhold .lenker a { font-size: 12.5px; }
+
 /* ---------- Kommandopalett ---------- */
 .kommando { position: fixed; inset: 0; z-index: 5000; background: rgba(8, 18, 14, .42); backdrop-filter: blur(3px); display: grid; justify-items: center; align-items: start; padding: 10vh 16px 16px; }
 .kommando[hidden] { display: none; }
