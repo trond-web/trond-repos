@@ -5,7 +5,7 @@ import { startTilstand, laavesteHogstalder, rotnettoPerM3, foreslaaTiltak, samme
 const FARGE = { handling: 'var(--signal)', advarsel: 'var(--serious)', info: 'var(--accent)', god: 'var(--good)' };
 const tall = (v, d = 0) => Number(v).toLocaleString('nb-NO', { maximumFractionDigits: d });
 
-export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtransport = null, maksTerreng = 500, pefcFunn = null } = {}) {
+export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtransport = null, maksTerreng = 500, pefcFunn = null, skogbrand = null } = {}) {
   const inn = S.innstillinger;
   const ut = [];
   if (!S.bestand.length) return ut;
@@ -28,6 +28,10 @@ export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtranspor
     const krav = [...new Set(avvik.map((f) => f.krav))];
     if (avvik.length) ut.push({ vekt: 95, type: 'handling', tittel: `${avvik.length} avvik fra PEFC-skogstandarden`, tekst: `Gjelder kravpunkt ${krav.slice(0, 5).join(', ')}${krav.length > 5 ? ' …' : ''}. Må lukkes før hogst og tømmersalg.`, handling: { tekst: 'Se PEFC', id: 'fane:pefc' } });
   }
+
+  // Skogbrand: skader som ikke er meldt, og stor skogbrannfare med planlagte drifter
+  if (skogbrand?.ikkeMeldt) ut.push({ vekt: 97, type: 'handling', tittel: `${skogbrand.ikkeMeldt} skade${skogbrand.ikkeMeldt > 1 ? 'r' : ''} er ikke meldt til forsikringen`, tekst: 'Meld skaden før opprydding – avvirkning før taksering kan gi tap av erstatning.', handling: { tekst: 'Se skader', id: 'fane:skogbrand' } });
+  if (skogbrand?.brann && ['rod', 'morkerod', 'oransje'].includes(skogbrand.brann.id)) ut.push({ vekt: 92, type: 'advarsel', tittel: `Skogbrannfare: ${skogbrand.brann.navn.toLowerCase()}`, tekst: 'Følg retningslinjene for skogsdrift i brannsesongen. Røyking og bål er forbudt i skogen.', handling: { tekst: 'Se Skogbrand', id: 'fane:skogbrand' } });
 
   // 2. Forfalte tiltak
   const forfalt = S.bestand.flatMap((b) => (b.tiltak || []).filter((t) => t.status !== 'utfort' && t.aar < iAar));

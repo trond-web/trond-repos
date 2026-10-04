@@ -67,6 +67,33 @@ Store eiendommer støttes:
 - **Delte bestand:** bestand som NIBIO har lagret som flere flater med samme nummer, slås sammen. Har delene ulike data, får de bokstav etter nummeret (f.eks. 1-45a og 1-45b).
 - **Eksempel:** Flå 22/1 (12 teiger, 11 455 daa) gir 563 bestand på 9 822 daa skog.
 
+## Skogbrand – skadeforebygging og skaderegistrering (fanen «Skogbrand»)
+
+Bygger på Skogbrands råd om forebygging og oppfølging etter skade, vilkårene i skogforsikringen og «Retningslinjer for skogsdrift og skjøtsel i skogbrannsesongen» (april 2026). Data hentes åpent fra Meteorologisk institutt og NIBIO (`js/skade.js`, `js/skade-data.js`, `js/skogbrand-ui.js`).
+
+**Risiko nå**
+- **Skogbrannfare:** skogbrannindeks (FWI) for eiendommen i dag og 13 dager frem (met.no THREDDS). Fargene følger met.no, mens grensene er de europeiske EFFIS-klassene og kan avvike litt fra met.no sin norske indeks.
+- **Drift ved dagens nivå:** retningslinjene for drift ved nivåene grønn, gul og oransje, rød og mørkerød, med planlagte drifter i år og et utskrivbart samrådsskjema.
+- **Farevarsler:** varsler fra met.no (MetAlerts) for eiendommen.
+- **Vind:** vindkast per dag de neste 9 dagene.
+- **Granbarkbille:** barkbillevarsel for sonen og fangst i de nærmeste fellene, sammenlignet med historisk utbruddsnivå (NIBIO).
+- **Kartlag:** skogbrannindeks, barkbillevarsel, skogskader.no og barkbillefeller.
+
+**Forebygging**
+- **Risiko per bestand** (0–100) for storm, granbarkbille, snøbrekk og brann, med begrunnelse. Risikoen bygger på treslag, høyde, tetthet, tynning, nye hogstkanter mot fremherskende vind, skader i nærheten og barkbillevarsel. Kartet kan fargelegges etter hver risiko.
+- **Forslag til tiltak** etter Skogbrands råd: ungskogpleie ved ca. 4 m, tynning før 14 m, prioritert hogst og korte kanter. Forslagene kan legges rett inn i tiltaksplanen.
+- **Beredskap:** sjekkliste (beredskapspakke, kurs, plakater, brannvesen), kontaktperson og brannvannkilder i kartet.
+- **Forsikring:** selskap, polise, egenandel og dekninger.
+
+**Skader**
+- **Typer:** brann, storm, snø, smågnagere, granbarkbille, sopp og råte, vilt, tørke, flom, ras og annet. Skaden tegnes som område, som punkt i kartet eller ved GPS-posisjonen.
+- **Beregning:** berørte bestand med areal, volum og verdi beregnes fra planen.
+- **Forsikringsvurdering** etter vilkårene: storm og snø krever over 2 ha og minst 25 % skadde trær, brann dekkes alltid, og følgeskader dekkes ikke.
+- **Oppfølging** med frister, for eksempel å vente med opprydding til skaden er taksert og å fjerne vindfelt gran før billesvermingen.
+- **Forsikringssak, bilder og timeliste:** skadenummer, takst og erstatning; bilder fra kamera; timeliste for vakthold og slokking ved brann (300 kr/t).
+- **Skademelding:** kan kopieres, skrives ut med bilder eller lastes ned som GeoJSON.
+- **Kobling til resten av planen:** brann blir en brannflate i PEFC-modulen, og opprydding og foryngelse kan legges inn i tiltaksplanen.
+
 ## Spør AI (fanen «Spør AI»)
 
 En chat der du stiller spørsmål om skogbruksplanen og får svar fra Claude (Anthropic, modell `claude-opus-5-5`). Svaret strømmes inn mens det skrives.

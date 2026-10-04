@@ -604,3 +604,38 @@ progress { accent-color: var(--accent); height: 8px; }
 .ai-forslag:hover { border-color: var(--accent); }
 .ai-skjema { position: sticky; bottom: 0; display: flex; gap: 8px; align-items: flex-end; padding: 8px 0 2px; background: linear-gradient(transparent, var(--bg, var(--surface)) 30%); }
 .ai-skjema textarea { flex: 1; min-width: 0; resize: vertical; min-height: 44px; }
+
+/* Skogbrand */
+.sb-under { display: flex; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: 12px; margin-bottom: 14px; position: sticky; top: 0; z-index: 2; }
+.sb-under button { flex: 1; border: 0; background: none; padding: 8px 6px; border-radius: 9px; font: 600 13px var(--font-body); color: var(--text-2); cursor: pointer; }
+.sb-under button.aktiv { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.sb-oppdater { margin: 0 0 10px; align-items: center; }
+.sb-fare { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--farge) 16%, var(--surface)); border-left: 6px solid var(--farge); }
+.sb-fare-nivaa { font: 800 20px/1.2 var(--font-display); }
+.sb-dager { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 4px; margin: 10px 0 4px; }
+.sb-dag { background: var(--farge); color: #111; border-radius: 8px; padding: 5px 4px; text-align: center; font-size: 11px; line-height: 1.2; }
+.sb-dag b { display: block; font: 700 14px var(--font-mono); }
+.sb-retn { margin-top: 10px; } .sb-retn summary { cursor: pointer; } .sb-retn ul { padding-left: 18px; margin: 8px 0; font-size: 13px; display: grid; gap: 4px; }
+.sb-varsel { border-left: 5px solid var(--farge); padding: 6px 10px; margin-bottom: 8px; background: var(--surface-2); border-radius: 8px; }
+.sb-vind { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; height: 130px; align-items: end; }
+.sb-vdag { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; font-size: 10.5px; color: var(--text-2); gap: 2px; }
+.sb-vsoyle { width: 70%; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 3px; }
+.sb-vdag.sterk .sb-vsoyle { background: #e0442f; } .sb-vdag b { font: 700 12px var(--font-mono); color: var(--text); } .sb-vdag small { font-size: 9px; } .sb-vdag i { font-style: normal; display: inline-block; }
+.sb-lag { display: grid; gap: 6px; } .sb-lag label { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.sb-skala { display: flex; gap: 2px; margin-top: 8px; align-items: center; } .sb-skala span { padding: 2px 8px; font: 600 11px var(--font-mono); color: #111; border-radius: 4px; }
+.sb-risikokort { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.sb-risiko { text-align: left; border: 1px solid var(--border); background: var(--surface-2); border-radius: 12px; padding: 10px; cursor: pointer; display: grid; gap: 3px; color: var(--text); font: 13px var(--font-body); }
+.sb-risiko:hover { border-color: var(--accent); } .sb-risiko span { font-size: 12px; display: flex; gap: 4px; align-items: center; } .sb-risiko i { width: 8px; height: 8px; border-radius: 50%; background: var(--farge); display: inline-block; } .sb-risiko small { color: var(--muted); font-size: 11px; }
+.sb-chip { display: inline-block; min-width: 30px; text-align: center; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--farge) 28%, transparent); border: 1px solid var(--farge); font: 600 11.5px var(--font-mono); cursor: help; }
+.sb-tiltak { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; padding: 8px 0; border-bottom: 1px solid var(--grid); }
+.sb-sjekker { display: grid; gap: 6px; margin-bottom: 10px; } .sb-sjekk { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; }
+.sb-rad { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; }
+.sb-skade { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px; border-radius: 12px; border: 1px solid var(--border); border-left: 5px solid var(--farge); margin-bottom: 8px; cursor: pointer; }
+.sb-skade.valgt { background: var(--accent-soft); } .sb-ikon { font-size: 22px; } .sb-merker { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.sb-vurdering { padding: 10px 12px; border-radius: 10px; margin: 10px 0; font-size: 13px; background: var(--surface-2); border-left: 5px solid var(--muted); }
+.sb-vurdering[data-status="ok"] { border-left-color: var(--good); } .sb-vurdering[data-status="under"] { border-left-color: var(--warning); } .sb-vurdering[data-status="ikke"] { border-left-color: var(--critical); }
+.sb-oppgaver { display: grid; gap: 6px; } .sb-oppgave { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; } .sb-oppgave small { color: var(--muted); } .sb-oppgave.forfalt small { color: var(--danger); font-weight: 600; }
+.sb-bilder { display: flex; flex-wrap: wrap; gap: 8px; } .sb-bilder figure { margin: 0; position: relative; } .sb-bilder img { width: 96px; height: 96px; object-fit: cover; border-radius: 10px; display: block; }
+.sb-bilder figure button { position: absolute; top: 4px; right: 4px; padding: 0 6px; }
+.sb-legg-bilde { width: 96px; height: 96px; border: 2px dashed var(--border-sterk); border-radius: 10px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; color: var(--text-2); cursor: pointer; padding: 6px; }
+.sb-meldingstekst { width: 100%; font: 12.5px/1.5 var(--font-mono); }

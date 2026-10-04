@@ -15,6 +15,7 @@ import { hentDatagrunnlag } from '../js/datagrunnlag.js';
 import { delFlate, nyttNr } from '../js/del.js';
 import { lagKontekst } from '../js/ai-kontekst.js';
 import { markdownTilHtml } from '../js/assistent.js';
+import { brannnivaa, retningslinjerFor, risikoPerBestand, forebyggendeTiltak, nySkade, beregnSkade, forsikringsvurdering, oppgaverFor, brannkostnader, skademeldingTekst, naboer, iBrannsesong } from '../js/skade.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
 
 let ok = 0;
@@ -459,6 +460,54 @@ test('AI: plankontekst og trygg visning av svar', () => {
   assert.ok(html.includes('<b>999</b>'), 'ukjent bestand blir ren tekst');
   assert.ok(!html.includes('<script>') && html.includes('&lt;script&gt;'));
   assert.ok(html.includes('<table') && html.includes('<td>2</td>') && html.includes('<li>'));
+});
+
+test('Skogbrand: brannfare, retningslinjer og forsikringsvilkår', () => {
+  assert.equal(brannnivaa(2).id, 'gronn'); assert.equal(brannnivaa(8).id, 'gul'); assert.equal(brannnivaa(15).id, 'oransje'); assert.equal(brannnivaa(25).id, 'rod'); assert.equal(brannnivaa(45).id, 'morkerod');
+  assert.ok(retningslinjerFor('gronn').some((r) => /25 liter/.test(r)));
+  assert.ok(!retningslinjerFor('gronn').some((r) => /SAMRÅD/.test(r)));
+  assert.ok(retningslinjerFor('morkerod').some((r) => /SAMRÅD/.test(r)) && retningslinjerFor('morkerod').some((r) => /Markberedning/.test(r)));
+  assert.ok(iBrannsesong(new Date('2026-07-01')) && !iBrannsesong(new Date('2026-10-01')) && iBrannsesong(new Date('2026-04-15')));
+  const storm = { type: 'storm', skadeprosent: 30 };
+  assert.equal(forsikringsvurdering(storm, { skadeDaa: 25 }).status, 'ok');
+  assert.equal(forsikringsvurdering(storm, { skadeDaa: 15 }).status, 'under');
+  assert.equal(forsikringsvurdering({ type: 'storm', skadeprosent: 20 }, { skadeDaa: 40 }).status, 'under');
+  assert.equal(forsikringsvurdering({ type: 'bille', skadeprosent: 80 }, { skadeDaa: 40 }).status, 'ikke');
+  assert.equal(forsikringsvurdering({ type: 'brann', skadeprosent: 100 }, { skadeDaa: 1 }).status, 'ok');
+  assert.deepEqual(brannkostnader({ timer: [{ timer: 4, type: 'vakthold', attestert: true }, { timer: 2, type: 'traktor' }] }), { timer: 6, kr: 2400, attestert: 1200 });
+  const o = oppgaverFor({ type: 'storm', dato: '2026-10-04', oppdaget: '2026-10-04' });
+  assert.equal(o.find((x) => x.id === 'bille').frist, '2027-05-01');
+  assert.ok(o.some((x) => x.id === 'vent'));
+});
+
+test('Skogbrand: risiko per bestand, naboer og skadeberegning', () => {
+  const kv = (x, y, s = 200) => ({ type: 'Polygon', coordinates: [[[x, y], [x + s, y], [x + s, y + s], [x, y + s], [x, y]].map(([a, b]) => utmTilGeo(a, b, 33))] });
+  const b = (id, x, props) => ({ ...normaliserBestand({ nr: id, areal: 40, ...props }, kv(x, 6680000), 40, 2026), id });
+  const hoy = b('1', 280000, { treslag: 'G', bonitet: 20, alder: 75, hoyde: 24, volumDaa: 40 });
+  const naboHogd = b('2', 280200, { treslag: 'G', bonitet: 20, alder: 2, volumDaa: 1 });
+  const furu = b('3', 280600, { treslag: 'F', bonitet: 8, alder: 90, hoyde: 13, volumDaa: 10 });
+  const ung = b('4', 281000, { treslag: 'G', bonitet: 17, alder: 30, hoyde: 13, treantall: 180, volumDaa: 12 });
+  const S = { bestand: [hoy, naboHogd, furu, ung], innstillinger: STANDARD_INNSTILLINGER, skogbrand: { skader: [] } };
+  const nab = naboer(S.bestand);
+  assert.deepEqual(nab.get('1').map((x) => x.id), ['2']);
+  assert.equal(nab.get('3').length, 0);
+  const r = risikoPerBestand(S, { iAar: 2026 });
+  assert.equal(r.get('1').storm.nivaa.id, 'hoy', JSON.stringify(r.get('1').storm));
+  assert.ok(r.get('1').storm.grunner.some((g) => /hogstkant/.test(g)));
+  assert.ok(r.get('3').brann.p > r.get('1').brann.p, 'tørr furumark brenner lettere');
+  assert.ok(r.get('3').bille.p < 10, 'furu: lav billerisiko');
+  const forslag = forebyggendeTiltak(S, r, { iAar: 2026 });
+  assert.ok(forslag.some((f) => f.b.id === '4' && f.type === 'tynning'), 'ung tett gran skal tynnes');
+  // Uryddet stormskade ved siden av gir høyere billerisiko
+  const skade = nySkade('storm', kv(280000, 6680000, 150));
+  S.skogbrand.skader.push(skade);
+  const r2 = risikoPerBestand(S, { iAar: 2026 });
+  assert.ok(r2.get('1').bille.p > r.get('1').bille.p);
+  const bs = beregnSkade(S, skade);
+  assert.equal(bs.rader.length, 1); assert.equal(bs.rader[0].nr, '1');
+  assert.ok(Math.abs(bs.skadeDaa - 22.5) < 0.5, `areal ${bs.skadeDaa}`);
+  const tekst = skademeldingTekst({ ...S, eiendom: { navn: 'Test 1/1', kommune: 'Testby' } }, skade, bs);
+  assert.ok(/STORMFELLING/.test(tekst) && /Bestand 1:/.test(tekst) && /Testby/.test(tekst));
 });
 
 await Promise.all(venter);

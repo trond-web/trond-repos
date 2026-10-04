@@ -16,6 +16,8 @@ import { initKommando } from './kommando.js';
 import { initPefc } from './pefc-ui.js';
 import { delFlate, nyttNr } from './del.js';
 import { initAssistent } from './assistent.js';
+import { initSkogbrand } from './skogbrand-ui.js';
+import { skadeOppsummering, RISIKONIVAA } from './skade.js';
 import { initVerdi, utenProduksjon } from './verdi-ui.js';
 import { hentDatagrunnlag } from './datagrunnlag.js';
 import { kalibrerPriser, verdiberegning, STANDARD_VERDI } from './verdi.js';
@@ -155,6 +157,10 @@ function fargeFor(b) {
     const t = (b.tiltak || []).filter((x) => x.status !== 'utfort').sort((x, y) => x.aar - y.aar)[0];
     return t ? TILTAK_FARGER[TILTAKSTYPER[t.type]?.gruppe || 'annet'] : null;
   }
+  if (/risiko$/.test(modus)) {
+    const r = skogbrandVisning?.risiko(b.id, modus.replace('risiko', ''));
+    return r ? r.nivaa.farge : null;
+  }
   if (modus === 'terreng') {
     const d = terrengCache?.get(b.id)?.meter;
     return d === undefined || !Number.isFinite(d) ? null : rampe(d, 0, 1000);
@@ -180,6 +186,7 @@ function tegnLegend() {
   else if (modus === 'bonitet') html = '<b>Bonitet (H40)</b>' + [6, 11, 17, 23, 26].map((v) => rad(rampe(v, 6, 26), `${v}`)).join('');
   else if (modus === 'volum') html = '<b>Volum m³/daa</b>' + [0, 10, 20, 30, 45].map((v) => rad(rampe(v, 0, 45), v === 45 ? '45+' : `${v}`)).join('');
   else if (modus === 'terreng') html = '<b>Avstand til bilvei</b>' + [0, 250, 500, 750, 1000].map((v) => rad(rampe(v, 0, 1000), v === 1000 ? '1000 m +' : `${v} m`)).join('') + rad('transparent;border:1px solid #999', 'Ingen veier registrert');
+  else if (/risiko$/.test(modus)) html = `<b>${$('#fargeEtter').selectedOptions[0].textContent}</b>` + [...RISIKONIVAA].reverse().map((n) => rad(n.farge, n.navn)).join('') + '<div class="hint" style="font-size:11px">Se Skogbrand → Forebygging</div>';
   else if (modus === 'tiltak') html = '<b>Første planlagte tiltak</b>' + rad(TILTAK_FARGER.hogst, 'Hogst') + rad(TILTAK_FARGER.kultur, 'Skogkultur') + rad(TILTAK_FARGER.annet, 'Annet') + rad('transparent;border:1px solid #999', 'Ingen');
   $('#kartLegend').innerHTML = `<button type="button" class="legend-knapp" aria-expanded="${!legendLukket}">Tegnforklaring ${legendLukket ? '▸' : '▾'}</button><div class="legend-innhold" ${legendLukket ? 'hidden' : ''}>${html}</div>`;
 }
@@ -377,12 +384,14 @@ let veiVisning = null;
 let pefcVisning = null;
 let verdiVisning = null;
 let aiVisning = null;
-const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
+let skogbrandVisning = null;
+const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', skogbrand: 'Skogbrand', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 function visFane(navn) {
   if (deling && navn !== 'bestand') stoppDeling();
   if (pefcVisning) { if (navn === 'pefc') setTimeout(() => pefcVisning.vis(), 0); else pefcVisning.skjul(); }
+  if (skogbrandVisning) { if (navn === 'skogbrand') setTimeout(() => skogbrandVisning.vis(), 0); else skogbrandVisning.skjul(); }
   veiVisning?.synlig(navn !== 'kommune');
   if (navn === 'veier') veiVisning?.vis();
   if (kommuneVisning) { if (navn === 'kommune') kommuneVisning.vis(); else { kommuneVisning.skjul(); tegnLegend(); } }
@@ -402,7 +411,7 @@ function visFane(navn) {
 
 // ---------------------------------------------------------------- oversikt
 function tegnInnsikt() {
-  const liste = lagInnsikt(S, { iAar: IAAR, pefcFunn: pefcVisning?.funn(), terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
+  const liste = lagInnsikt(S, { iAar: IAAR, pefcFunn: pefcVisning?.funn(), skogbrand: { ...skadeOppsummering(S), brann: S.skogbrand?.data?.brann?.dager?.[0]?.nivaa || null }, terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
   $('#innsikt').hidden = !liste.length;
   $('#innsiktListe').innerHTML = liste.slice(0, 4).map((i) => `<div class="innsikt-kort" style="--farge:${i.farge}"><span class="prikk"></span><div><b>${esc(i.tittel)}</b><span>${esc(i.tekst)}</span></div>${i.handling ? `<button type="button" class="knapp liten" data-innsikt="${esc(i.handling.id)}">${esc(i.handling.tekst)}</button>` : ''}</div>`).join('');
 }
@@ -943,7 +952,7 @@ function tegnEiendom() {
 function endret({ kart: kartEndret = false, zoom = false } = {}) {
   frResultat = null;
   lagreSnart();
-  if (kartEndret) { tegnBestandKart(zoom); veiVisning?.oppdater(); pefcVisning?.oppdater(); } else oppdaterStiler();
+  if (kartEndret) { tegnBestandKart(zoom); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); } else oppdaterStiler();
   tegnOversikt();
   tegnBestandTabell();
   tegnTiltak();
@@ -1120,7 +1129,7 @@ async function startGenerering(e) {
 }
 
 // ---------------------------------------------------------------- kommandopalett
-const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
+const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', skogbrand: '🔥', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
 let planlisteCache = [];
 function kommandoValg(q) {
   listPlaner().then((l) => { planlisteCache = l; });
@@ -1140,6 +1149,8 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'Hent miljødata (PEFC)', under: 'Nøkkelbiotoper, naturtyper, friluftsliv, kulturminner', sok: 'pefc sertifisering miljø nøkkelbiotop', utfor: () => { visFane('pefc'); $('#pefcHentBtn').click(); } },
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'Oppdater alt datagrunnlag', under: 'Miljødata, NVDB-veier og SSB-priser', sok: 'pefc data oppdater sist hentet ssb nvdb', utfor: () => { visFane('pefc'); $('#pefcOppdaterAlle')?.click(); } },
     { gruppe: 'Handlinger', ikon: '✦', tittel: `Spør AI: ${q || 'still et spørsmål om planen'}`, under: 'Claude svarer ut fra planens data', sok: 'ai spør chat assistent claude hvorfor hva hvor mye', alltid: !!q && q.length > 12 && /\?$|^(hva|hvor|hvilke|hvilken|hvordan|hvorfor|når|kan|bør|skal)\b/i.test(q.trim()), utfor: () => { visFane('ai'); if (q) aiVisning?.sporr(q); } },
+    { gruppe: 'Handlinger', ikon: '🔥', tittel: 'Registrer skade', under: 'Brann, storm, snø, granbarkbille …', sok: 'skogbrand skade stormfelling vindfall snøbrekk barkbille brann forsikring skademelding', utfor: () => { visFane('skogbrand'); setTimeout(() => document.querySelector('[data-sb-under="skader"]')?.click(), 50); } },
+    { gruppe: 'Handlinger', ikon: '🔥', tittel: 'Skogbrannfare og farevarsler', under: 'Skogbrannindeks, vind og barkbillevarsel for eiendommen', sok: 'skogbrand brannfare fwi met vind storm varsel barkbille', utfor: () => visFane('skogbrand') },
     { gruppe: 'Handlinger', ikon: '¤', tittel: 'Verdiberegning', under: 'Eiendomsverdi, slaktverdi, jordverdi og nåverdi', sok: 'verdi nåverdi slaktverdi takst lev faustmann', utfor: () => visFane('verdi') },
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'PEFC-status og avvik', sok: 'pefc skogstandard krav avvik sertifisering', utfor: () => visFane('pefc') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
@@ -1198,6 +1209,12 @@ function kobleHendelser() {
     settKartKlikk: (fn) => { kartKlikk = fn; },
     visBestand: (id) => { velgBestand(id); visFane('bestand'); },
     hentData: hentDataForAktivPlan,
+  });
+  skogbrandVisning = initSkogbrand({
+    kart, hentPlan: () => S, endret, melding, nyId, iAar: IAAR, lastKlipping, skalerBilde,
+    settKartKlikk: (fn) => { kartKlikk = fn; },
+    visBestand: (id) => { velgBestand(id); visFane('bestand'); },
+    hentPosisjon: () => sistePos || (valgtPunkt ? { lat: valgtPunkt.getLatLng().lat, lon: valgtPunkt.getLatLng().lng } : null),
   });
   aiVisning = initAssistent({
     hentPlan: () => S, iAar: IAAR,

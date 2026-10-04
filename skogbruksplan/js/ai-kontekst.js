@@ -78,6 +78,16 @@ export function lagKontekst(S, { iAar = new Date().getFullYear(), pefcFunn = [],
     for (const k of kilder) d.push(`- ${k.navn} (${k.eier}): hentet ${k.hentet ? k.hentet.slice(0, 10) : '–'}${k.dataFra ? `, data ${k.dataFra}${k.dataTil && k.dataTil !== k.dataFra ? `–${k.dataTil}` : ''}` : ''}${k.feil ? ', FEIL' : ''}`);
     d.push('');
   }
+  const sb = S.skogbrand;
+  if (sb && ((sb.skader || []).length || sb.data)) {
+    d.push('## Skogbrand: skader og risiko');
+    for (const sk of sb.skader || []) d.push(`- Skade ${sk.type} ${sk.dato}: status ${sk.status}, ${r1(sk.beregning?.skadeDaa)} daa, skadeprosent ${sk.skadeprosent} %, ca. ${r0(sk.beregning?.volum)} m³; bestand ${(sk.beregning?.rader || []).map((x) => x.nr).join(', ')}${sk.beskrivelse ? `; ${sk.beskrivelse}` : ''}`);
+    const fb = sb.data?.brann?.dager?.[0];
+    if (fb) d.push(`Skogbrannfare i dag: ${fb.nivaa?.navn} (FWI ${r1(fb.fwi)}). Prognose: ${(sb.data.brann.dager || []).map((x) => `${x.dato.slice(5)} ${x.nivaa?.navn}`).join(', ')}.`);
+    if (sb.data?.bille?.sone) d.push(`Barkbillevarsel for sonen: ${sb.data.bille.sone.varsel} (${sb.data.bille.sone.dato}).`);
+    if (Array.isArray(sb.data?.varsler) && sb.data.varsler.length) d.push(`Farevarsler: ${sb.data.varsler.map((v) => v.tittel).join('; ')}.`);
+    d.push('');
+  }
   const reg = S.registreringer || [];
   if (reg.length) {
     d.push('## Feltregistreringer');

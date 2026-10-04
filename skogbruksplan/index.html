@@ -29,6 +29,7 @@
     <button role="tab" data-fane="framskriving" title="Framskriving"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18"/><path d="M4 16c3-1 4-6 7-6s4 3 9-6"/><path d="M16 4h4v4"/></svg><span>Prognose</span></button>
     <button role="tab" data-fane="veier" title="Veier"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21 10.5 3M16 21 13.5 3"/><path d="M12 7v2M12 12.5v2M12 18v2"/></svg><span>Veier</span></button>
     <button role="tab" data-fane="verdi" title="Verdi"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="10" cy="7" rx="6" ry="2.5"/><path d="M4 7v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V7"/><path d="M8 16.3c.6.1 1.3.2 2 .2 3.3 0 6-1.1 6-2.5"/><path d="M14 13.6c.6-.1 1.3-.1 2-.1 2.2 0 4 .8 4 1.8v3.2c0 1-1.8 1.8-4 1.8s-4-.8-4-1.8v-1.5"/></svg><span>Verdi</span></button>
+    <button role="tab" data-fane="skogbrand" title="Skogbrand – skadeforebygging og skaderegistrering"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6.2 0-3.4 2.4-5.4 3.6-8.3.5 1.7 1.5 2.8 2.6 3.2C12.3 6.6 13.6 4.4 15.6 3c-.4 2.9.9 4.7 2 6.4 1 1.5 1.4 2.9 1.4 4.6 0 4.1-3 7-7 7Z"/><path d="M12 21c-1.7 0-2.9-1.2-2.9-2.9 0-1.6 1.2-2.6 1.9-3.9.4 1 1 1.5 1.6 1.6.3-1.2.9-2 1.7-2.6 0 1.6 1.5 2.6 1.5 4.6 0 1.8-1.6 3.2-3.8 3.2Z"/></svg><span>Skogbrand</span></button>
     <button role="tab" data-fane="pefc" title="PEFC skogstandard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg><span>PEFC</span></button>
     <button role="tab" data-fane="ai" title="Spør AI om planen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5h0a2 2 0 0 1-2-2Z"/><path d="m12 7.5.9 1.9 1.9.9-1.9.9-.9 1.9-.9-1.9-1.9-.9 1.9-.9Z"/></svg><span>Spør AI</span></button>
     <button role="tab" data-fane="felt" title="Felt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span>Felt</span></button>
@@ -57,6 +58,10 @@
           <option value="tiltak">Planlagte tiltak</option>
           <option value="terreng">Avstand til bilvei</option>
           <option value="framskrevet">Hogstklasse om … år (Framskriving)</option>
+          <option value="stormrisiko">Stormrisiko</option>
+          <option value="billerisiko">Granbarkbillerisiko</option>
+          <option value="snorisiko">Snøbrekkrisiko</option>
+          <option value="brannrisiko">Brannrisiko</option>
         </select>
       </label>
       <button id="tegnBtn" class="knapp" type="button" title="Tegn nytt bestand i kartet"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></svg>Tegn bestand</button>
@@ -67,6 +72,9 @@
     </div>
     <div id="delHjelp" class="tegn-hjelp" hidden>
       <span class="tekst">Tegn en linje tvers over bestandet. Dobbeltklikk eller trykk «Del» for å avslutte.</span> <button id="delAngrePunkt" class="knapp" type="button" title="Fjern siste punkt">↶</button> <button id="delFerdig" class="knapp primar" type="button" disabled>Del</button> <button id="delAvbryt" class="knapp" type="button">Avbryt</button>
+    </div>
+    <div id="sbTegnHjelp" class="tegn-hjelp" hidden>
+      <span class="tekst"></span> <button id="sbTegnFerdig" class="knapp primar" type="button">Fullfør</button> <button id="sbTegnAvbryt" class="knapp" type="button">Avbryt</button>
     </div>
     <div id="veiTegnHjelp" class="tegn-hjelp" hidden>
       <span class="tekst"></span> <button id="veiTegnFerdig" class="knapp primar" type="button">Fullfør</button> <button id="veiTegnAvbryt" class="knapp" type="button">Avbryt</button>
@@ -374,6 +382,17 @@
           <button id="aiStopp" class="knapp" type="button" hidden>Stopp</button>
         </form>
       </div>
+    </div>
+
+    <!-- SKOGBRAND -->
+    <div class="fane" id="fane-skogbrand" hidden>
+      <div class="sb-under" role="tablist">
+        <button type="button" data-sb-under="naa" class="aktiv">Risiko nå</button>
+        <button type="button" data-sb-under="forebygging">Forebygging</button>
+        <button type="button" data-sb-under="skader">Skader</button>
+      </div>
+      <div id="sbInnhold"></div>
+      <p class="fotnote">Bygger på Skogbrands råd om forebygging og oppfølging etter skade, skogforsikringsvilkårene og «Retningslinjer for skogsdrift og skjøtsel i skogbrannsesongen» (april 2026), og på åpne data fra Meteorologisk institutt og NIBIO. Skademelding sendes via forsikringsselskapet. Ved brann: ring 110.</p>
     </div>
 
     <!-- FELT -->
