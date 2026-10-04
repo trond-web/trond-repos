@@ -8,6 +8,7 @@ import { lagDemo } from '../js/demo.js';
 import { finnKommune } from '../js/generator.js';
 import { klassifiser, parseHtmlAlle, pakkUtKmz, parseKml } from '../js/kommuneanalyse.js';
 import zlib from 'node:zlib';
+import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
 
 let ok = 0;
 const venter = [];
@@ -224,6 +225,44 @@ test('kommuneanalyse: KMZ pakkes ut', async () => {
   const tekst = await pakkUtKmz(zip.buffer.slice(zip.byteOffset, zip.byteOffset + zip.length));
   assert.equal(tekst, kml);
   assert.equal(parseKml(tekst).get('42').type, 'Polygon');
+});
+
+test('veier: lengde, avstand og WKT', () => {
+  const a = utmTilGeo(280000, 6680000, 33); const b = utmTilGeo(281000, 6680000, 33);
+  const vei = { type: 'LineString', coordinates: [a, b] };
+  assert.ok(Math.abs(lengdeM(vei) - 1000) < 0.5, String(lengdeM(vei)));
+  assert.ok(Math.abs(avstandTilLinje(utmTilGeo(280500, 6680300, 33), vei) - 300) < 0.5);
+  assert.ok(Math.abs(avstandTilLinje(utmTilGeo(282000, 6680000, 33), vei) - 1000) < 0.5, 'utenfor enden måles til endepunktet');
+  const g = wktTilGeo('LINESTRING Z (280000 6680000 100, 281000 6680000 110)');
+  assert.equal(g.type, 'LineString'); assert.ok(Math.abs(g.coordinates[1][0] - b[0]) < 1e-6);
+  assert.equal(wktTilGeo('POINT Z (280000 6680000 5)').type, 'Point');
+});
+
+test('veier: terrengtransport bruker bare bilveier', () => {
+  const kv = (x0, y0) => ({ type: 'Polygon', coordinates: [[[x0, y0], [x0 + 100, y0], [x0 + 100, y0 + 100], [x0, y0 + 100], [x0, y0]].map(([x, y]) => utmTilGeo(x, y, 33))] });
+  const bestand = [{ id: 'naer', geometri: kv(280450, 6680050) }, { id: 'langt', geometri: kv(280450, 6680750) }];
+  const linje = (y) => ({ type: 'LineString', coordinates: [utmTilGeo(280000, y, 33), utmTilGeo(281000, y, 33)] });
+  const veier = [{ id: 'bil', klasse: 3, geometri: linje(6680000) }, { id: 'traktor', klasse: 7, geometri: linje(6680800) }];
+  const t = terrengtransport(bestand, veier);
+  assert.ok(Math.abs(t.get('naer').meter - 100) < 1);
+  assert.ok(Math.abs(t.get('langt').meter - 800) < 1, 'traktorveien skal ikke telle');
+});
+
+test('veier: vedlikeholdsforslag og kostnadsfordeling', () => {
+  const veier = [{ id: 'v1', klasse: 3, lengde: 1000, tilstand: 'god' }, { id: 'v2', klasse: 7, lengde: 500, tilstand: 'darlig' }];
+  const logg = [{ veiId: 'v1', type: 'grusing', aar: 2024, status: 'utfort' }, { veiId: 'v1', type: 'hovling', aar: 2026, status: 'planlagt' }];
+  const f = foreslaaVedlikehold(veier, logg, 2026);
+  const finn = (v, t) => f.find((x) => x.veiId === v && x.type === t);
+  assert.equal(finn('v1', 'grusing').aar, 2030, 'grusing hvert 6. år');
+  assert.equal(finn('v1', 'grusing').kostnad, 30000);
+  assert.equal(finn('v1', 'hovling'), undefined, 'allerede planlagt');
+  assert.equal(finn('v2', 'hovling'), undefined, 'traktorvei høvles ikke');
+  assert.equal(finn('v2', 'grofterensk').aar, 2026, 'dårlig tilstand gir tiltak nå');
+  const d = fordelKostnad(10000, [{ navn: 'A', andel: 60 }, { navn: 'B', andel: 60 }]);
+  assert.equal(d[0].belop, 5000, 'andeler normaliseres');
+  assert.equal(fordelKostnad(800, [])[0].belop, 800);
+  const ny = nyVeiKostnad({ klasse: 3, lengde: 1000 }, STANDARD_VEIINNSTILLINGER);
+  assert.equal(ny.brutto, 900000); assert.equal(ny.netto, 450000);
 });
 
 await Promise.all(venter);

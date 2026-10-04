@@ -10,6 +10,11 @@ import { lagDemo } from './demo.js';
 import { lagre, hent, listPlaner, lagrePlan, hentPlan, slettPlan } from './store.js';
 import { genererPlan, hentKommuner, finnKommune } from './generator.js';
 import { initKommune } from './kommune-ui.js';
+import { initVeier } from './veier-ui.js';
+import { VEIKLASSER, VEDLIKEHOLDSTYPER } from './veier.js';
+
+const VEIKLASSER_NAVN = (k) => (VEIKLASSER[k] || VEIKLASSER[0]).navn;
+const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
 import { stabletSoyle, linje, fmt } from './charts.js';
 
 const IAAR = new Date().getFullYear();
@@ -66,6 +71,7 @@ function filnavn(ending) {
 }
 
 // ---------------------------------------------------------------- kart
+let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks. veier)
 let kart; let bestandLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 
@@ -95,6 +101,7 @@ function initKart() {
   L.control.scale({ imperial: false }).addTo(kart);
 
   kart.on('click', (e) => {
+    if (kartKlikk) { kartKlikk(e.latlng); return; }
     if (tegning) { leggTilTegnepunkt(e.latlng); return; }
     settValgtPunkt(e.latlng);
   });
@@ -105,6 +112,7 @@ function settValgtPunkt(ll) {
   if (valgtPunkt) valgtPunkt.setLatLng(ll); else valgtPunkt = L.circleMarker(ll, { radius: 6, color: css('--text'), weight: 2, fillOpacity: 0 }).addTo(kart);
 }
 
+let terrengCache = null;
 const HK_FARGER = ['#cde2fb', '#86b6ef', '#3987e5', '#1c5cab', '#0d366b'];
 function rampe(verdi, min, maks) {
   const steg = ['#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#256abf', '#184f95', '#0d366b'];
@@ -123,6 +131,10 @@ function fargeFor(b) {
   if (modus === 'tiltak') {
     const t = (b.tiltak || []).filter((x) => x.status !== 'utfort').sort((x, y) => x.aar - y.aar)[0];
     return t ? TILTAK_FARGER[TILTAKSTYPER[t.type]?.gruppe || 'annet'] : null;
+  }
+  if (modus === 'terreng') {
+    const d = terrengCache?.get(b.id)?.meter;
+    return d === undefined || !Number.isFinite(d) ? null : rampe(d, 0, 1000);
   }
   if (modus === 'framskrevet') {
     const fr = sikreFramskriving();
@@ -144,6 +156,7 @@ function tegnLegend() {
   } else if (modus === 'treslag') html = Object.entries(TRESLAG).map(([k, v]) => rad(css(`--ts-${k.toLowerCase()}`), v)).join('');
   else if (modus === 'bonitet') html = '<b>Bonitet (H40)</b>' + [6, 11, 17, 23, 26].map((v) => rad(rampe(v, 6, 26), `${v}`)).join('');
   else if (modus === 'volum') html = '<b>Volum m³/daa</b>' + [0, 10, 20, 30, 45].map((v) => rad(rampe(v, 0, 45), v === 45 ? '45+' : `${v}`)).join('');
+  else if (modus === 'terreng') html = '<b>Avstand til bilvei</b>' + [0, 250, 500, 750, 1000].map((v) => rad(rampe(v, 0, 1000), v === 1000 ? '1000 m +' : `${v} m`)).join('') + rad('transparent;border:1px solid #999', 'Ingen veier registrert');
   else if (modus === 'tiltak') html = '<b>Første planlagte tiltak</b>' + rad(TILTAK_FARGER.hogst, 'Hogst') + rad(TILTAK_FARGER.kultur, 'Skogkultur') + rad(TILTAK_FARGER.annet, 'Annet') + rad('transparent;border:1px solid #999', 'Ingen');
   $('#kartLegend').innerHTML = `<button type="button" class="legend-knapp" aria-expanded="${!legendLukket}">Tegnforklaring ${legendLukket ? '▸' : '▾'}</button><div class="legend-innhold" ${legendLukket ? 'hidden' : ''}>${html}</div>`;
 }
@@ -160,6 +173,7 @@ function stilFor(b) {
 let grenseLag = null;
 function tegnBestandKart(zoom = false) {
   bestandLag.clearLayers(); lagPerBestand.clear();
+  terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null;
   if (grenseLag) { grenseLag.remove(); grenseLag = null; }
   if (S.eiendom.grense) {
     grenseLag = L.geoJSON(S.eiendom.grense, { style: { color: '#d03b3b', weight: 2.5, dashArray: '8 5', fill: false }, interactive: false }).addTo(kart);
@@ -167,7 +181,7 @@ function tegnBestandKart(zoom = false) {
   for (const b of S.bestand) {
     if (!b.geometri) continue;
     const lag = L.geoJSON(b.geometri, { style: () => stilFor(b) });
-    lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (tegning) { leggTilTegnepunkt(e.latlng); return; } velgBestand(b.id, { zoom: false }); visFane('bestand'); });
+    lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } velgBestand(b.id, { zoom: false }); visFane('bestand'); });
     lag.bindTooltip(esc(b.nr || '?'), { permanent: true, direction: 'center', className: 'bestand-etikett' });
     lag.addTo(bestandLag);
     lagPerBestand.set(b.id, lag);
@@ -178,6 +192,7 @@ function tegnBestandKart(zoom = false) {
 }
 
 function oppdaterStiler() {
+  terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null;
   for (const b of S.bestand) lagPerBestand.get(b.id)?.setStyle(stilFor(b));
   tegnLegend();
 }
@@ -246,7 +261,10 @@ function avsluttGrenseRedigering() { redigerMarkorer.forEach((m) => m.remove());
 
 // ---------------------------------------------------------------- faner
 let kommuneVisning = null;
+let veiVisning = null;
 function visFane(navn) {
+  veiVisning?.synlig(navn !== 'kommune');
+  if (navn === 'veier') veiVisning?.vis();
   if (kommuneVisning) { if (navn === 'kommune') kommuneVisning.vis(); else { kommuneVisning.skjul(); tegnLegend(); } }
   $('.kartverktoy').hidden = navn === 'kommune';
   $$('.faner button').forEach((b) => b.classList.toggle('aktiv', b.dataset.fane === navn));
@@ -355,6 +373,7 @@ function visDetalj() {
       <div><b>${fmt(om10)} m³</b><span>volum om 10 år uten hogst</span></div>
       <div><b>${hm ? (hm <= IAAR ? 'Nå' : hm) : '–'}</b><span>hogstmoden${min ? ` (≥ ${min} år)` : ''}</span></div>
       <div><b>${fmt(s.volumDaa * (b.areal || 0) * rotnettoPerM3(b.treslag, inn()) / 1000)} k</b><span>kr rotnetto ved hogst nå</span></div>
+      ${(() => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? `<div><b>${fmt(a.meter)} m</b><span>til nærmeste bilvei${a.meter > veiVisning.maks() ? ' – lang terrengtransport' : ''}</span></div>` : ''; })()}
     </div>
     <form class="skjema tre-kol" id="detaljSkjema">
       <label>Bestandsnr <input name="nr" value="${esc(b.nr)}"></label>
@@ -674,6 +693,9 @@ function skrivRapport() {
     <h2>Bestandsliste</h2>
     <table><tr><th>Nr</th><th class="tall">Daa</th><th>Treslag</th><th class="tall">Bon</th><th>HK</th><th class="tall">Alder</th><th class="tall">m³/daa</th><th class="tall">m³</th><th>Merknad</th></tr>
     ${[...S.bestand].sort((a, b) => sortNr(a.nr, b.nr)).map((b) => { const st = startTilstand(b); return `<tr><td>${esc(b.nr)}</td><td class="tall">${fmt(b.areal, 1)}</td><td>${TRESLAG[b.treslag] || ''}</td><td class="tall">${b.bonitet ?? ''}</td><td>${HK_ROMERTALL[hk(b)] || ''}</td><td class="tall">${b.alder ?? ''}</td><td class="tall">${fmt(st.volumDaa, 1)}</td><td class="tall">${fmt(st.volumDaa * (b.areal || 0))}</td><td>${esc(b.merknad)}</td></tr>`; }).join('')}</table>
+    ${(S.veier?.veier || []).length ? `<h2>Veier</h2><table><tr><th>Vei</th><th>Klasse</th><th>Status</th><th class="tall">Lengde m</th><th>Tilstand</th><th>Eiere</th></tr>
+    ${S.veier.veier.map((v) => `<tr><td>${esc(v.navn)}</td><td>${esc(VEIKLASSER_NAVN(v.klasse))}</td><td>${esc(v.status)}</td><td class="tall">${fmt(v.lengde)}</td><td>${esc(v.tilstand || '')}</td><td>${esc((v.eiere || []).map((x) => `${x.navn} ${x.andel} %`).join(', '))}</td></tr>`).join('')}</table>
+    ${(S.veier.vedlikehold || []).filter((l) => l.status === 'planlagt').length ? `<h3>Planlagt veivedlikehold</h3><table><tr><th>År</th><th>Vei</th><th>Tiltak</th><th class="tall">Kostnad kr</th></tr>${S.veier.vedlikehold.filter((l) => l.status === 'planlagt').sort((a, b) => a.aar - b.aar).map((l) => `<tr><td>${l.aar}</td><td>${esc(S.veier.veier.find((v) => v.id === l.veiId)?.navn)}</td><td>${esc(VEDLIKEHOLD_NAVN(l.type))}</td><td class="tall">${fmt(l.kostnad)}</td></tr>`).join('')}</table>` : ''}` : ''}
     <p style="font-size:9pt;color:#555">Volum- og verdiberegninger er forenklede estimater basert på registrerte data og innstilte priser.</p>`;
   window.print();
 }
@@ -748,7 +770,7 @@ function tegnEiendom() {
 function endret({ kart: kartEndret = false, zoom = false } = {}) {
   frResultat = null;
   lagreSnart();
-  if (kartEndret) tegnBestandKart(zoom); else oppdaterStiler();
+  if (kartEndret) { tegnBestandKart(zoom); veiVisning?.oppdater(); } else oppdaterStiler();
   tegnOversikt();
   tegnBestandTabell();
   tegnTiltak();
@@ -900,6 +922,11 @@ async function startGenerering(e) {
 function kobleHendelser() {
   $$('.faner button').forEach((b) => b.addEventListener('click', () => visFane(b.dataset.fane)));
   $('#genSkjema').addEventListener('submit', startGenerering);
+  veiVisning = initVeier({
+    kart, hentPlan: () => S, endret, melding, nyId,
+    settKartKlikk: (fn) => { kartKlikk = fn; },
+    visBestand: (id) => { velgBestand(id); visFane('bestand'); },
+  });
   kommuneVisning = initKommune({ kart, melding, innstillinger: inn, lastKommuner, finnKommune, lagPlanFor });
   $('#genKommune').addEventListener('focus', lastKommuner, { once: true });
   $('#planListe').addEventListener('click', async (e) => {

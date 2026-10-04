@@ -21,6 +21,7 @@
     <button role="tab" data-fane="bestand">Bestand</button>
     <button role="tab" data-fane="tiltak">Tiltak</button>
     <button role="tab" data-fane="framskriving">Framskriving</button>
+    <button role="tab" data-fane="veier">Veier</button>
     <button role="tab" data-fane="felt">Felt</button>
     <button role="tab" data-fane="data">Data</button>
   </nav>
@@ -37,6 +38,7 @@
           <option value="bonitet">Bonitet</option>
           <option value="volum">Volum per daa</option>
           <option value="tiltak">Planlagte tiltak</option>
+          <option value="terreng">Avstand til bilvei</option>
           <option value="framskrevet">Hogstklasse om … år (Framskriving)</option>
         </select>
       </label>
@@ -45,6 +47,9 @@
     </div>
     <div id="tegnHjelp" class="tegn-hjelp" hidden>
       Klikk i kartet for å sette hjørnepunkter. <button id="tegnFerdig" class="knapp primar" type="button">Fullfør</button> <button id="tegnAvbryt" class="knapp" type="button">Avbryt</button>
+    </div>
+    <div id="veiTegnHjelp" class="tegn-hjelp" hidden>
+      <span class="tekst"></span> <button id="veiTegnFerdig" class="knapp primar" type="button">Fullfør</button> <button id="veiTegnAvbryt" class="knapp" type="button">Avbryt</button>
     </div>
     <div id="kartLegend" class="kart-legend"></div>
   </section>
@@ -180,6 +185,47 @@
       <div class="kort"><h3>Stående volum (m³)</h3><div id="frVolum"></div></div>
       <div class="kort"><h3>Avvirkning og tilvekst per år (m³)</h3><div id="frAvv"></div></div>
       <div class="kort"><h3>Tabell</h3><div class="tabell-wrap"><table class="tabell" id="frTabell"></table></div></div>
+    </div>
+
+    <!-- VEIER -->
+    <div class="fane" id="fane-veier" hidden>
+      <div class="kpi-rad" id="veiKpi"></div>
+      <div class="kort">
+        <h3>Registrer veier</h3>
+        <p class="hint">Hent skogsbilveier (og private veier) som går på eller inntil eiendommen fra Nasjonal vegdatabank (NVDB), med veiklasse, bommer, snuplasser og stikkrenner der de er registrert. Du kan også tegne veier og plassere punkter selv.</p>
+        <div class="knapperad">
+          <button id="veiNvdbBtn" class="knapp primar" type="button">Hent veier fra NVDB</button>
+          <label class="avkrysning"><input type="checkbox" id="veiMedPrivate" checked> Ta med private veier (P)</label>
+        </div>
+        <div id="veiNvdbStatus" class="hint"></div>
+        <div class="knapperad">
+          <button id="veiTegnBtn" class="knapp" type="button">✏️ Tegn vei</button>
+          <select id="veiNyStatus" aria-label="Status for ny vei"><option value="eksisterende">som eksisterende</option><option value="planlagt">som planlagt ny vei</option></select>
+          <select id="veiPunktType" aria-label="Punkttype">
+            <option value="bom">Bom</option><option value="stikkrenne">Stikkrenne</option><option value="snuplass">Snuplass</option>
+            <option value="velteplass">Velteplass / tømmerplass</option><option value="moteplass">Møteplass</option><option value="bru">Bru</option><option value="skade">Skade / utbedring</option>
+          </select>
+          <button id="veiPunktBtn" class="knapp" type="button">📍 Plasser punkt</button>
+          <button id="veiEksportBtn" class="knapp" type="button">Last ned GeoJSON</button>
+        </div>
+      </div>
+      <div class="kort"><h3>Veier</h3><div id="veiListe" class="vei-liste"></div></div>
+      <div id="veiDetalj" class="kort" hidden></div>
+      <div class="kort">
+        <div class="detalj-topp"><h3>Vedlikeholdsplan</h3><button id="veiForeslaBtn" class="knapp liten" type="button">💡 Foreslå vedlikehold</button></div>
+        <div id="veiForslag"></div>
+        <div id="veiPlan"></div>
+      </div>
+      <div class="kort">
+        <h3>Terrengtransport</h3>
+        <p class="hint">Bestand der midten ligger langt fra nærmeste bilvei, målt i luftlinje. Dette er kandidater for ny vei eller traktorvei. Velg «Avstand til bilvei» under «Farge etter» for å se det i kartet.</p>
+        <div id="veiTerreng" class="tabell-wrap"></div>
+      </div>
+      <details class="kort vei-satser">
+        <summary>Satser og intervaller</summary>
+        <div id="veiSatser" class="skjema tre-kol"></div>
+        <p class="hint">Eksempelsatser. Legg inn egne priser fra entreprenør eller veilag. Tilskudd til nye skogsveier varierer mellom kommuner.</p>
+      </details>
     </div>
 
     <!-- FELT -->

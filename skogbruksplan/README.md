@@ -51,6 +51,25 @@ Appen henter dataene direkte fra Kartverket og NIBIO i nettleseren (`js/generato
 Underveis vises fremdriften for hvert steg. Når planen er ferdig, vises et sammendrag og knappen
 **«Åpne skogbruksplanen»**. Alle planer lagres lokalt under «Mine skogbruksplaner», og du kan bytte mellom dem.
 
+## Skogsbilveier (fanen «Veier»)
+
+Hver plan har sitt eget veiregister:
+
+- **Hent veier fra NVDB.** Skogsbilveier (vegkategori S) og eventuelt private veier (P) som går på eller inntil eiendommen
+  hentes fra Nasjonal vegdatabank. Med dem følger landbruksvegklasse (objekttype 822), bommer, snuplasser og stikkrenner der
+  de er registrert. Klassen er ofte ikke registrert. Da settes den manuelt.
+- **Tegn veier** (eksisterende eller planlagte) og **plasser punkter**: bom, stikkrenne, snuplass, velteplass, møteplass,
+  bru og skade.
+- **Per vei:** klasse (Landbruksdirektoratets klasse 1–8), tilstand, dekke, bredde, aksellast, totalvekt, åpningstid,
+  byggeår, veilag og **eierandeler**.
+- **Vedlikehold:** logg over utført vedlikehold og en plan. «Foreslå vedlikehold» bruker intervall per type (høvling,
+  grusing, grøfterensk, kantrydding), siste registrerte utførelse og tilstand. Planen viser kostnad per år og hvordan
+  kostnadene **fordeles mellom eierne** etter andeler.
+- **Planlagte veier:** byggekostnad per meter etter klasse, minus tilskudd.
+- **Terrengtransport:** luftlinjeavstand fra midten av hvert bestand til nærmeste bilvei. Bestand over grensen
+  (500 m) listes, og kartet kan fargelegges etter «Avstand til bilvei». Bestandsdetaljen viser avstanden.
+- Veiene kommer med i sikkerhetskopien og rapporten, og kan lastes ned som GeoJSON. Satser og intervaller kan endres.
+
 ## Kommuneanalyse (fanen «Kommune»)
 
 Går gjennom alle SR16-skogflatene i en kommune og finner tre typer områder:

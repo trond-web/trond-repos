@@ -124,11 +124,12 @@ export function parseHtmlAlle(html, ider) {
 function ytreRinger(g) { return g.type === 'Polygon' ? [g.coordinates[0]] : g.coordinates.map((p) => p[0]); }
 function senter(g) {
   // Tyngdepunkt av største ytre ring; faller tilbake på et toppunkt hvis det havner utenfor.
-  const r = ytreRinger(g).sort((a, b) => b.length - a.length)[0];
+  const r0 = ytreRinger(g).sort((a, b) => b.length - a.length)[0];
+  const r = r0.length > 1 && r0[0][0] === r0.at(-1)[0] && r0[0][1] === r0.at(-1)[1] ? r0.slice(0, -1) : r0;
   let x = 0; let y = 0;
   for (const [px, py] of r) { x += px; y += py; }
   const c = [x / r.length, y / r.length];
-  return punktIGeometri(c, g) ? c : r[0];
+  return punktIGeometri(c, g) ? c : r0[0];
 }
 function bboxAv(g) {
   let a = Infinity; let b = Infinity; let c = -Infinity; let d = -Infinity;

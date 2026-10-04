@@ -131,8 +131,9 @@ input[type="checkbox"], input[type="range"] { padding: 0; }
 
 .skjema { display: grid; gap: 10px; }
 .skjema label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--text-2); }
-.skjema.to-kol { grid-template-columns: 1fr 1fr; }
-.skjema.tre-kol { grid-template-columns: repeat(3, 1fr); }
+.skjema.to-kol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.skjema.tre-kol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.skjema label > input, .skjema label > select, .skjema label > textarea { width: 100%; }
 .skjema .hel { grid-column: 1 / -1; }
 
 .tiltak-aar { margin-bottom: 14px; }
@@ -191,6 +192,28 @@ input[type="checkbox"], input[type="range"] { padding: 0; }
 .kom-popup { font-size: 12.5px; line-height: 1.5; }
 .kom-popup .knapp { margin-top: 6px; }
 .kom-eiendom-rad { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.vei-punkt {
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 11px/1 system-ui, sans-serif;
+  background: #fff; color: #1b1c19; border: 3px solid var(--farge); box-shadow: 0 1px 3px rgba(0,0,0,.35);
+}
+.vei-liste { display: grid; gap: 6px; }
+.vei-rad {
+  display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; text-align: left;
+  font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; cursor: pointer;
+}
+.vei-rad:hover { background: var(--surface-2); }
+.vei-rad.valgt { background: var(--accent-soft); border-color: var(--accent); }
+.vei-rad .strek { height: 5px; border-radius: 3px; background: var(--farge); }
+.vei-rad .strek[data-planlagt="true"] { background: repeating-linear-gradient(90deg, var(--farge) 0 6px, transparent 6px 10px); }
+.vei-rad .tall { font-variant-numeric: tabular-nums; color: var(--text-2); }
+.pille { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; border: 1.5px solid var(--farge); color: var(--text); white-space: nowrap; }
+.vei-h4 { margin: 16px 0 8px; font-size: 13.5px; display: flex; justify-content: space-between; gap: 8px; }
+.vei-eiere { display: grid; gap: 6px; margin-bottom: 6px; }
+.vei-eier { display: grid; grid-template-columns: minmax(0, 1fr) 80px auto auto; gap: 6px; align-items: center; }
+.vei-fordeling { margin-top: 10px; }
+.vei-satser summary { cursor: pointer; font-weight: 600; }
+.vei-satser[open] summary { margin-bottom: 10px; }
+#veiTerreng tbody tr { cursor: pointer; }
 .slipp-sone { border: 2px dashed var(--border); border-radius: 12px; padding: 22px; text-align: center; color: var(--text-2); margin-top: 10px; }
 .slipp-sone.over { border-color: var(--accent); background: var(--accent-soft); }
 
@@ -246,7 +269,7 @@ input[type="checkbox"], input[type="range"] { padding: 0; }
   .kartverktoy .etikett-tekst { display: none; }
   .kartverktoy select { max-width: 140px; }
   .faner button { padding: 8px 9px; font-size: 13px; }
-  .skjema.tre-kol { grid-template-columns: 1fr 1fr; }
+  .skjema.tre-kol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .topp { padding: 8px 16px 0; gap: 4px; }
   .faner { width: 100%; }
 }
