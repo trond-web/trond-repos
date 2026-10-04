@@ -60,6 +60,10 @@ Appen henter dataene direkte fra Kartverket og NIBIO i nettleseren (`js/generato
 Underveis vises fremdriften for hvert steg. Når planen er ferdig, vises et sammendrag og knappen
 **«Åpne skogbruksplanen»**. Alle planer lagres lokalt under «Mine skogbruksplaner», og du kan bytte mellom dem.
 
+## Dele et bestand i to
+
+Velg bestandet og trykk «Del i to». Klikk punkter for en linje tvers over bestandet (linjen kan ha knekk). Den kan starte og slutte litt innenfor grensen; da forlenges den ut til grensen. De to delene vises med areal mens du tegner. Dobbeltklikk, Enter eller «Del» avslutter, Backspace eller ↶ fjerner siste punkt, og Esc avbryter. Den største delen beholder nummeret, og den andre får neste ledige nummer i teigen (f.eks. 1-79). Begge delene beholder bestandsdata per daa og planlagte tiltak. «Angre deling» setter bestandet sammen igjen.
+
 ## Datagrunnlag (dashboard i PEFC-fanen)
 
 Når en plan lages fra kommune/gnr/bnr hentes alt datagrunnlaget automatisk: eiendomsgrense (Kartverket), tidligere skogbruksplan, SR16 og MiS (NIBIO), verneområder, naturtyper (DN-HB13, NiN, utvalgte), artsområder og friluftslivsområder (Miljødirektoratet), kulturminner (Riksantikvaren), skogsbilveier (NVDB) og tømmerpriser (SSB). Dashboardet «Datagrunnlag» viser for hver kilde når den sist ble hentet, hvor gamle selve dataene er, og hvilke PEFC-kravpunkter den dekker:

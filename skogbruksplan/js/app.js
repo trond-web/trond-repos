@@ -14,6 +14,7 @@ import { initVeier } from './veier-ui.js';
 import { lagInnsikt } from './innsikt.js';
 import { initKommando } from './kommando.js';
 import { initPefc } from './pefc-ui.js';
+import { delFlate, nyttNr } from './del.js';
 import { initVerdi, utenProduksjon } from './verdi-ui.js';
 import { hentDatagrunnlag } from './datagrunnlag.js';
 import { kalibrerPriser, verdiberegning, STANDARD_VERDI } from './verdi.js';
@@ -114,6 +115,7 @@ function initKart() {
 
   kart.on('click', (e) => {
     if (kartKlikk) { kartKlikk(e.latlng); return; }
+    if (deling) { leggTilDelepunkt(e.latlng); return; }
     if (tegning) { leggTilTegnepunkt(e.latlng); return; }
     settValgtPunkt(e.latlng);
   });
@@ -201,7 +203,7 @@ function tegnBestandKart(zoom = false) {
   for (const b of S.bestand) {
     if (!b.geometri) continue;
     const lag = L.geoJSON(b.geometri, { style: () => stilFor(b) });
-    lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } velgBestand(b.id, { zoom: false }); visFane('bestand'); });
+    lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (deling) { leggTilDelepunkt(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } velgBestand(b.id, { zoom: false }); visFane('bestand'); });
     lag.addTo(bestandLag);
     lagPerBestand.set(b.id, lag);
     const pt = etikettPunkt(b.geometri);
@@ -298,6 +300,76 @@ function startGrenseRedigering(b) {
 }
 function avsluttGrenseRedigering() { redigerMarkorer.forEach((m) => m.remove()); redigerMarkorer = []; }
 
+// ---------------------------------------------------------------- dele et bestand i to med en tegnet linje
+let deling = null; // { b, punkter, linje, forhandsvis, res }
+let sisteDeling = null; // for «Angre deling»
+const DEL_FARGER = ['#ff8a3d', '#36e0ff'];
+function startDeling(b) {
+  if (!b.geometri || !/Polygon/.test(b.geometri.type)) { melding('Bestandet har ingen flate i kartet som kan deles.'); return; }
+  avsluttGrenseRedigering(); if (tegning) stoppTegning();
+  deling = { b, punkter: [], linje: null, forhandsvis: L.layerGroup().addTo(kart), res: null };
+  kart.doubleClickZoom.disable();
+  kart.getContainer().style.cursor = 'crosshair';
+  $('#delHjelp').hidden = false; $('#delFerdig').disabled = true;
+  $('#delHjelp .tekst').textContent = `Del bestand ${b.nr}: klikk punkter for en linje tvers over bestandet.`;
+  if (erMobil()) settArk('lav');
+  const lag = lagPerBestand.get(b.id); if (lag) kart.fitBounds(lag.getBounds(), { padding: [60, 60], maxZoom: 18 });
+}
+function tegnDeling() {
+  const d = deling; const lls = d.punkter.map(([x, y]) => [y, x]);
+  if (d.linje) d.linje.setLatLngs(lls); else d.linje = L.polyline(lls, { color: '#d03b3b', weight: 3, dashArray: '6 5', interactive: false }).addTo(kart);
+  d.forhandsvis.clearLayers();
+  d.punkter.forEach(([x, y]) => L.circleMarker([y, x], { radius: 4, color: '#fff', weight: 2, fillColor: '#d03b3b', fillOpacity: 1, interactive: false }).addTo(d.forhandsvis));
+  d.res = d.punkter.length >= 2 ? delFlate(d.b.geometri, d.punkter) : null;
+  if (d.res?.deler) {
+    d.res.deler.forEach((g, i) => L.geoJSON(g, { interactive: false, style: { color: DEL_FARGER[i], weight: 3, fillColor: DEL_FARGER[i], fillOpacity: 0.35 } }).addTo(d.forhandsvis));
+    const [a, b] = d.res.deler.map((g) => arealM2(g) / 1000);
+    $('#delHjelp .tekst').textContent = `Bestand ${d.b.nr} deles i ${fmt(a, 1)} daa (oransje) og ${fmt(b, 1)} daa (blå).`;
+  } else {
+    $('#delHjelp .tekst').textContent = d.punkter.length < 2 ? `Del bestand ${d.b.nr}: klikk punkter for en linje tvers over bestandet.` : d.res.feil;
+  }
+  $('#delFerdig').disabled = !d.res?.deler;
+}
+function leggTilDelepunkt(ll) {
+  const p = [ll.lng, ll.lat]; const sist = deling.punkter.at(-1);
+  if (sist && Math.abs(sist[0] - p[0]) < 1e-9 && Math.abs(sist[1] - p[1]) < 1e-9) return; // dobbeltklikk gir to like punkter
+  deling.punkter.push(p); tegnDeling();
+}
+function stoppDeling() {
+  if (!deling) return;
+  deling.linje?.remove(); deling.forhandsvis.remove();
+  deling = null; $('#delHjelp').hidden = true;
+  kart.doubleClickZoom.enable(); kart.getContainer().style.cursor = '';
+}
+function fullforDeling() {
+  if (!deling?.res?.deler) { melding(deling?.res?.feil || 'Tegn en linje tvers over bestandet først.'); return; }
+  const { b, res } = deling;
+  const for_ = klon(b);
+  const [ga, gb] = res.deler;
+  const ny = {
+    ...klon(b), id: nyId('b'), nr: nyttNr(b.nr, S.bestand.map((x) => x.nr)), geometri: gb, areal: runde(arealM2(gb) / 1000, 2),
+    tiltak: (b.tiltak || []).map((t) => ({ ...klon(t), id: nyId('t') })),
+    merknad: [b.merknad, `Delt fra bestand ${b.nr} ${new Date().toLocaleDateString('nb-NO')}`].filter(Boolean).join('. '),
+  };
+  b.geometri = ga; b.areal = runde(arealM2(ga) / 1000, 2);
+  S.bestand.splice(S.bestand.indexOf(b) + 1, 0, ny);
+  sisteDeling = { for: for_, nyId: ny.id };
+  stoppDeling();
+  endret({ kart: true });
+  velgBestand(b.id, { zoom: false }); visFane('bestand');
+  melding(`Bestand ${b.nr} er delt: ${fmt(b.areal, 1)} daa beholdt, ${fmt(ny.areal, 1)} daa ble bestand ${ny.nr}. Rediger data for hver del under.`, 6000);
+}
+function angreDeling() {
+  if (!sisteDeling) return;
+  const i = S.bestand.findIndex((x) => x.id === sisteDeling.for.id);
+  if (i < 0) { sisteDeling = null; return; }
+  S.bestand[i] = sisteDeling.for;
+  S.bestand = S.bestand.filter((x) => x.id !== sisteDeling.nyId);
+  const id = sisteDeling.for.id; sisteDeling = null;
+  endret({ kart: true }); velgBestand(id, { zoom: false });
+  melding('Delingen er angret.');
+}
+
 // ---------------------------------------------------------------- faner
 let kommuneVisning = null;
 let veiVisning = null;
@@ -307,6 +379,7 @@ const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Ov
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 function visFane(navn) {
+  if (deling && navn !== 'bestand') stoppDeling();
   if (pefcVisning) { if (navn === 'pefc') setTimeout(() => pefcVisning.vis(), 0); else pefcVisning.skjul(); }
   veiVisning?.synlig(navn !== 'kommune');
   if (navn === 'veier') veiVisning?.vis();
@@ -428,6 +501,8 @@ function visDetalj() {
       <div class="knapperad" style="margin:0">
         <button class="knapp liten" data-handling="zoom" type="button">Zoom</button>
         <button class="knapp liten" data-handling="grense" type="button">${redigerMarkorer.length ? 'Ferdig' : 'Rediger grense'}</button>
+        <button class="knapp liten" data-handling="del" type="button" title="Del bestandet i to med en linje">Del i to</button>
+        ${sisteDeling && (sisteDeling.for.id === b.id || sisteDeling.nyId === b.id) ? '<button class="knapp liten" data-handling="angre-deling" type="button">Angre deling</button>' : ''}
         <button class="knapp liten fare" data-handling="slett" type="button">Slett</button>
       </div>
     </div>
@@ -478,6 +553,8 @@ function visDetalj() {
     endret(); visDetalj();
   });
   boks.querySelector('[data-handling="zoom"]').onclick = () => velgBestand(b.id);
+  boks.querySelector('[data-handling="del"]').onclick = () => startDeling(b);
+  const angre = boks.querySelector('[data-handling="angre-deling"]'); if (angre) angre.onclick = angreDeling;
   boks.querySelector('[data-handling="grense"]').onclick = () => {
     if (redigerMarkorer.length) { avsluttGrenseRedigering(); visDetalj(); return; }
     if (!b.geometri) { melding('Bestandet har ingen geometri. Tegn det med «Tegn bestand» og slett dette, eller importer kart.'); return; }
@@ -910,6 +987,7 @@ async function lagreAktivPlan() {
 }
 
 async function aapnePlan(id) {
+  stoppDeling(); sisteDeling = null;
   if (id === S.planId) { visFane('oversikt'); zoomTilAlle(); return; }
   const plan = await hentPlan(id);
   if (!plan) { melding('Fant ikke planen. Den kan være slettet.'); tegnPlanListe(); return; }
@@ -1142,6 +1220,17 @@ function kobleHendelser() {
   L.DomEvent.disableClickPropagation($('.kartverktoy'));
   L.DomEvent.disableClickPropagation($('#tegnHjelp'));
   $('#tegnBtn').addEventListener('click', startTegning);
+  $('#delFerdig').addEventListener('click', fullforDeling);
+  $('#delAvbryt').addEventListener('click', stoppDeling);
+  $('#delAngrePunkt').addEventListener('click', () => { if (deling?.punkter.length) { deling.punkter.pop(); tegnDeling(); } });
+  L.DomEvent.disableClickPropagation($('#delHjelp'));
+  kart.on('dblclick', () => { if (deling?.res?.deler) fullforDeling(); });
+  document.addEventListener('keydown', (e) => {
+    if (!deling || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    if (e.key === 'Escape') stoppDeling();
+    else if (e.key === 'Enter') fullforDeling();
+    else if (e.key === 'Backspace' && deling.punkter.length) { e.preventDefault(); deling.punkter.pop(); tegnDeling(); }
+  });
   $('#tegnFerdig').addEventListener('click', fullforTegning);
   $('#tegnAvbryt').addEventListener('click', stoppTegning);
   $('#posBtn').addEventListener('click', () => { visFane('felt'); if (gpsWatch === null) startGps(); });

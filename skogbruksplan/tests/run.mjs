@@ -12,6 +12,7 @@ import { pefcAlder, avstand, kontroller, kravStatus, klareringStatus, tomPefc, K
 import { jordverdi, bestandsverdi, verdiberegning, kalibrerPriser, folsomhet, STANDARD_VERDI } from '../js/verdi.js';
 import { kildeStatus } from '../js/pefc-ui.js';
 import { hentDatagrunnlag } from '../js/datagrunnlag.js';
+import { delFlate, nyttNr } from '../js/del.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
 
 let ok = 0;
@@ -413,6 +414,34 @@ test('Etikettpunkt ligger inne i en L-formet flate', () => {
   assert.ok(punktIGeometri(p, L));
   const mp = { type: 'MultiPolygon', coordinates: [L.coordinates, [[[12, 61], [12.0001, 61], [12.0001, 61.0001], [12, 61]]]] };
   assert.ok(punktIGeometri(etikettPunkt(mp), L), 'bruker største del');
+});
+
+test('Deling av bestand med linje', () => {
+  const g = (pts) => pts.map(([x, y]) => [11 + x / 10000, 60 + y / 20000]);
+  const kv = { type: 'Polygon', coordinates: [g([[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]])] };
+  const hel = arealM2(kv);
+  // Linje tvers over, med knekk
+  let r = delFlate(kv, g([[3, -2], [4, 5], [3, 12]]));
+  assert.ok(r.deler, r.feil);
+  assert.ok(Math.abs(arealM2(r.deler[0]) + arealM2(r.deler[1]) - hel) < 0.01);
+  assert.ok(arealM2(r.deler[0]) >= arealM2(r.deler[1]));
+  // Linje som starter og slutter inne i flaten forlenges til grensen
+  r = delFlate(kv, g([[5, 1], [5, 9]]));
+  assert.ok(Math.abs(arealM2(r.deler[0]) - hel / 2) / hel < 1e-6);
+  // Linje som ikke krysser
+  assert.ok(delFlate(kv, g([[20, 0], [20, 10]])).feil);
+  // Hull havner i riktig del
+  const medHull = { type: 'Polygon', coordinates: [...kv.coordinates, g([[7, 4], [8, 4], [8, 5], [7, 5], [7, 4]])] };
+  r = delFlate(medHull, g([[5, -1], [5, 11]]));
+  assert.equal(r.deler.reduce((s, d) => s + d.coordinates.length, 0), 3);
+  assert.ok(Math.abs(arealM2(r.deler[0]) + arealM2(r.deler[1]) - arealM2(medHull)) < 0.01);
+  assert.ok(delFlate(medHull, g([[7.5, -1], [7.5, 11]])).feil, 'krysser hull');
+  // L-form der linjen kutter av en arm
+  const L = { type: 'Polygon', coordinates: [g([[0, 0], [10, 0], [10, 2], [2, 2], [2, 10], [0, 10], [0, 0]])] };
+  r = delFlate(L, g([[-1, 6], [3, 6]]));
+  assert.ok(Math.abs(arealM2(r.deler[0]) + arealM2(r.deler[1]) - arealM2(L)) < 0.01);
+  assert.equal(nyttNr('1-9', ['1-9', '1-12', '2-30']), '1-13');
+  assert.equal(nyttNr('17', ['17', '3']), '18');
 });
 
 await Promise.all(venter);
