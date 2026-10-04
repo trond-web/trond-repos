@@ -68,7 +68,7 @@
     <div class="watch-head">
       <div>
         <h2>🔔 Løypevarsler</h2>
-        <p class="hint">Få beskjed når løypemaskinen har kjørt spor i nærheten av deg (data fra Sporet.no).</p>
+        <p class="hint">Få beskjed når løypemaskinen starter i et av de 850+ skiområdene i Sporet.no nær deg.</p>
       </div>
       <button class="btn" id="watchToggle" type="button" aria-pressed="false">Slå på varsler</button>
     </div>
@@ -86,10 +86,11 @@
       <label class="field-inline">
         <span>Radius</span>
         <select id="watchRadius">
-          <option value="3">3 km</option>
           <option value="5">5 km</option>
-          <option value="10" selected>10 km</option>
-          <option value="20">20 km</option>
+          <option value="10">10 km</option>
+          <option value="20" selected>20 km</option>
+          <option value="30">30 km</option>
+          <option value="50">50 km</option>
         </select>
       </label>
       <button class="btn btn-ghost" id="watchTest" type="button">🧪 Test varsel</button>
@@ -99,10 +100,11 @@
     <details class="watch-help">
       <summary>Hvordan virker varslene?</summary>
       <ul>
-        <li>Mens appen er åpen (også i bakgrunnen) sjekkes Sporet hvert 5. minutt, og du får varsel når en løype innenfor radiusen er kjørt de siste 6 timene.</li>
+        <li>Alle skiområder i Sporet innenfor radiusen følges. Når et område går fra «ikke kjørt på 6 timer» til «kjøres nå», har maskinen startet, og du får varsel med de første løypene som er kjørt.</li>
+        <li>Mens appen er åpen (også i bakgrunnen) sjekkes Sporet hvert 5. minutt.</li>
         <li><strong>Android / Chrome / Edge:</strong> installer appen («Legg til på startskjermen»). Da kan nettleseren også sjekke av og til når appen er lukket. Hvor ofte bestemmer nettleseren selv, ofte noen ganger i døgnet.</li>
         <li><strong>iPhone:</strong> åpne siden i Safari → Del → «Legg til på Hjem-skjerm», og åpne appen derfra. Varsler virker fra iOS 16.4 mens appen er åpen.</li>
-        <li><strong>Push også når appen er lukket:</strong> installer <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a>-appen og abonner på Snøvill-emnet ditt. En GitHub-jobb sjekker Sporet hvert 10. minutt for Sjusjøen, Øyerfjellet, Nordseter og Synnfjell og sender push (stille om natta).</li>
+        <li><strong>Push også når appen er lukket:</strong> installer <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a>-appen og abonner på Snøvill-emnet ditt. En GitHub-jobb sjekker hvert 10. minutt alle Sporet-områder innenfor radiusen rundt Sjusjøen, Øyerfjellet, Nordseter og Synnfjell, og sender push når maskinen starter (stille om natta).</li>
         <li>Posisjonen din brukes bare i nettleseren og sendes kun som et kartutsnitt til Sporet.no.</li>
       </ul>
     </details>

@@ -33,28 +33,30 @@ Alle fire tillater kall fra nettleseren (CORS). Svarene mellomlagres i 20 minutt
 5. **Startdybde**: «Auto» anslår ut fra Sporet (kjørt siste 2 døgn → 35 cm, siste uke →
    25 cm, siste 3 uker → 10 cm, ellers 0). Kan overstyres per sted i innstillingene.
 
-## 🔔 Løypevarsler
+## 🔔 Løypevarsler – når maskinen starter
 
-Kortet «Løypevarsler» varsler når løyper nær deg blir kjørt opp:
+Varslene dekker **alle 850+ skiområder i Sporet.no**, ikke bare de faste stedene:
 
-- Velg **📍 Der jeg er** (posisjon fra nettleseren) eller ett av stedene, og en radius (3–20 km).
-- Appen henter løypene i området fra Sporet (`skiroutes/detailsbybbox`) og husker «sist preparert»
-  for hver løype i IndexedDB. Første sjekk lagrer bare en grunnlinje. Etter det varsles løyper
-  som har fått nytt prepareringstidspunkt de siste 6 timene.
-- Mens appen er åpen sjekkes det hvert 5. minutt og når fanen blir synlig igjen.
-- `sw.js` (service worker) viser varslene, og når appen er installert som PWA i Chrome/Edge
-  registreres også **Periodic Background Sync**, så nettleseren kan sjekke når appen er lukket
-  (hvor ofte bestemmer nettleseren). iPhone: legg til på Hjem-skjerm (iOS 16.4+).
-- Sporet viser ikke løypemaskinenes posisjon offentlig, så varselet kommer når føreren
-  melder løypa som preparert, ikke idet maskinen kjører ut.
+- Kartlaget `Destinasjoner_prep` (`ags.sporet.no/.../Sporet_simple/MapServer/4`) gir status for
+  hvert skiområde i Norge i ett kall. Kode 20 betyr «kjørt siste 6 timer». Et område går over til 20
+  straks første strekning er kjørt, så **overgangen til 20 = løypemaskinen har startet**.
+- Varselet tar med de første løypene som er kjørt (fra `skiroutes/detailsbybbox`).
+- Første sjekk lagrer bare hvilke områder som er aktive nå. Etter det varsles hvert område én gang
+  per oppstart. Kjøres et område igjen innen 6 timer, regnes det som samme økt.
+- Sporet viser ikke maskinenes GPS-posisjon offentlig. «Startet» betyr derfor at første strekning
+  er registrert kjørt, som for maskiner med GPS skjer automatisk mens de kjører.
 
-Felles logikk for side og service worker ligger i `sporet-watch.js`.
+**I appen:** velg **📍 Der jeg er** eller et sted og en radius (5–50 km). Listen viser alle
+Sporet-områder i nærheten med status (🟢 kjøres nå). Mens appen er åpen sjekkes det hvert 5. minutt.
+`sw.js` viser varslene og bruker Periodic Background Sync når appen er installert i Chrome/Edge.
+
+Felles logikk for nettleser, service worker og GitHub-jobben ligger i `sporet-watch.js`.
 
 ### 📲 Push til mobilen via ntfy (også når appen er lukket)
 
 Workflowen `.github/workflows/sporet-varsler.yml` kjører hvert 10. minutt på GitHub Actions,
-sjekker Sporet rundt stedene i [`varsler/steder.json`](varsler/steder.json) og sender push via
-[ntfy](https://ntfy.sh) når løyper blir kjørt.
+sjekker alle Sporet-områder innenfor radiusen rundt stedene i [`varsler/steder.json`](varsler/steder.json)
+(standard 10–12 km) og sender push via [ntfy](https://ntfy.sh) når løypemaskinen starter.
 
 **Oppsett (én gang):**
 
@@ -70,8 +72,8 @@ sjekker Sporet rundt stedene i [`varsler/steder.json`](varsler/steder.json) og s
 - Legg til hytta eller andre steder i `steder.json` (`navn`, `lat`, `lon`, `radiusKm`).
 - `stilleTimer` (norsk tid): varsler i dette tidsrommet sendes med lav prioritet, uten lyd.
 - Egen ntfy-server: sett repository variable `NTFY_SERVER`, og eventuelt secret `NTFY_TOKEN`.
-- «Sist sett» per løype lagres i Actions-cachen mellom kjøringer. Første kjøring lagrer
-  bare en grunnlinje, så du får ikke varsel for gammel preparering.
+- Hvilke områder som kjøres nå lagres i Actions-cachen mellom kjøringer. Første kjøring lagrer
+  bare en grunnlinje, så du får ikke varsel for maskiner som allerede har gått en stund.
 - GitHub kan forsinke planlagte kjøringer med noen minutter, og slår dem av etter 60 dager
   uten aktivitet i repoet (kan slås på igjen under Actions).
 - Lokal test uten å sende: `DRY_RUN=true node snovill-skifore/varsler/sjekk-sporet.mjs`.
