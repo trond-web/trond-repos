@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Snøvill Skiføre</title>
 <meta name="description" content="Snøvill sin skiføre-radar for Sjusjøen, Øyerfjellet og Nordseter – 10 dagers sannsynlighet for skiføre fra Yr, Storm, Netatmo og Sporet.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛷️</text></svg>">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2a78d6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Snøvill">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="style.css">
@@ -59,6 +64,48 @@
 
   <section class="best-day card" id="bestDay" hidden></section>
 
+  <section class="card watch" id="watch">
+    <div class="watch-head">
+      <div>
+        <h2>🔔 Løypevarsler</h2>
+        <p class="hint">Få beskjed når løypemaskinen har kjørt spor i nærheten av deg (data fra Sporet.no).</p>
+      </div>
+      <button class="btn" id="watchToggle" type="button" aria-pressed="false">Slå på varsler</button>
+    </div>
+    <div class="watch-controls">
+      <label class="field-inline">
+        <span>Hvor?</span>
+        <select id="watchPlace">
+          <option value="me">📍 Der jeg er</option>
+          <option value="sjusjoen">Sjusjøen</option>
+          <option value="oyerfjellet">Øyerfjellet</option>
+          <option value="nordseter">Nordseter</option>
+        </select>
+      </label>
+      <label class="field-inline">
+        <span>Radius</span>
+        <select id="watchRadius">
+          <option value="3">3 km</option>
+          <option value="5">5 km</option>
+          <option value="10" selected>10 km</option>
+          <option value="20">20 km</option>
+        </select>
+      </label>
+      <button class="btn btn-ghost" id="watchTest" type="button">🧪 Test varsel</button>
+    </div>
+    <p class="watch-status" id="watchStatus" aria-live="polite">Varsler er av.</p>
+    <ul class="watch-list" id="watchList"></ul>
+    <details class="watch-help">
+      <summary>Hvordan virker varslene?</summary>
+      <ul>
+        <li>Mens appen er åpen (også i bakgrunnen) sjekkes Sporet hvert 5. minutt, og du får varsel når en løype innenfor radiusen er kjørt de siste 6 timene.</li>
+        <li><strong>Android / Chrome / Edge:</strong> installer appen («Legg til på startskjermen»). Da kan nettleseren også sjekke av og til når appen er lukket. Hvor ofte bestemmer nettleseren selv, ofte noen ganger i døgnet.</li>
+        <li><strong>iPhone:</strong> åpne siden i Safari → Del → «Legg til på Hjem-skjerm», og åpne appen derfra. Varsler virker fra iOS 16.4 mens appen er åpen.</li>
+        <li>Posisjonen din brukes bare i nettleseren og sendes kun som et kartutsnitt til Sporet.no.</li>
+      </ul>
+    </details>
+  </section>
+
   <section id="resorts" class="resorts" aria-live="polite">
     <div class="loading card"><span class="spinner"></span> Henter snødrømmer fra Yr, Storm, Netatmo og Sporet …</div>
   </section>
@@ -98,6 +145,7 @@
   </footer>
 </div>
 
+<script src="sporet-watch.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -33,6 +33,23 @@ Alle fire tillater kall fra nettleseren (CORS). Svarene mellomlagres i 20 minutt
 5. **Startdybde**: «Auto» anslår ut fra Sporet (kjørt siste 2 døgn → 35 cm, siste uke →
    25 cm, siste 3 uker → 10 cm, ellers 0). Kan overstyres per sted i innstillingene.
 
+## 🔔 Løypevarsler
+
+Kortet «Løypevarsler» varsler når løyper nær deg blir kjørt opp:
+
+- Velg **📍 Der jeg er** (posisjon fra nettleseren) eller ett av de tre stedene, og en radius (3–20 km).
+- Appen henter løypene i området fra Sporet (`skiroutes/detailsbybbox`) og husker «sist preparert»
+  for hver løype i IndexedDB. Første sjekk lagrer bare en grunnlinje. Etter det varsles løyper
+  som har fått nytt prepareringstidspunkt de siste 6 timene.
+- Mens appen er åpen sjekkes det hvert 5. minutt og når fanen blir synlig igjen.
+- `sw.js` (service worker) viser varslene, og når appen er installert som PWA i Chrome/Edge
+  registreres også **Periodic Background Sync**, så nettleseren kan sjekke når appen er lukket
+  (hvor ofte bestemmer nettleseren). iPhone: legg til på Hjem-skjerm (iOS 16.4+).
+- Sporet viser ikke løypemaskinenes posisjon offentlig, så varselet kommer når føreren
+  melder løypa som preparert, ikke idet maskinen kjører ut.
+
+Felles logikk for side og service worker ligger i `sporet-watch.js`.
+
 ## Kjøre lokalt
 
 ```bash

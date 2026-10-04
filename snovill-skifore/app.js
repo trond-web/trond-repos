@@ -926,6 +926,225 @@ function startSnow() {
   tick();
 }
 
+/* -------------------------- løypevarsler -------------------------- */
+
+const WATCH_INTERVAL_MS = 5 * 60000;
+const watch = { timer: null, swReg: null, config: null, busy: false };
+
+function watchSupported() {
+  return "Notification" in window && "indexedDB" in window;
+}
+
+async function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return null;
+  try {
+    watch.swReg = await navigator.serviceWorker.register("sw.js");
+    await navigator.serviceWorker.ready;
+  } catch (err) {
+    console.warn("Service worker ble ikke registrert:", err);
+    watch.swReg = null;
+  }
+  return watch.swReg;
+}
+
+function getPosition() {
+  return new Promise((resolve, reject) => {
+    if (!("geolocation" in navigator)) return reject(new Error("Nettleseren støtter ikke posisjon"));
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      (err) => reject(new Error(err.code === 1 ? "Du må gi tilgang til posisjon" : "Fant ikke posisjonen din")),
+      { enableHighAccuracy: false, maximumAge: 10 * 60000, timeout: 20000 }
+    );
+  });
+}
+
+async function resolvePlace(cfg) {
+  if (cfg.place !== "me") {
+    const loc = LOCATIONS.find((l) => l.id === cfg.place);
+    return { lat: loc.lat, lon: loc.lon, placeLabel: `ved ${loc.name}` };
+  }
+  try {
+    const pos = await getPosition();
+    return { ...pos, placeLabel: "i nærheten av deg" };
+  } catch (err) {
+    // Bruk siste kjente posisjon hvis vi har en
+    if (cfg.lat != null) return { lat: cfg.lat, lon: cfg.lon, placeLabel: "i nærheten av deg", stale: true };
+    throw err;
+  }
+}
+
+async function notify(title, body) {
+  const opts = { body, icon: "icon-192.png", badge: "icon-192.png", tag: "sporet-prep", renotify: true };
+  const reg = watch.swReg || (await navigator.serviceWorker?.getRegistration?.());
+  if (reg?.showNotification) return reg.showNotification(title, opts);
+  // Fallback for nettlesere uten service worker
+  return new Notification(title, opts);
+}
+
+async function watchCheck() {
+  if (!watch.config?.enabled || watch.busy) return;
+  watch.busy = true;
+  try {
+    const where = await resolvePlace(watch.config);
+    watch.config = { ...watch.config, lat: where.lat, lon: where.lon, placeLabel: where.placeLabel };
+    await SporetWatch.kvSet("config", watch.config);
+    const { routes, fresh, baseline } = await SporetWatch.check(watch.config);
+    if (fresh.length && Notification.permission === "granted") {
+      const n = SporetWatch.message(fresh, where.placeLabel);
+      await notify(n.title, n.body);
+    }
+    renderWatch({ routes, fresh, baseline, stale: where.stale });
+  } catch (err) {
+    renderWatch({ error: err.message || String(err) });
+  } finally {
+    watch.busy = false;
+  }
+}
+
+function startWatchTimer() {
+  clearInterval(watch.timer);
+  watch.timer = setInterval(watchCheck, WATCH_INTERVAL_MS);
+}
+
+async function registerPeriodicSync() {
+  try {
+    const reg = watch.swReg;
+    if (!reg || !("periodicSync" in reg)) return false;
+    const status = await navigator.permissions.query({ name: "periodic-background-sync" });
+    if (status.state !== "granted") return false;
+    await reg.periodicSync.register("sporet-check", { minInterval: 15 * 60000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function enableWatch() {
+  if (!watchSupported()) {
+    renderWatch({ error: "Denne nettleseren støtter ikke varsler. Prøv Chrome, Edge, Firefox eller Safari (installert på Hjem-skjerm)." });
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") {
+    renderWatch({ error: "Varsler er blokkert. Tillat varsler for denne siden i nettleserinnstillingene." });
+    return;
+  }
+  watch.config = {
+    ...(watch.config || {}),
+    enabled: true,
+    place: $("watchPlace").value,
+    radiusKm: Number($("watchRadius").value),
+  };
+  await SporetWatch.kvSet("config", watch.config);
+  await registerServiceWorker();
+  watch.config.background = await registerPeriodicSync();
+  await SporetWatch.kvSet("config", watch.config);
+  startWatchTimer();
+  await watchCheck();
+}
+
+async function disableWatch() {
+  clearInterval(watch.timer);
+  watch.config = { ...(watch.config || {}), enabled: false };
+  await SporetWatch.kvSet("config", watch.config);
+  try {
+    await watch.swReg?.periodicSync?.unregister("sporet-check");
+  } catch {
+    /* ikke støttet */
+  }
+  renderWatch({});
+}
+
+function renderWatch({ routes, fresh, baseline, error, stale } = {}) {
+  const on = !!watch.config?.enabled;
+  const btn = $("watchToggle");
+  btn.textContent = on ? "🔕 Slå av varsler" : "🔔 Slå på varsler";
+  btn.setAttribute("aria-pressed", String(on));
+  $("watch").classList.toggle("watch-on", on);
+  if (watch.config?.place) $("watchPlace").value = watch.config.place;
+  if (watch.config?.radiusKm) $("watchRadius").value = String(watch.config.radiusKm);
+
+  const status = $("watchStatus");
+  const list = $("watchList");
+  if (error) {
+    status.innerHTML = `<span class="error">⚠️ ${escapeHtml(error)}</span>`;
+    return;
+  }
+  if (!on) {
+    status.textContent = "Varsler er av.";
+    list.innerHTML = "";
+    return;
+  }
+  if (!routes) {
+    status.textContent = "Sjekker Sporet …";
+    return;
+  }
+  const r = watch.config.radiusKm;
+  const bg = watch.config.background ? " · sjekker også i bakgrunnen" : "";
+  const time = new Date().toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+  let msg = `✅ Følger med på ${routes.length} løyper innenfor ${r} km ${escapeHtml(watch.config.placeLabel || "")}. Sist sjekket ${time}${bg}.`;
+  if (stale) msg += " (bruker sist kjente posisjon)";
+  if (baseline) msg += " Du får varsel neste gang en løype blir kjørt.";
+  if (fresh?.length) msg = `🚜 ${fresh.length} nykjørte løyper! ` + msg;
+  status.innerHTML = msg;
+
+  list.innerHTML = routes
+    .slice(0, 5)
+    .map((rt) => {
+      const isNew = Date.now() - Date.parse(rt.prepped) < SporetWatch.FRESH_MS;
+      return `<li class="${isNew ? "is-new" : ""}"><span>${isNew ? "🆕 " : ""}${escapeHtml(rt.name)}</span><span class="muted">${timeAgo(new Date(rt.prepped))}</span></li>`;
+    })
+    .join("");
+  if (!routes.length) list.innerHTML = `<li><span class="muted">Ingen løyper funnet innenfor ${r} km. Prøv større radius.</span></li>`;
+}
+
+async function initWatch() {
+  if (!watchSupported()) {
+    $("watchToggle").disabled = true;
+    renderWatch({ error: "Denne nettleseren støtter ikke varsler." });
+    return;
+  }
+  try {
+    watch.config = (await SporetWatch.kvGet("config")) || null;
+  } catch {
+    watch.config = null;
+  }
+  renderWatch({});
+
+  $("watchToggle").addEventListener("click", () => (watch.config?.enabled ? disableWatch() : enableWatch()));
+  const onChange = async () => {
+    if (!watch.config?.enabled) return;
+    watch.config.place = $("watchPlace").value;
+    watch.config.radiusKm = Number($("watchRadius").value);
+    await SporetWatch.kvSet("config", watch.config);
+    renderWatch({});
+    watchCheck();
+  };
+  $("watchPlace").addEventListener("change", onChange);
+  $("watchRadius").addEventListener("change", onChange);
+  $("watchTest").addEventListener("click", async () => {
+    if (Notification.permission !== "granted" && (await Notification.requestPermission()) !== "granted") {
+      renderWatch({ error: "Varsler er blokkert for denne siden." });
+      return;
+    }
+    if (!watch.swReg) await registerServiceWorker();
+    const n = SporetWatch.message([{ name: "Sjusjøvannet rundt", prepped: new Date(Date.now() - 7 * 60000).toISOString() }], "ved Sjusjøen");
+    await notify(n.title + " (test)", n.body);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") watchCheck();
+  });
+
+  if (watch.config?.enabled && Notification.permission === "granted") {
+    await registerServiceWorker();
+    startWatchTimer();
+    watchCheck();
+  } else if (watch.config?.enabled) {
+    watch.config.enabled = false;
+    renderWatch({});
+  }
+}
+
 /* ------------------------------ main ------------------------------ */
 
 async function loadAll(force = false) {
@@ -1045,6 +1264,7 @@ function init() {
   });
 
   loadAll(false);
+  initWatch();
 }
 
 init();

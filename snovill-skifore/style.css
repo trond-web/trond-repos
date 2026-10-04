@@ -300,6 +300,31 @@ h2 { font-size: 1.35rem; font-weight: 700; }
 }
 .excuse p { flex-basis: 100%; margin: 0 0 4px; font-style: italic; }
 
+/* ---------- løypevarsler ---------- */
+
+.watch-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.watch-head .hint { margin: 4px 0 0; }
+.watch.watch-on { border-color: var(--series-3); }
+.watch.watch-on h2::after { content: " · på"; color: var(--series-3); font-size: 0.9rem; }
+.watch-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.field-inline { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.9rem; }
+.field-inline select {
+  font: inherit;
+  font-weight: 500;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.watch-status { margin: 12px 0 6px; color: var(--text-2); font-size: 0.9rem; }
+.watch-list { list-style: none; padding: 0; margin: 0; font-size: 0.88rem; }
+.watch-list li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--grid); }
+.watch-list li.is-new { font-weight: 700; }
+.watch-help { margin-top: 10px; font-size: 0.85rem; color: var(--text-2); }
+.watch-help summary { cursor: pointer; font-weight: 600; }
+.watch-help ul { padding-left: 18px; }
+
 /* ---------- resort cards ---------- */
 
 .resort { border-top: 5px solid var(--accent); }
