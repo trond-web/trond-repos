@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /* ------------------------------------------------------------------ *
- *  Løypevakt for GitHub Actions: sjekker Sporet.no for nykjørte løyper
- *  rundt stedene i steder.json og sender push-varsel via ntfy.
+ *  Løypevakt for GitHub Actions: sjekker alle skiområder i Sporet.no og
+ *  sender push via ntfy når løypemaskinen starter innenfor radiusen rundt
+ *  stedene i steder.json.
  *
  *  Miljøvariabler:
  *    NTFY_TOPIC   ntfy-emnet varslene sendes til (påkrevd for å sende)
@@ -17,7 +18,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import "../sporet-watch.js";
 
-const { fetchRoutes, message, FRESH_MS } = globalThis.SporetWatch;
+const { detectStarts, startMessage, ACTIVE } = globalThis.SporetWatch;
 const here = dirname(fileURLToPath(import.meta.url));
 
 const env = process.env;
@@ -66,7 +67,7 @@ async function send({ title, body, quiet, click }) {
 
 async function main() {
   const config = JSON.parse(await readFile(join(here, "steder.json"), "utf8"));
-  const state = await readJson(STATE_FILE, { seen: {}, steder: [] });
+  const state = await readJson(STATE_FILE, {});
   const quiet = isQuiet(config.stilleTimer);
 
   if (!env.NTFY_TOPIC && !DRY_RUN) {
@@ -74,45 +75,29 @@ async function main() {
   }
 
   if (env.TEST_VARSEL === "true") {
-    const n = message([{ name: "Sjusjøvannet rundt", prepped: new Date(Date.now() - 7 * 60000).toISOString() }], "ved Sjusjøen");
+    const n = startMessage(
+      [{ name: "Sjusjøen", routes: [{ name: "Sjusjøvannet rundt", prepped: new Date(Date.now() - 7 * 60000).toISOString() }] }],
+      "ved Sjusjøen"
+    );
     await send({ title: `${n.title} (test)`, body: n.body, quiet: false, click: config.appUrl });
   }
 
-  const now = Date.now();
-  const notified = new Set();
-  const nextSeen = { ...state.seen };
-  const doneSteder = new Set(state.steder);
+  const areas = config.steder.map((s) => ({ lat: s.lat, lon: s.lon, radiusKm: s.radiusKm || 10, label: `ved ${s.navn}`, navn: s.navn }));
+  // Første kjøring (eller gammelt state-format) lagrer bare hvilke områder som er aktive nå
+  const { activeNow, perArea, baseline, total } = await detectStarts(Array.isArray(state.active) ? state.active : null, areas);
 
-  for (const sted of config.steder) {
-    let routes;
-    try {
-      routes = await fetchRoutes(sted.lat, sted.lon, sted.radiusKm || 5);
-    } catch (err) {
-      console.log(`::warning::${sted.navn}: ${err.message}`);
-      continue;
-    }
-    // Første gang et sted sjekkes lagres bare en grunnlinje
-    const baseline = !doneSteder.has(sted.navn);
-    const fresh = baseline
-      ? []
-      : routes.filter((r) => {
-          const t = Date.parse(r.prepped);
-          const before = state.seen[r.id] ? Date.parse(state.seen[r.id]) : 0;
-          return t > before && now - t < FRESH_MS && !notified.has(r.id);
-        });
-    for (const r of routes) nextSeen[r.id] = r.prepped;
-    doneSteder.add(sted.navn);
-
-    console.log(`${sted.navn}: ${routes.length} løyper, ${fresh.length} nykjørte${baseline ? " (grunnlinje lagret)" : ""}`);
-    if (fresh.length) {
-      fresh.forEach((r) => notified.add(r.id));
-      const n = message(fresh, `ved ${sted.navn}`);
+  console.log(`${total} skiområder i Sporet, ${activeNow.length} kjøres nå${baseline ? " (grunnlinje lagret)" : ""}`);
+  for (const { area, near, started } of perArea) {
+    const running = near.filter((d) => d.prep === ACTIVE).map((d) => d.name);
+    console.log(`${area.navn}: ${near.length} områder innenfor ${area.radiusKm} km, kjøres nå: ${running.join(", ") || "ingen"}${started.length ? ` · STARTET: ${started.map((d) => d.name).join(", ")}` : ""}`);
+    if (started.length) {
+      const n = startMessage(started, area.label);
       await send({ title: n.title, body: n.body, quiet, click: config.appUrl });
     }
   }
 
   await mkdir(dirname(STATE_FILE), { recursive: true });
-  await writeFile(STATE_FILE, JSON.stringify({ seen: nextSeen, steder: [...doneSteder], sistSjekket: new Date().toISOString() }, null, 2));
+  await writeFile(STATE_FILE, JSON.stringify({ active: activeNow, sistSjekket: new Date().toISOString() }, null, 2));
 }
 
 main().catch((err) => {

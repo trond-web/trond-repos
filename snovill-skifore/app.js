@@ -1,7 +1,7 @@
 "use strict";
 
 /* ------------------------------------------------------------------ *
- *  Snøvill Skiføre – skiføre-radar for Sjusjøen, Øyerfjellet, Nordseter
+ *  Snøvill Skiføre – skiføre-radar for Sjusjøen, Øyerfjellet, Nordseter og Synnfjell
  * ------------------------------------------------------------------ */
 
 const DAYS = 10;
@@ -42,9 +42,20 @@ const LOCATIONS = [
     sporetRadius: 3000,
     emoji: "🫎",
   },
+  {
+    id: "synnfjell",
+    name: "Synnfjell",
+    lat: 61.0815,
+    lon: 9.884,
+    altitude: 880,
+    sporetId: 10142,
+    utm: [224200, 6782650],
+    sporetRadius: 6000,
+    emoji: "⛰️",
+  },
 ];
 
-const SERIES_COLORS = ["var(--series-1)", "var(--series-2)", "var(--series-3)"];
+const SERIES_COLORS = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)"];
 
 const state = {
   settings: loadSettings(),
@@ -988,12 +999,17 @@ async function watchCheck() {
     const where = await resolvePlace(watch.config);
     watch.config = { ...watch.config, lat: where.lat, lon: where.lon, placeLabel: where.placeLabel };
     await SporetWatch.kvSet("config", watch.config);
-    const { routes, fresh, baseline } = await SporetWatch.check(watch.config);
-    if (fresh.length && Notification.permission === "granted") {
-      const n = SporetWatch.message(fresh, where.placeLabel);
+    const prev = await SporetWatch.kvGet("active");
+    const result = await SporetWatch.detectStarts(prev || null, [
+      { lat: where.lat, lon: where.lon, radiusKm: watch.config.radiusKm },
+    ]);
+    await SporetWatch.kvSet("active", result.activeNow);
+    const { near, started } = result.perArea[0];
+    if (started.length && Notification.permission === "granted") {
+      const n = SporetWatch.startMessage(started, where.placeLabel);
       await notify(n.title, n.body);
     }
-    renderWatch({ routes, fresh, baseline, stale: where.stale });
+    renderWatch({ near, started, baseline: result.baseline, stale: where.stale });
   } catch (err) {
     renderWatch({ error: err.message || String(err) });
   } finally {
@@ -1055,7 +1071,7 @@ async function disableWatch() {
   renderWatch({});
 }
 
-function renderWatch({ routes, fresh, baseline, error, stale } = {}) {
+function renderWatch({ near, started, baseline, error, stale } = {}) {
   const on = !!watch.config?.enabled;
   const btn = $("watchToggle");
   btn.textContent = on ? "🔕 Slå av varsler" : "🔔 Slå på varsler";
@@ -1075,27 +1091,32 @@ function renderWatch({ routes, fresh, baseline, error, stale } = {}) {
     list.innerHTML = "";
     return;
   }
-  if (!routes) {
+  if (!near) {
     status.textContent = "Sjekker Sporet …";
     return;
   }
   const r = watch.config.radiusKm;
   const bg = watch.config.background ? " · sjekker også i bakgrunnen" : "";
   const time = new Date().toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
-  let msg = `✅ Følger med på ${routes.length} løyper innenfor ${r} km ${escapeHtml(watch.config.placeLabel || "")}. Sist sjekket ${time}${bg}.`;
+  const running = near.filter((d) => d.prep === SporetWatch.ACTIVE).length;
+  let msg = `✅ Følger med på ${near.length} skiområder i Sporet innenfor ${r} km ${escapeHtml(watch.config.placeLabel || "")}. Sist sjekket ${time}${bg}.`;
   if (stale) msg += " (bruker sist kjente posisjon)";
-  if (baseline) msg += " Du får varsel neste gang en løype blir kjørt.";
-  if (fresh?.length) msg = `🚜 ${fresh.length} nykjørte løyper! ` + msg;
+  if (baseline) msg += " Du får varsel neste gang en løypemaskin starter.";
+  if (running) msg = `🟢 Det kjøres spor ${running} ${running === 1 ? "sted" : "steder"} nå! ` + msg;
+  if (started?.length) msg = `🚜 Maskinen har startet: ${escapeHtml(started.map((d) => d.name).join(", "))}! ` + msg;
   status.innerHTML = msg;
 
-  list.innerHTML = routes
-    .slice(0, 5)
-    .map((rt) => {
-      const isNew = Date.now() - Date.parse(rt.prepped) < SporetWatch.FRESH_MS;
-      return `<li class="${isNew ? "is-new" : ""}"><span>${isNew ? "🆕 " : ""}${escapeHtml(rt.name)}</span><span class="muted">${timeAgo(new Date(rt.prepped))}</span></li>`;
+  const startedIds = new Set((started || []).map((d) => d.id));
+  list.innerHTML = near
+    .slice(0, 12)
+    .map((d) => {
+      const on = d.prep === SporetWatch.ACTIVE;
+      const label = SporetWatch.PREP_LABELS[d.prep] || "Ukjent status";
+      return `<li class="${on ? "is-new" : ""}"><span>${on ? "🟢 " : ""}${startedIds.has(d.id) ? "🚜 " : ""}${escapeHtml(d.name)} <small class="muted">${fmt1(d.km)} km</small></span><span class="muted">${escapeHtml(label)}</span></li>`;
     })
     .join("");
-  if (!routes.length) list.innerHTML = `<li><span class="muted">Ingen løyper funnet innenfor ${r} km. Prøv større radius.</span></li>`;
+  if (near.length > 12) list.innerHTML += `<li><span class="muted">+ ${near.length - 12} områder til lenger unna</span></li>`;
+  if (!near.length) list.innerHTML = `<li><span class="muted">Ingen skiområder i Sporet innenfor ${r} km. Prøv større radius.</span></li>`;
 }
 
 async function initWatch() {
@@ -1128,7 +1149,10 @@ async function initWatch() {
       return;
     }
     if (!watch.swReg) await registerServiceWorker();
-    const n = SporetWatch.message([{ name: "Sjusjøvannet rundt", prepped: new Date(Date.now() - 7 * 60000).toISOString() }], "ved Sjusjøen");
+    const n = SporetWatch.startMessage(
+      [{ name: "Sjusjøen", routes: [{ name: "Sjusjøvannet rundt", prepped: new Date(Date.now() - 7 * 60000).toISOString() }] }],
+      "ved Sjusjøen"
+    );
     await notify(n.title + " (test)", n.body);
   });
   document.addEventListener("visibilitychange", () => {

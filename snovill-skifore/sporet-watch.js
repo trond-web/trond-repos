@@ -1,6 +1,6 @@
 /* ------------------------------------------------------------------ *
  *  Løypevakt – felles kode for siden (app.js) og service workeren (sw.js)
- *  Sjekker Sporet.no for løyper som nylig er kjørt innenfor en radius.
+ *  Sjekker Sporet.no og varsler når løypemaskinen starter i områder i nærheten.
  * ------------------------------------------------------------------ */
 
 (function (global) {
@@ -85,26 +85,83 @@
       .sort((a, b) => Date.parse(b.prepped) - Date.parse(a.prepped));
   }
 
-  /**
-   * Henter løyper rundt posisjonen og finner de som er kjørt siden forrige sjekk.
-   * Første gang lagres bare en grunnlinje, så man ikke får varsel for gammel preparering.
+  /* ---------------- alle Sporet-områder (destinasjoner) i Norge ---------------- *
+   * Kartlaget «Destinasjoner_prep» gir status for hvert område. Kode 20 = kjørt
+   * siste 6 timer, og et område går over til 20 straks første strekning er kjørt.
+   * Overgangen til 20 brukes derfor som «løypemaskinen har startet».
    */
-  async function check({ lat, lon, radiusKm }) {
-    const routes = await fetchRoutes(lat, lon, radiusKm);
-    const seen = await kvGet("seen");
-    const now = Date.now();
-    const fresh = seen
-      ? routes.filter((r) => {
-          const t = Date.parse(r.prepped);
-          const before = seen[r.id] ? Date.parse(seen[r.id]) : 0;
-          return t > before && now - t < FRESH_MS;
-        })
-      : [];
-    const nextSeen = { ...(seen || {}) };
-    for (const r of routes) nextSeen[r.id] = r.prepped;
-    await kvSet("seen", nextSeen);
-    await kvSet("lastCheck", { t: now, count: routes.length, freshCount: fresh.length });
-    return { routes, fresh, baseline: !seen };
+  const DEST_URL =
+    "https://ags.sporet.no/arcgis/rest/services/Sporet_simple/MapServer/4/query" +
+    "?where=is_active%3D1&outFields=id,name,prepsymbol,municipalname&outSR=4326&f=json";
+  const ACTIVE = 20;
+  const PREP_LABELS = {
+    20: "Kjøres nå / siste 6 t",
+    30: "Kjørt for over 6 t siden",
+    40: "Kjørt for over 18 t siden",
+    50: "Kjørt for over 2 døgn siden",
+    60: "Kjørt for over 14 dager siden",
+    70: "Ikke kjørt denne sesongen",
+  };
+
+  async function fetchDestinations() {
+    const res = await fetch(DEST_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Sporet-kartet svarte ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(`Sporet-kartet: ${data.error.message}`);
+    return (data.features || []).map((f) => ({
+      id: f.attributes.id,
+      name: f.attributes.name,
+      municipality: f.attributes.municipalname,
+      prep: f.attributes.prepsymbol,
+      lat: f.geometry.y,
+      lon: f.geometry.x,
+    }));
+  }
+
+  function distanceKm(lat1, lon1, lat2, lon2) {
+    const rad = Math.PI / 180;
+    const dLat = (lat2 - lat1) * rad;
+    const dLon = (lon2 - lon1) * rad;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+    return 6371 * 2 * Math.asin(Math.sqrt(a));
+  }
+
+  function nearby(dests, lat, lon, radiusKm) {
+    return dests
+      .map((d) => ({ ...d, km: distanceKm(lat, lon, d.lat, d.lon) }))
+      .filter((d) => d.km <= radiusKm)
+      .sort((a, b) => a.km - b.km);
+  }
+
+  // Finn de første løypene som er kjørt i et område som nettopp har startet
+  async function firstRoutes(dest) {
+    try {
+      const routes = await fetchRoutes(dest.lat, dest.lon, 3);
+      return routes.filter((r) => Date.now() - Date.parse(r.prepped) < FRESH_MS).slice(0, 3);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Sammenligner med forrige sjekk og finner områder der maskinen har startet.
+   * prevActive: id-er som var aktive sist (hele Norge), eller null første gang.
+   * areas: [{ lat, lon, radiusKm, label }] – områdene brukeren følger.
+   */
+  async function detectStarts(prevActive, areas) {
+    const dests = await fetchDestinations();
+    const activeNow = dests.filter((d) => d.prep === ACTIVE).map((d) => d.id);
+    const prev = prevActive ? new Set(prevActive) : null;
+    const notified = new Set();
+    const perArea = [];
+    for (const area of areas) {
+      const near = nearby(dests, area.lat, area.lon, area.radiusKm);
+      const started = prev ? near.filter((d) => d.prep === ACTIVE && !prev.has(d.id) && !notified.has(d.id)) : [];
+      started.forEach((d) => notified.add(d.id));
+      for (const d of started.slice(0, 5)) d.routes = await firstRoutes(d);
+      perArea.push({ area, near, started });
+    }
+    return { activeNow, perArea, baseline: !prev, total: dests.length };
   }
 
   function ago(iso) {
@@ -113,21 +170,37 @@
     return `${Math.round(min / 60)} t siden`;
   }
 
-  function message(fresh, place) {
-    const where = place ? ` ${place}` : " i nærheten";
-    if (fresh.length === 1) {
+  function startMessage(started, place) {
+    const where = place ? ` ${place}` : "";
+    if (started.length === 1) {
+      const d = started[0];
+      const routes = d.routes?.length
+        ? ` Første spor: ${d.routes.map((r) => r.name).join(", ")} (${ago(d.routes[0].prepped)}).`
+        : "";
       return {
-        title: "🚜 Løypemaskinen er ute!",
-        body: `${fresh[0].name} ble kjørt ${ago(fresh[0].prepped)}${where}. Smør skiene, Snøvill! ⛷️`,
+        title: `🚜 Løypemaskinen har startet på ${d.name}!`,
+        body: `Det kjøres spor${where} nå.${routes} Gjør klar skiene, Snøvill! ⛷️`,
       };
     }
-    const names = fresh.slice(0, 3).map((r) => r.name).join(", ");
-    const more = fresh.length > 3 ? ` + ${fresh.length - 3} til` : "";
+    const names = started.slice(0, 4).map((d) => d.name).join(", ");
+    const more = started.length > 4 ? ` + ${started.length - 4} til` : "";
     return {
-      title: `🚜 ${fresh.length} løyper nykjørt${where}!`,
-      body: `${names}${more}. Ferske spor venter! ⛷️`,
+      title: `🚜 Løypemaskinene har startet ${started.length} steder${where}!`,
+      body: `${names}${more}. Ferske spor på vei! ⛷️`,
     };
   }
 
-  global.SporetWatch = { kvGet, kvSet, toUtm33, fetchRoutes, check, message, FRESH_MS };
+  global.SporetWatch = {
+    kvGet,
+    kvSet,
+    toUtm33,
+    fetchRoutes,
+    fetchDestinations,
+    nearby,
+    detectStarts,
+    startMessage,
+    PREP_LABELS,
+    ACTIVE,
+    FRESH_MS,
+  };
 })(typeof self !== "undefined" ? self : globalThis);

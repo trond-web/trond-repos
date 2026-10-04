@@ -1,4 +1,4 @@
-/* Service worker: viser løypevarsler og sjekker Sporet i bakgrunnen der nettleseren støtter det */
+/* Service worker: viser varsler når løypemaskinen starter, og sjekker Sporet i bakgrunnen der det støttes */
 importScripts("sporet-watch.js");
 
 self.addEventListener("install", () => self.skipWaiting());
@@ -7,9 +7,12 @@ self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim(
 async function backgroundCheck() {
   const cfg = await SporetWatch.kvGet("config");
   if (!cfg?.enabled || cfg.lat == null) return;
-  const { fresh } = await SporetWatch.check(cfg);
-  if (!fresh.length) return;
-  const n = SporetWatch.message(fresh, cfg.placeLabel);
+  const prev = await SporetWatch.kvGet("active");
+  const result = await SporetWatch.detectStarts(prev || null, [{ lat: cfg.lat, lon: cfg.lon, radiusKm: cfg.radiusKm }]);
+  await SporetWatch.kvSet("active", result.activeNow);
+  const { started } = result.perArea[0];
+  if (!started.length) return;
+  const n = SporetWatch.startMessage(started, cfg.placeLabel);
   await self.registration.showNotification(n.title, {
     body: n.body,
     icon: "icon-192.png",
