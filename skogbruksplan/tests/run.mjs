@@ -13,6 +13,8 @@ import { jordverdi, bestandsverdi, verdiberegning, kalibrerPriser, folsomhet, ST
 import { kildeStatus } from '../js/pefc-ui.js';
 import { hentDatagrunnlag } from '../js/datagrunnlag.js';
 import { delFlate, nyttNr } from '../js/del.js';
+import { lagKontekst } from '../js/ai-kontekst.js';
+import { markdownTilHtml } from '../js/assistent.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
 
 let ok = 0;
@@ -442,6 +444,21 @@ test('Deling av bestand med linje', () => {
   assert.ok(Math.abs(arealM2(r.deler[0]) + arealM2(r.deler[1]) - arealM2(L)) < 0.01);
   assert.equal(nyttNr('1-9', ['1-9', '1-12', '2-30']), '1-13');
   assert.equal(nyttNr('17', ['17', '3']), '18');
+});
+
+test('AI: plankontekst og trygg visning av svar', () => {
+  const d = lagDemo(2026);
+  const S = { ...d, innstillinger: STANDARD_INNSTILLINGER, registreringer: [] };
+  const k = lagKontekst(S, { iAar: 2026 });
+  assert.ok(k.includes('## Bestand') && k.includes('Demoskogen'));
+  const del = k.split('## Bestand')[1].split('\n\n')[0];
+  assert.equal(del.split('\n').length - 2, S.bestand.length, 'én linje per bestand');
+  const b = S.bestand[0];
+  const html = markdownTilHtml(`**Hogst** i [[${b.nr}]] og [[999]]\n- en <script>alert(1)</script>\n| a | b |\n|---|---|\n| 1 | 2 |`, (nr) => S.bestand.find((x) => String(x.nr) === nr));
+  assert.ok(html.includes(`data-ai-bestand="${b.id}"`));
+  assert.ok(html.includes('<b>999</b>'), 'ukjent bestand blir ren tekst');
+  assert.ok(!html.includes('<script>') && html.includes('&lt;script&gt;'));
+  assert.ok(html.includes('<table') && html.includes('<td>2</td>') && html.includes('<li>'));
 });
 
 await Promise.all(venter);

@@ -1,8 +1,8 @@
 // Service worker: appen og besøkte/nedlastede kartfliser fungerer uten nett.
-const APP = 'skogiq-app-v10';
+const APP = 'skogiq-app-v11';
 const FLISER = 'kartfliser-v1';
 const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg',
-  'js/app.js', 'js/model.js', 'js/proj.js', 'js/sosi.js', 'js/importers.js', 'js/store.js', 'js/charts.js', 'js/demo.js', 'js/generator.js', 'js/kommuneanalyse.js', 'js/kommune-ui.js', 'js/veier.js', 'js/veier-ui.js', 'js/innsikt.js', 'js/kommando.js', 'js/pefc.js', 'js/pefc-data.js', 'js/pefc-ui.js', 'js/verdi.js', 'js/verdi-ui.js', 'js/datagrunnlag.js', 'js/del.js',
+  'js/app.js', 'js/model.js', 'js/proj.js', 'js/sosi.js', 'js/importers.js', 'js/store.js', 'js/charts.js', 'js/demo.js', 'js/generator.js', 'js/kommuneanalyse.js', 'js/kommune-ui.js', 'js/veier.js', 'js/veier-ui.js', 'js/innsikt.js', 'js/kommando.js', 'js/pefc.js', 'js/pefc-data.js', 'js/pefc-ui.js', 'js/verdi.js', 'js/verdi-ui.js', 'js/datagrunnlag.js', 'js/del.js', 'js/assistent.js', 'js/ai-kontekst.js',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
 
 self.addEventListener('install', (e) => {

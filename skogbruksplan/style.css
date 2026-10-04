@@ -577,3 +577,30 @@ progress { accent-color: var(--accent); height: 8px; }
 .metode summary { cursor: pointer; }
 .metode ul { margin: 10px 0 0; padding-left: 18px; display: grid; gap: 6px; }
 .tabell tbody tr.valgt td { font-weight: 600; }
+
+/* AI-assistent */
+.ai-nokkel { display: flex; gap: 8px; margin-top: 8px; }
+.ai-nokkel input { flex: 1; min-width: 0; }
+.ai-chat { display: flex; flex-direction: column; gap: 10px; }
+.ai-topp { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; }
+.ai-topp .hint { font-size: 11.5px; }
+.ai-logg { display: flex; flex-direction: column; gap: 10px; }
+.ai-melding { padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; max-width: 100%; overflow-wrap: anywhere; }
+.ai-melding p { margin: 0 0 8px; } .ai-melding p:last-child { margin-bottom: 0; }
+.ai-melding ul, .ai-melding ol { margin: 4px 0 8px; padding-left: 20px; }
+.ai-melding h4 { margin: 10px 0 6px; font-size: 14px; }
+.ai-melding code { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 4px; border-radius: 4px; }
+.ai-melding.bruker { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 4px; max-width: 85%; }
+.ai-melding.assistent { align-self: stretch; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.ai-melding.feil { background: var(--signal-soft, #fde8e8); color: var(--text); border: 1px solid var(--danger); }
+.ai-tabell { margin: 6px 0; font-size: 12.5px; }
+.ai-tabell tbody tr { cursor: default; }
+.ai-bestand { font: 600 12.5px var(--font-mono); padding: 0 6px; margin: 0 1px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--text); cursor: pointer; }
+.ai-bestand:hover { background: var(--accent); color: var(--accent-ink); }
+.ai-tenker { color: var(--muted); animation: ai-puls 1.2s ease-in-out infinite; }
+@keyframes ai-puls { 50% { opacity: .4; } }
+.ai-forslagliste { display: flex; flex-wrap: wrap; gap: 6px; }
+.ai-forslag { font: 500 12.5px var(--font-body); text-align: left; padding: 7px 11px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+.ai-forslag:hover { border-color: var(--accent); }
+.ai-skjema { position: sticky; bottom: 0; display: flex; gap: 8px; align-items: flex-end; padding: 8px 0 2px; background: linear-gradient(transparent, var(--bg, var(--surface)) 30%); }
+.ai-skjema textarea { flex: 1; min-width: 0; resize: vertical; min-height: 44px; }

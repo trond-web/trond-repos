@@ -15,6 +15,7 @@ import { lagInnsikt } from './innsikt.js';
 import { initKommando } from './kommando.js';
 import { initPefc } from './pefc-ui.js';
 import { delFlate, nyttNr } from './del.js';
+import { initAssistent } from './assistent.js';
 import { initVerdi, utenProduksjon } from './verdi-ui.js';
 import { hentDatagrunnlag } from './datagrunnlag.js';
 import { kalibrerPriser, verdiberegning, STANDARD_VERDI } from './verdi.js';
@@ -375,7 +376,8 @@ let kommuneVisning = null;
 let veiVisning = null;
 let pefcVisning = null;
 let verdiVisning = null;
-const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', pefc: 'PEFC skogstandard', felt: 'Felt', data: 'Data og oppsett' };
+let aiVisning = null;
+const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 function visFane(navn) {
@@ -389,6 +391,7 @@ function visFane(navn) {
   $$('.fane').forEach((f) => { f.hidden = f.id !== `fane-${navn}`; });
   if (navn === 'framskriving') tegnFramskriving();
   if (navn === 'verdi') verdiVisning?.tegn();
+  if (navn === 'ai') aiVisning?.vis();
   if (navn === 'planer') { tegnPlanListe(); lastKommuner(); }
   $('#faneTittel').textContent = FANE_TITLER[navn] || navn;
   $('.panel-innhold').scrollTop = 0;
@@ -1114,7 +1117,7 @@ async function startGenerering(e) {
 }
 
 // ---------------------------------------------------------------- kommandopalett
-const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', pefc: '◈', felt: '◉', data: '⛁' };
+const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
 let planlisteCache = [];
 function kommandoValg(q) {
   listPlaner().then((l) => { planlisteCache = l; });
@@ -1133,6 +1136,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Hent veier fra NVDB', sok: 'vei skogsbilvei', utfor: () => { visFane('veier'); $('#veiNvdbBtn').click(); } },
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'Hent miljødata (PEFC)', under: 'Nøkkelbiotoper, naturtyper, friluftsliv, kulturminner', sok: 'pefc sertifisering miljø nøkkelbiotop', utfor: () => { visFane('pefc'); $('#pefcHentBtn').click(); } },
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'Oppdater alt datagrunnlag', under: 'Miljødata, NVDB-veier og SSB-priser', sok: 'pefc data oppdater sist hentet ssb nvdb', utfor: () => { visFane('pefc'); $('#pefcOppdaterAlle')?.click(); } },
+    { gruppe: 'Handlinger', ikon: '✦', tittel: `Spør AI: ${q || 'still et spørsmål om planen'}`, under: 'Claude svarer ut fra planens data', sok: 'ai spør chat assistent claude hvorfor hva hvor mye', alltid: !!q && q.length > 12 && /\?$|^(hva|hvor|hvilke|hvilken|hvordan|hvorfor|når|kan|bør|skal)\b/i.test(q.trim()), utfor: () => { visFane('ai'); if (q) aiVisning?.sporr(q); } },
     { gruppe: 'Handlinger', ikon: '¤', tittel: 'Verdiberegning', under: 'Eiendomsverdi, slaktverdi, jordverdi og nåverdi', sok: 'verdi nåverdi slaktverdi takst lev faustmann', utfor: () => visFane('verdi') },
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'PEFC-status og avvik', sok: 'pefc skogstandard krav avvik sertifisering', utfor: () => visFane('pefc') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
@@ -1191,6 +1195,11 @@ function kobleHendelser() {
     settKartKlikk: (fn) => { kartKlikk = fn; },
     visBestand: (id) => { velgBestand(id); visFane('bestand'); },
     hentData: hentDataForAktivPlan,
+  });
+  aiVisning = initAssistent({
+    hentPlan: () => S, iAar: IAAR,
+    hentKontekstData: () => ({ pefcFunn: pefcVisning?.funn() || [], verdi: S.bestand.length ? verdiberegning(S, { ...STANDARD_VERDI, ...S.verdi }, { iAar: IAAR, utenProduksjonIder: utenProduksjon(S) }) : null }),
+    visBestand: (id) => { velgBestand(id); if (erMobil()) settArk('lav'); },
   });
   verdiVisning = initVerdi({
     hentPlan: () => S, endret: () => { lagreSnart(); tegnOversikt(); }, melding, iAar: IAAR,

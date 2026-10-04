@@ -30,6 +30,7 @@
     <button role="tab" data-fane="veier" title="Veier"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21 10.5 3M16 21 13.5 3"/><path d="M12 7v2M12 12.5v2M12 18v2"/></svg><span>Veier</span></button>
     <button role="tab" data-fane="verdi" title="Verdi"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="10" cy="7" rx="6" ry="2.5"/><path d="M4 7v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V7"/><path d="M8 16.3c.6.1 1.3.2 2 .2 3.3 0 6-1.1 6-2.5"/><path d="M14 13.6c.6-.1 1.3-.1 2-.1 2.2 0 4 .8 4 1.8v3.2c0 1-1.8 1.8-4 1.8s-4-.8-4-1.8v-1.5"/></svg><span>Verdi</span></button>
     <button role="tab" data-fane="pefc" title="PEFC skogstandard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg><span>PEFC</span></button>
+    <button role="tab" data-fane="ai" title="Spør AI om planen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5h0a2 2 0 0 1-2-2Z"/><path d="m12 7.5.9 1.9 1.9.9-1.9.9-.9 1.9-.9-1.9-1.9-.9 1.9-.9Z"/></svg><span>Spør AI</span></button>
     <button role="tab" data-fane="felt" title="Felt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span>Felt</span></button>
     <button role="tab" data-fane="data" title="Data"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.5"/><path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13"/><path d="M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5"/></svg><span>Data</span></button>
   </nav>
@@ -346,6 +347,33 @@
           <li>Alle beløp er reelle (uten prisstigning) og før skatt. Skogfond, tilskudd, jakt og bygninger er ikke med med mindre du legger dem inn som andre inntekter. Verdien er et beregnet estimat – ikke en takst.</li>
         </ul>
       </details>
+    </div>
+
+    <!-- AI-ASSISTENT -->
+    <div class="fane" id="fane-ai" hidden>
+      <div id="aiOppsett" class="kort">
+        <h3>Spør AI om skogbruksplanen</h3>
+        <p class="hint">Assistenten bruker Claude fra Anthropic til å svare på spørsmål om planen: bestand, hogst, tiltak, verdier, veier og PEFC. Planens data sendes til Anthropic sammen med spørsmålet ditt.</p>
+        <p class="hint">Du trenger en egen API-nøkkel fra <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. Bruken faktureres på din Anthropic-konto. Nøkkelen lagres bare i denne nettleseren, og sendes bare til Anthropic.</p>
+        <form id="aiNokkelSkjema" class="ai-nokkel">
+          <input id="aiNokkel" type="password" autocomplete="off" placeholder="sk-ant-…" aria-label="Anthropic API-nøkkel">
+          <button class="knapp primar" type="submit">Lagre nøkkel</button>
+        </form>
+        <div id="aiNokkelStatus" class="hint"></div>
+      </div>
+      <div id="aiChat" class="ai-chat" hidden>
+        <div class="ai-topp">
+          <span class="hint">Svarene er AI-generert ut fra planens data og kan inneholde feil. Kontroller viktige tall.</span>
+          <span class="knapperad" style="margin:0"><button id="aiNy" class="knapp liten" type="button">Ny samtale</button><button id="aiEndreNokkel" class="knapp liten" type="button">Endre nøkkel</button></span>
+        </div>
+        <div id="aiLogg" class="ai-logg" aria-live="polite"></div>
+        <div id="aiForslag" class="ai-forslagliste"></div>
+        <form id="aiSkjema" class="ai-skjema">
+          <textarea id="aiInput" rows="2" placeholder="Spør om planen, f.eks. «Hvilke bestand er hogstmodne?»" aria-label="Spørsmål"></textarea>
+          <button id="aiSend" class="knapp primar" type="submit">Send</button>
+          <button id="aiStopp" class="knapp" type="button" hidden>Stopp</button>
+        </form>
+      </div>
     </div>
 
     <!-- FELT -->

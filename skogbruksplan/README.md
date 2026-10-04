@@ -60,6 +60,17 @@ Appen henter dataene direkte fra Kartverket og NIBIO i nettleseren (`js/generato
 Underveis vises fremdriften for hvert steg. Når planen er ferdig, vises et sammendrag og knappen
 **«Åpne skogbruksplanen»**. Alle planer lagres lokalt under «Mine skogbruksplaner», og du kan bytte mellom dem.
 
+## Spør AI (fanen «Spør AI»)
+
+En chat der du stiller spørsmål om skogbruksplanen og får svar fra Claude (Anthropic, modell `claude-opus-5-5`). Svaret strømmes inn mens det skrives.
+
+- **Grunnlag:** assistenten får hele planen som tekst. Det gjelder eiendom, sammendrag, alle bestand (areal, treslag, bonitet, hogstklasse, alder, volum, tilvekst, hogstmoden-år, tiltak og merknader), framskriving i 20 år, verdiberegning, veier, PEFC-avvik, datakilder og feltregistreringer (`js/ai-kontekst.js`).
+- **Klikkbare bestand:** bestandsnumre i svaret er knapper som viser bestandet i kartet.
+- **Endringer underveis:** endrer du planen midt i samtalen, sendes oppdaterte data med neste spørsmål. Tidligere meldinger i samtalen endres ikke.
+- **API-nøkkel:** du trenger din egen nøkkel fra console.anthropic.com. Den lagres bare i nettleseren (localStorage) og sendes bare til api.anthropic.com. Bruken faktureres på din Anthropic-konto.
+- **Avslag:** serverside fallback (`fallbacks: "default"`) er slått på, slik at et avslag fra sikkerhetsfiltrene prøves på nytt med en annen modell.
+- **Hurtigsøk:** et spørsmål i kommandolinjen, f.eks. «Hvilke bestand er hogstmodne?», kan sendes rett til assistenten.
+
 ## Dele et bestand i to
 
 Velg bestandet og trykk «Del i to». Klikk punkter for en linje tvers over bestandet (linjen kan ha knekk). Den kan starte og slutte litt innenfor grensen; da forlenges den ut til grensen. De to delene vises med areal mens du tegner. Dobbeltklikk, Enter eller «Del» avslutter, Backspace eller ↶ fjerner siste punkt, og Esc avbryter. Den største delen beholder nummeret, og den andre får neste ledige nummer i teigen (f.eks. 1-79). Begge delene beholder bestandsdata per daa og planlagte tiltak. «Angre deling» setter bestandet sammen igjen.
