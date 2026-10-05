@@ -676,13 +676,13 @@ function tiltakRadHtml(t) {
   const b = t.bestand; const ok = tiltakOkonomi(t);
   const utfort = t.status === 'utfort';
   return `<div class="tiltak-rad ${utfort ? 'status-utfort' : ''} ${t.forslag ? 'forslag' : ''}" data-bestand="${b.id}" data-tiltak="${t.id || ''}">
-    ${t.forslag ? `<button class="knapp liten primar" data-handling="godta" type="button">Legg til</button>` : `<input type="checkbox" data-handling="utfort" ${utfort ? 'checked' : ''} title="Marker som utført" aria-label="Utført">`}
+    ${t.forslag ? `<button class="knapp liten primar" data-handling="godta" type="button">Legg til</button>` : `<button class="knapp liten utfort-knapp${utfort ? ' er-utfort' : ''}" data-handling="utfort" type="button" aria-pressed="${utfort}" title="${utfort ? 'Angre – sett tilbake til planlagt' : 'Marker som utført'}">${utfort ? '✓ Utført' : 'Utført'}</button>`}
     <div>
       <div class="tittel">${esc(TILTAKSTYPER[t.type]?.navn || t.type)} – bestand <a href="#" data-handling="vis">${esc(b.nr)}</a> <span class="hint">${t.aar}${utfort && t.utfortDato ? `, utført ${esc(t.utfortDato)}` : ''}</span></div>
       <div class="info">${fmt(b.areal, 1)} daa · ${b.treslag || ''}${b.bonitet ?? ''}${ok.m3 ? ` · ca. ${fmt(ok.m3)} m³` : ''} · ${ok.netto >= 0 ? 'netto' : 'kostnad'} ca. ${fmt(Math.abs(ok.netto))} kr${ok.skogfond ? ` · skogfond ${fmt(ok.skogfond)} kr` : ''}${t.kommentar ? ` · ${esc(t.kommentar)}` : ''}</div>
       ${begrunnelseHtml(t)}
     </div>
-    <div style="display:flex;gap:6px;align-items:center">${t.prioritet ? `<span class="prio prio-${t.prioritet}">P${t.prioritet}</span>` : ''}${t.forslag ? '' : '<button class="knapp liten" data-handling="slett-tiltak" type="button" title="Slett tiltak" aria-label="Slett">✕</button>'}</div>
+    <div style="display:flex;gap:6px;align-items:center">${t.prioritet ? `<span class="prio prio-${t.prioritet}">P${t.prioritet}</span>` : ''}<button class="knapp liten" data-handling="zoom" type="button" title="Zoom til bestand ${esc(b.nr)} i kartet" aria-label="Zoom til bestand">🔍</button>${t.forslag ? '' : '<button class="knapp liten" data-handling="slett-tiltak" type="button" title="Slett tiltak" aria-label="Slett">✕</button>'}</div>
   </div>`;
 }
 
@@ -800,17 +800,19 @@ function handterTiltakKlikk(e) {
   if (!b || !h) return;
   const t = b.tiltak.find((x) => x.id === rad.dataset.tiltak);
   if (h === 'vis') { e.preventDefault(); velgBestand(b.id); visFane('bestand'); return; }
+  if (h === 'zoom') { velgBestand(b.id); if (erMobil()) settArk('lav'); return; }
   if (h === 'godta') { const f = forslag.find((x) => x.id === rad.dataset.tiltak); if (f) { godtaForslag(f); forslag = forslag.filter((x) => x !== f); endret(); } return; }
   if (!t) return;
   if (h === 'slett-tiltak') { b.tiltak = b.tiltak.filter((x) => x !== t); endret(); if (valgtId === b.id) visDetalj(); return; }
   if (h === 'utfort') {
-    t.status = e.target.checked ? 'utfort' : 'planlagt';
-    t.utfortDato = e.target.checked ? new Date().toISOString().slice(0, 10) : undefined;
-    if (e.target.checked && t.type === 'sluttavvirkning' && confirm(`Oppdatere bestand ${b.nr} til hogstklasse I (alder 0, volum 0)?`)) {
+    const ferdig = t.status !== 'utfort';
+    t.status = ferdig ? 'utfort' : 'planlagt';
+    t.utfortDato = ferdig ? new Date().toISOString().slice(0, 10) : undefined;
+    if (ferdig && t.type === 'sluttavvirkning' && confirm(`Oppdatere bestand ${b.nr} til hogstklasse I (alder 0, volum 0)?`)) {
       b.hogstklasse = 1; b.alder = 0; b.volumDaa = 0; b.treantall = null; b.hoyde = null;
     }
-    if (e.target.checked && t.type === 'lukkethogst' && b.volumDaa && confirm(`Redusere volumet i bestand ${b.nr} med uttaket (${Math.round(hogstAndel('lukkethogst', inn(), t) * 100)} %)?`)) b.volumDaa = runde(b.volumDaa * (1 - hogstAndel('lukkethogst', inn(), t)), 1);
-    if (e.target.checked && t.type === 'planting' && confirm(`Sette bestand ${b.nr} til hogstklasse II (ungskog) med alder 1?`)) { b.hogstklasse = 2; b.alder = 1; }
+    if (ferdig && t.type === 'lukkethogst' && b.volumDaa && confirm(`Redusere volumet i bestand ${b.nr} med uttaket (${Math.round(hogstAndel('lukkethogst', inn(), t) * 100)} %)?`)) b.volumDaa = runde(b.volumDaa * (1 - hogstAndel('lukkethogst', inn(), t)), 1);
+    if (ferdig && t.type === 'planting' && confirm(`Sette bestand ${b.nr} til hogstklasse II (ungskog) med alder 1?`)) { b.hogstklasse = 2; b.alder = 1; }
     endret(); if (valgtId === b.id) visDetalj();
   }
 }
