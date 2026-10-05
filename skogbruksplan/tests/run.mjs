@@ -16,6 +16,7 @@ import { delFlate, nyttNr } from '../js/del.js';
 import { lagKontekst } from '../js/ai-kontekst.js';
 import { markdownTilHtml } from '../js/assistent.js';
 import { brannnivaa, retningslinjerFor, risikoPerBestand, forebyggendeTiltak, nySkade, beregnSkade, forsikringsvurdering, oppgaverFor, brannkostnader, skademeldingTekst, naboer, iBrannsesong } from '../js/skade.js';
+import { RAPPORTER, lagRapport, lagRapportCsv, hogstprognose } from '../js/rapporter.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
 
 let ok = 0;
@@ -508,6 +509,26 @@ test('Skogbrand: risiko per bestand, naboer og skadeberegning', () => {
   assert.ok(Math.abs(bs.skadeDaa - 22.5) < 0.5, `areal ${bs.skadeDaa}`);
   const tekst = skademeldingTekst({ ...S, eiendom: { navn: 'Test 1/1', kommune: 'Testby' } }, skade, bs);
   assert.ok(/STORMFELLING/.test(tekst) && /Bestand 1:/.test(tekst) && /Testby/.test(tekst));
+});
+
+test('Rapporter: hovedtall, bestandsliste, hogstprognose og PEFC', () => {
+  const d = lagDemo(2026);
+  const S = { ...d, innstillinger: STANDARD_INNSTILLINGER, registreringer: [] };
+  const b = S.bestand.find((x) => x.alder >= 90);
+  b.tiltak.push({ id: 'h1', type: 'sluttavvirkning', aar: 2028, status: 'planlagt' }, { id: 'p1', type: 'planting', aar: 2029, status: 'planlagt' });
+  const h = hogstprognose(S, { iAar: 2026, aar: 10 });
+  assert.equal(h.perioder.length, 2);
+  assert.equal(h.hogst.length, 1); assert.equal(h.hogst[0].aar, 2028);
+  assert.ok(h.perioder[0].slutt > 0 && h.perioder[0].kostnad > 0);
+  assert.ok(!h.potensial.some((x) => x.b.id === b.id), 'bestand med planlagt hogst er ikke potensial');
+  const pf = tomPefc(); const funn = kontroller(S, pf, { iAar: 2026 });
+  for (const t of [...Object.keys(RAPPORTER), 'alle']) {
+    const html = lagRapport(t, S, { iAar: 2026, pefc: { funn, status: kravStatus(funn, pf), P: pf } });
+    assert.ok(html.startsWith('<!doctype html>') && !/NaN|undefined/.test(html), t);
+  }
+  const csvTekst = lagRapportCsv('bestandsliste', S, { iAar: 2026 });
+  assert.equal(csvTekst.split('\n').length, S.bestand.length + 1);
+  assert.ok(csvTekst.startsWith('\ufeffTeig;Bestand;Areal daa'));
 });
 
 await Promise.all(venter);

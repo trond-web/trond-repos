@@ -17,6 +17,7 @@ import { initPefc } from './pefc-ui.js';
 import { delFlate, nyttNr } from './del.js';
 import { initAssistent } from './assistent.js';
 import { initSkogbrand } from './skogbrand-ui.js';
+import { RAPPORTER, lagRapport, lagRapportCsv } from './rapporter.js';
 import { skadeOppsummering, RISIKONIVAA } from './skade.js';
 import { initVerdi, utenProduksjon } from './verdi-ui.js';
 import { hentDatagrunnlag } from './datagrunnlag.js';
@@ -385,7 +386,7 @@ let pefcVisning = null;
 let verdiVisning = null;
 let aiVisning = null;
 let skogbrandVisning = null;
-const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', skogbrand: 'Skogbrand', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
+const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 function visFane(navn) {
@@ -401,6 +402,7 @@ function visFane(navn) {
   if (navn === 'framskriving') tegnFramskriving();
   if (navn === 'verdi') verdiVisning?.tegn();
   if (navn === 'ai') aiVisning?.vis();
+  if (navn === 'rapporter') tegnRapportKort();
   if (navn === 'planer') { tegnPlanListe(); lastKommuner(); }
   $('#faneTittel').textContent = FANE_TITLER[navn] || navn;
   $('.panel-innhold').scrollTop = 0;
@@ -853,6 +855,38 @@ function verdiRapport() {
     <p>Tømmerpriser: gran ${fmt(S.innstillinger.pris.G)}, furu ${fmt(S.innstillinger.pris.F)}, lauv ${fmt(S.innstillinger.pris.L)} kr/m³${v.ssb ? ` (SSB ${v.ssb.aar})` : ''}. Reelle verdier før skatt – et beregnet estimat, ikke en takst.</p>`;
 }
 
+// ---------------------------------------------------------------- rapporter
+const RAPPORT_IKON = { hovedtall: '◔', bestandsliste: '☰', hogstprognose: '↗', pefc: '◈' };
+let rapportAar = 30; let aapenRapport = null;
+function rapportKontekst() {
+  return {
+    iAar: IAAR, aar: rapportAar,
+    pefc: pefcVisning?.rapport() || null,
+    verdi: S.bestand.length ? verdiberegning(S, { ...STANDARD_VERDI, ...S.verdi }, { iAar: IAAR, utenProduksjonIder: utenProduksjon(S) }) : null,
+  };
+}
+function tegnRapportKort() {
+  $('#rapportKort').innerHTML = Object.entries(RAPPORTER).map(([k, r]) => `<div class="kort">
+    <h3><span class="ikon-r">${RAPPORT_IKON[k]}</span>${esc(r.navn)}</h3>
+    <p class="hint" style="margin:0">${esc(r.beskrivelse)}</p>
+    ${k === 'hogstprognose' ? `<label>Periode <select id="rapportAar">${[10, 20, 30].map((a) => `<option value="${a}" ${a === rapportAar ? 'selected' : ''}>${a} år</option>`).join('')}</select></label>` : ''}
+    <div class="knapperad"><button type="button" class="knapp primar" data-rapport="${k}" data-r-handling="vis">Vis rapport</button><button type="button" class="knapp" data-rapport="${k}" data-r-handling="pdf">Skriv ut / PDF</button><button type="button" class="knapp" data-rapport="${k}" data-r-handling="csv">CSV</button></div>
+  </div>`).join('');
+}
+function visRapport(type, { skrivUt = false } = {}) {
+  if (!S.bestand.length) { melding('Planen har ingen bestand ennå.'); return; }
+  aapenRapport = type;
+  const v = $('#rapportVisning');
+  $('#rapportVelg').innerHTML = [...Object.entries(RAPPORTER).map(([k, r]) => [k, r.navn]), ['alle', 'Alle rapporter']].map(([k, n]) => `<option value="${k}" ${k === type ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  $('#rapportTittel').textContent = S.eiendom.navn || 'Rapport';
+  $('#rapportCsv').hidden = type === 'alle';
+  const ramme = $('#rapportRamme');
+  ramme.onload = () => { if (skrivUt) setTimeout(() => ramme.contentWindow.print(), 400); skrivUt = false; };
+  ramme.srcdoc = lagRapport(type, S, rapportKontekst());
+  v.hidden = false;
+}
+function lastNedRapportCsv(type) { lastNed(filnavn(`${type}.csv`), lagRapportCsv(type, S, rapportKontekst()), 'text/csv'); }
+
 function skrivRapport() {
   const s = sammendrag(S.bestand, inn());
   const e = S.eiendom;
@@ -1129,7 +1163,7 @@ async function startGenerering(e) {
 }
 
 // ---------------------------------------------------------------- kommandopalett
-const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', skogbrand: '🔥', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
+const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', rapporter: '▦', skogbrand: '🔥', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
 let planlisteCache = [];
 function kommandoValg(q) {
   listPlaner().then((l) => { planlisteCache = l; });
@@ -1154,6 +1188,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '¤', tittel: 'Verdiberegning', under: 'Eiendomsverdi, slaktverdi, jordverdi og nåverdi', sok: 'verdi nåverdi slaktverdi takst lev faustmann', utfor: () => visFane('verdi') },
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'PEFC-status og avvik', sok: 'pefc skogstandard krav avvik sertifisering', utfor: () => visFane('pefc') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
+    ...Object.entries(RAPPORTER).map(([k, r]) => ({ gruppe: 'Rapporter', ikon: '▦', tittel: `Rapport: ${r.navn}`, under: r.beskrivelse, sok: 'rapport pdf utskrift skriv ut', utfor: () => visRapport(k) })),
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Ta sikkerhetskopi', sok: 'backup eksport lagre', utfor: () => eksporter('backup') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Bytt lyst/mørkt tema', sok: 'tema mørk lys dark', utfor: () => $('#temaBtn').click() },
   );
@@ -1249,6 +1284,17 @@ function kobleHendelser() {
   L.DomEvent.disableClickPropagation($('.kartverktoy'));
   L.DomEvent.disableClickPropagation($('#tegnHjelp'));
   $('#tegnBtn').addEventListener('click', startTegning);
+  document.addEventListener('click', (e) => {
+    const k = e.target.closest('[data-r-handling]'); if (!k) return;
+    const type = k.dataset.rapport; const h = k.dataset.rHandling;
+    if (h === 'vis') visRapport(type); else if (h === 'pdf') visRapport(type, { skrivUt: true }); else if (h === 'csv') lastNedRapportCsv(type);
+  });
+  $('#fane-rapporter').addEventListener('change', (e) => { if (e.target.id === 'rapportAar') rapportAar = Number(e.target.value); });
+  $('#rapportVelg').addEventListener('change', (e) => visRapport(e.target.value));
+  $('#rapportSkriv').addEventListener('click', () => $('#rapportRamme').contentWindow.print());
+  $('#rapportCsv').addEventListener('click', () => lastNedRapportCsv(aapenRapport));
+  $('#rapportLukk').addEventListener('click', () => { $('#rapportVisning').hidden = true; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#rapportVisning').hidden) $('#rapportVisning').hidden = true; });
   $('#delFerdig').addEventListener('click', fullforDeling);
   $('#delAvbryt').addEventListener('click', stoppDeling);
   $('#delAngrePunkt').addEventListener('click', () => { if (deling?.punkter.length) { deling.punkter.pop(); tegnDeling(); } });

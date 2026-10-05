@@ -67,6 +67,17 @@ Store eiendommer støttes:
 - **Delte bestand:** bestand som NIBIO har lagret som flere flater med samme nummer, slås sammen. Har delene ulike data, får de bokstav etter nummeret (f.eks. 1-45a og 1-45b).
 - **Eksempel:** Flå 22/1 (12 teiger, 11 455 daa) gir 563 bestand på 9 822 daa skog.
 
+## Rapporter (fanen «Rapporter»)
+
+Fire rapporter som A4-dokumenter. Hver kan vises i appen, skrives ut eller lagres som PDF, og lastes ned som CSV (`js/rapporter.js`):
+
+- **Hovedtall:** nøkkeltall og bestandskart farget etter hogstklasse. Areal og volum per hogstklasse og treslag (med diagram), areal per bonitet, tilvekst per hogstklasse, avvirkningsmuligheter (hogstmodent nå og innen 10 år, bærekraftig nivå), verdi og prisforutsetninger.
+- **Bestandsliste:** alle bestand per teig med areal, hogstklasse, treslag, bonitet, alder, høyde, treantall, volum, tilvekst, planlagte tiltak og merknader, med delsum per teig. Skrives ut liggende.
+- **Hogstprognose:** 10, 20 eller 30 år. Viser planlagt sluttavvirkning og tynning, netto og hogstmodent volum uten plan per femårsperiode (diagram og tabell), tilvekst og stående volum, og lister over planlagt hogst og hogstmodne bestand.
+- **PEFC-rapport:** status per kravpunkt (gruppert på tema, med dokumentasjon), samlede avvik og oppfølgingspunkter, kart og liste over miljøobjekter, klarering før hogst, datagrunnlag og eiendomsopplysninger, med signaturfelt.
+
+«Alle rapporter» setter de fire sammen til ett dokument.
+
 ## Skogbrand – skadeforebygging og skaderegistrering (fanen «Skogbrand»)
 
 Bygger på Skogbrands råd om forebygging og oppfølging etter skade, vilkårene i skogforsikringen og «Retningslinjer for skogsdrift og skjøtsel i skogbrannsesongen» (april 2026). Data hentes åpent fra Meteorologisk institutt og NIBIO (`js/skade.js`, `js/skade-data.js`, `js/skogbrand-ui.js`).
