@@ -3,7 +3,7 @@ import { lagSosi } from './sosi.js';
 import {
   TRESLAG, HOGSTKLASSER, HK_NAVN, HK_ROMERTALL, BONITETER, TILTAKSTYPER, STANDARD_INNSTILLINGER,
   normaliserBestand, laavesteHogstalder, beregnetHogstklasse, startTilstand, arligTilvekstDaa,
-  rotnettoPerM3, tiltakKostnad, framskriv, foreslaaForEiendom, sammendrag, nyId, runde,
+  rotnettoPerM3, tiltakKostnad, framskriv, foreslaaForEiendom, sammendrag, nyId, runde, HOGSTTYPER, hogstAndel, hogstNettoPerM3,
 } from './model.js';
 import { lesFil, slaaSammen } from './importers.js';
 import { lagDemo } from './demo.js';
@@ -17,6 +17,7 @@ import { initPefc } from './pefc-ui.js';
 import { delFlate, nyttNr } from './del.js';
 import { initAssistent } from './assistent.js';
 import { initSkogbrand } from './skogbrand-ui.js';
+import { genererTiltak, oppsummer as motorOppsummer, PRINSIPPER, KILDER as MOTOR_KILDER, endringer as motorEndringer, merkKjort, tilTiltak, anvend as anvendMotor, oppdaterBestand as motorOppdaterBestand, MOTOR_VERSJON, signatur as motorSignatur } from './tiltaksmotor.js';
 import { RAPPORTER, lagRapport, lagRapportCsv } from './rapporter.js';
 import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling, hentAr5, lagFigurer, klippTil, trekkUtAvBestand } from './markslag.js';
 import { skadeOppsummering, RISIKONIVAA } from './skade.js';
@@ -431,7 +432,7 @@ function visFane(navn) {
 
 // ---------------------------------------------------------------- oversikt
 function tegnInnsikt() {
-  const liste = lagInnsikt(S, { iAar: IAAR, pefcFunn: pefcVisning?.funn(), skogbrand: { ...skadeOppsummering(S), brann: S.skogbrand?.data?.brann?.dager?.[0]?.nivaa || null }, terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
+  const liste = lagInnsikt(S, { iAar: IAAR, pefcFunn: pefcVisning?.funn(), motorEndringer: S.motor ? aktuelleEndringer().filter((e) => e.leggTil.length || e.fjern.length).length : 0, skogbrand: { ...skadeOppsummering(S), brann: S.skogbrand?.data?.brann?.dager?.[0]?.nivaa || null }, terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
   $('#innsikt').hidden = !liste.length;
   $('#innsiktListe').innerHTML = liste.slice(0, 4).map((i) => `<div class="innsikt-kort" style="--farge:${i.farge}"><span class="prikk"></span><div><b>${esc(i.tittel)}</b><span>${esc(i.tekst)}</span></div>${i.handling ? `<button type="button" class="knapp liten" data-innsikt="${esc(i.handling.id)}">${esc(i.handling.tekst)}</button>` : ''}</div>`).join('');
 }
@@ -439,7 +440,7 @@ function tegnInnsikt() {
 function utforHandling(id) {
   const [type, verdi] = id.split(/:(.*)/s);
   if (type === 'fane') visFane(verdi);
-  else if (type === 'foresla') { visFane('tiltak'); lagForslag(); }
+  else if (type === 'foresla') { visFane('tiltak'); kjorMotor(motorForhand || S.motor || {}); }
   else if (type === 'bestand') { velgBestand(verdi); visFane('bestand'); }
   else if (type === 'farge') { $('#fargeEtter').value = verdi; oppdaterStiler(); if (erMobil()) settArk('lav'); }
 }
@@ -606,6 +607,7 @@ function visDetalj() {
     </form>
     ${ekstra.length ? `<details class="ekstra"><summary>Andre felt fra importen (${ekstra.length})</summary>${ekstra.map(([k, v]) => `<div><b>${esc(k)}</b>: ${esc(v)}</div>`).join('')}</details>` : ''}
     <h3 style="margin-top:14px">Tiltak for bestandet</h3>
+    <div id="motorBanner">${motorBannerHtml(b)}</div>
     <div>${(b.tiltak || []).sort((x, y) => x.aar - y.aar).map((t) => tiltakRadHtml({ ...t, bestand: b })).join('') || '<div class="tom">Ingen tiltak registrert.</div>'}</div>
     <form class="verktoyrad" id="nyttTiltakSkjema">
       <select name="type">${opsjoner(Object.entries(TILTAKSTYPER).map(([k, v]) => [k, v.navn]))}</select>
@@ -621,6 +623,8 @@ function visDetalj() {
     b[navn] = v;
     endret({ kart: false });
     if (navn === 'treslag') visDetalj();
+    // Tiltaksmotoren sjekker om endringen gir nye eller utgåtte tiltak.
+    clearTimeout(visDetalj.motorT); visDetalj.motorT = setTimeout(() => { const el = $('#motorBanner'); if (el && valgtId === b.id) el.innerHTML = motorBannerHtml(b); }, 500);
   });
   $('#nyttTiltakSkjema').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -650,15 +654,22 @@ function alleTiltak() {
 
 function tiltakOkonomi(t) {
   const b = t.bestand; const areal = b.areal || 0;
-  if (t.type === 'sluttavvirkning' || t.type === 'tynning') {
+  if (HOGSTTYPER.includes(t.type)) {
     const aarFrem = Math.max(0, (t.aar || IAAR) - IAAR);
     const v = framskriv([b], aarFrem, inn(), { folgPlan: false }).perBestand.get(b.id)[aarFrem].volumDaa * areal;
-    const m3 = t.type === 'tynning' ? v * inn().tynningUttak : v;
-    const netto = m3 * rotnettoPerM3(b.treslag, inn(), t.type === 'tynning');
+    const m3 = v * hogstAndel(t.type, inn(), t);
+    const netto = m3 * hogstNettoPerM3(t.type, b.treslag, inn());
     const brutto = m3 * (inn().pris[b.treslag] ?? inn().pris.G);
     return { m3, netto, skogfond: brutto * inn().skogfondProsent / 100 };
   }
   return { m3: 0, netto: -tiltakKostnad(t.type, areal, inn()), skogfond: 0 };
+}
+
+// «Hvorfor?» for tiltak fra tiltaksmotoren: begrunnelse og faglige kilder.
+function begrunnelseHtml(t) {
+  const tekst = t.begrunnelse || t.motor?.begrunnelse; if (!tekst) return '';
+  const kilder = t.kilder || t.motor?.kilder || [];
+  return `<details class="begrunnelse"><summary><span class="auto-merke">Auto</span> Hvorfor?${(t.periode || t.motor?.periode) === 'lang' ? ' · lang sikt' : ''}</summary><p>${esc(tekst)}</p>${kilder.length ? `<ul>${kilder.map((k) => MOTOR_KILDER[k]).filter(Boolean).map((k) => `<li>${k.url ? `<a href="${esc(k.url)}" target="_blank" rel="noopener">${esc(k.navn)}</a>` : esc(k.navn)}</li>`).join('')}</ul>` : ''}</details>`;
 }
 
 function tiltakRadHtml(t) {
@@ -669,6 +680,7 @@ function tiltakRadHtml(t) {
     <div>
       <div class="tittel">${esc(TILTAKSTYPER[t.type]?.navn || t.type)} – bestand <a href="#" data-handling="vis">${esc(b.nr)}</a> <span class="hint">${t.aar}${utfort && t.utfortDato ? `, utført ${esc(t.utfortDato)}` : ''}</span></div>
       <div class="info">${fmt(b.areal, 1)} daa · ${b.treslag || ''}${b.bonitet ?? ''}${ok.m3 ? ` · ca. ${fmt(ok.m3)} m³` : ''} · ${ok.netto >= 0 ? 'netto' : 'kostnad'} ca. ${fmt(Math.abs(ok.netto))} kr${ok.skogfond ? ` · skogfond ${fmt(ok.skogfond)} kr` : ''}${t.kommentar ? ` · ${esc(t.kommentar)}` : ''}</div>
+      ${begrunnelseHtml(t)}
     </div>
     <div style="display:flex;gap:6px;align-items:center">${t.prioritet ? `<span class="prio prio-${t.prioritet}">P${t.prioritet}</span>` : ''}${t.forslag ? '' : '<button class="knapp liten" data-handling="slett-tiltak" type="button" title="Slett tiltak" aria-label="Slett">✕</button>'}</div>
   </div>`;
@@ -686,14 +698,93 @@ function tegnTiltak() {
     const netto = ok.reduce((s, o) => s + o.netto, 0); const m3 = ok.reduce((s, o) => s + o.m3, 0); const fond = ok.reduce((s, o) => s + o.skogfond, 0);
     return `<div class="tiltak-aar"><h4>${aar}${aar < IAAR && status !== 'utfort' ? ' ⚠️ forfalt' : ''}<span>${m3 ? `${fmt(m3)} m³ · ` : ''}netto ${fmt(netto)} kr${fond ? ` · skogfond ${fmt(fond)} kr` : ''}</span></h4>${ts.map(tiltakRadHtml).join('')}</div>`;
   }).join('') || '<div class="tom">Ingen tiltak i utvalget.</div>';
-  $('#forslagListe').innerHTML = forslag.length ? `<div class="kort"><div class="detalj-topp"><h3>Forslag (${forslag.length})</h3><div class="knapperad" style="margin:0"><button class="knapp liten primar" id="godtaAlle" type="button">Legg til alle</button><button class="knapp liten" id="forkastForslag" type="button">Forkast</button></div></div>${forslag.map(tiltakRadHtml).join('')}</div>` : '';
-  const ga = $('#godtaAlle'); if (ga) ga.onclick = () => { forslag.forEach(godtaForslag); forslag = []; endret(); };
+  $('#motorPanel').innerHTML = motorKortHtml() + endringerHtml();
+  const motor = forslag.some((f) => f.motorForslag);
+  const gruppe = (navn, liste) => (liste.length ? `<h4 class="forslag-gruppe">${navn} <span class="hint">${liste.length} tiltak</span></h4>${liste.map(tiltakRadHtml).join('')}` : '');
+  const o = motor ? motorOppsummer(forslag.map((f) => ({ ...f, b: f.bestand })), S) : null;
+  $('#forslagListe').innerHTML = forslag.length ? `<div class="kort"><div class="detalj-topp"><h3>${motor ? `Tiltaksmotor – ${esc(PRINSIPPER[motorForhand?.prinsipp]?.navn || '')}` : 'Forslag'} (${forslag.length})</h3><div class="knapperad" style="margin:0"><button class="knapp liten primar" id="godtaAlle" type="button">Legg til alle</button><button class="knapp liten" id="forkastForslag" type="button">Forkast</button></div></div>
+    ${o ? `<p class="hint" style="margin:0 0 8px">${esc(o.tekst)}. ${motorForhand?.erstatt ? 'Tidligere automatiske tiltak som ikke er utført, erstattes. ' : ''}Manuelle tiltak beholdes.</p>` : ''}
+    ${motor ? gruppe(`Kort sikt (${IAAR}–${IAAR + 9})`, forslag.filter((f) => f.periode === 'kort')) + gruppe(`Lang sikt (${IAAR + 10}–${IAAR + (motorForhand?.horisont || 30) - 1})`, forslag.filter((f) => f.periode !== 'kort')) : forslag.map(tiltakRadHtml).join('')}</div>` : '';
+  const ga = $('#godtaAlle'); if (ga) ga.onclick = () => {
+    if (motor && motorForhand?.erstatt) for (const b of S.bestand) if (!motorRyddet.has(b.id)) { b.tiltak = (b.tiltak || []).filter((t) => !(t.kilde === 'motor' && t.status !== 'utfort')); motorRyddet.add(b.id); }
+    forslag.forEach(godtaForslag);
+    if (motor) { for (const b of S.bestand) merkKjort(b, motorForhand.prinsipp); S.motor = { prinsipp: motorForhand.prinsipp, horisont: motorForhand.horisont, kjort: new Date().toISOString().slice(0, 10), versjon: MOTOR_VERSJON }; melding(`${forslag.length} tiltak lagt inn i tiltaksplanen.`); }
+    forslag = []; motorRyddet = new Set(); endret();
+  };
   const fk = $('#forkastForslag'); if (fk) fk.onclick = () => { forslag = []; tegnTiltak(); };
 }
 
+let motorForhand = null; let motorRyddet = new Set();
 function godtaForslag(f) {
+  if (f.motorForslag) {
+    const b = f.bestand;
+    // Første gang et bestand får motortiltak: fjern gamle automatiske, planlagte tiltak (ved «erstatt»).
+    if (motorForhand?.erstatt && !motorRyddet.has(b.id)) { b.tiltak = (b.tiltak || []).filter((t) => !(t.kilde === 'motor' && t.status !== 'utfort')); motorRyddet.add(b.id); }
+    b.tiltak.push(tilTiltak({ ...f, b }));
+    delete b.tiltak.at(-1).bestand; delete b.tiltak.at(-1).forslag; delete b.tiltak.at(-1).motorForslag;
+    return;
+  }
   const { bestand, forslag: _, ...t } = f;
   bestand.tiltak.push({ ...t, id: nyId('t'), status: 'planlagt' });
+}
+
+// Kjører tiltaksmotoren og viser forslagene i Tiltak-fanen.
+function kjorMotor({ prinsipp = 'balansert', horisont = 30, erstatt = true } = {}) {
+  motorForhand = { prinsipp, horisont, erstatt }; motorRyddet = new Set();
+  const grunnlag = erstatt ? { ...S, bestand: S.bestand.map((b) => ({ ...b, tiltak: (b.tiltak || []).filter((t) => !(t.kilde === 'motor' && t.status !== 'utfort')) })) } : S;
+  const f = genererTiltak(grunnlag, { iAar: IAAR, horisont, prinsipp });
+  forslag = f.map(({ b, ...x }) => ({ ...x, id: nyId('f'), bestand: finnBestand(b.id), forslag: true, motorForslag: true }));
+  tegnTiltak();
+  $('#forslagListe').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  melding(forslag.length ? `${forslag.length} forslag fra tiltaksmotoren. Se gjennom og legg til.` : 'Tiltaksmotoren fant ingen nye tiltak.');
+}
+
+function motorKortHtml() {
+  const v = motorForhand || S.motor || { prinsipp: 'balansert', horisont: 30 };
+  return `<details class="kort motor-kort" ${S.motor ? '' : 'open'}><summary><b>Tiltaksmotor</b> <span class="hint">${S.motor ? `sist kjørt ${esc(S.motor.kjort)} (${esc(PRINSIPPER[S.motor.prinsipp]?.navn || '')})` : 'lag tiltak automatisk ut fra biologi, bærekraft og økonomi'}</span></summary>
+    <p class="hint">Motoren foreslår flatehogst eller lukket hogst, tynning, markberedning, planting og ungskogpleie for hvert bestand, på kort (0–10 år) og lang sikt. Den bruker bonitet, treslag, alder, høyde, treantall, PEFC-hensyn, stormrisiko og forventningsverdi, og fordeler hogsten slik at avvirkningen holder seg nær tilveksten.</p>
+    <div class="motor-prinsipper">${Object.entries(PRINSIPPER).map(([k, p]) => `<label class="motor-prinsipp"><input type="radio" name="motorPrinsipp" value="${k}" ${v.prinsipp === k ? 'checked' : ''}><span><b>${esc(p.navn)}</b><small>${esc(p.beskrivelse)}</small></span></label>`).join('')}</div>
+    <div class="verktoyrad"><label>Horisont <select id="motorHorisont">${[10, 20, 30].map((a) => `<option value="${a}" ${Number(v.horisont) === a ? 'selected' : ''}>${a} år</option>`).join('')}</select></label>
+      <label class="avkrysning"><input type="checkbox" id="motorErstatt" checked> Erstatt tidligere automatiske tiltak</label>
+      <button class="knapp primar" id="motorKjor" type="button">Lag forslag</button></div>
+    <details class="motor-kilder"><summary>Faglig grunnlag</summary><ul>${Object.values(MOTOR_KILDER).map((k) => `<li>${k.url ? `<a href="${esc(k.url)}" target="_blank" rel="noopener">${esc(k.navn)}</a>` : esc(k.navn)}</li>`).join('')}</ul></details>
+  </details>`;
+}
+
+// Endringer på bestand siden motoren sist kjørte.
+let endringCache = { nokkel: '', liste: [] };
+function aktuelleEndringer() {
+  if (!S.motor) return [];
+  const nokkel = S.bestand.map((b) => `${b.id}:${b.motor?.signatur || ''}:${motorSignatur(b)}:${(b.tiltak || []).map((t) => `${t.id}${t.status}`).join(',')}`).join('|');
+  if (nokkel !== endringCache.nokkel) { endringCache = { nokkel, liste: motorEndringer(S, { iAar: IAAR }) }; }
+  return endringCache.liste;
+}
+function endringTekst(e) {
+  return [...e.leggTil.map((f) => `+ ${TILTAKSTYPER[f.type].navn} ${f.aar}`), ...e.fjern.map((t) => `− ${TILTAKSTYPER[t.type].navn} ${t.aar}`)].join(' · ') || 'Ingen endringer i tiltakene';
+}
+function motorBannerHtml(b) {
+  const e = aktuelleEndringer().find((x) => x.b.id === b.id && (x.leggTil.length || x.fjern.length));
+  if (!e) return '';
+  return `<div class="motor-banner" data-bestand="${b.id}"><div><span class="auto-merke">Auto</span> <b>Bestandet er endret</b> – tiltaksmotoren foreslår: ${esc(endringTekst(e))}</div>
+    <div class="knapperad" style="margin:0"><button class="knapp liten primar" data-motor-endring="oppdater" type="button">Oppdater tiltak</button><button class="knapp liten" data-motor-endring="behold" type="button">Behold som det er</button></div></div>`;
+}
+
+function endringerHtml() {
+  const liste = aktuelleEndringer().filter((e) => e.leggTil.length || e.fjern.length);
+  if (!liste.length) return '';
+  return `<div class="kort motor-endringer"><div class="detalj-topp"><h3>Endrede bestand (${liste.length})</h3><div class="knapperad" style="margin:0"><button class="knapp liten primar" data-motor-endring="alle" type="button">Oppdater alle</button></div></div>
+    <p class="hint" style="margin:0 0 6px">Disse bestandene er endret siden tiltaksplanen ble laget. Tiltaksmotoren foreslår:</p>
+    ${liste.map((e) => `<div class="motor-endring" data-bestand="${e.b.id}"><a href="#" data-vis="${e.b.id}"><b>${esc(e.b.nr)}</b></a><span>${esc(endringTekst(e))}</span><span class="knapperad" style="margin:0"><button class="knapp liten" data-motor-endring="oppdater" type="button">Oppdater</button><button class="knapp liten" data-motor-endring="behold" type="button">Behold</button></span></div>`).join('')}</div>`;
+}
+function handterEndring(e) {
+  const k = e.target.closest('[data-motor-endring]'); if (!k) return;
+  const h = k.dataset.motorEndring;
+  const liste = aktuelleEndringer();
+  const valgte = h === 'alle' ? liste : liste.filter((x) => x.b.id === k.closest('[data-bestand]')?.dataset.bestand);
+  for (const x of valgte) { if (h === 'behold') merkKjort(x.b, S.motor.prinsipp); else motorOppdaterBestand(S, x); }
+  endringCache.nokkel = '';
+  endret(); if (valgtId) visDetalj();
+  melding(h === 'behold' ? 'Tiltakene beholdes som de er.' : `Tiltakene er oppdatert for ${valgte.length} bestand.`);
 }
 
 function lagForslag() {
@@ -718,6 +809,7 @@ function handterTiltakKlikk(e) {
     if (e.target.checked && t.type === 'sluttavvirkning' && confirm(`Oppdatere bestand ${b.nr} til hogstklasse I (alder 0, volum 0)?`)) {
       b.hogstklasse = 1; b.alder = 0; b.volumDaa = 0; b.treantall = null; b.hoyde = null;
     }
+    if (e.target.checked && t.type === 'lukkethogst' && b.volumDaa && confirm(`Redusere volumet i bestand ${b.nr} med uttaket (${Math.round(hogstAndel('lukkethogst', inn(), t) * 100)} %)?`)) b.volumDaa = runde(b.volumDaa * (1 - hogstAndel('lukkethogst', inn(), t)), 1);
     if (e.target.checked && t.type === 'planting' && confirm(`Sette bestand ${b.nr} til hogstklasse II (ungskog) med alder 1?`)) { b.hogstklasse = 2; b.alder = 1; }
     endret(); if (valgtId === b.id) visDetalj();
   }
@@ -1210,10 +1302,25 @@ async function startGenerering(e) {
       </div>
       <p class="hint" style="margin:0">${kalibrert ? `Tømmerpriser kalibrert mot SSB (${esc(kalibrert.grunnlag.navn)}, ${fmt(kalibrert.grunnlag.pris)} kr/m³): gran ${fmt(kalibrert.G)}, furu ${fmt(kalibrert.F)}, lauv ${fmt(kalibrert.L)} kr/m³.` : 'Tømmerpriser fra SSB kunne ikke hentes – standardpriser er brukt.'}${dg.feil.length ? ` Noen kilder svarte ikke (${esc(dg.feil.join('; '))}) – prøv «Oppdater alle» i PEFC-fanen senere.` : ''}</p>
       <p class="hint" style="margin:0">${m.antallFraPlan ? `Bestandsgrenser fra skogbruksplan registrert ${esc(m.planRegistrert || '')}, oppdatert med SR16.` : 'Fant ingen tidligere skogbruksplan – bestandene er laget fra SR16-flater.'} Utkastet må kontrolleres i felt før det brukes som grunnlag for hogst.</p>
+      <div class="motor-sporsmal" id="motorSporsmal">
+        <div><b>Skal tiltaksplanen lages automatisk?</b><div class="hint">Tiltaksmotoren foreslår flatehogst eller lukket hogst, tynning, markberedning, planting og ungskogpleie for de neste 30 årene, basert på biologi, bærekraft og økonomi. Du kan endre alt etterpå.</div></div>
+        <div class="motor-prinsipper">${Object.entries(PRINSIPPER).map(([k, p]) => `<label class="motor-prinsipp"><input type="radio" name="genPrinsipp" value="${k}" ${k === 'balansert' ? 'checked' : ''}><span><b>${esc(p.navn)}</b><small>${esc(p.beskrivelse)}</small></span></label>`).join('')}</div>
+        <div class="knapperad" style="margin:0"><button class="knapp primar" type="button" id="motorJa">Ja, lag tiltaksplan</button><button class="knapp" type="button" id="motorNei">Nei takk</button></div>
+      </div>
       <button class="knapp primar" type="button" id="aapneNyPlan">Åpne skogbruksplanen for ${esc(ny.eiendom.navn)} →</button>
     </div>`;
     $('#aapneNyPlan').onclick = () => aapnePlan(ny.planId);
-    $('#aapneNyPlan').focus();
+    $('#motorNei').onclick = () => { $('#motorSporsmal').innerHTML = '<span class="hint">Ingen tiltak er laget. Du kan kjøre tiltaksmotoren senere under Tiltak.</span>'; $('#aapneNyPlan').focus(); };
+    $('#motorJa').onclick = async () => {
+      const prinsipp = $('[name="genPrinsipp"]:checked')?.value || 'balansert';
+      $('#motorJa').disabled = true; $('#motorJa').textContent = 'Lager tiltak …';
+      await new Promise((r) => setTimeout(r, 30));
+      const o = anvendMotor(ny, { iAar: IAAR, horisont: 30, prinsipp });
+      await lagrePlan(ny);
+      if (S.planId === ny.planId) S = { ...ny, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...ny.innstillinger } };
+      $('#motorSporsmal').innerHTML = `<div><b>✓ ${o.antall} tiltak lagt inn</b> (${PRINSIPPER[prinsipp].navn.toLowerCase()}): ${o.kort} på kort sikt og ${o.lang} på lang sikt – ${esc(o.tekst)}.</div><div class="hint">Hvert tiltak har en begrunnelse («Hvorfor?») med faglige kilder.</div>`;
+      $('#aapneNyPlan').focus();
+    };
   } catch (err) {
     logg(aktivtSteg, 'feil', err.message);
     $('#genTittel').textContent = 'Kunne ikke lage planen';
@@ -1238,7 +1345,7 @@ function kommandoValg(q) {
   }
   for (const [k, t] of Object.entries(FANE_TITLER)) valg.push({ gruppe: 'Gå til', ikon: FANE_IKON[k], tittel: t, standard: true, utfor: () => visFane(k) });
   valg.push(
-    { gruppe: 'Handlinger', ikon: '✦', tittel: 'Foreslå tiltak', under: 'Hogst, planting, ungskogpleie og tynning', standard: true, utfor: () => { visFane('tiltak'); lagForslag(); } },
+    { gruppe: 'Handlinger', ikon: '✦', tittel: 'Kjør tiltaksmotoren', under: 'Flatehogst, lukket hogst, tynning, markberedning, planting og ungskogpleie – kort og lang sikt', sok: 'foreslå tiltak automatisk motor plan', standard: true, utfor: () => { visFane('tiltak'); kjorMotor(motorForhand || S.motor || {}); } },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag ny skogbruksplan', under: 'Fra kommune, gårds- og bruksnummer', sok: 'generer eiendom gnr bnr', standard: true, utfor: () => { visFane('planer'); $('#genKommune').focus(); } },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Analyser en kommune', under: 'Hogstmoden skog, lukket hogst, ungskogpleie', sok: 'kommuneanalyse', utfor: () => { visFane('kommune'); $('#komKommune').focus(); } },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Hent veier fra NVDB', sok: 'vei skogsbilvei', utfor: () => { visFane('veier'); $('#veiNvdbBtn').click(); } },
@@ -1384,8 +1491,13 @@ function kobleHendelser() {
 
   $('#tiltakFilterType').innerHTML += Object.entries(TILTAKSTYPER).map(([k, v]) => `<option value="${k}">${v.navn}</option>`).join('');
   ['#tiltakFilterStatus', '#tiltakFilterType'].forEach((s) => $(s).addEventListener('change', tegnTiltak));
-  $('#foreslaBtn').addEventListener('click', lagForslag);
+  $('#foreslaBtn').addEventListener('click', () => { const k = $('.motor-kort'); if (k) { k.open = true; k.scrollIntoView({ block: 'start', behavior: 'smooth' }); } });
+  $('#motorPanel').addEventListener('click', (e) => {
+    if (e.target.id === 'motorKjor') kjorMotor({ prinsipp: $('[name="motorPrinsipp"]:checked')?.value || 'balansert', horisont: Number($('#motorHorisont').value), erstatt: $('#motorErstatt').checked });
+    handterEndring(e);
+  });
   ['#tiltakListe', '#forslagListe', '#nesteTiltak', '#bestandDetalj'].forEach((s) => $(s).addEventListener('click', handterTiltakKlikk));
+  $('#bestandDetalj').addEventListener('click', handterEndring);
 
   $('#frPeriode').addEventListener('change', () => { frResultat = null; tegnFramskriving(); });
   $('#frFolgPlan').addEventListener('change', () => { frResultat = null; tegnFramskriving(); });

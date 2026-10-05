@@ -2,7 +2,7 @@
 // Hver rapport er et selvstendig HTML-dokument (A4, klart for utskrift/PDF) og har en CSV-variant. Ingen DOM.
 import {
   TRESLAG, HK_NAVN, HK_ROMERTALL, HOGSTKLASSER, BONITETER, TILTAKSTYPER, startTilstand, arligTilvekstDaa,
-  laavesteHogstalder, beregnetHogstklasse, rotnettoPerM3, tiltakKostnad, framskriv, sammendrag,
+  laavesteHogstalder, beregnetHogstklasse, rotnettoPerM3, tiltakKostnad, framskriv, sammendrag, HOGSTTYPER, hogstAndel, hogstNettoPerM3,
 } from './model.js';
 import { etikettPunkt } from './proj.js';
 import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling } from './markslag.js';
@@ -236,10 +236,10 @@ export function hogstprognose(S, { iAar, aar = 30 }) {
   for (const b of S.bestand) for (const t of b.tiltak || []) {
     if (t.status === 'utfort' || t.aar < iAar || t.aar >= iAar + aar) continue;
     const p = periode(t.aar); if (!p) continue;
-    if (t.type === 'sluttavvirkning' || t.type === 'tynning') {
+    if (HOGSTTYPER.includes(t.type)) {
       const fr = framskriv([b], t.aar - iAar, inn, { folgPlan: false }).perBestand.get(b.id).at(-1);
-      const m3 = fr.volumDaa * (b.areal || 0) * (t.type === 'tynning' ? inn.tynningUttak : 1);
-      const netto = m3 * rotnettoPerM3(b.treslag, inn, t.type === 'tynning');
+      const m3 = fr.volumDaa * (b.areal || 0) * hogstAndel(t.type, inn, t);
+      const netto = m3 * hogstNettoPerM3(t.type, b.treslag, inn);
       hogst.push({ aar: t.aar, b, type: t.type, m3, netto, alder: fr.alder });
       p[t.type === 'tynning' ? 'tynning' : 'slutt'] += m3; p.netto += netto;
     } else { const k = tiltakKostnad(t.type, b.areal || 0, inn); p.kostnad += k; p.netto -= k; }
@@ -247,7 +247,7 @@ export function hogstprognose(S, { iAar, aar = 30 }) {
   // Hogstmodent volum etter alder: bestand som når laveste hogstalder i perioden (eller er hogstmodne nå), uten planlagt hogst.
   const potensial = [];
   for (const b of S.bestand) {
-    if (b.miljo || (b.tiltak || []).some((t) => t.type === 'sluttavvirkning' && t.status !== 'utfort')) continue;
+    if (b.miljo || (b.tiltak || []).some((t) => ['sluttavvirkning', 'lukkethogst'].includes(t.type) && t.status !== 'utfort')) continue;
     const st = startTilstand(b); const min = laavesteHogstalder(b, inn); if (!min || !st.volumDaa && st.alder < 1) continue;
     const om = Math.max(0, Math.ceil(min - st.alder));
     if (om >= aar) continue;
@@ -273,8 +273,8 @@ function hogstprognoseHtml(S, { iAar, aar = 30 }) {
       <div class="r-kpi"><b>${tall(tilv / aar)} m³/år</b><span>tilvekst i snitt (bærekraftig nivå)</span></div>
     </section>
     <h2>Volum per femårsperiode</h2>
-    ${svgSoyler(h.perioder.map((p) => ({ navn: `${p.fra}–${String(p.til).slice(2)}`, verdier: { slutt: p.slutt, tynning: p.tynning, modent: p.modent } })), [{ key: 'slutt', navn: 'Planlagt sluttavvirkning', farge: '#c0392b' }, { key: 'tynning', navn: 'Planlagt tynning', farge: '#e67e22' }, { key: 'modent', navn: 'Hogstmodent uten plan', farge: '#c9b79c' }], { enhet: 'm³' })}
-    <table><thead><tr><th>Periode</th><th class="t">Sluttavv. m³</th><th class="t">Tynning m³</th><th class="t">Netto hogst og kultur kr</th><th class="t">Hogstmodent uten plan m³</th><th class="t">Tilvekst m³</th><th class="t">Stående ved start m³</th></tr></thead><tbody>
+    ${svgSoyler(h.perioder.map((p) => ({ navn: `${p.fra}–${String(p.til).slice(2)}`, verdier: { slutt: p.slutt, tynning: p.tynning, modent: p.modent } })), [{ key: 'slutt', navn: 'Planlagt sluttavvirkning og lukket hogst', farge: '#c0392b' }, { key: 'tynning', navn: 'Planlagt tynning', farge: '#e67e22' }, { key: 'modent', navn: 'Hogstmodent uten plan', farge: '#c9b79c' }], { enhet: 'm³' })}
+    <table><thead><tr><th>Periode</th><th class="t">Sluttavv./lukket m³</th><th class="t">Tynning m³</th><th class="t">Netto hogst og kultur kr</th><th class="t">Hogstmodent uten plan m³</th><th class="t">Tilvekst m³</th><th class="t">Stående ved start m³</th></tr></thead><tbody>
     ${h.perioder.map((p) => `<tr><td>${p.fra}–${p.til}</td><td class="t">${tall(p.slutt)}</td><td class="t">${tall(p.tynning)}</td><td class="t">${tall(p.netto)}</td><td class="t">${tall(p.modent)}</td><td class="t">${tall(p.tilvekst)}</td><td class="t">${tall(p.staaende)}</td></tr>`).join('')}</tbody>
     <tfoot><tr><td>Sum</td><td class="t">${tall(sum('slutt'))}</td><td class="t">${tall(sum('tynning'))}</td><td class="t">${tall(sum('netto'))}</td><td class="t">${tall(sum('modent'))}</td><td class="t">${tall(tilv)}</td><td class="t">${tall(h.perioder.at(-1)?.staaendeSlutt)}</td></tr></tfoot></table>
     <p class="r-liten">Siste kolonne i summeringsraden er stående volum ved slutten av perioden når planen følges. Samlet avvirkning bør over tid ikke overstige tilveksten.</p>
@@ -313,7 +313,7 @@ function pefcHtml(S, { iAar, pefc }) {
   const obj = P.objekter || [];
   const perType = {}; for (const o of obj) { const t = OBJEKTTYPER[o.type]?.navn || o.type; perType[t] = perType[t] || { n: 0, daa: 0 }; perType[t].n++; if (o.geometri && /Polygon/.test(o.geometri.type)) perType[t].daa += arealDaa(o.geometri); }
   const kilder = Object.values(S.datakilder || {});
-  const hogst = S.bestand.flatMap((b) => (b.tiltak || []).filter((t) => ['sluttavvirkning', 'tynning'].includes(t.type) && t.status !== 'utfort').map((t) => ({ b, t }))).sort((a, b) => a.t.aar - b.t.aar);
+  const hogst = S.bestand.flatMap((b) => (b.tiltak || []).filter((t) => HOGSTTYPER.includes(t.type) && t.status !== 'utfort').map((t) => ({ b, t }))).sort((a, b) => a.t.aar - b.t.aar);
   const pille = (st) => `<span class="r-pille" style="--f:${PSTATUS[st]?.[1] || '#999'}">${PSTATUS[st]?.[0] || st}</span>`;
   return `${hode(S, 'PEFC-rapport – Norsk PEFC Skogstandard', iAar)}
     <p class="r-liten">Kontroll mot Norsk PEFC Skogstandard (PEFC N 02:2022), gjeldende fra 1. mars 2023. Automatiske kontroller er gjort med planens data og offentlige miljødata; øvrige punkter er dokumentert manuelt av skogeier.</p>

@@ -184,8 +184,8 @@ export function arealDaa(g) {
 }
 
 // ---------- kontroller ----------
-const HOGST = ['sluttavvirkning', 'tynning'];
-const FORSTYRRENDE = ['sluttavvirkning', 'tynning', 'markberedning', 'ungskogpleie'];
+const HOGST = ['sluttavvirkning', 'tynning', 'lukkethogst'];
+const FORSTYRRENDE = ['sluttavvirkning', 'tynning', 'lukkethogst', 'markberedning', 'ungskogpleie'];
 
 function alderIAar(b, aar, iAar) {
   const s = startTilstand(b);

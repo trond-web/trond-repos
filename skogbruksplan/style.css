@@ -657,3 +657,20 @@ progress { accent-color: var(--accent); height: 8px; }
 .ms-tabell td:first-child { width: 22px; }
 .ms-rute { display: inline-block; width: 14px; height: 14px; border: 1px solid #555; border-radius: 2px; vertical-align: -2px; }
 .kart-legend svg { flex: none; }
+
+/* Tiltaksmotor */
+.motor-kort > summary { cursor: pointer; list-style: none; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.motor-kort > summary::-webkit-details-marker { display: none; }
+.motor-kort > summary::before { content: '✦'; color: var(--accent); }
+.motor-prinsipper { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin: 10px 0; }
+.motor-prinsipp { display: flex; gap: 8px; align-items: flex-start; border: 1px solid var(--border); border-radius: 12px; padding: 10px; cursor: pointer; }
+.motor-prinsipp:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.motor-prinsipp span { display: grid; gap: 3px; } .motor-prinsipp small { color: var(--text-2); font-size: 11.5px; line-height: 1.35; }
+.motor-kilder { margin-top: 10px; font-size: 12.5px; } .motor-kilder summary { cursor: pointer; color: var(--text-2); } .motor-kilder ul { padding-left: 18px; display: grid; gap: 4px; }
+.forslag-gruppe { margin: 12px 0 4px; font-size: 13px; display: flex; gap: 8px; align-items: baseline; }
+.begrunnelse { margin-top: 4px; font-size: 12px; } .begrunnelse summary { cursor: pointer; color: var(--text-2); }
+.begrunnelse p { margin: 6px 0; color: var(--text); line-height: 1.45; } .begrunnelse ul { margin: 0; padding-left: 16px; color: var(--text-2); }
+.auto-merke { display: inline-block; font: 700 9.5px var(--font-mono); letter-spacing: .04em; text-transform: uppercase; padding: 1px 5px; border-radius: 5px; background: var(--accent-soft); color: var(--accent); }
+.motor-endring { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--grid); font-size: 13px; }
+.motor-sporsmal { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
+.motor-banner { border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 8px 12px; margin: 10px 0; font-size: 13px; display: grid; gap: 6px; }

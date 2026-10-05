@@ -3,6 +3,19 @@
 
 export const TRESLAG = { G: 'Gran', F: 'Furu', L: 'Lauv' };
 export const HOGSTKLASSER = [1, 2, 3, 4, 5];
+// Tiltak som tar ut tømmer.
+export const HOGSTTYPER = ['sluttavvirkning', 'tynning', 'lukkethogst'];
+// Andel av stående volum som tas ut, og netto per m³, for hver hogsttype.
+export function hogstAndel(type, inn = STANDARD_INNSTILLINGER, t = null) {
+  if (type === 'tynning') return t?.uttak ?? inn.tynningUttak ?? 0.25;
+  if (type === 'lukkethogst') return t?.uttak ?? inn.lukketUttak ?? 0.35;
+  return 1;
+}
+export function hogstNettoPerM3(type, treslag, inn = STANDARD_INNSTILLINGER) {
+  if (type === 'tynning') return rotnettoPerM3(treslag, inn, true);
+  if (type === 'lukkethogst') return rotnettoPerM3(treslag, inn) - (inn.lukketTillegg ?? 40);
+  return rotnettoPerM3(treslag, inn);
+}
 export const HK_NAVN = { 1: 'I – Skogfornyelse', 2: 'II – Ungskog', 3: 'III – Yngre produksjonsskog', 4: 'IV – Eldre produksjonsskog', 5: 'V – Hogstmoden skog' };
 export const HK_ROMERTALL = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V' };
 export const BONITETER = [6, 8, 11, 14, 17, 20, 23, 26];
@@ -10,6 +23,7 @@ export const BONITETER = [6, 8, 11, 14, 17, 20, 23, 26];
 export const TILTAKSTYPER = {
   sluttavvirkning: { navn: 'Sluttavvirkning', gruppe: 'hogst' },
   tynning: { navn: 'Tynning', gruppe: 'hogst' },
+  lukkethogst: { navn: 'Lukket hogst', gruppe: 'hogst' },
   planting: { navn: 'Planting', gruppe: 'kultur' },
   suppleringsplanting: { navn: 'Suppleringsplanting', gruppe: 'kultur' },
   markberedning: { navn: 'Markberedning', gruppe: 'kultur' },
@@ -27,6 +41,8 @@ export const STANDARD_INNSTILLINGER = {
   drift: { G: 180, F: 185, L: 200 },           // kr/m³ hogst og utkjøring, sluttavvirkning
   driftTynning: 280,                           // kr/m³ i tynning
   tynningUttak: 0.25,                          // andel av volum som tas ut i tynning
+  lukketUttak: 0.35,                           // andel av volum som tas ut per inngrep i lukket hogst (plukk-/skjermhogst)
+  lukketTillegg: 40,                           // ekstra driftskostnad kr/m³ ved lukket hogst (selektiv hogst mellom gjenstående trær)
   kostPerDaa: { planting: 1900, suppleringsplanting: 800, markberedning: 450, ungskogpleie: 650, stammekvisting: 900, gjodsling: 600, groftrensk: 300 },
   skogfondProsent: 15,                         // 4–40 % i henhold til skogfondsordningen
   co2PerM3: 1.4,
@@ -304,6 +320,13 @@ export function framskriv(bestandListe, aarFrem, inn = STANDARD_INNSTILLINGER, {
             avvirkning += m3;
             inntekt += m3 * rotnettoPerM3(b.treslag, inn);
             s.volumDaa = 0; s.alder = 0;
+          } else if (tk.type === 'lukkethogst' && s.volumDaa > 0) {
+            // Lukket hogst: en del av volumet tas ut, skogen står videre (alderen beholdes, ny generasjon kommer inn under).
+            const andel = hogstAndel('lukkethogst', inn, tk);
+            const m3 = s.volumDaa * areal * andel;
+            avvirkning += m3;
+            inntekt += m3 * hogstNettoPerM3('lukkethogst', b.treslag, inn);
+            s.volumDaa *= (1 - andel);
           } else if (tk.type === 'tynning' && s.volumDaa > 0) {
             const m3 = s.volumDaa * areal * inn.tynningUttak;
             avvirkning += m3;

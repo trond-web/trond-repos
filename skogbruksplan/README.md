@@ -67,6 +67,26 @@ Store eiendommer støttes:
 - **Delte bestand:** bestand som NIBIO har lagret som flere flater med samme nummer, slås sammen. Har delene ulike data, får de bokstav etter nummeret (f.eks. 1-45a og 1-45b).
 - **Eksempel:** Flå 22/1 (12 teiger, 11 455 daa) gir 563 bestand på 9 822 daa skog.
 
+## Tiltaksmotor – automatiske tiltak (fanen «Tiltak»)
+
+`js/tiltaksmotor.js` lager tiltak for kort sikt (0–10 år) og lang sikt (10–30 år) ut fra biologi, bærekraft og økonomi. Når en plan lages, spør appen om tiltaksplanen skal lages automatisk. Motoren kan også kjøres når som helst fra Tiltak-fanen, med forhåndsvisning.
+
+| Tiltak | Regel | Grunnlag |
+|---|---|---|
+| Flatehogst | Hogstår ved økonomisk optimum (forventningsverdi, Faustmann), aldri under PEFCs laveste hogstalder. Følges av markberedning, planting, ungskogpleie og tynning. | PEFC N 02:2022, verdiberegningen |
+| Lukket hogst | Velges ved gran på middels/lav bonitet, gammel skog, friluftsliv, naturtyper eller kantsone mot vann. Velges ikke ved høy bonitet, høy stormrisiko eller lauv. Uttak 35 %, nytt inngrep hvert 15. år, mer enn 15 trær/daa igjen. | NIBIO/NINA for Miljødirektoratet (2025), Store norske leksikon |
+| Frøtrestilling | Furu på middels/lav bonitet: 5–10 frøtrær/daa, markberedning, frøtrærne fjernes etter ca. 10 år. | Forskriften § 6 |
+| Planting | Tilrådd plantetall for treslag og bonitet (f.eks. G20: 220/daa, minst 150), våren etter hogst. | Forskrift om bærekraftig skogbruk § 7 |
+| Markberedning | Før planting på bonitet 11 og høyere, og ved frøtrestilling. | NIBIOs snutebilleundersøkelse 2017 |
+| Ungskogpleie | Ved 1–5 m høyde, ned til 150–250 trær/daa (100–140 i stormutsatte bestand). | Statsforvalteren/Skogkurs, Skogbrand |
+| Tynning | Første tynning ved 12–14 m overhøyde (gran G14+, furu F11+), andre i furu ved 16–18 m. Bare når uttaket er minst 3 m³/daa. | NIBIO: Tynning og skogproduksjon |
+
+- **Bærekraft:** sluttavvirkning og lukket hogst fordeles slik at hver femårsperiode holder seg nær tilveksten. Miljøfigurer, nøkkelbiotoper og verneområder får ingen tiltak.
+- **Prinsipper:** «balansert», «økonomi først» (mer flatehogst, større rom for tidlig hogst) og «biologi og miljø først» (mer lukket hogst, 10 år lengre omløp, avvirkning under tilveksten).
+- **Begrunnelse:** hvert tiltak har en begrunnelse og kilder («Hvorfor?») og er merket som automatisk. Manuelle tiltak endres aldri.
+- **Endringer:** når et bestand endres (alder, volum, høyde, treantall, treslag, bonitet, areal eller utførte tiltak), varsler appen i bestandsdetaljen, i Tiltak-fanen og under Innsikt. Du kan oppdatere tiltakene med ett klikk eller beholde dem som de er.
+- **Lukket hogst** er en egen tiltakstype. Den er med i framskriving, økonomi, hogstprognose, verdiberegning og PEFC-klarering.
+
 ## Markslag og uproduktiv mark (AR5)
 
 Når planen lages, hentes markslag fra NIBIOs arealressurskart AR5 (`js/markslag.js`).

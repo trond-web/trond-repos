@@ -5,7 +5,7 @@ import { startTilstand, laavesteHogstalder, rotnettoPerM3, foreslaaTiltak, samme
 const FARGE = { handling: 'var(--signal)', advarsel: 'var(--serious)', info: 'var(--accent)', god: 'var(--good)' };
 const tall = (v, d = 0) => Number(v).toLocaleString('nb-NO', { maximumFractionDigits: d });
 
-export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtransport = null, maksTerreng = 500, pefcFunn = null, skogbrand = null } = {}) {
+export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtransport = null, maksTerreng = 500, pefcFunn = null, skogbrand = null, motorEndringer = 0 } = {}) {
   const inn = S.innstillinger;
   const ut = [];
   if (!S.bestand.length) return ut;
@@ -32,6 +32,8 @@ export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtranspor
   // Skogbrand: skader som ikke er meldt, og stor skogbrannfare med planlagte drifter
   if (skogbrand?.ikkeMeldt) ut.push({ vekt: 97, type: 'handling', tittel: `${skogbrand.ikkeMeldt} skade${skogbrand.ikkeMeldt > 1 ? 'r' : ''} er ikke meldt til forsikringen`, tekst: 'Meld skaden før opprydding – avvirkning før taksering kan gi tap av erstatning.', handling: { tekst: 'Se skader', id: 'fane:skogbrand' } });
   if (skogbrand?.brann && ['rod', 'morkerod', 'oransje'].includes(skogbrand.brann.id)) ut.push({ vekt: 92, type: 'advarsel', tittel: `Skogbrannfare: ${skogbrand.brann.navn.toLowerCase()}`, tekst: 'Følg retningslinjene for skogsdrift i brannsesongen. Røyking og bål er forbudt i skogen.', handling: { tekst: 'Se Skogbrand', id: 'fane:skogbrand' } });
+
+  if (motorEndringer) ut.push({ vekt: 88, type: 'handling', tittel: `${motorEndringer} bestand er endret – nye tiltaksforslag`, tekst: 'Tiltaksmotoren har oppdaterte forslag etter endringer i bestandsdata eller utførte tiltak.', handling: { tekst: 'Se forslag', id: 'fane:tiltak' } });
 
   // 2. Forfalte tiltak
   const forfalt = S.bestand.flatMap((b) => (b.tiltak || []).filter((t) => t.status !== 'utfort' && t.aar < iAar));

@@ -123,7 +123,7 @@ export function initPefc({ kart, hentPlan, endret, melding, nyId, settKartKlikk,
 
   function klareringerHtml() {
     const S = hentPlan();
-    const hogst = S.bestand.flatMap((b) => (b.tiltak || []).filter((t) => ['sluttavvirkning', 'tynning'].includes(t.type) && t.status !== 'utfort').map((t) => ({ t, b }))).sort((a, b) => a.t.aar - b.t.aar);
+    const hogst = S.bestand.flatMap((b) => (b.tiltak || []).filter((t) => ['sluttavvirkning', 'tynning', 'lukkethogst'].includes(t.type) && t.status !== 'utfort').map((t) => ({ t, b }))).sort((a, b) => a.t.aar - b.t.aar);
     if (!hogst.length) return '<div class="tom">Ingen planlagt hogst. Klarering gjøres for hver planlagt sluttavvirkning og tynning.</div>';
     return hogst.map(({ t, b }) => {
       const st = klareringStatus(t, b, funn, P());

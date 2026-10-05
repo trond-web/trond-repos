@@ -179,7 +179,7 @@ export function initSkogbrand({ kart, hentPlan, endret, melding, nyId, settKartK
     const nivaa = idag?.nivaa;
     const S = hentPlan();
     const sesong = iBrannsesong(new Date());
-    const drifter = S.bestand.flatMap((b) => (b.tiltak || []).filter((t) => t.status !== 'utfort' && t.aar === iAar && ['sluttavvirkning', 'tynning', 'markberedning', 'ungskogpleie'].includes(t.type)).map((t) => ({ b, t })));
+    const drifter = S.bestand.flatMap((b) => (b.tiltak || []).filter((t) => t.status !== 'utfort' && t.aar === iAar && ['sluttavvirkning', 'tynning', 'lukkethogst', 'markberedning', 'ungskogpleie'].includes(t.type)).map((t) => ({ b, t })));
     const brann = d.brann?.feil ? `<div class="hint">Skogbrannfare: ${esc(d.brann.feil)}</div>` : `
       <div class="sb-fare" style="--farge:${nivaa?.farge || '#999'}">
         <div><div class="sb-fare-nivaa">${esc(nivaa?.navn || '–')}</div><div class="hint">Skogbrannindeks i dag: ${fmt(idag?.fwi, 1)} (FWI) · ${sesong ? 'bålforbud 15/4–15/9 gjelder' : 'utenfor bålforbudsperioden'}</div></div>

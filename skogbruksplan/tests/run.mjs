@@ -18,6 +18,7 @@ import { markdownTilHtml } from '../js/assistent.js';
 import { brannnivaa, retningslinjerFor, risikoPerBestand, forebyggendeTiltak, nySkade, beregnSkade, forsikringsvurdering, oppgaverFor, brannkostnader, skademeldingTekst, naboer, iBrannsesong } from '../js/skade.js';
 import { RAPPORTER, lagRapport, lagRapportCsv, hogstprognose } from '../js/rapporter.js';
 import { klassifiser as klassifiserMarkslag, lagFigurer, arealfordeling } from '../js/markslag.js';
+import { genererTiltak, anvend as anvendMotor, endringer as motorEndringer, plantetall, maalTetthet, oppdaterBestand } from '../js/tiltaksmotor.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
 
 let ok = 0;
@@ -552,6 +553,47 @@ test('Markslag: klassifisering av AR5, figurer og arealfordeling', () => {
   assert.ok(html.includes('Arealfordeling (markslag)') && html.includes('Uproduktiv skog (impediment)'));
   const liste = lagRapport('bestandsliste', S, { iAar: 2026 });
   assert.ok(liste.includes('Uproduktive arealer') && liste.includes('U3'));
+});
+
+test('Tiltaksmotor: biologi, bærekraft og økonomi – kort og lang sikt, endringer', () => {
+  assert.deepEqual([plantetall('G', 20).anbefalt, plantetall('G', 17).min, plantetall('F', 8).intervall], [220, 100, '80–130']);
+  assert.equal(maalTetthet('G', 17), 200); assert.equal(maalTetthet('G', 17, true), 120);
+  const lag = (props) => normaliserBestand({ areal: 20, ...props }, null, props.areal || 20, 2026);
+  const hogstmoden = lag({ nr: '1', treslag: 'G', bonitet: 20, alder: 80, volumDaa: 45, hoyde: 24 });
+  const gammelLav = lag({ nr: '2', treslag: 'G', bonitet: 11, alder: 125, volumDaa: 18 });
+  const ungTett = lag({ nr: '3', treslag: 'G', bonitet: 17, alder: 12, volumDaa: 2, hoyde: 3, treantall: 320 });
+  const tynn = lag({ nr: '4', treslag: 'G', bonitet: 17, alder: 38, volumDaa: 20, hoyde: 13, treantall: 180 });
+  const flate = lag({ nr: '5', treslag: 'G', bonitet: 17, alder: 0, volumDaa: 0 });
+  const miljo = lag({ nr: '6', treslag: 'G', bonitet: 20, alder: 120, volumDaa: 50, miljo: 'Ja' });
+  const S = { bestand: [hogstmoden, gammelLav, ungTett, tynn, flate, miljo], innstillinger: STANDARD_INNSTILLINGER };
+  const f = genererTiltak(S, { iAar: 2026, horisont: 30 });
+  const av = (b) => f.filter((x) => x.b === b).map((x) => `${x.type}:${x.aar}`);
+  assert.ok(av(hogstmoden).some((x) => x.startsWith('sluttavvirkning')), 'hogstmoden G20 hogges (flate)');
+  assert.ok(av(hogstmoden).some((x) => x.startsWith('planting')) && av(hogstmoden).some((x) => x.startsWith('markberedning')), 'flatehogst følges av markberedning og planting');
+  assert.ok(av(gammelLav).some((x) => x.startsWith('lukkethogst')), 'gammel gran på lav bonitet → lukket hogst');
+  assert.ok(av(ungTett).some((x) => x.startsWith('ungskogpleie:2026')), 'tett ungskog → ungskogpleie nå');
+  assert.ok(av(tynn).some((x) => x.startsWith('tynning:2026')), '13 m høy gran på G17 → tynning nå');
+  assert.ok(av(flate).some((x) => x.startsWith('planting')), 'hogstflate → planting');
+  assert.equal(av(miljo).length, 0, 'miljøfigur får ingen tiltak');
+  assert.ok(f.some((x) => x.periode === 'lang') && f.some((x) => x.periode === 'kort'));
+  assert.ok(f.every((x) => x.begrunnelse && x.kilder.length), 'alle forslag har begrunnelse og kilder');
+  // Biologi-prinsippet gir mer lukket hogst og senere hogst enn økonomi
+  const bio = genererTiltak(S, { iAar: 2026, prinsipp: 'biologi' }); const oko = genererTiltak(S, { iAar: 2026, prinsipp: 'okonomi' });
+  const forste = (l, b) => l.find((x) => x.b === b && ['sluttavvirkning', 'lukkethogst'].includes(x.type))?.aar ?? 9999;
+  assert.ok(forste(bio, hogstmoden) >= forste(oko, hogstmoden));
+  // Anvend og endringer
+  const o = anvendMotor(S, { iAar: 2026 });
+  assert.ok(o.antall > 5 && S.motor && S.bestand.every((b) => b.motor));
+  assert.equal(motorEndringer(S, { iAar: 2026 }).length, 0, 'ingen endringer rett etter kjøring');
+  const sa = tynn.tiltak.find((t) => t.type === 'tynning'); sa.status = 'utfort'; sa.aar = 2026;
+  flate.tiltak.filter((t) => t.kilde === 'motor').forEach((t) => { t.status = 'utfort'; });
+  ungTett.treantall = 160; // ungskogpleie utført i felt
+  const e = motorEndringer(S, { iAar: 2026 });
+  const eu = e.find((x) => x.b === ungTett);
+  assert.ok(eu && eu.fjern.some((t) => t.type === 'ungskogpleie'), 'ungskogpleie fjernes når treantallet er lavt');
+  oppdaterBestand(S, eu);
+  assert.ok(!ungTett.tiltak.some((t) => t.type === 'ungskogpleie' && t.status !== 'utfort'));
+  assert.equal(motorEndringer(S, { iAar: 2026, bestandIder: [ungTett.id] }).length, 0);
 });
 
 await Promise.all(venter);
