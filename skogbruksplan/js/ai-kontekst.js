@@ -6,6 +6,7 @@ import {
 import { KRAVPUNKTER, OBJEKTTYPER } from './pefc.js';
 import { VEIKLASSER } from './veier.js';
 import { MARKSLAG, arealfordeling } from './markslag.js';
+import { KULTURER, gjodselbehov, sumGjodsling, kontroller } from './skifteplan.js';
 
 const r1 = (v) => (v == null || Number.isNaN(v) ? '' : Math.round(v * 10) / 10);
 const r0 = (v) => (v == null || Number.isNaN(v) ? '' : Math.round(v));
@@ -91,6 +92,21 @@ export function lagKontekst(S, { iAar = new Date().getFullYear(), pefcFunn = [],
     if (fb) d.push(`Skogbrannfare i dag: ${fb.nivaa?.navn} (FWI ${r1(fb.fwi)}). Prognose: ${(sb.data.brann.dager || []).map((x) => `${x.dato.slice(5)} ${x.nivaa?.navn}`).join(', ')}.`);
     if (sb.data?.bille?.sone) d.push(`Barkbillevarsel for sonen: ${sb.data.bille.sone.varsel} (${sb.data.bille.sone.dato}).`);
     if (Array.isArray(sb.data?.varsler) && sb.data.varsler.length) d.push(`Farevarsler: ${sb.data.varsler.map((v) => v.tittel).join('; ')}.`);
+    d.push('');
+  }
+  const sp = S.skifteplan;
+  if (sp?.skifter?.length) {
+    const a = Number(sp.aar) || iAar;
+    d.push(`## Skifteplan (jordbruk) ${a}`);
+    d.push('skifte;navn;areal_daa;forgrøde;vekst;forventet_avling;jordprøve;pH;P-AL;K-AL;behov_N_P_K_kg_daa;planlagt_N_P_K_kg_daa;jordsmonn');
+    for (const s of sp.skifter) {
+      const b = gjodselbehov(s, a); const g = sumGjodsling(s, a); const jp = s.jordprove || {};
+      d.push([s.nr, s.navn, r1(s.areal), KULTURER[s.vekster?.[a - 1]?.kultur]?.navn || '', KULTURER[s.vekster?.[a]?.kultur]?.navn || '', s.vekster?.[a]?.avling || '', jp.dato || '', jp.pH ?? '', jp.PAL ?? '', jp.KAL ?? '', b ? `${b.N}/${b.P}/${b.K}` : '', (s.gjodsling || []).some((x) => Number(x.aar) === a) ? `${g.N}/${g.P}/${g.K}` : '', [s.jordsmonn?.tekstur, s.jordsmonn?.drenering, s.jordsmonn?.erosjon?.tekst].filter(Boolean).join(', ')].map(csv).join(';'));
+    }
+    const f = kontroller(S, a).filter((x) => x.nivaa === 'avvik' || x.nivaa === 'varsel');
+    for (const x of f.slice(0, 30)) d.push(`- [${x.nivaa}] ${x.tittel}. ${x.tekst}`);
+    const spr = (sp.sproyting || []).filter((x) => String(x.dato).startsWith(String(a)));
+    if (spr.length) d.push(`Sprøytinger ${a}: ${spr.map((x) => `${x.dato} ${x.preparat} ${x.dose} ${x.enhet} mot ${x.skadegjorer}`).join('; ')}.`);
     d.push('');
   }
   const reg = S.registreringer || [];

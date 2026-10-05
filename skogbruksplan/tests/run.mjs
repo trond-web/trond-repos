@@ -19,6 +19,7 @@ import { brannnivaa, retningslinjerFor, risikoPerBestand, forebyggendeTiltak, ny
 import { RAPPORTER, lagRapport, lagRapportCsv, hogstprognose } from '../js/rapporter.js';
 import { klassifiser as klassifiserMarkslag, lagFigurer, arealfordeling } from '../js/markslag.js';
 import { genererTiltak, anvend as anvendMotor, endringer as motorEndringer, plantetall, maalTetthet, oppdaterBestand } from '../js/tiltaksmotor.js';
+import * as SP from '../js/skifteplan.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
 
 let ok = 0;
@@ -594,6 +595,56 @@ test('Tiltaksmotor: biologi, bærekraft og økonomi – kort og lang sikt, endri
   oppdaterBestand(S, eu);
   assert.ok(!ungTett.tiltak.some((t) => t.type === 'ungskogpleie' && t.status !== 'utfort'));
   assert.equal(motorEndringer(S, { iAar: 2026, bestandIder: [ungTett.id] }).length, 0);
+});
+
+test('Skifteplan: gjødselbehov, forslag, fosforgrense, krav og journal', () => {
+  const plan = SP.tomSkifteplan(2026, '3238');
+  assert.equal(plan.region, 'innland'); assert.equal(SP.regionFraKommune('1103'), 'rogaland'); assert.equal(SP.regionFraKommune('5501'), 'nord');
+  // Korreksjonstabeller (NIBIO)
+  assert.equal(SP.pAlKorreksjon(1.5), 100); assert.equal(SP.pAlKorreksjon(6), 0); assert.equal(SP.pAlKorreksjon(12), -25); assert.equal(SP.pAlKorreksjon(20), -75);
+  assert.equal(SP.kKorreksjon(5, 20), 50); assert.equal(SP.kKorreksjon(20, 120), -25); assert.equal(SP.moldKorreksjon(2), 2); assert.equal(SP.moldKorreksjon(8), 0); assert.equal(SP.moldKorreksjon(30), -2);
+  // Fosforgrenser § 20
+  assert.equal(SP.fosforgrense(2026), null); assert.equal(SP.fosforgrense(2027), 2.8); assert.equal(SP.fosforgrense(2031), 2.5); assert.equal(SP.fosforgrense(2035), 2.3); assert.equal(SP.fosforgrense(2028, 'rogaland'), 3.1);
+  // AR5 → skifter (beite får kultur)
+  const geo = (x) => ({ type: 'Polygon', coordinates: [[[x, 60.2], [x + 0.004, 60.2], [x + 0.004, 60.202], [x, 60.202], [x, 60.2]]] });
+  const fig = [{ id: 'a', kategori: 'jordbruk', geometri: geo(11), areal: 50, ar5: { artype: 'Fulldyrka jord' } }, { id: 'b', kategori: 'jordbruk', geometri: geo(11.01), areal: 20, ar5: { artype: 'Innmarksbeite' } }, { id: 'c', kategori: 'myr', geometri: geo(11.02), areal: 9 }, { id: 'd', kategori: 'jordbruk', geometri: geo(11.03), areal: 0.4, ar5: { artype: 'Fulldyrka jord' } }];
+  const nye = SP.skifterFraMarkslag(plan, fig, { iAar: 2026 });
+  assert.equal(nye.length, 2); assert.equal(nye[0].artype, 21); assert.equal(nye[1].vekster[2026].kultur, 'beite');
+  assert.equal(SP.skifterFraMarkslag(plan, fig, { iAar: 2026 }).length, 0, 'ingen duplikater');
+  // Bygg etter eng med jordprøve
+  const [a, b] = plan.skifter;
+  a.vekster = { 2025: { kultur: 'engInt2' }, 2026: { kultur: 'bygg', avling: 550 } };
+  a.jordprove = { dato: '2023-04-01', pH: 6.2, PAL: 12, KAL: 9, KHNO3: 60, mold: 3.5 };
+  const be = SP.gjodselbehov(a, 2026);
+  assert.equal(be.N, 9.9); assert.equal(be.P, 1.44); assert.equal(be.K, 8.1); // 11,1+0,8+1−3 · 1,925×0,75 · 6,5×1,25
+  assert.equal(SP.gjodselbehov(b, 2026).N, 13 - 1.5); // beite 300 FEm: 13 + (300−400)/100 × 1,5
+  const f = SP.foreslaGjodsling(a, 2026); assert.equal(f.length, 1);
+  const n = SP.naering(f[0]); assert.ok(Math.abs(n.N - be.N) < 1.2, 'forslaget dekker N-behovet');
+  a.gjodsling.push(...f.map((x, i) => ({ ...x, id: `g${i}` })));
+  assert.equal(SP.foreslaGjodsling(a, 2026).length, 0, 'ikke nye forslag når behovet er dekket');
+  // Husdyrgjødsel: plantetilgjengelig N = NH4 × virkningsgrad
+  assert.deepEqual(SP.naering({ type: 'husdyr', produkt: 'storfe', mengde: 3, spredemaate: 'nedfelt' }), { N: 3.8, Ntot: 9, P: 1.5, K: 9 });
+  // Krav
+  b.gjodsling.push({ id: 'h', aar: 2026, type: 'husdyr', produkt: 'storfe', mengde: 3, spredemaate: 'overflate', dato: '2026-10-10', status: 'planlagt' });
+  const S = { skifteplan: plan, markslag: [{ kategori: 'vann', geometri: geo(11.0045) }] };
+  const k = SP.kontroller(S, 2026); const titler = k.map((x) => x.tittel).join(' | ');
+  assert.ok(/påkrevd/.test(titler), 'gjødslingsplan påkrevd over 25 daa');
+  assert.ok(k.some((x) => x.nivaa === 'avvik' && /utenfor spredeperioden/.test(x.tittel)), 'spredning i oktober er avvik');
+  assert.ok(k.some((x) => x.nivaa === 'avvik' && x.skifteId === b.id && /ufullstendig/.test(x.tittel)), 'beite mangler jordprøve');
+  a.jordprove.dato = '2015-04-01';
+  assert.ok(SP.kontroller(S, 2026).some((x) => x.nivaa === 'avvik' && /11 år gammel/.test(x.tittel)), 'jordprøve over 8 år er avvik');
+  // Fosfor over grensen fra 2027
+  for (const x of [a, b]) { x.vekster[2027] = { kultur: 'engInt2', avling: 600 }; x.gjodsling.push({ id: `p${x.nr}`, aar: 2027, type: 'mineral', produkt: 'f22310', mengde: 200, dato: '2027-05-01', status: 'utfort' }); }
+  assert.ok(SP.kontroller(S, 2027).some((x) => x.nivaa === 'avvik' && /over grensen/.test(x.tittel)));
+  // Plantevern og vannjournal
+  const sp = SP.nySproyting({ dato: '2026-06-10', skifter: [a.id] }); Object.assign(sp, { preparat: 'X', dose: 100, skadegjorer: 'ugras', karens: 30 });
+  plan.sproyting.push(sp);
+  assert.equal(SP.tidligsteHosting(sp), '2026-07-10');
+  assert.ok(SP.avstandTilVann(a, S) < 50);
+  assert.ok(SP.kontroller(S, 2026).some((x) => /Vannjournal/.test(x.tittel)));
+  assert.ok(SP.sproytejournalCsv(S, 2026).split('\n').length === 2 && SP.gjodslingsplanCsv(S, 2026).includes('Bygg'));
+  assert.ok(SP.kartskisse(plan, 2026).startsWith('<svg'));
+  const o = SP.oppsummer(S, 2026); assert.equal(o.antall, 2); assert.ok(o.avvik >= 1);
 });
 
 await Promise.all(venter);

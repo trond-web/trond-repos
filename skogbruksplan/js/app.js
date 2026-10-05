@@ -17,6 +17,7 @@ import { initPefc } from './pefc-ui.js';
 import { delFlate, nyttNr } from './del.js';
 import { initAssistent } from './assistent.js';
 import { initSkogbrand } from './skogbrand-ui.js';
+import { initSkifteplan } from './skifteplan-ui.js';
 import { genererTiltak, oppsummer as motorOppsummer, PRINSIPPER, KILDER as MOTOR_KILDER, endringer as motorEndringer, merkKjort, tilTiltak, anvend as anvendMotor, oppdaterBestand as motorOppdaterBestand, MOTOR_VERSJON, signatur as motorSignatur } from './tiltaksmotor.js';
 import { RAPPORTER, lagRapport, lagRapportCsv } from './rapporter.js';
 import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling, hentAr5, lagFigurer, klippTil, trekkUtAvBestand } from './markslag.js';
@@ -405,13 +406,15 @@ let pefcVisning = null;
 let verdiVisning = null;
 let aiVisning = null;
 let skogbrandVisning = null;
-const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
+let skifteplanVisning = null;
+const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', skifteplan: 'Skifteplan', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 function visFane(navn) {
   if (deling && navn !== 'bestand') stoppDeling();
   if (pefcVisning) { if (navn === 'pefc') setTimeout(() => pefcVisning.vis(), 0); else pefcVisning.skjul(); }
   if (skogbrandVisning) { if (navn === 'skogbrand') setTimeout(() => skogbrandVisning.vis(), 0); else skogbrandVisning.skjul(); }
+  if (skifteplanVisning) { if (navn === 'skifteplan') setTimeout(() => skifteplanVisning.vis(), 0); else skifteplanVisning.skjul(); }
   veiVisning?.synlig(navn !== 'kommune');
   if (navn === 'veier') veiVisning?.vis();
   if (kommuneVisning) { if (navn === 'kommune') kommuneVisning.vis(); else { kommuneVisning.skjul(); tegnLegend(); } }
@@ -432,7 +435,7 @@ function visFane(navn) {
 
 // ---------------------------------------------------------------- oversikt
 function tegnInnsikt() {
-  const liste = lagInnsikt(S, { iAar: IAAR, pefcFunn: pefcVisning?.funn(), motorEndringer: S.motor ? aktuelleEndringer().filter((e) => e.leggTil.length || e.fjern.length).length : 0, skogbrand: { ...skadeOppsummering(S), brann: S.skogbrand?.data?.brann?.dager?.[0]?.nivaa || null }, terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
+  const liste = lagInnsikt(S, { iAar: IAAR, pefcFunn: pefcVisning?.funn(), motorEndringer: S.motor ? aktuelleEndringer().filter((e) => e.leggTil.length || e.fjern.length).length : 0, skogbrand: { ...skadeOppsummering(S), brann: S.skogbrand?.data?.brann?.dager?.[0]?.nivaa || null }, skifteplan: skifteplanVisning?.oppsummering() || null, terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
   $('#innsikt').hidden = !liste.length;
   $('#innsiktListe').innerHTML = liste.slice(0, 4).map((i) => `<div class="innsikt-kort" style="--farge:${i.farge}"><span class="prikk"></span><div><b>${esc(i.tittel)}</b><span>${esc(i.tekst)}</span></div>${i.handling ? `<button type="button" class="knapp liten" data-innsikt="${esc(i.handling.id)}">${esc(i.handling.tekst)}</button>` : ''}</div>`).join('');
 }
@@ -461,19 +464,24 @@ function tegnArealfordeling() {
   if ($('#trekkUtMarkslag')) $('#trekkUtMarkslag').onclick = trekkUtMarkslag;
 }
 
-async function hentMarkslagForPlan() {
+// Henter AR5 for eiendommen og lagrer markslagsfigurene i planen. Brukes av Oversikt og Skifteplan.
+async function lastAr5(logg = () => {}) {
   const grense = S.eiendom.grense || (() => { const f = S.bestand.filter((b) => b.geometri).flatMap((b) => (b.geometri.type === 'Polygon' ? [b.geometri.coordinates] : b.geometri.coordinates)); return f.length ? { type: 'MultiPolygon', coordinates: f } : null; })();
-  if (!grense) { melding('Planen mangler kart.'); return; }
+  if (!grense) throw new Error('Planen mangler eiendomsgrense');
+  const klipping = await lastKlipping();
+  if (!klipping) throw new Error('Geometribiblioteket kunne ikke lastes');
+  const flater = await hentAr5(grense, { klipp: klippTil(grense, klipping), logg });
+  S.markslag = lagFigurer(flater, nyId);
+  const sum = {}; for (const f of flater) sum[f.kategori] = (sum[f.kategori] || 0) + f.areal;
+  S.metadata = { ...S.metadata, ar5: Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, Math.round(v * 10) / 10])) };
+  S.datakilder = { ...S.datakilder, ar5: { id: 'ar5', navn: 'Markslag AR5', eier: 'NIBIO', hentet: new Date().toISOString(), antall: flater.length, krav: [3] } };
+  endret({ kart: true });
+  return S.markslag;
+}
+async function hentMarkslagForPlan() {
   const knapp = $('#hentMarkslag'); knapp.disabled = true;
   try {
-    const klipping = await lastKlipping();
-    if (!klipping) throw new Error('Geometribiblioteket kunne ikke lastes');
-    const flater = await hentAr5(grense, { klipp: klippTil(grense, klipping), logg: (t) => { knapp.textContent = t; } });
-    S.markslag = lagFigurer(flater, nyId);
-    const sum = {}; for (const f of flater) sum[f.kategori] = (sum[f.kategori] || 0) + f.areal;
-    S.metadata = { ...S.metadata, ar5: Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, Math.round(v * 10) / 10])) };
-    S.datakilder = { ...S.datakilder, ar5: { id: 'ar5', navn: 'Markslag AR5', eier: 'NIBIO', hentet: new Date().toISOString(), antall: flater.length, krav: [3] } };
-    endret({ kart: true });
+    await lastAr5((t) => { knapp.textContent = t; });
     melding(`Markslag hentet: ${S.markslag.length} uproduktive figurer.`);
   } catch (e) { melding(`Kunne ikke hente markslag: ${e.message}`, 6000); tegnArealfordeling(); } finally { knapp.disabled = false; }
 }
@@ -1142,7 +1150,7 @@ function tegnEiendom() {
 function endret({ kart: kartEndret = false, zoom = false } = {}) {
   frResultat = null;
   lagreSnart();
-  if (kartEndret) { tegnBestandKart(zoom); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); } else oppdaterStiler();
+  if (kartEndret) { tegnBestandKart(zoom); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); } else oppdaterStiler();
   tegnOversikt();
   tegnBestandTabell();
   tegnTiltak();
@@ -1334,7 +1342,7 @@ async function startGenerering(e) {
 }
 
 // ---------------------------------------------------------------- kommandopalett
-const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', rapporter: '▦', skogbrand: '🔥', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
+const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', rapporter: '▦', skogbrand: '🔥', skifteplan: '🌾', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
 let planlisteCache = [];
 function kommandoValg(q) {
   listPlaner().then((l) => { planlisteCache = l; });
@@ -1356,6 +1364,8 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '✦', tittel: `Spør AI: ${q || 'still et spørsmål om planen'}`, under: 'Claude svarer ut fra planens data', sok: 'ai spør chat assistent claude hvorfor hva hvor mye', alltid: !!q && q.length > 12 && /\?$|^(hva|hvor|hvilke|hvilken|hvordan|hvorfor|når|kan|bør|skal)\b/i.test(q.trim()), utfor: () => { visFane('ai'); if (q) aiVisning?.sporr(q); } },
     { gruppe: 'Handlinger', ikon: '🔥', tittel: 'Registrer skade', under: 'Brann, storm, snø, granbarkbille …', sok: 'skogbrand skade stormfelling vindfall snøbrekk barkbille brann forsikring skademelding', utfor: () => { visFane('skogbrand'); setTimeout(() => document.querySelector('[data-sb-under="skader"]')?.click(), 50); } },
     { gruppe: 'Handlinger', ikon: '🔥', tittel: 'Skogbrannfare og farevarsler', under: 'Skogbrannindeks, vind og barkbillevarsel for eiendommen', sok: 'skogbrand brannfare fwi met vind storm varsel barkbille', utfor: () => visFane('skogbrand') },
+    { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Gjødslingsplan', under: 'Gjødselbehov per skifte, forslag og utskrift (gjødselforskriften § 26)', sok: 'skifteplan gjødsel gjødsling jordprøve nitrogen fosfor kalium husdyrgjødsel jordbruk', utfor: () => { visFane('skifteplan'); skifteplanVisning?.underfane('gjodsling'); } },
+    { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Sprøytejournal / plantevernjournal', under: 'Registrer sprøyting og skriv ut journalen', sok: 'skifteplan sprøyting plantevern plantevernmidler ugras journal ipv', utfor: () => { visFane('skifteplan'); skifteplanVisning?.underfane('sproyting'); } },
     { gruppe: 'Handlinger', ikon: '¤', tittel: 'Verdiberegning', under: 'Eiendomsverdi, slaktverdi, jordverdi og nåverdi', sok: 'verdi nåverdi slaktverdi takst lev faustmann', utfor: () => visFane('verdi') },
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'PEFC-status og avvik', sok: 'pefc skogstandard krav avvik sertifisering', utfor: () => visFane('pefc') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
@@ -1421,6 +1431,12 @@ function kobleHendelser() {
     settKartKlikk: (fn) => { kartKlikk = fn; },
     visBestand: (id) => { velgBestand(id); visFane('bestand'); },
     hentPosisjon: () => sistePos || (valgtPunkt ? { lat: valgtPunkt.getLatLng().lat, lon: valgtPunkt.getLatLng().lng } : null),
+  });
+  skifteplanVisning = initSkifteplan({
+    kart, hentPlan: () => S, endret, melding, nyId, iAar: IAAR,
+    settKartKlikk: (fn) => { kartKlikk = fn; },
+    // Jordbruksfigurer fra AR5: bruker figurene i planen hvis de finnes, ellers hentes AR5 for eiendommen.
+    hentJordbruk: async (logg) => ((S.markslag || []).some((f) => f.kategori === 'jordbruk') ? S.markslag : lastAr5(logg)),
   });
   aiVisning = initAssistent({
     hentPlan: () => S, iAar: IAAR,

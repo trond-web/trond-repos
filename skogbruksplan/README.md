@@ -140,6 +140,32 @@ Bygger på Skogbrands råd om forebygging og oppfølging etter skade, vilkårene
 - **Skademelding:** kan kopieres, skrives ut med bilder eller lastes ned som GeoJSON.
 - **Kobling til resten av planen:** brann blir en brannflate i PEFC-modulen, og opprydding og foryngelse kan legges inn i tiltaksplanen.
 
+## Skifteplan – jordbruksskifter, gjødslingsplan og plantevernjournal (fanen «Skifteplan»)
+
+Skifteplan for jordbruksarealet på eiendommen, bygget rundt kravene i
+[forskrift om lagring og bruk av gjødsel mv. (2025)](https://lovdata.no/forskrift/2025-01-29-115) og forskrift om plantevernmidler.
+
+- **Skifter**: hentes fra AR5 (fulldyrka, overflatedyrka og innmarksbeite på eiendommen) eller tegnes i kartet. Per skifte: vekst per år
+  (forgrøde, planår og neste år), forventet avling, jordarbeiding, jordprøve (pH, P-AL, K-AL, K-HNO₃, mold) og notat.
+  Jordsmonn (tekstur, drenering, organisk materiale, begrensning) og erosjonsrisiko hentes automatisk fra NIBIO (WMS
+  `jordsmonn_harmonisert` og `jordsmonn_erosjonsrisiko`), og kan vises som kartlag.
+- **Gjødselbehov** etter NIBIOs Gjødslingshåndbok: normer for korn og eng/beite/grønnfôr, korrigert for avling, moldinnhold, forgrøde,
+  P-AL og K-AL/K-HNO₃. Oljevekster, belgvekster, potet og grønnsaker har veiledende anslag (merket i appen).
+- **Gjødslingsplan** (§ 26): mineral- og husdyrgjødsel per skifte med N/P/K, forslag som dekker resten av behovet (delt gjødsling på eng med
+  flere slåtter), «Utført»-knapp, sum mot behov, utskrift med kartskisse over skifteinndelingen, og CSV.
+- **Plantevernjournal**: integrert plantevern (årlig sjekkliste), sprøytejournal (skifte, kultur, preparat, dose, skadegjører, begrunnelse,
+  stadium, vær, behandlingsfrist → tidligste høsting, effekt, utført av) og vannjournal-merknad for skifter under 50 m fra vann (AR5).
+- **Krav**: påkrevd gjødslingsplan (> 25 daa, eller > 5 daa potet/grønnsaker), manglende felt, jordprøvealder (8 år, 4 år for
+  fosforkrevende kulturer), pH, høy P-AL, N/P over behov, fosforgrense fra 2027 (2,8 → 2,5 → 2,3 kg P/daa i snitt over tre år; Rogaland og
+  Troms/Finnmark egne grenser), spredeperiode og nedmolding for husdyrgjødsel, erosjon ved høstpløying og ensidig vekstskifte. Avvik vises
+  også under Innsikt i Oversikt.
+
+Kilder: [Landbruksdirektoratet om § 26](https://www.landbruksdirektoratet.no/nb/jordbruk/miljo-og-klima/husdyrgjodsel-og-gjodsling/forskrift-om-lagring-og-bruk-av-gjodsel-mv.-kommentarer-til-regelverk/-26.krav-til-gjodslingsplan),
+[NIBIO Gjødslingshåndbok](https://www.nibio.no/tema/jord/gjodslingshandbok),
+[Mattilsynet: krav til sprøytejournalen](https://www.mattilsynet.no/planter-og-dyrking/plantevernmidler/veileder-til-forskrift-om-plantevernmidler/journalforing-ved-bruk-av-plantevernmidler/krav-til-sproytejournalen),
+[NLR: plantevernjournalen](https://www.nlr.no/nyhetsarkiv/default/2025/slik-fyller-du-ut-plantevernjournalen).
+Tallene for husdyrgjødsel er typiske verdier – bruk egen gjødselanalyse når den finnes.
+
 ## Spør AI (fanen «Spør AI»)
 
 En chat der du stiller spørsmål om skogbruksplanen og får svar fra Claude (Anthropic, modell `claude-opus-5-5`). Svaret strømmes inn mens det skrives.

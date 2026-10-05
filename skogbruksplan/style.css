@@ -678,3 +678,70 @@ progress { accent-color: var(--accent); height: 8px; }
 /* Utført-knapp og zoom på tiltaksrader */
 .utfort-knapp { white-space: nowrap; min-width: 74px; }
 .utfort-knapp.er-utfort { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+/* Skifteplan */
+.sp-topp { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 0 0 12px; flex-wrap: wrap; }
+.sp-topp label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+.sp-avvik { color: var(--critical); font-weight: 600; }
+.sp-arbeider { padding: 8px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 13px; margin-bottom: 10px; }
+.sp-verktoy { margin-top: 0; }
+.sp-grupper { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.sp-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; background: var(--surface-2); font-size: 12px; }
+.sp-prikk { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--farge); border: 1px solid rgba(0,0,0,.25); margin-right: 6px; vertical-align: -1px; flex: none; }
+.sp-tabell td { white-space: normal; }
+.sp-gammel { color: var(--critical); font-weight: 600; }
+.sp-detalj { margin-top: 14px; }
+.sp-vekster { display: grid; gap: 4px; }
+.sp-aarrad { display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr); gap: 4px 8px; align-items: center; padding: 6px 8px; border-radius: 10px; }
+.sp-aarrad > select { grid-column: 2 / -1; }
+.sp-aarrad > label { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--muted); min-width: 0; }
+.sp-aarrad > label:nth-of-type(1) { grid-column: 2; }
+.sp-aarrad select, .sp-aarrad input { width: 100%; min-width: 0; }
+.sp-aarrad.aktiv { background: var(--accent-soft); }
+.sp-jordsmonn { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 6px 0; font-size: 13px; }
+.sp-jordsmonn dt { color: var(--muted); }
+.sp-jordsmonn dd { margin: 0; }
+.sp-ero { padding: 1px 8px; border-radius: 99px; background: var(--surface-2); }
+.sp-ero-3, .sp-ero-4 { background: color-mix(in srgb, var(--critical) 18%, var(--surface)); color: var(--critical); font-weight: 600; }
+.sp-ero-2 { background: color-mix(in srgb, #f0a020 22%, var(--surface)); }
+.sp-behov { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; font-size: 13px; }
+.sp-behov b { font: 800 20px var(--font-display); }
+.sp-korr { margin: 6px 0; padding-left: 18px; font-size: 12.5px; color: var(--text-2); }
+.sp-lag { margin-top: 14px; }
+.sp-lagvalg { display: grid; gap: 6px; margin-top: 8px; font-size: 13px; }
+.sp-totaler { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin: 10px 0; }
+.sp-totaler > div { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; font-size: 12px; }
+.sp-totaler small { display: block; color: var(--muted); }
+.sp-diff { font: 700 15px var(--font-mono); }
+.sp-diff small { font-weight: 400; color: var(--muted); font-size: 11px; }
+.sp-diff.over { color: var(--critical); } .sp-diff.under { color: #b07a00; } .sp-diff.ok { color: var(--good); }
+.sp-krav { font: 600 11px var(--font-mono); padding: 4px 9px; border-radius: 99px; background: var(--surface-2); }
+.sp-krav.pakrevd { background: var(--accent); color: var(--accent-ink); }
+.sp-gskifte { margin-top: 10px; }
+.sp-gskifte h4 { margin: 0; font-size: 14px; }
+.sp-gskifte.valgt { border-color: var(--accent); }
+.sp-behovlinje { font-size: 12.5px; margin-bottom: 8px; }
+.sp-grad { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 6px 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--grid); }
+.sp-grad.utfort { background: color-mix(in srgb, var(--good) 7%, transparent); }
+.sp-grad input, .sp-grad select { min-width: 0; width: 100%; }
+.sp-mengde { display: flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; }
+.sp-grad-bunn { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.sp-naering { font: 12px var(--font-mono); color: var(--text-2); }
+.sp-grad-knapper { display: flex; gap: 6px; justify-content: flex-end; }
+.sp-gkomm { grid-column: 1 / -1; color: var(--muted); }
+.sp-regler { margin: 6px 0; padding-left: 18px; font-size: 13px; display: grid; gap: 4px; }
+.sp-skiftevalg { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 12px 0 4px; font-size: 13px; align-items: center; }
+.sp-skiftevalg label { display: inline-flex; gap: 4px; align-items: center; }
+.sp-dose { display: flex; gap: 6px; } .sp-dose input { flex: 1; min-width: 0; } .sp-dose select { width: 90px; }
+.sp-sprad { padding: 9px 0; border-top: 1px solid var(--grid); font-size: 13px; }
+.sp-sprad-bunn { display: flex; gap: 6px; margin-top: 6px; } .sp-sprad-bunn input { flex: 1; min-width: 0; }
+.sp-ipv { display: grid; gap: 2px; }
+.sp-ipv-rad { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--grid); font-size: 13px; }
+.sp-janei { display: flex; gap: 10px; white-space: nowrap; }
+.sp-funn { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid var(--grid); }
+.sp-funn[data-sp-skifte] { cursor: pointer; }
+.sp-funn > i { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--farge); color: #fff; font: 700 12px/22px var(--font-mono); text-align: center; font-style: normal; }
+.sp-region { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.sp-etikett { background: rgba(255,255,255,.85); border: 0; box-shadow: none; padding: 1px 5px; font: 600 11px var(--font-body); color: #222; border-radius: 6px; }
+.sp-etikett::before { display: none; }
+@media (max-width: 400px) { .sp-grad { grid-template-columns: 120px minmax(0, 1fr); } }
