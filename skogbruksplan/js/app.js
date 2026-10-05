@@ -18,6 +18,7 @@ import { delFlate, nyttNr } from './del.js';
 import { initAssistent } from './assistent.js';
 import { initSkogbrand } from './skogbrand-ui.js';
 import { initSkifteplan } from './skifteplan-ui.js';
+import { lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
 import { genererTiltak, oppsummer as motorOppsummer, PRINSIPPER, KILDER as MOTOR_KILDER, endringer as motorEndringer, merkKjort, tilTiltak, anvend as anvendMotor, oppdaterBestand as motorOppdaterBestand, MOTOR_VERSJON, signatur as motorSignatur } from './tiltaksmotor.js';
 import { RAPPORTER, lagRapport, lagRapportCsv } from './rapporter.js';
 import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling, hentAr5, lagFigurer, klippTil, trekkUtAvBestand } from './markslag.js';
@@ -1222,7 +1223,7 @@ async function tegnPlanListe() {
 
 const GEN_STEG = [
   ['eiendom', 'Eiendomsgrense (Kartverket)'], ['plan', 'Tidligere skogbruksplan (NIBIO)'],
-  ['sr16', 'Skogressurskart SR16 (NIBIO)'], ['mis', 'Miljøregistreringer (MiS)'], ['markslag', 'Markslag – uproduktiv mark (AR5, NIBIO)'], ['bygg', 'Bestand og sammenligning'],
+  ['sr16', 'Skogressurskart SR16 (NIBIO)'], ['mis', 'Miljøregistreringer (MiS)'], ['markslag', 'Markslag – uproduktiv mark (AR5, NIBIO)'], ['skifter', 'Skifteinndeling av jordbruksareal (AR5 og jordsmonn)'], ['bygg', 'Bestand og sammenligning'],
   ['miljo', 'Miljødata til PEFC (NIBIO, Miljødirektoratet, Riksantikvaren)'], ['nvdb', 'Skogsbilveier (NVDB)'], ['ssb', 'Tømmerpriser (SSB)'],
 ];
 
@@ -1285,7 +1286,7 @@ async function startGenerering(e) {
   try {
     const [turf, klipping] = await Promise.all([lastTurf(), lastKlipping()]);
     const plan = await genererPlan({ kommune, gnr, bnr, festenr }, { turf, klipping, iAar: IAAR, logg: (st, status, t) => { aktivtSteg = st; logg(st, status, t); } });
-    const ny = { versjon: 1, planId: nyId('p'), eiendom: plan.eiendom, bestand: plan.bestand, markslag: plan.markslag || [], registreringer: [], innstillinger: klon(S.innstillinger), metadata: plan.metadata, datakilder: { ...plan.kilder } };
+    const ny = { versjon: 1, planId: nyId('p'), eiendom: plan.eiendom, bestand: plan.bestand, markslag: plan.markslag || [], ...(plan.skifteplan ? { skifteplan: plan.skifteplan } : {}), registreringer: [], innstillinger: klon(S.innstillinger), metadata: plan.metadata, datakilder: { ...plan.kilder } };
     // Alt datagrunnlag for PEFC, veier og verdi hentes med en gang. Feil her stopper ikke planen.
     const dgSteg = ['miljo', 'nvdb', 'ssb'];
     dgSteg.forEach((st) => logg(st, 'aktiv', 'Henter …'));
@@ -1309,6 +1310,7 @@ async function startGenerering(e) {
         <div><b>${kontroll}</b><span>trolig hogd siden forrige takst – kontroller</span></div>
         <div><b>${(ny.pefc?.objekter || []).length}</b><span>miljøobjekter til PEFC</span></div>
         <div><b>${fmt((ny.veier?.veier || []).reduce((s, v) => s + v.lengde, 0) / 1000, 1)} km</b><span>vei fra NVDB</span></div>
+        ${ny.skifteplan?.skifter?.length ? `<div><b>${ny.skifteplan.skifter.length}</b><span>skifter på ${fmt(ny.skifteplan.skifter.reduce((s, x) => s + x.areal, 0))} daa jordbruksareal</span></div>` : ''}
       </div>
       <p class="hint" style="margin:0">${kalibrert ? `Tømmerpriser kalibrert mot SSB (${esc(kalibrert.grunnlag.navn)}, ${fmt(kalibrert.grunnlag.pris)} kr/m³): gran ${fmt(kalibrert.G)}, furu ${fmt(kalibrert.F)}, lauv ${fmt(kalibrert.L)} kr/m³.` : 'Tømmerpriser fra SSB kunne ikke hentes – standardpriser er brukt.'}${dg.feil.length ? ` Noen kilder svarte ikke (${esc(dg.feil.join('; '))}) – prøv «Oppdater alle» i PEFC-fanen senere.` : ''}</p>
       <p class="hint" style="margin:0">${m.antallFraPlan ? `Bestandsgrenser fra skogbruksplan registrert ${esc(m.planRegistrert || '')}, oppdatert med SR16.` : 'Fant ingen tidligere skogbruksplan – bestandene er laget fra SR16-flater.'} Utkastet må kontrolleres i felt før det brukes som grunnlag for hogst.</p>
@@ -1437,6 +1439,13 @@ function kobleHendelser() {
     settKartKlikk: (fn) => { kartKlikk = fn; },
     // Jordbruksfigurer fra AR5: bruker figurene i planen hvis de finnes, ellers hentes AR5 for eiendommen.
     hentJordbruk: async (logg) => ((S.markslag || []).some((f) => f.kategori === 'jordbruk') ? S.markslag : lastAr5(logg)),
+    lagInndeling: async (logg) => {
+      const fig = (S.markslag || []).some((f) => f.kategori === 'jordbruk') ? S.markslag : await lastAr5(logg);
+      const klipping = await lastKlipping();
+      let jordsmonn = [];
+      if (klipping && fig.some((f) => f.kategori === 'jordbruk')) { logg('Henter jordsmonn …'); jordsmonn = await hentJordsmonnFlater(jordbruksBoks(fig), { logg }).catch(() => []); }
+      return lagSkifteinndeling(fig, { klipping, jordsmonn, iAar: IAAR, nyId });
+    },
   });
   aiVisning = initAssistent({
     hentPlan: () => S, iAar: IAAR,

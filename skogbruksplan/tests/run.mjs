@@ -647,5 +647,40 @@ test('Skifteplan: gjødselbehov, forslag, fosforgrense, krav og journal', () => 
   const o = SP.oppsummer(S, 2026); assert.equal(o.antall, 2); assert.ok(o.avvik >= 1);
 });
 
+test('Skifteplan: automatisk skifteinndeling (AR5 + jordsmonn)', async () => {
+  assert.equal(SP.teksturGruppe('Siltig mellomsand og siltig finsand, lite grus'), 'sand');
+  assert.equal(SP.teksturGruppe('Sandig silt og silt, lite grus'), 'silt');
+  assert.equal(SP.teksturGruppe('Siltig lettleire, lite grus'), 'lettleire');
+  assert.equal(SP.teksturGruppe('Siltig mellomleire, lite grus'), 'mellomleire');
+  assert.equal(SP.jordKlasse({ tekstur: 'Siltig lettleire', drenering: 'Delvis selvdrenert' }), 'siltlett|svak');
+  assert.equal(SP.jordKlasse({ tekstur: 'Sandig silt og silt', drenering: 'Selvdrenert' }), 'siltlett|god');
+  // Geometri: 1 km × 100 m (= 100 daa) ved 60° N. Lengdegrad er halvparten så lang som breddegrad.
+  const dLon = (m) => m / (111320 * 0.5); const dLat = (m) => m / 111320;
+  const rekt = (x0, x1, y0 = 0, y1 = 100) => ({ type: 'Polygon', coordinates: [[[10 + dLon(x0), 60 + dLat(y0)], [10 + dLon(x1), 60 + dLat(y0)], [10 + dLon(x1), 60 + dLat(y1)], [10 + dLon(x0), 60 + dLat(y1)], [10 + dLon(x0), 60 + dLat(y0)]]] });
+  assert.ok(Math.abs(SP.middelbredde(rekt(0, 1000)) - 2 * 100000 / 2200) < 3);
+  const felt = { id: 'a', kategori: 'jordbruk', geometri: rekt(0, 1000), areal: 100, ar5: { artype: 'Fulldyrka jord' } };
+  const stripe = { id: 'b', kategori: 'jordbruk', geometri: rekt(1000, 1300, 0, 5), areal: 1.5, ar5: { artype: 'Fulldyrka jord' } };
+  const beite = { id: 'c', kategori: 'jordbruk', geometri: rekt(0, 300, 200, 300), areal: 30, ar5: { artype: 'Innmarksbeite' } };
+  // Uten klipping: én AR5-figur = ett skifte, stripa utelates
+  const u = SP.lagSkifteinndeling([felt, stripe, beite], { iAar: 2026 });
+  assert.equal(u.skifter.length, 2); assert.equal(u.logg.utelatt, 1);
+  assert.equal(u.skifter[0].artype, 23, 'nordligste (beitet) får nr 1'); assert.equal(u.skifter[0].vekster[2026].kultur, 'beite');
+  let pc = null; try { pc = (await import('polygon-clipping')).default; } catch { /* valgfritt i testmiljøet */ }
+  if (!pc) return;
+  // Jordsmonn: vestre 600 m silt/selvdrenert, østre 400 m leire/ikke selvdrenert, liten organisk flekk (3 daa) i vest
+  const jord = [
+    { id: 'j1', geometri: rekt(-50, 600, -50, 150), tekstur: 'Sandig silt og silt', drenering: 'Selvdrenert' },
+    { id: 'j2', geometri: rekt(600, 1400, -50, 150), tekstur: 'Siltig mellomleire', drenering: 'Ikke selvdrenert' },
+  ];
+  jord[0].geometri.coordinates.push(rekt(100, 130, 0, 100).coordinates[0].slice().reverse());
+  jord.push({ id: 'j3', geometri: rekt(100, 130, 0, 100), tekstur: 'Torv', drenering: 'Ikke selvdrenert' });
+  const r = SP.lagSkifteinndeling([felt, beite], { klipping: pc, jordsmonn: jord, iAar: 2026 });
+  const fra = r.skifter.filter((x) => x.ar5Id === 'a').sort((x, y) => y.areal - x.areal);
+  assert.equal(fra.length, 2, 'feltet deles i to etter jordsmonn; den organiske flekken (3 daa) slås inn');
+  assert.ok(Math.abs(fra[0].areal - 60) < 1.5 && Math.abs(fra[1].areal - 40) < 1.5, `${fra.map((x) => x.areal)}`);
+  assert.equal(fra[0].inndeling.klasse, 'siltlett|god'); assert.equal(fra[1].inndeling.klasse, 'leire|svak');
+  assert.ok(fra[0].jordsmonn.tekstur && fra.every((x) => x.inndeling.delt));
+});
+
 await Promise.all(venter);
 console.log(`\n${ok} tester bestått`);

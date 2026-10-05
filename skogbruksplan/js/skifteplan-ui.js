@@ -1,7 +1,7 @@
 // Fanen «Skifteplan»: jordbruksskifter i kartet, vekster og jordprøver, gjødslingsplan, plantevernjournal og
 // kontroll mot kravene i gjødselforskriften og forskrift om plantevernmidler.
 import {
-  KILDER, GRUPPER, KULTURER, JORDARBEIDING, MINERAL, HUSDYR, SPREDEMAATE, REGIONER, AR5_JORDBRUK, IPV, JORDSMONN_KARTLAG,
+  KILDER, GRUPPER, KULTURER, JORDARBEIDING, MINERAL, HUSDYR, SPREDEMAATE, REGIONER, AR5_JORDBRUK, IPV, JORDSMONN_KARTLAG, INNDELING,
   tomSkifteplan, nyttSkifte, skifterFraMarkslag, hentJordsmonn, gjodselbehov, naering, produktNavn, sumGjodsling,
   foreslaGjodsling, kontroller, fosforSnitt, fosforgrense, aktiveSkifter, nySproyting, tidligsteHosting, oppsummer,
   gjodslingsplanCsv, sproytejournalCsv, kartskisse, avstandTilVann,
@@ -15,7 +15,7 @@ const NIVAA = { avvik: { navn: 'Avvik', farge: 'var(--critical)', ikon: '✕' },
 const idag = () => new Date().toISOString().slice(0, 10);
 const tall = (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? '' : Number(v));
 
-export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKartKlikk, hentJordbruk, iAar = new Date().getFullYear() }) {
+export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKartKlikk, hentJordbruk, lagInndeling, iAar = new Date().getFullYear() }) {
   const lag = L.layerGroup();
   const wms = {};
   let underfane = 'skifter';
@@ -40,7 +40,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
       if (!sk.geometri) continue;
       const k = KULTURER[sk.vekster?.[a]?.kultur]; const farge = GRUPPER[k?.gruppe]?.farge || '#ffffff';
       const er = sk.id === valgt;
-      const l = L.geoJSON(sk.geometri, { style: { color: er ? '#ffd400' : '#5b4a14', weight: er ? 4 : 1.8, fillColor: farge, fillOpacity: k ? 0.6 : 0.25, dashArray: k ? null : '5 4' } });
+      const l = L.geoJSON(sk.geometri, { style: { color: er ? '#ffd400' : '#3d3108', weight: er ? 4 : 2.4, fillColor: farge, fillOpacity: k ? 0.6 : 0.3 } });
       l.bindTooltip(`<b>${esc(sk.nr)}</b>${k ? ` ${esc(k.navn.split(',')[0])}` : ''}`, { permanent: true, direction: 'center', className: 'sp-etikett' });
       l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (tegner) tegner.klikk(e.latlng); else velg(sk.id, { zoom: false }); });
       l.addTo(lag);
@@ -90,6 +90,20 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
   }
 
   // ---------- data ----------
+  async function autoInndeling() {
+    const p = SP();
+    if (p.skifter.length && !confirm('Lage ny automatisk skifteinndeling? Eksisterende skifter med vekster, jordprøver og gjødsling erstattes.')) return;
+    arbeider = 'Lager skifteinndeling …'; tegn();
+    try {
+      const r = await lagInndeling((t) => { arbeider = t; tegn(); });
+      p.skifter = r.skifter; p.inndeling = { ...r.logg, laget: new Date().toISOString().slice(0, 10) };
+      const ider = new Set(p.skifter.map((x) => x.id));
+      for (const x of p.sproyting || []) x.skifter = (x.skifter || []).filter((id) => ider.has(id));
+      valgt = null; arbeider = '';
+      lagre(); zoomAlle();
+      melding(r.skifter.length ? `${r.skifter.length} skifter på ${fmt(r.logg.areal)} daa${r.logg.delt ? ` – ${r.logg.delt} AR5-figurer delt etter jordsmonn` : ''}.` : 'Fant ikke jordbruksareal i AR5 på eiendommen.', 6000);
+    } catch (e) { arbeider = ''; tegn(); melding(`Kunne ikke lage skifteinndeling: ${e.message}`, 6000); }
+  }
   async function hentFraAr5() {
     arbeider = 'Henter jordbruksareal fra AR5 …'; tegn();
     try {
@@ -130,18 +144,36 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     if (!p.skifter.length) {
       return `<div class="kort"><h3>Lag skifteplan for jordbruksarealet</h3>
         <p>Skifteplanen samler skifteinndeling, vekster, jordprøver, gjødslingsplan og plantevernjournal for gården – og kontrollerer mot kravene i gjødselforskriften (2025) og forskrift om plantevernmidler.</p>
-        <p class="hint">Skiftene kan hentes fra arealressurskartet AR5 (fulldyrka, overflatedyrka og innmarksbeite på eiendommen) eller tegnes i kartet. Jordsmonn og erosjonsrisiko hentes fra NIBIO for hvert skifte.</p>
-        <div class="knapperad"><button type="button" class="knapp primar" data-sp="ar5" ${arbeider ? 'disabled' : ''}>Hent jordbruksareal fra AR5</button><button type="button" class="knapp" data-sp="tegn">Tegn skifte i kartet</button></div></div>`;
+        <p class="hint">Skiftene lages automatisk fra arealressurskartet AR5 og NIBIOs jordsmonnkart (se prinsippene under), eller tegnes i kartet. Nye skogbruksplaner får skifteinndelingen når planen opprettes.</p>
+        <div class="knapperad"><button type="button" class="knapp primar" data-sp="auto" ${arbeider ? 'disabled' : ''}>Lag skifteinndeling automatisk</button><button type="button" class="knapp" data-sp="tegn">Tegn skifte i kartet</button></div></div>
+        ${prinsippHtml(true)}`;
     }
     const grupper = {}; for (const sk of p.skifter) { const g = KULTURER[sk.vekster?.[a]?.kultur]?.gruppe || 'ukjent'; grupper[g] = (grupper[g] || 0) + (sk.areal || 0); }
     const sk = finn(valgt);
-    return `<div class="knapperad sp-verktoy"><button type="button" class="knapp liten" data-sp="ar5" ${arbeider ? 'disabled' : ''}>Hent fra AR5</button><button type="button" class="knapp liten" data-sp="tegn">Tegn skifte</button><button type="button" class="knapp liten" data-sp="jordsmonn-alle" ${arbeider ? 'disabled' : ''}>Hent jordsmonn</button><button type="button" class="knapp liten" data-sp="zoom-alle">Vis alle</button></div>
+    return `<div class="knapperad sp-verktoy"><button type="button" class="knapp liten" data-sp="auto" ${arbeider ? 'disabled' : ''}>Ny automatisk inndeling</button><button type="button" class="knapp liten" data-sp="tegn">Tegn skifte</button><button type="button" class="knapp liten" data-sp="jordsmonn-alle" ${arbeider ? 'disabled' : ''}>Hent jordsmonn</button><button type="button" class="knapp liten" data-sp="zoom-alle">Vis alle</button></div>
       <div class="sp-grupper">${Object.entries(grupper).map(([g, v]) => `<span class="sp-chip"><i class="sp-prikk" style="--farge:${GRUPPER[g]?.farge || '#fff'}"></i>${esc(GRUPPER[g]?.navn || 'Uten vekst')} ${fmt(v, 1)} daa</span>`).join('')}</div>
       <div class="tabell-wrap"><table class="tabell sp-tabell"><thead><tr><th>Nr</th><th>Navn</th><th class="tall">Daa</th><th>Forgrøde ${a - 1}</th><th>Vekst ${a}</th><th class="tall">P-AL</th><th>Prøve</th></tr></thead><tbody>
         ${p.skifter.map((s) => { const pa = s.jordprove?.dato ? Number(s.jordprove.dato.slice(0, 4)) : null; const gammel = pa && a - pa > (KULTURER[s.vekster?.[a]?.kultur]?.pKrevende ? 4 : 8); return `<tr data-sp-skifte="${s.id}" class="${s.id === valgt ? 'valgt' : ''}"><td><b>${esc(s.nr)}</b></td><td>${esc(s.navn)}</td><td class="tall">${fmt(s.areal, 1)}</td><td>${esc(vekstNavn(s, a - 1))}</td><td>${prik(s, a)}${esc(vekstNavn(s, a)) || '<span class="hint">velg</span>'}</td><td class="tall">${s.jordprove?.PAL ?? ''}</td><td${gammel ? ' class="sp-gammel"' : ''}>${pa || '<span class="hint">mangler</span>'}</td></tr>`; }).join('')}
       </tbody></table></div>
       ${sk ? detaljHtml(sk, S) : '<p class="hint">Velg et skifte i tabellen eller kartet for å registrere vekster, jordprøve og jordsmonn.</p>'}
+      ${prinsippHtml(false)}
       <details class="kort sp-lag"><summary><b>Kartlag fra NIBIO</b></summary><div class="sp-lagvalg">${Object.entries(JORDSMONN_KARTLAG).map(([id, c]) => `<label><input type="checkbox" data-sp-lag="${id}" ${p.visLag?.[id] ? 'checked' : ''}> ${esc(c.navn)}</label>`).join('')}</div></details>`;
+  }
+
+  function prinsippHtml(aapen) {
+    const inn = SP().inndeling;
+    return `<details class="kort sp-prinsipp" ${aapen ? 'open' : ''}><summary><b>Slik deles jordbruksarealet i skifter</b></summary>
+      <ol class="sp-regler">
+        <li><b>AR5-figurene er utgangspunktet.</b> De er avgrenset av vei, bekk/grøft, skog, bebyggelse og arealtype – naturlige grenser for drift og maskiner.</li>
+        <li><b>Fulldyrka, overflatedyrka og innmarksbeite holdes adskilt</b>, fordi de drives og gjødsles ulikt.</li>
+        <li><b>Figurer over ${INNDELING.delFra} daa deles der jordsmonnet skifter</b> (NIBIOs jordsmonnkart): sand/grus, silt og lettleire, mellomleire/stiv leire og organisk jord – og god eller svak naturlig drenering. Da blir hvert skifte ensartet, og én blandprøve er representativ for gjødsling og kalking.</li>
+        <li><b>Deler under ${INNDELING.minDel} daa (eller ${Math.round(INNDELING.minAndel * 100)} % av figuren) slås sammen med naboen</b> – mindre skifter er upraktiske å drive og ta prøver av (anbefalt ca. 10–15 daa per prøve på ensartede skifter).</li>
+        <li><b>Flater under ${INNDELING.minSkifte} daa og striper smalere enn ${INNDELING.minBredde} m</b> slås sammen med nabo av samme type eller utelates (kantsoner, veikanter).</li>
+        <li><b>Nummerering</b> fra nord mot sør og vest mot øst. Store skifter får råd om antall delprøver.</li>
+      </ol>
+      ${inn ? `<p class="hint">Siste inndeling ${esc(inn.laget || '')}: ${inn.ar5} AR5-figurer → ${inn.skifter} skifter på ${fmt(inn.areal)} daa${inn.delt ? `, ${inn.delt} figurer delt etter jordsmonn` : ''}${inn.sammenslaatt ? `, ${inn.sammenslaatt} små flater slått sammen` : ''}${inn.utelatt ? `, ${inn.utelatt} utelatt (${fmt(inn.utelattDaa, 1)} daa)` : ''}.</p>` : ''}
+      <p class="hint">Inndelingen er et forslag. Juster grensene etter hvordan skiftene faktisk drives – f.eks. tegn skifter på nytt eller slå sammen.</p>
+    </details>`;
   }
 
   function detaljHtml(sk, S) {
@@ -154,8 +186,9 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
         <label>Nr <input data-sp-felt="nr" value="${esc(sk.nr)}"></label>
         <label>Navn <input data-sp-felt="navn" value="${esc(sk.navn)}" placeholder="F.eks. Nordre jorde"></label>
         <label>Areal (daa) <input type="number" step="0.1" data-sp-felt="areal" value="${sk.areal ?? ''}"></label>
-        <label>Arealtype <input value="${esc(AR5_JORDBRUK[sk.artype] || (sk.kilde === 'tegnet' ? 'Tegnet' : '–'))}" disabled></label>
+        <label>Arealtype <input value="${esc(AR5_JORDBRUK[sk.artype] || (sk.kilde === 'tegnet' ? 'Tegnet' : '–'))}${sk.kilde === 'auto' ? ' (auto)' : ''}" disabled></label>
       </div>
+      ${sk.inndeling?.grunn ? `<p class="sp-grunn"><b>Inndeling:</b> ${esc(sk.inndeling.grunn)}</p>` : ''}
       ${vann != null ? `<p class="hint">Avstand til vann (AR5): ca. ${fmt(vann)} m${vann < 50 ? ' – husk vegetasjonssone/avdriftsavstand ved sprøyting, og minst 6 m til vassdrag ved gjødsling av eng.' : ''}</p>` : ''}
       <h4 class="undertittel">Vekster</h4>
       <div class="sp-vekster">
@@ -376,6 +409,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     const k = e.target.closest('[data-sp]')?.dataset.sp; if (!k) return;
     const sk = finn(valgt);
     if (k === 'ar5') hentFraAr5();
+    if (k === 'auto') autoInndeling();
     if (k === 'tegn') startTegning();
     if (k === 'zoom-alle') zoomAlle();
     if (k === 'jordsmonn-alle') hentJordsmonnFor(p.skifter);

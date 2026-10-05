@@ -149,6 +149,16 @@ Skifteplan for jordbruksarealet på eiendommen, bygget rundt kravene i
   (forgrøde, planår og neste år), forventet avling, jordarbeiding, jordprøve (pH, P-AL, K-AL, K-HNO₃, mold) og notat.
   Jordsmonn (tekstur, drenering, organisk materiale, begrensning) og erosjonsrisiko hentes automatisk fra NIBIO (WMS
   `jordsmonn_harmonisert` og `jordsmonn_erosjonsrisiko`), og kan vises som kartlag.
+- **Automatisk skifteinndeling** når skogbruksplanen opprettes (eget steg i genereringen), og med «Ny automatisk inndeling» i fanen:
+  1. AR5-figurene (fulldyrka, overflatedyrka, innmarksbeite) er utgangspunktet – de er avgrenset av vei, vassdrag, skog og arealtype.
+  2. Arealtypene holdes adskilt.
+  3. Figurer over 20 daa deles der jordsmonnet skifter (NIBIOs jordsmonnkart, hentet som polygoner med egenskaper): sand/grus,
+     silt og lettleire, mellomleire/stiv leire og organisk jord, og god eller svak naturlig drenering – slik at én blandprøve er
+     representativ.
+  4. Deler under 10 daa (eller 15 % av figuren) slås sammen med naboen; flater under 2 daa og striper under 8 m slås sammen med nabo av
+     samme type eller utelates. Restbiter ryddes bort.
+  5. Nummerering nord → sør, vest → øst. Hvert skifte får begrunnelse for inndelingen og jordsmonn (dominerende figur, andel,
+     erosjonsrisiko). Store skifter får råd om antall delprøver (ca. 1 per 10–15 daa).
 - **Gjødselbehov** etter NIBIOs Gjødslingshåndbok: normer for korn og eng/beite/grønnfôr, korrigert for avling, moldinnhold, forgrøde,
   P-AL og K-AL/K-HNO₃. Oljevekster, belgvekster, potet og grønnsaker har veiledende anslag (merket i appen).
 - **Gjødslingsplan** (§ 26): mineral- og husdyrgjødsel per skifte med N/P/K, forslag som dekker resten av behovet (delt gjødsling på eng med

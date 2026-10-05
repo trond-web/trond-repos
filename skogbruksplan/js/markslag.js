@@ -49,7 +49,7 @@ async function hentTekst(hent, url, ms = 60000) {
     } finally { clearTimeout(t); }
   }
 }
-function parseKml(tekst) {
+export function parseKml(tekst) {
   const ut = [];
   const tall = (s) => s.trim().split(/\s+/).map((p) => p.split(',').slice(0, 2).map(Number));
   for (const [, pm] of tekst.matchAll(/<Placemark>([\s\S]*?)<\/Placemark>/g)) {

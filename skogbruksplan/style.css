@@ -745,3 +745,7 @@ progress { accent-color: var(--accent); height: 8px; }
 .sp-etikett { background: rgba(255,255,255,.85); border: 0; box-shadow: none; padding: 1px 5px; font: 600 11px var(--font-body); color: #222; border-radius: 6px; }
 .sp-etikett::before { display: none; }
 @media (max-width: 400px) { .sp-grad { grid-template-columns: 120px minmax(0, 1fr); } }
+
+.sp-grunn { font-size: 12.5px; background: var(--surface-2); border-radius: 10px; padding: 8px 10px; margin: 10px 0; }
+.sp-prinsipp { margin-top: 14px; }
+.sp-prinsipp ol.sp-regler { padding-left: 20px; }

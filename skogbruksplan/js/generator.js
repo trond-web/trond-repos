@@ -4,6 +4,7 @@
 // Geometrioperasjoner gjøres med Turf (sendes inn, slik at modulen også kan kjøres i Node).
 import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST, nyId } from './model.js';
 import { hentAr5, lagFigurer, MARKSLAG } from './markslag.js';
+import { tomSkifteplan, lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
 import { geoTilUtm, utmTilGeo, punktIGeometri } from './proj.js';
 
 const KARTVERKET = 'https://api.kartverket.no';
@@ -268,6 +269,20 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   const ar5Sum = {}; for (const f of ar5) ar5Sum[f.kategori] = (ar5Sum[f.kategori] || 0) + f.areal;
   logg('markslag', ar5Feil ? 'feil' : 'ok', ar5Feil ? `AR5 kunne ikke hentes (${ar5Feil}) – uproduktiv mark er ikke skilt ut` : `Markslag: ${Object.entries(ar5Sum).filter(([k]) => k !== 'produktiv').map(([k, v]) => `${MARKSLAG[k].kort} ${Math.round(v)} daa`).join(', ') || 'ingen uproduktiv mark'}`);
 
+  // 5b. Skifteinndeling av jordbruksarealet (AR5 + jordsmonn) – se skifteplan.js for prinsippene.
+  const markslag = lagFigurer(ar5, nyId);
+  let skifteplan = null;
+  if (markslag.some((f) => f.kategori === 'jordbruk')) {
+    logg('skifter', 'aktiv', 'Henter jordsmonn og deler jordbruksarealet i skifter …');
+    let jordsmonn = []; let jordFeil = null;
+    if (klipping) {
+      try { jordsmonn = await hentJordsmonnFlater(jordbruksBoks(markslag), { hent, logg: (t) => logg('skifter', 'aktiv', t) }); } catch (e) { jordFeil = e.message; }
+    }
+    const r = lagSkifteinndeling(markslag, { klipping, jordsmonn, iAar, nyId });
+    skifteplan = { ...tomSkifteplan(iAar, kommune.nr), skifter: r.skifter, inndeling: { ...r.logg, laget: new Date().toISOString().slice(0, 10), jordsmonn: jordsmonn.length, feil: jordFeil } };
+    logg('skifter', 'ok', `${r.skifter.length} skifter på ${Math.round(r.logg.areal)} daa jordbruksareal${r.logg.delt ? ` – ${r.logg.delt} AR5-figurer delt etter jordsmonn` : ''}${jordFeil ? ` (jordsmonn kunne ikke hentes: ${jordFeil})` : !klipping ? ' (uten jordsmonndeling)' : ''}`);
+  } else logg('skifter', 'ok', 'Ingen jordbruksareal på eiendommen');
+
   // 5. Sett sammen bestand
   logg('bygg', 'aktiv', 'Setter sammen bestand og sammenligner plan med SR16 …');
   const kandidater = [];
@@ -430,7 +445,8 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
       eier: '', takstAar: iAar, grense: eiendom.geometry,
     },
     bestand,
-    markslag: lagFigurer(ar5, nyId),
+    markslag,
+    skifteplan,
     metadata: {
       laget: new Date().toISOString(),
       eiendomDaa, skogDaa, antallFraPlan: plan.length, antallSr16: sr16Data.length, mis: mis.length,

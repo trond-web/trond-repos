@@ -1,7 +1,8 @@
 // Skifteplan for jordbruksarealet: skifter (fra AR5 eller tegnet), vekster per år, jordprøver, gjødselbehov etter
 // NIBIOs Gjødslingshåndbok, gjødslingsplan etter forskrift om lagring og bruk av gjødsel (2025), plantevernjournal
 // etter forskrift om plantevernmidler, og kontroll mot kravene. Ingen DOM.
-import { geoTilUtm, etikettPunkt } from './proj.js';
+import { geoTilUtm, etikettPunkt, arealM2 } from './proj.js';
+import { parseKml } from './markslag.js';
 
 export const KILDER = {
   gjodselforskrift: { navn: 'Forskrift om lagring og bruk av gjødsel mv. (2025)', url: 'https://lovdata.no/forskrift/2025-01-29-115' },
@@ -489,4 +490,251 @@ export function kartskisse(plan, aar, { bredde = 640, hoyde = 420 } = {}) {
   });
   const meter = 10 ** Math.floor(Math.log10((x1 - x0) / 4 || 100)); const lengde = meter * sk1;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${bredde} ${hoyde}" width="100%" style="max-width:${bredde}px;background:#fafafa;border:1px solid #ccc;border-radius:6px">${deler.join('')}<g transform="translate(${m},${hoyde - 6})"><line x1="0" y1="0" x2="${lengde.toFixed(1)}" y2="0" stroke="#111" stroke-width="2"/><text x="${(lengde + 6).toFixed(1)}" y="0" font-size="10" dominant-baseline="middle">${meter >= 1000 ? `${meter / 1000} km` : `${meter} m`}</text></g><text x="${bredde - m}" y="${m + 4}" text-anchor="end" font-size="12" font-weight="700">N ↑</text></svg>`;
+}
+
+// ---------- automatisk skifteinndeling ----------
+// Prinsipper (se README): 1) AR5-figurene er utgangspunktet – de er avgrenset av vei, vassdrag, skog og arealtype, som er
+// naturlige driftsgrenser. 2) Fulldyrka, overflatedyrka og innmarksbeite holdes adskilt. 3) Store figurer deles der
+// jordsmonnet (jordart og drenering) er klart ulikt, slik at hvert skifte er ensartet og én jordprøve er representativ.
+// 4) Deler under minDel daa og striper slås sammen med naboen; skifter under minSkifte daa slås sammen eller utelates.
+export const INNDELING = { minSkifte: 2, minBredde: 8, delFra: 20, minDel: 10, minAndel: 0.15 };
+
+const TEKSTUR_GRUPPE = { stivleire: 'stiv leire', mellomleire: 'mellomleire', lettleire: 'lettleire', silt: 'silt', sand: 'sand', organisk: 'organisk jord' };
+export function teksturGruppe(navn) {
+  const t = String(navn || '').toLowerCase();
+  if (!t) return null;
+  if (/torv|organisk|myr/.test(t)) return 'organisk';
+  for (const ord of t.split(/[\s,/]+/).filter((w) => w && !/ig$/.test(w))) {
+    if (/stiv.*leire|stivleire/.test(ord)) return 'stivleire';
+    if (/mellomleire/.test(ord)) return 'mellomleire';
+    if (/lettleire|leire/.test(ord)) return /lett/.test(ord) ? 'lettleire' : 'mellomleire';
+    if (/^silt/.test(ord)) return 'silt';
+    if (/sand$|^grus$/.test(ord)) return 'sand';
+  }
+  return 'annet';
+}
+export function dreneringGruppe(navn) {
+  const t = String(navn || '').toLowerCase();
+  if (!t) return null;
+  if (/^selvdrenert/.test(t)) return 'god';
+  if (/delvis/.test(t)) return 'moderat';
+  return 'darlig';
+}
+// Grove jordklasser for inndelingen – forskjeller som betyr noe for gjødsling, kalking, jordarbeiding og drenering:
+// sand/grus · silt og lettleire · mellomleire og stiv leire · organisk jord, og god (selvdrenert) eller svak drenering.
+const GROV = { sand: 'sand', annet: 'sand', silt: 'siltlett', lettleire: 'siltlett', mellomleire: 'leire', stivleire: 'leire', organisk: 'organisk' };
+const GROV_TEKST = { sand: 'sand/grus', siltlett: 'silt og lettleire', leire: 'mellomleire/stiv leire', organisk: 'organisk jord' };
+const DRENERING_TEKST = { god: 'selvdrenert', svak: 'delvis eller ikke selvdrenert' };
+export const jordKlasse = (f) => {
+  if (!f || (!f.tekstur && !f.drenering)) return null;
+  const t = GROV[teksturGruppe(f.tekstur)] || '?'; const d = dreneringGruppe(f.drenering);
+  return `${t}|${d === 'god' ? 'god' : d ? 'svak' : '?'}`;
+};
+export function jordKlasseTekst(k) {
+  if (!k) return 'ikke jordsmonnkartlagt';
+  const [t, d] = k.split('|');
+  return [GROV_TEKST[t], DRENERING_TEKST[d]].filter(Boolean).join(', ') || 'ukjent';
+}
+const jordTekst = (j) => [j?.tekstur?.replace(/,? lite grus/i, '').trim().toLowerCase(), j?.drenering?.toLowerCase()].filter(Boolean).join(', ');
+
+// Henter jordsmonnfigurer (geometri fra KML + egenskaper fra GetFeatureInfo) for et område [lon0, lat0, lon1, lat1].
+// Geometrien kommer i lon/lat.
+export async function hentJordsmonnFlater(bb, { hent = fetch, logg = () => {} } = {}) {
+  const les = async (u, ms = 60000) => {
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), ms);
+    try { const r = await hent(u, { signal: ctrl.signal }); if (!r.ok) throw new Error(`NIBIO jordsmonn svarte ${r.status}`); return await r.text(); } finally { clearTimeout(t); }
+  };
+  // Spørringene gjøres i UTM33 (EPSG:25833): med EPSG:4326 gir tjenesten av og til KML i bildepiksler.
+  const hj = [[bb[0], bb[1]], [bb[0], bb[3]], [bb[2], bb[1]], [bb[2], bb[3]]].map(([x, y]) => geoTilUtm(x, y, 33));
+  const ub = [Math.min(...hj.map((q) => q[0])), Math.min(...hj.map((q) => q[1])), Math.max(...hj.map((q) => q[0])), Math.max(...hj.map((q) => q[1]))].map((v) => Math.round(v));
+  const meter = ([x0, y0, x1, y1]) => [x1 - x0, y1 - y0];
+  const del4 = ([x0, y0, x1, y1]) => { const mx = (x0 + x1) / 2; const my = (y0 + y1) / 2; return [[x0, y0, mx, my], [mx, y0, x1, my], [x0, my, mx, y1], [mx, my, x1, y1]]; };
+  const flater = new Map(); const attr = new Map(); const ero = new Map();
+  const hentRute = async (b, dybde = 0) => {
+    const [wm, hm] = meter(b);
+    if ((wm > 5000 || hm > 5000) && dybde < 6) { for (const d of del4(b)) await hentRute(d, dybde + 1); return; }
+    const w = Math.max(200, Math.min(4000, Math.ceil(wm / 1.5))); const h = Math.max(200, Math.min(4000, Math.ceil(hm / 1.5)));
+    const kml = await les(`${JORDSMONN}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=Drenering&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&WIDTH=${w}&HEIGHT=${h}&FORMAT=kml`);
+    const ps = parseKml(kml);
+    if (ps.length >= 1000 && dybde < 6) { for (const d of del4(b)) await hentRute(d, dybde + 1); return; }
+    for (const p of ps) if (!flater.has(p.id)) flater.set(p.id, p.geometri);
+    if (!ps.length) return;
+    logg(`Jordsmonn: ${flater.size} figurer …`);
+    const gfi = (base, lag) => `${base}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo&LAYERS=${lag}&QUERY_LAYERS=${lag}&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&WIDTH=1001&HEIGHT=1001&X=500&Y=500&INFO_FORMAT=application/vnd.ogc.gml&FEATURE_COUNT=100000&RADIUS=720`;
+    const [js, er] = await Promise.allSettled([les(gfi(JORDSMONN, 'Tekstur,Drenering,Organisk,Begrensning')), les(gfi(EROSJON, 'Erosjonsrisiko_flateerosjon'))]);
+    if (js.status === 'fulfilled') {
+      for (const [lag, nokkel] of [['Tekstur', 'tekstur'], ['Drenering', 'drenering'], ['Organisk', 'organisk'], ['Begrensning', 'begrensning']]) {
+        for (const [, blokk] of js.value.matchAll(new RegExp(`<${lag}_feature>([\\s\\S]*?)</${lag}_feature>`, 'g'))) {
+          const id = felt(blokk, 'figurid'); if (!id) continue;
+          const a = attr.get(id) || {}; a[nokkel] = felt(blokk, 'klassenavn');
+          if (nokkel === 'tekstur') { a.helling = Number(felt(blokk, 'helling')) || null; a.kartlagt = Number(felt(blokk, 'kartleggingsar')) || null; }
+          attr.set(id, a);
+        }
+      }
+    }
+    if (er.status === 'fulfilled') {
+      for (const [, blokk] of er.value.matchAll(/<Erosjonsrisiko_flateerosjon_feature>([\s\S]*?)<\/Erosjonsrisiko_flateerosjon_feature>/g)) {
+        const id = felt(blokk, 'figurid') || felt(blokk, 'sl_sdeid'); const kl = felt(blokk, 'erosjonsrisiko');
+        if (id && kl != null) ero.set(id, { klasse: Number(kl), tekst: felt(blokk, 'erosjonsrisiko_t'), beskrivelse: felt(blokk, 'karakteristikk') });
+      }
+    }
+  };
+  await hentRute(ub);
+  return [...flater].map(([id, geometri]) => ({ id, geometri, ...(attr.get(id) || {}), erosjon: ero.get(id) || null }));
+}
+
+// ---- geometrihjelpere for inndelingen (klipping = polygon-clipping) ----
+const somGeom = (mp) => (!mp || !mp.length ? null : mp.length === 1 ? { type: 'Polygon', coordinates: mp[0] } : { type: 'MultiPolygon', coordinates: mp });
+const deler = (g) => (!g ? [] : g.type === 'Polygon' ? [g.coordinates] : g.coordinates);
+const daa = (g) => (g ? arealM2(g) / 1000 : 0);
+function omkretsM(g) {
+  let s = 0;
+  for (const r of ringer(g)) { const u = r.map(([x, y]) => geoTilUtm(x, y, 33)); for (let i = 0; i < u.length - 1; i++) s += Math.hypot(u[i + 1][0] - u[i][0], u[i + 1][1] - u[i][1]); }
+  return s;
+}
+export const middelbredde = (g) => { const p = omkretsM(g); return p ? (2 * arealM2(g)) / p : 0; };
+const boks = (g) => { let a = Infinity; let b = Infinity; let c = -Infinity; let d = -Infinity; for (const r of ringer(g)) for (const [x, y] of r) { if (x < a) a = x; if (x > c) c = x; if (y < b) b = y; if (y > d) d = y; } return [a, b, c, d]; };
+const naer = (p, q, e = 1e-6) => p[0] <= q[2] + e && q[0] <= p[2] + e && p[1] <= q[3] + e && q[1] <= p[3] + e;
+// To flater grenser mot hverandre når foreningen har færre deler enn de to til sammen.
+function grenser(klipping, a, b) {
+  if (!naer(boks(a), boks(b))) return false;
+  try { return klipping.union(a.coordinates, b.coordinates).length < deler(a).length + deler(b).length; } catch { return false; }
+}
+function forene(klipping, a, b) { try { return somGeom(klipping.union(a.coordinates, b.coordinates)) || a; } catch { return a; } }
+
+// Deler én AR5-figur etter jordsmonn. Gir [{ geometri, areal, klasse, dominant, andel }].
+function delEtterJordsmonn(felt, jord, klipping, o) {
+  const A = daa(felt);
+  const bb = boks(felt);
+  const biter = [];
+  for (const j of jord) {
+    if (!naer(bb, j.bb)) continue;
+    let s; try { s = klipping.intersection(felt.coordinates, j.geometri.coordinates); } catch { continue; }
+    for (const p of s || []) {
+      const g = { type: 'Polygon', coordinates: p }; const a = daa(g);
+      if (a > 0.001) biter.push({ geometri: g, areal: a, klasse: jordKlasse(j), fig: new Map([[j.id, a]]), andelPer: new Map([[jordKlasse(j), a]]) });
+    }
+  }
+  if (!biter.length) return [{ geometri: felt, areal: A, klasse: null, dominant: null, andel: 0 }];
+  // Ukartlagt rest av figuren
+  try {
+    const rest = klipping.difference(felt.coordinates, ...biter.map((b) => b.geometri.coordinates));
+    for (const p of rest || []) { const g = { type: 'Polygon', coordinates: p }; const a = daa(g); if (a > 0.001) biter.push({ geometri: g, areal: a, klasse: null, fig: new Map(), andelPer: new Map([[null, a]]) }); }
+  } catch { /* rest ignoreres */ }
+  // Slå sammen naboer med samme jordklasse først
+  const slaa = (i, j) => {
+    const a = biter[i]; const b = biter[j];
+    a.geometri = forene(klipping, a.geometri, b.geometri); a.areal += b.areal;
+    for (const [k, v] of b.fig) a.fig.set(k, (a.fig.get(k) || 0) + v);
+    for (const [k, v] of b.andelPer) a.andelPer.set(k, (a.andelPer.get(k) || 0) + v);
+    a.klasse = [...a.andelPer].filter(([k]) => k).sort((x, y) => y[1] - x[1])[0]?.[0] ?? null;
+    biter.splice(j, 1);
+  };
+  for (let endret = true; endret;) {
+    endret = false;
+    for (let i = 0; i < biter.length && !endret; i++) for (let j = i + 1; j < biter.length && !endret; j++) {
+      if (biter[i].klasse === biter[j].klasse && grenser(klipping, biter[i].geometri, biter[j].geometri)) { slaa(i, j); endret = true; }
+    }
+  }
+  // Små biter (under minDel daa eller minAndel av figuren) slås sammen med naboen den grenser til (størst nabo først).
+  const terskel = Math.max(o.minDel, o.minAndel * A);
+  for (let endret = true; endret && biter.length > 1;) {
+    endret = false;
+    biter.sort((x, y) => x.areal - y.areal);
+    const i = biter.findIndex((b) => b.areal < terskel);
+    if (i < 0) break;
+    const kandidater = biter.map((b, j) => ({ b, j })).filter(({ j }) => j !== i).sort((x, y) => y.b.areal - x.b.areal);
+    const nabo = kandidater.find(({ b }) => grenser(klipping, biter[i].geometri, b.geometri)) || kandidater[0];
+    const [stor, liten] = [nabo.j, i];
+    slaa(stor, liten);
+    endret = true;
+  }
+  return biter.map((b) => {
+    const dom = [...b.fig].sort((x, y) => y[1] - x[1])[0]?.[0] ?? null;
+    return { geometri: b.geometri, areal: b.areal, klasse: b.klasse, dominant: dom, andel: b.klasse ? (b.andelPer.get(b.klasse) || 0) / b.areal : 0 };
+  });
+}
+
+// Fjerner restbiter (smale striper og små deler) fra en geometri; beholder alltid den største delen.
+export function ryddGeometri(g, { minDaa = 0.3, minBredde = 4 } = {}) {
+  const ps = deler(g).map((p) => ({ p, g: { type: 'Polygon', coordinates: p } })).map((x) => ({ ...x, a: daa(x.g) }));
+  if (ps.length <= 1) return g;
+  const storst = ps.reduce((m, x) => (x.a > m.a ? x : m));
+  const behold = ps.filter((x) => x === storst || (x.a >= minDaa && middelbredde(x.g) >= minBredde));
+  return somGeom(behold.map((x) => x.p));
+}
+
+// Lager skifter fra AR5-jordbruksfigurer (markslagsfigurer med kategori «jordbruk»). Uten klipping (polygon-clipping)
+// blir hver AR5-figur ett skifte. jordsmonn = resultat fra hentJordsmonnFlater (kan være tom).
+export function lagSkifteinndeling(figurer, { klipping = null, jordsmonn = [], iAar, nyId, valg = {} } = {}) {
+  const o = { ...INNDELING, ...valg };
+  const jord = jordsmonn.filter((j) => j.geometri).map((j) => ({ ...j, bb: boks(j.geometri) }));
+  const jordPerId = new Map(jord.map((j) => [j.id, j]));
+  let fig = figurer.filter((f) => f.kategori === 'jordbruk' && f.geometri)
+    .map((f) => ({ id: f.id, geometri: f.geometri, areal: f.areal || daa(f.geometri), artype: ar5Jordbrukskode(f.ar5?.artype), merknad: [] }));
+  const logg = { ar5: fig.length, sammenslaatt: 0, utelatt: 0, utelattDaa: 0, delt: 0 };
+  // 1. Små figurer og smale striper: slå sammen med nabo av samme arealtype, ellers utelat.
+  const liten = (f) => f.areal < o.minSkifte || middelbredde(f.geometri) < o.minBredde;
+  fig.sort((a, b) => a.areal - b.areal);
+  const behold = [];
+  for (const f of fig) {
+    if (!liten(f)) { behold.push(f); continue; }
+    const nabo = klipping ? fig.filter((x) => x !== f && !liten(x) && x.artype === f.artype).sort((a, b) => b.areal - a.areal).find((x) => grenser(klipping, x.geometri, f.geometri)) : null;
+    if (nabo) { nabo.geometri = forene(klipping, nabo.geometri, f.geometri); nabo.areal += f.areal; nabo.merknad.push('Små AR5-flater eller striper er slått sammen med skiftet.'); logg.sammenslaatt++; } else { logg.utelatt++; logg.utelattDaa += f.areal; }
+  }
+  fig = behold;
+  // 2. Del store figurer etter jordsmonn.
+  const ut = [];
+  for (const f of fig) {
+    const typeNavn = (AR5_JORDBRUK[f.artype] || 'jordbruksareal').toLowerCase();
+    const biter = klipping && jord.length && f.areal >= o.delFra ? delEtterJordsmonn(f.geometri, jord, klipping, o) : null;
+    let resultat = biter;
+    if (!resultat) {
+      // Dominerende jordsmonn for hele figuren (uten deling)
+      let dom = null; let best = 0; const per = new Map();
+      if (klipping) for (const j of jord) {
+        if (!naer(boks(f.geometri), j.bb)) continue;
+        let a = 0; try { a = daa(somGeom(klipping.intersection(f.geometri.coordinates, j.geometri.coordinates))); } catch { /* */ }
+        if (a > best) { best = a; dom = j.id; }
+        if (a) per.set(jordKlasse(j), (per.get(jordKlasse(j)) || 0) + a);
+      }
+      const kl = [...per].sort((a, b) => b[1] - a[1])[0];
+      resultat = [{ geometri: f.geometri, areal: f.areal, klasse: kl?.[0] ?? null, dominant: dom, andel: kl ? kl[1] / f.areal : 0 }];
+    }
+    if (resultat.length > 1) logg.delt++;
+    for (const b of resultat) {
+      const j = jordPerId.get(b.dominant);
+      const andel = Math.round((b.andel || 0) * 100);
+      const jt = b.klasse ? `${andel >= 75 ? 'ensartet' : 'mest'} ${jordKlasseTekst(b.klasse)}${andel < 97 ? ` (${andel} %)` : ''}${j ? ` – dominerende: ${jordTekst(j)}` : ''}` : 'ikke jordsmonnkartlagt';
+      const grunn = resultat.length > 1
+        ? `Del av ${typeNavn} på ${fmtDaa(f.areal)} daa, delt der jordsmonnet skifter. Jordsmonn: ${jt}.`
+        : `Avgrenset av AR5-figur (${typeNavn}).${jord.length ? ` Jordsmonn: ${jt}.` : ''}`;
+      const geometri = ryddGeometri(b.geometri);
+      ut.push({
+        geometri, areal: Math.round(daa(geometri) * 10) / 10, artype: f.artype, ar5Id: f.id,
+        jordsmonn: j ? { tekstur: j.tekstur || null, drenering: j.drenering || null, organisk: j.organisk || null, begrensning: j.begrensning || null, erosjon: j.erosjon || null, helling: j.helling ?? null, kartlagt: j.kartlagt ?? null, andel: Math.round(b.andel * 100), hentet: new Date().toISOString().slice(0, 10) } : null,
+        inndeling: { grunn: [grunn, ...new Set(f.merknad)].join(' '), klasse: b.klasse, delt: resultat.length > 1 },
+      });
+    }
+  }
+  // 3. Nummerering nord → sør, vest → øst (lesefølge i kartet).
+  const pkt = (g) => etikettPunkt(g) || [0, 0];
+  ut.sort((a, b) => { const pa = pkt(a.geometri); const pb = pkt(b.geometri); return Math.abs(pa[1] - pb[1]) > 0.0015 ? pb[1] - pa[1] : pa[0] - pb[0]; });
+  const skifter = ut.map((x, i) => {
+    const s = nyttSkifte({ nr: i + 1, geometri: x.geometri, areal: x.areal, artype: x.artype, kilde: 'auto', nyId });
+    s.ar5Id = x.ar5Id; s.jordsmonn = x.jordsmonn; s.inndeling = x.inndeling;
+    if (x.artype === 23) s.vekster[iAar] = { kultur: 'beite', avling: '', jordarbeiding: 'eng' };
+    if (x.areal > 30) s.notat = `Stort skifte: ta ${Math.ceil(x.areal / 15)} delprøver (ca. 1 per 10–15 daa) i blandprøven.`;
+    return s;
+  });
+  return { skifter, logg: { ...logg, skifter: skifter.length, areal: skifter.reduce((s, x) => s + x.areal, 0) } };
+}
+const fmtDaa = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
+
+// Område (lon/lat) som dekker jordbruksfigurene, for henting av jordsmonn.
+export function jordbruksBoks(figurer, margin = 0.0005) {
+  const f = figurer.filter((x) => x.kategori === 'jordbruk' && x.geometri);
+  if (!f.length) return null;
+  const b = f.map((x) => boks(x.geometri));
+  return [Math.min(...b.map((x) => x[0])) - margin, Math.min(...b.map((x) => x[1])) - margin, Math.max(...b.map((x) => x[2])) + margin, Math.max(...b.map((x) => x[3])) + margin];
 }
