@@ -5,6 +5,7 @@ import {
   laavesteHogstalder, beregnetHogstklasse, rotnettoPerM3, tiltakKostnad, framskriv, sammendrag,
 } from './model.js';
 import { etikettPunkt } from './proj.js';
+import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling } from './markslag.js';
 import { KRAVPUNKTER, TEMA, OBJEKTTYPER, KLARERING, HOGSTFORMER, FORYNGELSE, arealDaa, klareringStatus } from './pefc.js';
 
 export const RAPPORTER = {
@@ -33,11 +34,12 @@ function hode(S, tittel, iAar) {
 const fot = (tekst) => `<footer class="r-fot">${tekst} Volum, tilvekst og verdier er beregnet med SkogIQ.ai sine modeller og innstilte priser, og er estimater. Laget med SkogIQ.ai.</footer>`;
 
 // Kart over bestandene som SVG (skarpt på papir). farge(b) gir fyllfarge.
-export function svgKart(S, farge, { bredde = 720, hoyde = 460, etiketter = true, ekstra = [] } = {}) {
+export function svgKart(S, farge, { bredde = 720, hoyde = 460, etiketter = true, ekstra = [], markslag = true } = {}) {
   const med = S.bestand.filter((b) => b.geometri && /Polygon/.test(b.geometri.type));
   const grense = S.eiendom?.grense;
   const ringer = (g) => (g.type === 'Polygon' ? g.coordinates : g.coordinates.flat());
-  const alle = [...med.flatMap((b) => ringer(b.geometri)), ...(grense ? ringer(grense) : [])].flat();
+  const ms = markslag ? (S.markslag || []).filter((f) => f.geometri) : [];
+  const alle = [...med.flatMap((b) => ringer(b.geometri)), ...ms.flatMap((f) => ringer(f.geometri)), ...(grense ? ringer(grense) : [])].flat();
   if (!alle.length) return '';
   let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
   for (const [x, y] of alle) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
@@ -49,7 +51,8 @@ export function svgKart(S, farge, { bredde = 720, hoyde = 460, etiketter = true,
   const sti = (g) => ringer(g).map((r) => `M${r.map(p).join('L')}Z`).join('');
   const meter = (kx * 111320) / sk; // meter per piksel ≈ 1/sk grader → meter
   const malestokk = [100, 200, 500, 1000, 2000, 5000].find((m) => m / meter > 60) || 5000;
-  let ut = `<svg class="r-kart" viewBox="0 0 ${bredde} ${hoyde}" xmlns="http://www.w3.org/2000/svg">`;
+  let ut = `<svg class="r-kart" viewBox="0 0 ${bredde} ${hoyde}" xmlns="http://www.w3.org/2000/svg">${ms.length ? monsterDefs('rk') : ''}`;
+  for (const f of ms) ut += `<path d="${sti(f.geometri)}" fill="${symbolFyll(f.kategori, 'rk')}" stroke="#6b6358" stroke-width="0.5" fill-rule="evenodd"/>`;
   for (const b of med) ut += `<path d="${sti(b.geometri)}" fill="${farge(b) || '#eee'}" stroke="#1b1c19" stroke-width="0.6" fill-rule="evenodd"/>`;
   if (grense) ut += `<path d="${sti(grense)}" fill="none" stroke="#d03b3b" stroke-width="1.6" stroke-dasharray="6 4"/>`;
   // Ekstra objekter (f.eks. miljøobjekter): flater, linjer og punkter i egen farge.
@@ -93,6 +96,27 @@ function svgSoyler(kategorier, serier, { hoyde = 200, bredde = 720, enhet = '' }
 }
 const tegnforklaring = (rader) => `<div class="r-tegn">${rader.map(([f, t]) => `<span><i style="background:${f}"></i>${esc(t)}</span>`).join('')}</div>`;
 
+// ---------- markslag ----------
+const msForklaring = (S) => { const kat = [...new Set((S.markslag || []).map((f) => f.kategori))]; return kat.length ? `<div class="r-tegn">${Object.keys(MARKSLAG).filter((k) => kat.includes(k)).map((k) => `<span>${symbolRute(k, 'rl', 12)} ${esc(MARKSLAG[k].kort)}</span>`).join('')}</div>` : ''; };
+function arealfordelingHtml(S) {
+  const a = arealfordeling(S);
+  if (!(S.markslag || []).length) return '<p class="r-liten">Markslag (AR5) er ikke hentet for planen – produktivt areal kan inneholde uproduktiv mark.</p>';
+  return `<h2>Arealfordeling (markslag)</h2><table><thead><tr><th style="width:24px"></th><th>Markslag</th><th class="t">Figurer</th><th class="t">Areal daa</th><th class="t">%</th></tr></thead><tbody>
+    ${Object.entries(a.rader).filter(([, r]) => r.areal > 0).map(([k, r]) => `<tr><td>${k === 'produktiv' ? `<span style="display:inline-block;width:12px;height:12px;border:1px solid #555;background:${MARKSLAG.produktiv.farge}"></span>` : symbolRute(k, 'ra', 12)}</td><td>${esc(MARKSLAG[k].navn)}</td><td class="t">${r.antall}</td><td class="t">${tall(r.areal, 1)}</td><td class="t">${tall(a.total ? (r.areal / a.total) * 100 : 0, 1)}</td></tr>`).join('')}
+    ${a.ukjent > 0.5 ? `<tr><td></td><td>Ikke klassifisert</td><td></td><td class="t">${tall(a.ukjent, 1)}</td><td class="t">${tall((a.ukjent / a.total) * 100, 1)}</td></tr>` : ''}</tbody>
+    <tfoot><tr><td></td><td>Sum eiendom</td><td></td><td class="t">${tall(a.total, 1)}</td><td class="t">100</td></tr></tfoot></table>
+    <p class="r-liten">Produktiv skog er summen av bestandene. Uproduktiv mark er hentet fra AR5 (NIBIO) og er trukket ut av bestandene; her beregnes ikke volum eller tilvekst. Uproduktiv skog: ${tall(a.uproduktivSkog, 1)} daa (impediment, myr og åpen fastmark).</p>`;
+}
+function uproduktivHtml(S) {
+  const fig = S.markslag || [];
+  if (!fig.length) return '';
+  const kat = Object.keys(MARKSLAG).filter((k) => fig.some((f) => f.kategori === k));
+  return `<h2>Uproduktive arealer og annen markslag (AR5)</h2>
+    <table class="r-bestand"><thead><tr><th style="width:20px"></th><th>Figur</th><th>Markslag</th><th class="t">Areal daa</th><th>Treslag (AR5)</th><th>Grunnforhold</th><th>Skogbonitet</th><th>Kartlagt</th></tr></thead><tbody>
+    ${kat.map((k) => { const l = fig.filter((f) => f.kategori === k); return l.map((f) => `<tr><td>${symbolRute(k, "rb", 11)}</td><td><b>${esc(f.nr)}</b></td><td>${esc(MARKSLAG[k].navn)}</td><td class="t">${tall(f.areal, 1)}</td><td>${esc(f.ar5?.treslag || '')}</td><td>${esc(f.ar5?.grunnforhold || '')}</td><td>${esc(f.ar5?.bonitet || '')}</td><td>${esc(f.ar5?.datafangst || '')}</td></tr>`).join('') + `<tr class="r-sum"><td></td><td colspan="2">Sum ${esc(MARKSLAG[k].kort.toLowerCase())} (${l.length})</td><td class="t">${tall(l.reduce((s, f) => s + f.areal, 0), 1)}</td><td colspan="4"></td></tr>`; }).join('')}</tbody>
+    <tfoot><tr><td></td><td colspan="2">Sum uproduktivt og annet areal</td><td class="t">${tall(fig.reduce((s, f) => s + f.areal, 0), 1)}</td><td colspan="4"></td></tr></tfoot></table>`;
+}
+
 // ---------- 1. Hovedtall ----------
 function hovedtallData(S, iAar) {
   const inn = S.innstillinger;
@@ -132,9 +156,11 @@ function hovedtallHtml(S, { iAar, verdi = null }) {
       ${kpi(`${tall(d.middelalder)} år`, 'arealveid middelalder')}
       ${kpi(`${tall(s.co2)} t`, 'CO₂ bundet per år')}
     </section>
-    <h2>Bestandskart – hogstklasser</h2>
+    ${arealfordelingHtml(S)}
+    <h2>Bestandskart – hogstklasser og markslag</h2>
     ${svgKart(S, (b) => HK_FARGER[hkFor(b, inn)] || '#eee')}
     ${tegnforklaring(HOGSTKLASSER.map((h) => [HK_FARGER[h], HK_NAVN[h]]))}
+    ${msForklaring(S)}
     <h2>Areal per hogstklasse og treslag (daa)</h2>${hkTabell('areal', 1)}
     <h2>Volum per hogstklasse og treslag (m³)</h2>${hkTabell('volum', 0)}
     ${svgSoyler(HOGSTKLASSER.map((h) => ({ navn: `HK ${HK_ROMERTALL[h]}`, verdier: perHk[h].volum })), ts.map((k) => ({ key: k, navn: TRESLAG[k], farge: TS_FARGER[k] })), { enhet: 'm³' })}
@@ -166,6 +192,7 @@ function hovedtallCsv(S, { iAar }) {
   const r = [['Hovedtall', S.eiendom?.navn || ''], [], ['Produktivt areal (daa)', d.s.areal], ['Stående volum (m3)', d.s.volum], ['Tilvekst (m3/år)', d.s.tilvekst], ['Middelalder (år)', d.middelalder], ['CO2 (t/år)', d.s.co2], [],
     ['Hogstklasse', ...ts.map((k) => `Areal ${TRESLAG[k]}`), 'Areal sum', ...ts.map((k) => `Volum ${TRESLAG[k]}`), 'Volum sum', 'Tilvekst m3/år']];
   for (const h of HOGSTKLASSER) { const x = d.perHk[h]; r.push([HK_NAVN[h], ...ts.map((k) => x.areal[k]), ts.reduce((s, k) => s + x.areal[k], 0), ...ts.map((k) => x.volum[k]), ts.reduce((s, k) => s + x.volum[k], 0), x.tilvekst]); }
+  if ((S.markslag || []).length) { const a = arealfordeling(S); r.push([], ['Markslag', 'Figurer', 'Areal daa']); for (const [k, x] of Object.entries(a.rader)) if (x.areal > 0) r.push([MARKSLAG[k].navn, x.antall, x.areal]); r.push(['Sum eiendom', '', a.total]); }
   r.push([], ['Bonitet', ...ts.map((k) => TRESLAG[k])]);
   for (const bo of BONITETER) r.push([bo, ...ts.map((k) => d.perBon[bo][k])]);
   return r;
@@ -189,12 +216,14 @@ function bestandslisteHtml(S, { iAar }) {
     <table class="r-bestand"><thead><tr><th>Teig</th><th>Bestand</th><th class="t">Areal daa</th><th>HK</th><th>Treslag</th><th class="t">Bon.</th><th class="t">Alder</th><th class="t">Høyde m</th><th class="t">Trær/daa</th><th class="t">Volum m³</th><th class="t">Tilv. m³/år</th><th class="t">m³/daa</th><th>Tiltak</th><th>Merknad</th></tr></thead>
     <tbody>${teiger.map((t) => { const liste = rader.filter((r) => r.teig === t); return liste.map((r) => `<tr${r.miljo ? ' class="r-miljo"' : ''}><td>${esc(r.teig)}</td><td><b>${esc(r.nr)}</b></td><td class="t">${tall(r.areal, 1)}</td><td>${HK_ROMERTALL[r.hk] || ''}</td><td>${esc(TRESLAG[r.treslag] || '')}</td><td class="t">${r.bonitet ?? ''}</td><td class="t">${r.alder}</td><td class="t">${r.hoyde ? tall(r.hoyde, 1) : ''}</td><td class="t">${r.treantall ?? ''}</td><td class="t">${tall(r.volum)}</td><td class="t">${tall(r.tilvekst, 1)}</td><td class="t">${tall(r.volumDaa, 1)}</td><td>${r.tiltak.map((x) => `${esc(TILTAKSTYPER[x.type]?.navn || x.type)} ${x.aar}`).join('<br>')}</td><td class="r-merk">${r.miljo ? '<b>Miljøfigur.</b> ' : ''}${esc(r.merknad)}</td></tr>`).join('') + (teiger.length > 1 ? sumRad(liste, `${t === 'SR16' ? 'Sum flater fra SR16 uten tidligere bestandsnummer' : `Sum teig ${esc(t)}`} (${liste.length} bestand)`) : ''); }).join('')}</tbody>
     <tfoot>${sumRad(rader, `Sum eiendom (${rader.length} bestand)`)}</tfoot></table>
+    ${uproduktivHtml(S)}
     <p class="r-liten">HK = hogstklasse (I skogfornyelse, II ungskog, III yngre produksjonsskog, IV eldre produksjonsskog, V hogstmoden). Bonitet er H40 (overhøyde ved 40 år). Alder og volum er framskrevet til ${iAar}. Grå rader er miljøfigurer.</p>
     ${fot('')}`;
 }
 function bestandslisteCsv(S, { iAar }) {
   return [['Teig', 'Bestand', 'Areal daa', 'Hogstklasse', 'Treslag', 'Bonitet', 'Alder', 'Middelhøyde m', 'Treantall per daa', 'Volum m3/daa', 'Volum m3', 'Tilvekst m3/år', 'Tilvekst %', 'Miljøfigur', 'Planlagte tiltak', 'Merknad'],
-    ...bestandRader(S, iAar).map((r) => [r.teig, r.nr, r.areal, r.hk, TRESLAG[r.treslag] || '', r.bonitet, r.alder, r.hoyde, r.treantall, r.volumDaa, r.volum, r.tilvekst, r.tilvekstPst, r.miljo ? 'Ja' : '', r.tiltak.map((x) => `${TILTAKSTYPER[x.type]?.navn} ${x.aar}`).join(', '), r.merknad])];
+    ...bestandRader(S, iAar).map((r) => [r.teig, r.nr, r.areal, r.hk, TRESLAG[r.treslag] || '', r.bonitet, r.alder, r.hoyde, r.treantall, r.volumDaa, r.volum, r.tilvekst, r.tilvekstPst, r.miljo ? 'Ja' : '', r.tiltak.map((x) => `${TILTAKSTYPER[x.type]?.navn} ${x.aar}`).join(', '), r.merknad]),
+    ...((S.markslag || []).length ? [[], ['Uproduktive arealer (AR5)'], ['Figur', 'Markslag', 'Areal daa', 'Treslag', 'Grunnforhold', 'Skogbonitet', 'Kartlagt'], ...S.markslag.map((f) => [f.nr, MARKSLAG[f.kategori].navn, f.areal, f.ar5?.treslag, f.ar5?.grunnforhold, f.ar5?.bonitet, f.ar5?.datafangst])] : [])];
 }
 
 // ---------- 3. Hogstprognose ----------

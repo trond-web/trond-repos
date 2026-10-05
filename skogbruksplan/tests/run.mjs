@@ -17,6 +17,7 @@ import { lagKontekst } from '../js/ai-kontekst.js';
 import { markdownTilHtml } from '../js/assistent.js';
 import { brannnivaa, retningslinjerFor, risikoPerBestand, forebyggendeTiltak, nySkade, beregnSkade, forsikringsvurdering, oppgaverFor, brannkostnader, skademeldingTekst, naboer, iBrannsesong } from '../js/skade.js';
 import { RAPPORTER, lagRapport, lagRapportCsv, hogstprognose } from '../js/rapporter.js';
+import { klassifiser as klassifiserMarkslag, lagFigurer, arealfordeling } from '../js/markslag.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
 
 let ok = 0;
@@ -529,6 +530,28 @@ test('Rapporter: hovedtall, bestandsliste, hogstprognose og PEFC', () => {
   const csvTekst = lagRapportCsv('bestandsliste', S, { iAar: 2026 });
   assert.equal(csvTekst.split('\n').length, S.bestand.length + 1);
   assert.ok(csvTekst.startsWith('\ufeffTeig;Bestand;Areal daa'));
+});
+
+test('Markslag: klassifisering av AR5, figurer og arealfordeling', () => {
+  assert.equal(klassifiserMarkslag({ artype: '30', arskogbon: '13' }), 'produktiv');
+  assert.equal(klassifiserMarkslag({ artype: '30', arskogbon: '11' }), 'impediment');
+  assert.equal(klassifiserMarkslag({ artype: '60', arskogbon: '11' }), 'myr');
+  assert.equal(klassifiserMarkslag({ artype: '60', arskogbon: '12' }), 'produktiv', 'skog på myr med bonitet er produktiv');
+  assert.equal(klassifiserMarkslag({ artype: '50' }), 'apen');
+  assert.equal(klassifiserMarkslag({ artype: '22' }), 'jordbruk');
+  assert.equal(klassifiserMarkslag({ artype: '81' }), 'vann');
+  const kv = { type: 'Polygon', coordinates: [[[11, 60], [11.001, 60], [11.001, 60.001], [11, 60]]] };
+  const fig = lagFigurer([{ kategori: 'produktiv', areal: 50, geometri: kv }, { kategori: 'myr', areal: 3, geometri: kv }, { kategori: 'impediment', areal: 9, geometri: kv }, { kategori: 'impediment', areal: 12, geometri: kv }]);
+  assert.deepEqual(fig.map((f) => [f.nr, f.kategori, f.areal]), [['U1', 'impediment', 12], ['U2', 'impediment', 9], ['U3', 'myr', 3]]);
+  const d = lagDemo(2026);
+  const S = { ...d, innstillinger: STANDARD_INNSTILLINGER, markslag: fig, metadata: { eiendomDaa: 900 } };
+  const a = arealfordeling(S);
+  assert.equal(a.rader.impediment.areal, 21); assert.equal(a.rader.myr.antall, 1);
+  assert.equal(a.uproduktivSkog, 24); assert.equal(a.total, 900);
+  const html = lagRapport('hovedtall', S, { iAar: 2026 });
+  assert.ok(html.includes('Arealfordeling (markslag)') && html.includes('Uproduktiv skog (impediment)'));
+  const liste = lagRapport('bestandsliste', S, { iAar: 2026 });
+  assert.ok(liste.includes('Uproduktive arealer') && liste.includes('U3'));
 });
 
 await Promise.all(venter);

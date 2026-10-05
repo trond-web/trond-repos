@@ -18,6 +18,7 @@ import { delFlate, nyttNr } from './del.js';
 import { initAssistent } from './assistent.js';
 import { initSkogbrand } from './skogbrand-ui.js';
 import { RAPPORTER, lagRapport, lagRapportCsv } from './rapporter.js';
+import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling, hentAr5, lagFigurer, klippTil, trekkUtAvBestand } from './markslag.js';
 import { skadeOppsummering, RISIKONIVAA } from './skade.js';
 import { initVerdi, utenProduksjon } from './verdi-ui.js';
 import { hentDatagrunnlag } from './datagrunnlag.js';
@@ -84,7 +85,7 @@ function filnavn(ending) {
 
 // ---------------------------------------------------------------- kart
 let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks. veier)
-let kart; let bestandLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
+let kart; let bestandLag; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
 let etikettLag; let flyfotoAktiv = false;
@@ -111,10 +112,13 @@ function initKart() {
     'AR5 Arealtype (NIBIO)': wms('https://wms.nibio.no/cgi-bin/ar5', 'Arealtype', 'AR5'),
   };
   graa.addTo(kart);
+  markslagLag = L.featureGroup().addTo(kart);
   bestandLag = L.featureGroup().addTo(kart);
+  // SVG-mønstre for markslagssymbolene (myr, impediment, …) – brukes av kartet via fill="url(#ms-…)".
+  document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms')}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto }, { ...overlays, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto }, { ...overlays, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
 
   kart.on('click', (e) => {
@@ -124,7 +128,7 @@ function initKart() {
     settValgtPunkt(e.latlng);
   });
   kart.on('zoomend', oppdaterEtiketter);
-  kart.on('overlayadd overlayremove', oppdaterEtiketter);
+  kart.on('overlayadd overlayremove', () => { oppdaterEtiketter(); tegnLegend(); });
   // På flyfoto tegnes bestandene som i skogbruksplankart: gule grenser og hvit tekst.
   kart.on('baselayerchange', (e) => {
     flyfotoAktiv = e.layer === flyfoto;
@@ -189,6 +193,8 @@ function tegnLegend() {
   else if (modus === 'terreng') html = '<b>Avstand til bilvei</b>' + [0, 250, 500, 750, 1000].map((v) => rad(rampe(v, 0, 1000), v === 1000 ? '1000 m +' : `${v} m`)).join('') + rad('transparent;border:1px solid #999', 'Ingen veier registrert');
   else if (/risiko$/.test(modus)) html = `<b>${$('#fargeEtter').selectedOptions[0].textContent}</b>` + [...RISIKONIVAA].reverse().map((n) => rad(n.farge, n.navn)).join('') + '<div class="hint" style="font-size:11px">Se Skogbrand → Forebygging</div>';
   else if (modus === 'tiltak') html = '<b>Første planlagte tiltak</b>' + rad(TILTAK_FARGER.hogst, 'Hogst') + rad(TILTAK_FARGER.kultur, 'Skogkultur') + rad(TILTAK_FARGER.annet, 'Annet') + rad('transparent;border:1px solid #999', 'Ingen');
+  const kat = [...new Set((S.markslag || []).map((f) => f.kategori))];
+  if (kat.length && kart.hasLayer(markslagLag)) html += `<b style="display:block;margin-top:6px">Uproduktiv mark</b>${Object.keys(MARKSLAG).filter((k) => kat.includes(k)).map((k) => `<div>${symbolRute(k)} ${esc(MARKSLAG[k].kort)}</div>`).join('')}`;
   $('#kartLegend').innerHTML = `<button type="button" class="legend-knapp" aria-expanded="${!legendLukket}">Tegnforklaring ${legendLukket ? '▸' : '▾'}</button><div class="legend-innhold" ${legendLukket ? 'hidden' : ''}>${html}</div>`;
 }
 
@@ -202,7 +208,19 @@ function stilFor(b) {
 }
 
 let grenseLag = null;
+function tegnMarkslag() {
+  markslagLag.clearLayers();
+  for (const f of S.markslag || []) {
+    const m = MARKSLAG[f.kategori]; if (!m || !f.geometri) continue;
+    const l = L.geoJSON(f.geometri, { style: { color: '#5b5346', weight: 0.8, opacity: 0.8, fillColor: symbolFyll(f.kategori), fillOpacity: 0.95 } });
+    l.bindTooltip(`<b>${esc(f.nr)} ${esc(m.navn)}</b><br>${fmt(f.areal, 1)} daa${f.ar5?.treslag && f.ar5.treslag !== 'Ikke tresatt' ? ` · ${esc(f.ar5.treslag.toLowerCase())}` : ''}${f.ar5?.grunnforhold ? ` · ${esc(f.ar5.grunnforhold.toLowerCase())}` : ''}`, { sticky: true });
+    l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (deling) { leggTilDelepunkt(e.latlng); return; } if (tegning) leggTilTegnepunkt(e.latlng); });
+    l.addTo(markslagLag);
+  }
+}
+
 function tegnBestandKart(zoom = false) {
+  tegnMarkslag();
   bestandLag.clearLayers(); lagPerBestand.clear(); etikettLag.clearLayers(); etikettPerBestand.clear();
   terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null;
   if (grenseLag) { grenseLag.remove(); grenseLag = null; }
@@ -426,8 +444,52 @@ function utforHandling(id) {
   else if (type === 'farge') { $('#fargeEtter').value = verdi; oppdaterStiler(); if (erMobil()) settArk('lav'); }
 }
 
+function tegnArealfordeling() {
+  const el = $('#arealfordeling'); if (!el) return;
+  if (!S.bestand.length) { el.closest('.kort').hidden = true; return; }
+  el.closest('.kort').hidden = false;
+  const a = arealfordeling(S);
+  const har = (S.markslag || []).length;
+  const rad = (k, r) => `<tr><td>${k === 'produktiv' ? `<span class="ms-rute" style="background:${MARKSLAG.produktiv.farge}"></span>` : symbolRute(k)}</td><td>${esc(MARKSLAG[k].navn)}</td><td class="tall">${r.antall}</td><td class="tall">${fmt(r.areal, 1)}</td><td class="tall">${fmt(a.total ? (r.areal / a.total) * 100 : 0, 1)}</td></tr>`;
+  el.innerHTML = `${har ? `<div class="tabell-wrap"><table class="tabell ms-tabell"><thead><tr><th></th><th>Markslag</th><th class="tall">Figurer</th><th class="tall">Daa</th><th class="tall">%</th></tr></thead><tbody>
+    ${Object.entries(a.rader).filter(([, r]) => r.areal > 0).map(([k, r]) => rad(k, r)).join('')}
+    ${a.ukjent > 0.5 ? `<tr><td></td><td class="hint">Ikke klassifisert (avvik mellom AR5 og eiendomsgrensen)</td><td></td><td class="tall">${fmt(a.ukjent, 1)}</td><td class="tall">${fmt((a.ukjent / a.total) * 100, 1)}</td></tr>` : ''}</tbody>
+    <tfoot><tr><td></td><td>Sum eiendom</td><td></td><td class="tall">${fmt(a.total, 1)}</td><td class="tall">100</td></tr></tfoot></table></div>` : '<p class="hint">Markslag er ikke hentet for denne planen. Uproduktiv mark (impediment, myr, åpen fastmark) kan da ligge inne i bestandene.</p>'}
+    <div class="knapperad"><button type="button" class="knapp" id="hentMarkslag">${har ? 'Oppdater markslag (AR5)' : 'Hent markslag fra AR5'}</button>${har ? '<button type="button" class="knapp" id="trekkUtMarkslag">Trekk uproduktiv mark ut av bestandene</button>' : ''}</div>`;
+  $('#hentMarkslag').onclick = hentMarkslagForPlan;
+  if ($('#trekkUtMarkslag')) $('#trekkUtMarkslag').onclick = trekkUtMarkslag;
+}
+
+async function hentMarkslagForPlan() {
+  const grense = S.eiendom.grense || (() => { const f = S.bestand.filter((b) => b.geometri).flatMap((b) => (b.geometri.type === 'Polygon' ? [b.geometri.coordinates] : b.geometri.coordinates)); return f.length ? { type: 'MultiPolygon', coordinates: f } : null; })();
+  if (!grense) { melding('Planen mangler kart.'); return; }
+  const knapp = $('#hentMarkslag'); knapp.disabled = true;
+  try {
+    const klipping = await lastKlipping();
+    if (!klipping) throw new Error('Geometribiblioteket kunne ikke lastes');
+    const flater = await hentAr5(grense, { klipp: klippTil(grense, klipping), logg: (t) => { knapp.textContent = t; } });
+    S.markslag = lagFigurer(flater, nyId);
+    const sum = {}; for (const f of flater) sum[f.kategori] = (sum[f.kategori] || 0) + f.areal;
+    S.metadata = { ...S.metadata, ar5: Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, Math.round(v * 10) / 10])) };
+    S.datakilder = { ...S.datakilder, ar5: { id: 'ar5', navn: 'Markslag AR5', eier: 'NIBIO', hentet: new Date().toISOString(), antall: flater.length, krav: [3] } };
+    endret({ kart: true });
+    melding(`Markslag hentet: ${S.markslag.length} uproduktive figurer.`);
+  } catch (e) { melding(`Kunne ikke hente markslag: ${e.message}`, 6000); tegnArealfordeling(); } finally { knapp.disabled = false; }
+}
+
+async function trekkUtMarkslag() {
+  if (!confirm('Trekke uproduktiv mark (impediment, myr, åpen fastmark, jordbruk, bebyggelse og vann) ut av bestandene? Bestandsgrensene endres, og areal og volum reduseres.')) return;
+  const klipping = await lastKlipping();
+  if (!klipping) { melding('Geometribiblioteket kunne ikke lastes.'); return; }
+  const r = trekkUtAvBestand(S, klipping);
+  if (valgtId && !finnBestand(valgtId)) valgtId = null;
+  endret({ kart: true });
+  melding(r.endret || r.fjernet ? `${fmt(r.daa, 1)} daa uproduktiv mark trukket ut: ${r.endret} bestand endret${r.fjernet ? `, ${r.fjernet} fjernet` : ''}.` : 'Ingen bestand overlappet uproduktiv mark.', 6000);
+}
+
 function tegnOversikt() {
   tegnInnsikt();
+  tegnArealfordeling();
   const s = sammendrag(S.bestand, inn());
   const kpi = (verdi, etikett, under = '') => `<div class="kpi"><div class="verdi">${verdi}</div><div class="etikett">${etikett}</div>${under ? `<div class="under">${under}</div>` : ''}</div>`;
   const planlagt = alleTiltak().filter((t) => t.status !== 'utfort');
@@ -1058,7 +1120,7 @@ async function tegnPlanListe() {
 
 const GEN_STEG = [
   ['eiendom', 'Eiendomsgrense (Kartverket)'], ['plan', 'Tidligere skogbruksplan (NIBIO)'],
-  ['sr16', 'Skogressurskart SR16 (NIBIO)'], ['mis', 'Miljøregistreringer (MiS)'], ['bygg', 'Bestand og sammenligning'],
+  ['sr16', 'Skogressurskart SR16 (NIBIO)'], ['mis', 'Miljøregistreringer (MiS)'], ['markslag', 'Markslag – uproduktiv mark (AR5, NIBIO)'], ['bygg', 'Bestand og sammenligning'],
   ['miljo', 'Miljødata til PEFC (NIBIO, Miljødirektoratet, Riksantikvaren)'], ['nvdb', 'Skogsbilveier (NVDB)'], ['ssb', 'Tømmerpriser (SSB)'],
 ];
 
@@ -1121,7 +1183,7 @@ async function startGenerering(e) {
   try {
     const [turf, klipping] = await Promise.all([lastTurf(), lastKlipping()]);
     const plan = await genererPlan({ kommune, gnr, bnr, festenr }, { turf, klipping, iAar: IAAR, logg: (st, status, t) => { aktivtSteg = st; logg(st, status, t); } });
-    const ny = { versjon: 1, planId: nyId('p'), eiendom: plan.eiendom, bestand: plan.bestand, registreringer: [], innstillinger: klon(S.innstillinger), metadata: plan.metadata, datakilder: { ...plan.kilder } };
+    const ny = { versjon: 1, planId: nyId('p'), eiendom: plan.eiendom, bestand: plan.bestand, markslag: plan.markslag || [], registreringer: [], innstillinger: klon(S.innstillinger), metadata: plan.metadata, datakilder: { ...plan.kilder } };
     // Alt datagrunnlag for PEFC, veier og verdi hentes med en gang. Feil her stopper ikke planen.
     const dgSteg = ['miljo', 'nvdb', 'ssb'];
     dgSteg.forEach((st) => logg(st, 'aktiv', 'Henter …'));

@@ -652,3 +652,8 @@ progress { accent-color: var(--accent); height: 8px; }
 .rapport-verktoy .rom { flex: 1; }
 .rapport-visning iframe { flex: 1; width: 100%; border: 0; background: #fff; }
 @media (max-width: 860px) { .rapport-verktoy b { display: none; } .rapport-verktoy select { flex: 1; min-width: 0; } }
+
+/* Markslag */
+.ms-tabell td:first-child { width: 22px; }
+.ms-rute { display: inline-block; width: 14px; height: 14px; border: 1px solid #555; border-radius: 2px; vertical-align: -2px; }
+.kart-legend svg { flex: none; }

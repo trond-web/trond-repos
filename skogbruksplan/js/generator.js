@@ -2,7 +2,8 @@
 //   Kartverket eiendom-API (grense), NIBIO «skogbruksplan/hogstklasser» (bestand fra tidligere plan),
 //   NIBIO SR16 vektor (volum, høyde, treantall, treslag, alder) og NIBIO MiS (nøkkelbiotoper).
 // Geometrioperasjoner gjøres med Turf (sendes inn, slik at modulen også kan kjøres i Node).
-import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST } from './model.js';
+import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST, nyId } from './model.js';
+import { hentAr5, lagFigurer, MARKSLAG } from './markslag.js';
 import { geoTilUtm, utmTilGeo, punktIGeometri } from './proj.js';
 
 const KARTVERKET = 'https://api.kartverket.no';
@@ -257,6 +258,16 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   const misBb = misUnion ? T.bbox(misUnion) : null;
   logg('mis', 'ok', `MiS-nøkkelbiotoper: ${mis.length}`);
 
+  // 5. Markslag (AR5): uproduktiv skog, myr, åpen fastmark, jordbruk, bebyggelse og vann skilles ut.
+  logg('markslag', 'aktiv', 'Henter markslag fra AR5 (NIBIO) …');
+  let ar5 = []; let ar5Feil = null;
+  try {
+    ar5 = await hentAr5(eiendom.geometry, { hent, boksTreff, klipp: (g) => klipp(g)?.geometry || null, logg: (t) => logg('markslag', 'aktiv', t) });
+  } catch (e) { ar5Feil = e.message; }
+  const uproduktiv = ar5.filter((f) => f.kategori !== 'produktiv').map((f) => ({ ...f, f: feat(f.geometri), bb: T.bbox(f.geometri) }));
+  const ar5Sum = {}; for (const f of ar5) ar5Sum[f.kategori] = (ar5Sum[f.kategori] || 0) + f.areal;
+  logg('markslag', ar5Feil ? 'feil' : 'ok', ar5Feil ? `AR5 kunne ikke hentes (${ar5Feil}) – uproduktiv mark er ikke skilt ut` : `Markslag: ${Object.entries(ar5Sum).filter(([k]) => k !== 'produktiv').map(([k, v]) => `${MARKSLAG[k].kort} ${Math.round(v)} daa`).join(', ') || 'ingen uproduktiv mark'}`);
+
   // 5. Sett sammen bestand
   logg('bygg', 'aktiv', 'Setter sammen bestand og sammenligner plan med SR16 …');
   const kandidater = [];
@@ -284,9 +295,30 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     if (rest && arealM2(rest) / 1000 >= minDaa) kandidater.push({ kilde: 'sr16', g: rest, attr: {} });
   }
 
+  // Uproduktiv mark trekkes ut av bestandene, slik at det ikke beregnes volum der. Små rester (< 0,3 daa) fjernes.
+  const utenSmaa = (g) => {
+    if (!g) return null;
+    const polys = g.geometry.type === 'Polygon' ? [g.geometry.coordinates] : g.geometry.coordinates;
+    const beholdt = polys.filter((pp) => arealM2({ type: 'Polygon', coordinates: pp }) >= 300);
+    return beholdt.length ? feat(beholdt.length === 1 ? { type: 'Polygon', coordinates: beholdt[0] } : { type: 'MultiPolygon', coordinates: beholdt }) : null;
+  };
+  for (const k of kandidater) {
+    const bb = T.bbox(k.g); let naa = arealM2(k.g); const trukket = {};
+    for (const u of uproduktiv) {
+      if (!k.g || !overlapper(bb, u.bb)) continue;
+      const etter = minus(k.g, u.f); const ny = etter ? arealM2(etter) : 0;
+      if (naa - ny > 1) trukket[u.kategori] = (trukket[u.kategori] || 0) + (naa - ny);
+      k.g = etter; naa = ny;
+    }
+    k.g = utenSmaa(k.g);
+    const sum = Object.values(trukket).reduce((x, y) => x + y, 0);
+    if (sum > 500) k.uproduktiv = Object.entries(trukket).filter(([, v]) => v > 100).map(([kat, v]) => `${(v / 1000).toFixed(1).replace('.', ',')} daa ${MARKSLAG[kat].kort.toLowerCase()}`).join(', ');
+  }
+
   const bestand = [];
   let lopenr = 0;
   for (const k of kandidater) {
+    if (!k.g) continue;
     const areal = arealM2(k.g);
     if (areal / 1000 < minDaa) continue;
     const bb = T.bbox(k.g);
@@ -343,6 +375,7 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     const miljo = miljoSnitt > Math.max(500, 0.2 * areal);
     if (miljo) merknader.push('Overlapper MiS-nøkkelbiotop');
     if (!deler.length) merknader.push('Ingen SR16-data – volum er ikke kjent');
+    if (k.uproduktiv) merknader.push(`Uproduktiv mark trukket ut etter AR5: ${k.uproduktiv}`);
 
     const r1 = (v) => (v === null || v === undefined ? null : Math.round(v * 10) / 10);
     const props = {
@@ -387,6 +420,8 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     plan: { id: 'plan', navn: 'Tidligere skogbruksplan', eier: 'NIBIO', hentet: naa, antall: plan.length, dataFra: planAar[0] ? `${planAar[0]}` : null, dataTil: planAar.at(-1) ? `${planAar.at(-1)}` : null, krav: [3] },
     sr16: { id: 'sr16', navn: 'Skogressurskart SR16', eier: 'NIBIO', hentet: naa, antall: sr16Data.length, dataFra: sr16Aar ? `${sr16Aar.fra}` : null, dataTil: sr16Aar ? `${sr16Aar.til}` : null, versjon: sr16Aar?.versjon || null, krav: [3] },
   };
+  const ar5Datoer = ar5.map((f) => f.ar5.datafangst).filter(Boolean).map((d) => d.split('.').reverse().join('-')).sort();
+  kilder.ar5 = { id: 'ar5', navn: 'Markslag AR5', eier: 'NIBIO', hentet: naa, antall: ar5.length, dataFra: ar5Datoer[0] || null, dataTil: ar5Datoer.at(-1) || null, feil: ar5Feil, krav: [3] };
   return {
     kilder,
     eiendom: {
@@ -395,12 +430,14 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
       eier: '', takstAar: iAar, grense: eiendom.geometry,
     },
     bestand,
+    markslag: lagFigurer(ar5, nyId),
     metadata: {
       laget: new Date().toISOString(),
       eiendomDaa, skogDaa, antallFraPlan: plan.length, antallSr16: sr16Data.length, mis: mis.length,
       planRegistrert: planAar.join(', ') || null,
       sr16Aar,
-      kilder: ['Kartverket eiendom-API', 'NIBIO skogbruksplan/hogstklasser', 'NIBIO SR16 (SRV)', 'NIBIO MiS'],
+      ar5: Object.fromEntries(Object.entries(ar5Sum).map(([k, v]) => [k, Math.round(v * 10) / 10])),
+      kilder: ['Kartverket eiendom-API', 'NIBIO skogbruksplan/hogstklasser', 'NIBIO SR16 (SRV)', 'NIBIO MiS', 'NIBIO AR5'],
     },
   };
 }

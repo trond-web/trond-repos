@@ -5,6 +5,7 @@ import {
 } from './model.js';
 import { KRAVPUNKTER, OBJEKTTYPER } from './pefc.js';
 import { VEIKLASSER } from './veier.js';
+import { MARKSLAG, arealfordeling } from './markslag.js';
 
 const r1 = (v) => (v == null || Number.isNaN(v) ? '' : Math.round(v * 10) / 10);
 const r0 = (v) => (v == null || Number.isNaN(v) ? '' : Math.round(v));
@@ -26,6 +27,10 @@ export function lagKontekst(S, { iAar = new Date().getFullYear(), pefcFunn = [],
   d.push(`Produktivt areal ${r1(s.areal)} daa i ${s.antall} bestand. Stående volum ${r0(s.volum)} m³ (${r1(s.areal ? s.volum / s.areal : 0)} m³/daa). Tilvekst ca. ${r0(s.tilvekst)} m³/år. CO₂-binding ca. ${r0(s.co2)} t/år. Rotnetto i hogstklasse V ca. ${r0(s.verdiHogstmoden)} kr.`);
   d.push(`Volum per treslag: ${Object.entries(s.perTreslag).map(([k, v]) => `${TRESLAG[k]} ${r0(v)} m³`).join(', ')}.`);
   d.push(`Areal per hogstklasse (daa): ${Object.entries(s.perHk).map(([h, v]) => `${HK_NAVN[h]} ${r1(v.G + v.F + v.L)}`).join(', ')}.`);
+  if ((S.markslag || []).length) {
+    const af = arealfordeling(S);
+    d.push(`Arealfordeling (AR5): ${Object.entries(af.rader).filter(([, r]) => r.areal > 0).map(([k, r]) => `${MARKSLAG[k].navn} ${r1(r.areal)} daa`).join(', ')}; eiendom totalt ${r1(af.total)} daa. Uproduktiv mark er trukket ut av bestandene og har ikke volum.`);
+  }
   d.push('');
   d.push('## Priser og forutsetninger');
   d.push(`Tømmerpris kr/m³: ${Object.entries(TRESLAG).map(([k, n]) => `${n} ${inn.pris[k]}`).join(', ')}. Driftskostnad kr/m³: ${Object.entries(TRESLAG).map(([k, n]) => `${n} ${inn.drift[k]}`).join(', ')}. Rotnetto kr/m³: ${Object.keys(TRESLAG).map((k) => `${TRESLAG[k]} ${r0(rotnettoPerM3(k, inn))}`).join(', ')}.`);

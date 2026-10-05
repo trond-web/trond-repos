@@ -5,7 +5,7 @@ import { tomPefc } from './pefc.js';
 import { hentNvdbVeier, tomtVeiregister } from './veier.js';
 import { hentSsbPriser, STANDARD_VERDI } from './verdi.js';
 
-export const KILDEREKKEFOLGE = ['eiendom', 'plan', 'sr16', 'nvdb', 'mis', 'vern', 'hb13', 'nin', 'utvalgte', 'art', 'friluft', 'kultur', 'ssb'];
+export const KILDEREKKEFOLGE = ['eiendom', 'plan', 'sr16', 'ar5', 'nvdb', 'mis', 'vern', 'hb13', 'nin', 'utvalgte', 'art', 'friluft', 'kultur', 'ssb'];
 
 export function grenseFor(plan) {
   if (plan.eiendom?.grense) return plan.eiendom.grense;
