@@ -337,6 +337,11 @@ button.chip { border: 0; cursor: pointer; }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+.sync-code { font-size: 1.35rem; font-weight: 600; letter-spacing: 0.04em; overflow-wrap: anywhere; }
+.sync-error { color: var(--glow); font-weight: 600; }
+code { font-family: var(--f-mono); font-size: 0.88em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+.btn:disabled { opacity: .55; cursor: progress; }
+
 .settings summary { cursor: pointer; font-weight: 600; color: var(--muted); }
 .settings[open] summary { margin-bottom: 10px; }
 .empty { color: var(--muted); font-style: italic; padding: 8px 0; }
