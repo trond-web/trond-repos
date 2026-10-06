@@ -7,6 +7,7 @@ import {
 import { etikettPunkt } from './proj.js';
 import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling } from './markslag.js';
 import { KRAVPUNKTER, TEMA, OBJEKTTYPER, KLARERING, HOGSTFORMER, FORYNGELSE, arealDaa, klareringStatus } from './pefc.js';
+import { signatur } from './versjon.js';
 
 export const RAPPORTER = {
   hovedtall: { navn: 'Hovedtall', beskrivelse: 'Areal, volum, tilvekst og verdi fordelt på hogstklasse, treslag og bonitet, med kart og avvirkningsmuligheter.' },
@@ -31,7 +32,7 @@ function hode(S, tittel, iAar) {
     <div class="r-eiendom">${esc(e.navn || 'Eiendom')}${e.kommune ? ` · ${esc(e.kommune)} kommune` : ''}${e.gnrbnr ? ` · gnr/bnr ${esc(e.gnrbnr)}` : ''}${e.eier ? ` · ${esc(e.eier)}` : ''}</div></div>
     <div class="r-meta">Takstår ${esc(e.takstAar || '–')}<br>Utskrevet ${new Date().toLocaleDateString('nb-NO')}<br>Beregningsår ${iAar}</div></header>`;
 }
-const fot = (tekst) => `<footer class="r-fot">${tekst} Volum, tilvekst og verdier er beregnet med SkogIQ.ai sine modeller og innstilte priser, og er estimater. Laget med SkogIQ.ai.</footer>`;
+const fot = (tekst) => `<footer class="r-fot">${tekst} Volum, tilvekst og verdier er beregnet med SkogIQ.ai sine modeller og innstilte priser, og er estimater. Laget med ${signatur()}.</footer>`;
 
 // Kart over bestandene som SVG (skarpt på papir). farge(b) gir fyllfarge.
 export function svgKart(S, farge, { bredde = 720, hoyde = 460, etiketter = true, ekstra = [], markslag = true } = {}) {

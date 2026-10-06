@@ -18,6 +18,7 @@ import { delFlate, nyttNr } from './del.js';
 import { initAssistent } from './assistent.js';
 import { initSkogbrand } from './skogbrand-ui.js';
 import { initSkifteplan } from './skifteplan-ui.js';
+import { VERSJON, UTGITT, UTVIKLER, APPNAVN, signatur } from './versjon.js';
 import { lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
 import { genererTiltak, oppsummer as motorOppsummer, PRINSIPPER, KILDER as MOTOR_KILDER, endringer as motorEndringer, merkKjort, tilTiltak, anvend as anvendMotor, oppdaterBestand as motorOppdaterBestand, MOTOR_VERSJON, signatur as motorSignatur } from './tiltaksmotor.js';
 import { RAPPORTER, lagRapport, lagRapportCsv } from './rapporter.js';
@@ -1372,6 +1373,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'PEFC-status og avvik', sok: 'pefc skogstandard krav avvik sertifisering', utfor: () => visFane('pefc') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
     ...Object.entries(RAPPORTER).map(([k, r]) => ({ gruppe: 'Rapporter', ikon: '▦', tittel: `Rapport: ${r.navn}`, under: r.beskrivelse, sok: 'rapport pdf utskrift skriv ut', utfor: () => visRapport(k) })),
+    { gruppe: 'Handlinger', ikon: 'ℹ', tittel: `Om ${APPNAVN} – versjon ${VERSJON}`, under: `Utviklet av ${UTVIKLER}`, sok: 'om versjon utvikler laget av trond harald sand', utfor: () => { visFane('planer'); setTimeout(() => $('#fane-planer [data-om-app]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); } },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Ta sikkerhetskopi', sok: 'backup eksport lagre', utfor: () => eksporter('backup') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Bytt lyst/mørkt tema', sok: 'tema mørk lys dark', utfor: () => $('#temaBtn').click() },
   );
@@ -1415,6 +1417,9 @@ function kobleHendelser() {
     else { const andel = h / panel.parentElement.getBoundingClientRect().height; settArk(andel < 0.3 ? 'lav' : andel < 0.72 ? 'halv' : 'hoy'); }
     dra = null;
   });
+  // Versjon og utvikler
+  for (const el of $$('[data-om-app]')) el.innerHTML = `<b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span><br>Utviklet av ${UTVIKLER}`;
+  $('#railVersjon').textContent = `v${VERSJON}`; $('#railVersjon').title = signatur();
   initKommando({ hentValg: kommandoValg });
   $('#genSkjema').addEventListener('submit', startGenerering);
   veiVisning = initVeier({
