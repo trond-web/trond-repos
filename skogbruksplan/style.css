@@ -262,6 +262,7 @@ progress { accent-color: var(--accent); height: 8px; }
 .innsikt-topp h3 { margin: 0; font-size: 16px; }
 .iq-merke { font: 800 11px/1 var(--font-display); color: #fff; background: var(--signal); border-radius: 6px; padding: 4px 5px; letter-spacing: .02em; }
 :root[data-theme="dark"] .iq-merke { color: #1a0a0e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .iq-merke { color: #1a0a0e; } }
 .innsikt-liste { display: grid; gap: 8px; }
 .innsikt-kort {
   display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center;
@@ -366,8 +367,9 @@ progress { accent-color: var(--accent); height: 8px; }
 .helt h3 { font: 800 26px/1.08 var(--font-display); letter-spacing: -0.03em; margin: 0 0 8px; color: #fff; max-width: 15ch; }
 .helt p { color: #b9c9bf; margin: 0 0 16px; max-width: 46ch; }
 .helt .skjema label { color: #b9c9bf; }
-.helt input { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.16); color: var(--accent-ink); }
-.helt input::placeholder { color: #7f9187; }
+.helt input, .helt select { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.16); color: #f2f7f3; caret-color: #7fd1a4; }
+.helt input:-webkit-autofill { -webkit-text-fill-color: #f2f7f3; -webkit-box-shadow: 0 0 0 40px #1a2a23 inset; }
+.helt input::placeholder { color: #9fb2a6; }
 .helt .knapp.primar { background: #7fd1a4; border-color: #7fd1a4; color: #0b1a12; }
 .helt .knapp.primar:hover { background: #97dcb5; }
 .helt::after { content: ''; position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle, rgba(255,92,120,.35), transparent 70%); pointer-events: none; }
