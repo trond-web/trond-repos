@@ -28,9 +28,12 @@ Alle fire tillater kall fra nettleseren (CORS). Svarene mellomlagres i 20 minutt
 2. Nedbør blir snø ved ≤ 0 °C og regn ved ≥ +2 °C, med lineær overgang mellom. 1 mm ≈ 1 cm snø.
 3. Snømodellen per døgn: `dybde = dybde·0,97 + nysnø − 1,2·graddøgn − 0,15·regn`.
 4. **Sannsynlighet**: 30 varianter (Yr og Storm × temperaturavvik −2…+2 × spredning som
-   øker med tiden × nedbør 60/100/140 %). Andel varianter med snødybde ≥ grensen
-   (standard 25 cm, kan justeres) = sjansen for skiføre.
-5. **Startdybde**: «Auto» anslår ut fra Sporet (kjørt siste 2 døgn → 35 cm, siste uke →
+   øker med tiden × nedbør 60/100/140 %). Andelen varianter med snødybde over grensen gir to sjanser:
+   - 🎿 **oppkjørte spor**: snødybde ≥ 25 cm (kan justeres 10–50 cm)
+   - 👣 **tråkke spor selv**: snødybde ≥ 2 cm (kan justeres 1–20 cm)
+5. **Snøvill-indeks** (0–100) = 0,75 × sjansen for å tråkke selv + 0,25 × sjansen for oppkjørte spor.
+   Snøvill blir glad bare det er snø å tråkke i, og oppkjørte spor gir full pott.
+6. **Startdybde**: «Auto» anslår ut fra Sporet (kjørt siste 2 døgn → 35 cm, siste uke →
    25 cm, siste 3 uker → 10 cm, ellers 0). Kan overstyres per sted i innstillingene.
 
 ## 🔔 Løypevarsler – når maskinen starter
