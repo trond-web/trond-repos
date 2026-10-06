@@ -1,12 +1,12 @@
-# Fox Classic 2026 – påmelding
+# Fox Classic 2027 – påmelding
 
-Enkel påmeldingsløsning for **Fox Classic 2026**, et terrengløp lørdag 19. september 2026.
+Enkel påmeldingsløsning for **Fox Classic 2027**, et terrengløp lørdag 18. september 2027.
 
 - **Distanse:** 5,3 km
 - **Start/mål:** Rud-Øde
 - **Pris:** Gratis
-- **Øvelser:** Trim uten tidtaking (fri start 09:45–10:30), og Konkurranse med
-  tidtaking (start kl. 11:00)
+- **Øvelser:** Trim uten tidtaking (fri start 09:45–10:30), Konkurranse med
+  tidtaking (start kl. 11:00), og Barn 300 meter (uten tidtaking)
 
 ## Fire sider
 
@@ -58,15 +58,16 @@ og `ARRANGOR_PASSORD`.
 - **Løpsklokke og "Mål"-knapp på arrangørsiden:** arrangør trykker "Start løpet"
   når konkurranseklassen starter, og trykker "🏁 Mål" for hver deltaker når de
   kommer i mål – tiden regnes automatisk ut fra starttidspunktet. Manuell
-  inntasting av tid (tt:mm:ss) er fortsatt mulig for korrigering. Trim-deltakere
-  får "Fullført" ved samme knappetrykk, uten at noen tid vises eller lagres.
+  inntasting av tid (tt:mm:ss) er fortsatt mulig for korrigering. Trim- og
+  Barn 300 meter-deltakere får "Fullført" ved samme knappetrykk, uten at noen
+  tid vises eller lagres.
 - Reve-maskoten er med på begge sider (favicon, header og på arrangørens
   "rev-hi"-innlogging), med et lite lekent preg på tekst og knapper.
 
 ## Kjøre lokalt
 
 ```bash
-cd fox-classic-2026
+cd fox-classic-2027
 npm install
 ARRANGOR_PASSORD=hemmelig npm start
 ```
@@ -85,7 +86,7 @@ Fly.io eller en egen server – kjør `npm install && npm start` og pek `PORT`-m
 variabelen dit tjenesten forventer. Så lenge alle bruker samme kjørende instans,
 vil påmeldingslisten være delt for alle.
 
-Er live på Railway: <https://fox-classic-2026-production.up.railway.app>. Der er
+Er live på Railway: <https://fox-classic-2027-production.up.railway.app>. Der er
 det koblet på en persistent volume montert på `/data`, og appen lagrer dit når
 miljøvariabelen `RAILWAY_VOLUME_MOUNT_PATH` er satt – slik overlever
 påmeldingene redeploys og restarter.

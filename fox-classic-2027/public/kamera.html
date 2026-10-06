@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fox Classic 2027 – Kamera-mål</title>
+<link rel="icon" type="image/png" href="/images/favicon.png">
+<link rel="apple-touch-icon" href="/images/favicon-192.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app app-narrow">
+  <header class="hero hero-compact">
+    <h1>📷 Kamera-mål</h1>
+    <p class="subtitle">Fox Classic 2027 · eksperimentell</p>
+  </header>
+
+  <section class="card" id="loginCard">
+    <h2>🦊🔒 Rev-hiet</h2>
+    <p class="form-hint">Kun for arrangører – logg inn for å komme videre.</p>
+    <form id="loginForm" class="registration-form">
+      <div class="field">
+        <label for="brukernavnInput">Brukernavn</label>
+        <input type="text" id="brukernavnInput" required autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="passordInput">Passord</label>
+        <input type="password" id="passordInput" required autocomplete="current-password">
+      </div>
+      <p class="form-message" id="loginMessage" role="status"></p>
+      <button type="submit" class="btn btn-primary">🦊 Logg inn</button>
+    </form>
+  </section>
+
+  <div id="mainContent" style="display: none;">
+    <div class="list-header">
+      <p class="form-hint">🦊 Innlogget som arrangør.</p>
+      <button id="logoutBtn" class="btn btn-ghost btn-small">Logg ut</button>
+    </div>
+
+    <div class="experiment-note">
+      <strong>🧪 Eksperimentell modul.</strong> Kameraet oppdager automatisk når
+      noen krysser mållinja du merker av, og fryser tiden i det øyeblikket.
+      Nummeret på startnummeret forsøkes lest automatisk, men dette er
+      upålitelig (bevegelse, lys, vinkel) – <strong>du må alltid bekrefte eller
+      rette nummeret</strong> før noe registreres. Bruk <a href="/arrangor/tid">den vanlige
+      tidtakingssiden</a> som hovedløsning, og la denne modulen være et forsøk
+      ved siden av.
+    </div>
+
+    <section class="card race-clock-card">
+      <div class="race-clock">
+        <div class="race-clock-time" id="raceClockTime">–</div>
+        <button id="startRaceBtn" class="btn btn-primary">🏁 Start løpet</button>
+        <button id="resetRaceBtn" class="btn btn-ghost" style="display: none;">Nullstill start</button>
+      </div>
+      <p class="form-hint" id="raceClockHint">Trykk når konkurranseklassen starter.</p>
+    </section>
+
+    <section class="card">
+      <h2>Kamera</h2>
+      <div class="camera-wrap" id="cameraWrap">
+        <video id="video" playsinline muted></video>
+        <canvas id="overlayCanvas"></canvas>
+        <p class="camera-placeholder" id="cameraPlaceholder">Kameraet er ikke startet enda.</p>
+      </div>
+      <div class="camera-controls">
+        <button id="startCameraBtn" class="btn btn-primary">📷 Start kamera</button>
+        <button id="lockLineBtn" class="btn btn-primary" style="display: none;">🔒 Lås mållinje og overvåk</button>
+        <button id="unlockLineBtn" class="btn btn-ghost" style="display: none;">✏️ Flytt mållinje</button>
+      </div>
+      <p class="form-hint" id="cameraHint">
+        Trykk «Start kamera», monter telefonen fast (f.eks. på stativ) rettet
+        mot mållinja, og dra den røde linja slik at den treffer selve mållinja
+        i bildet. Fungerer best med jevnt lys og en fast, rolig kamera-vinkel.
+      </p>
+    </section>
+
+    <div id="pendingList"></div>
+  </div>
+
+  <p class="page-footer"><a href="/arrangor">← Full oversikt</a> · <a href="/arrangor/tid">Tidtaking →</a></p>
+</div>
+
+<script src="/common.js"></script>
+<script src="/kamera.js"></script>
+</body>
+</html>

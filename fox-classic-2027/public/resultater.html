@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fox Classic 2027 – Resultater</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="apple-touch-icon" href="images/favicon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="hero hero-compact">
+    <h1>🏆 Resultater</h1>
+    <p class="subtitle">Fox Classic 2027 · Konkurranse med tid</p>
+  </header>
+
+  <section class="card">
+    <div class="list-header">
+      <h2>Resultatliste</h2>
+    </div>
+
+    <div class="filters">
+      <div class="field">
+        <label for="filterKjonn">Filtrer på kjønn</label>
+        <select id="filterKjonn">
+          <option value="">Alle</option>
+          <option value="Mann">Menn</option>
+          <option value="Kvinne">Kvinner</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="resultsContainer"></div>
+  </section>
+
+  <p class="page-footer"><a href="/">← Tilbake til påmelding</a></p>
+</div>
+
+<script src="common.js"></script>
+<script src="resultater.js"></script>
+</body>
+</html>
