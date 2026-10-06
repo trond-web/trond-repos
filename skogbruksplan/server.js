@@ -35,6 +35,28 @@ const SIKKERHET = {
   'Permissions-Policy': 'geolocation=(self), camera=(self)',
 };
 
+// Mellomledd til NVE GridTimeSeries (seNorge: teledyp, snø, vannmetning, nedbør). NVE tillater ikke kall direkte fra
+// nettleseren (CORS). Bare GridTimeSeries-punktkall med kjente temaer slippes gjennom, og svarene bufres i 30 minutter.
+const NVE_STI = /^\/api\/nve\/GridTimeSeries\/(\d{5,7})\/(\d{6,7})\/(\d{4}-\d{2}-\d{2})\/(\d{4}-\d{2}-\d{2})\/(gwb_frd|sd|gwb_sssrel|gwb_sssdev|rr|tm|swe|qsw)\.json$/;
+const nveBuffer = new Map();
+async function nve(sti, res) {
+  const m = sti.match(NVE_STI);
+  if (!m) return svar(res, 400, 'Ugyldig NVE-forespørsel');
+  const naa = Date.now(); const lagret = nveBuffer.get(sti);
+  if (lagret && naa - lagret.tid < 30 * 60 * 1000) { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'max-age=900', 'X-Buffer': 'treff', ...SIKKERHET }); return res.end(lagret.body); }
+  try {
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 20000);
+    const r = await fetch(`https://gts.nve.no/api/GridTimeSeries/${m[1]}/${m[2]}/${m[3]}/${m[4]}/${m[5]}.json`, { signal: ctrl.signal, headers: { 'User-Agent': 'SkogIQ.ai (skogiq-production.up.railway.app)' } });
+    clearTimeout(t);
+    const body = await r.text();
+    if (!r.ok) return svar(res, 502, `NVE svarte ${r.status}`);
+    if (nveBuffer.size > 5000) nveBuffer.delete(nveBuffer.keys().next().value);
+    nveBuffer.set(sti, { tid: naa, body });
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'max-age=900', ...SIKKERHET });
+    res.end(body);
+  } catch (e) { svar(res, 504, `NVE svarte ikke: ${e.message}`); }
+}
+
 function svar(res, status, tekst) {
   res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', ...SIKKERHET });
   res.end(tekst);
@@ -45,6 +67,7 @@ const server = http.createServer(async (req, res) => {
   let sti;
   try { sti = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { return svar(res, 400, 'Ugyldig adresse'); }
   if (sti === '/healthz') return svar(res, 200, 'ok');
+  if (sti.startsWith('/api/nve/')) return nve(sti, res);
   if (sti.endsWith('/')) sti += 'index.html';
   if (SKJULT.test(sti)) return svar(res, 404, 'Finnes ikke');
   const fil = path.join(ROT, path.normalize(sti));

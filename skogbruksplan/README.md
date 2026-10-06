@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.0.0** (2026-10-06) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.1.0** (2026-10-07) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -197,6 +197,24 @@ Railway bygger med Railpack (Node ≥ 20) og starter `node server.js` på porten
 AI-nøkkelen legges inn av hver bruker i appen og lagres bare i nettleseren.
 
 Lokalt: `npm start` (port 8080) eller `PORT=3000 npm start`. Tester: `npm test`.
+
+## Driftsforhold og kjøreskader (Kommune → Sluttavvirkning)
+
+«Analyser driftsforhold» prioriterer hogstflatene i kommuneanalysen etter hvor og når de kan drives med minst mulig
+sporskader fra hogstmaskin og lassbærer.
+
+- **Markfuktighet (55 %)** – NIBIOs markfuktighetskart (DTW, fra laserdata DTM1): andel av flaten med grunnvann 0–1 m under
+  overflaten, lest piksel for piksel fra WMS-laget «markfuktighetsklasser» (én PNG per 2 × 2 km). Våte partier vektes opp.
+- **Bæreevne (30 %)** – NGU løsmassekart: morene/breelv god, elve-/vindavsetning middels, leire/silt dårlig, torv/myr svært dårlig.
+- **Helning (15 %)** – Kartverkets høydedata (3 × 3 punkter per flate, planutjevning) i terrengklasser; > 50 % krever kabel eller
+  beltegående maskin.
+- **Mark og vær** – NVE seNorge per km²: teledyp, snødybde, vannmetning i jord og nedbør, 3 dager bakover og 9 dager prognose.
+  NVE tillater ikke kall fra nettleseren, så `server.js` videresender dem (`/api/nve/GridTimeSeries/...`, kun kjente temaer,
+  bufret 30 min). Uten server (GitHub Pages) brukes nedbør fra MET Locationforecast.
+
+Hver flate får grunnrisiko og driftssesong (helårsdrift / tørr barmark eller vinter / vinterdrift / kun tele eller snø), risiko
+for valgt dag (gode – akseptable – utsett – ikke kjør), beste dag i prognosen og prioritet (70 % driftbarhet, 30 % rotnetto).
+Kartet fargelegges etter risiko, markfuktighetskartet kan vises som kartlag, og alt følger med i GeoJSON/CSV-eksporten.
 
 ## Spør AI (fanen «Spør AI»)
 
