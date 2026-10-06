@@ -35,7 +35,7 @@ jobs:
           cp -r tretetthet-flyfoto/. _site/
           mkdir -p _site/skogbruksplan
           cp -r skogbruksplan/. _site/skogbruksplan/
-          rm -rf _site/skogbruksplan/tests
+          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

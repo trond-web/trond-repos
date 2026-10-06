@@ -176,6 +176,23 @@ Kilder: [Landbruksdirektoratet om § 26](https://www.landbruksdirektoratet.no/nb
 [NLR: plantevernjournalen](https://www.nlr.no/nyhetsarkiv/default/2025/slik-fyller-du-ut-plantevernjournalen).
 Tallene for husdyrgjødsel er typiske verdier – bruk egen gjødselanalyse når den finnes.
 
+## Publisering på Railway
+
+Appen er statisk og kjøres med en liten Node-server uten avhengigheter (`server.js`). Den har komprimering, ETag/304,
+sikkerhetshoder og helsesjekk på `/healthz`. Testfiler, verktøy og konfigurasjon publiseres ikke.
+
+1. Gå til [railway.com](https://railway.com) → **New Project** → **Deploy from GitHub repo** → velg `trond-web/trond-repos`.
+2. Under tjenestens **Settings**:
+   - **Root Directory**: `/skogbruksplan`
+   - **Branch**: grenen som skal publiseres (f.eks. `main`)
+   - **Railway Config File**: `/skogbruksplan/railway.json` (gir helsesjekk, omstart og watch-paths)
+3. **Networking** → **Generate Domain** for å få en offentlig adresse (`*.up.railway.app`), eller legg til eget domene.
+
+Railway bygger med Railpack (Node ≥ 20) og starter `node server.js` på porten i `PORT`. Ingen miljøvariabler er nødvendige –
+AI-nøkkelen legges inn av hver bruker i appen og lagres bare i nettleseren.
+
+Lokalt: `npm start` (port 8080) eller `PORT=3000 npm start`. Tester: `npm test`.
+
 ## Spør AI (fanen «Spør AI»)
 
 En chat der du stiller spørsmål om skogbruksplanen og får svar fra Claude (Anthropic, modell `claude-opus-5-5`). Svaret strømmes inn mens det skrives.
