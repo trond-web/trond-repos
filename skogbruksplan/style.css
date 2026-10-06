@@ -760,3 +760,20 @@ progress { accent-color: var(--accent); height: 8px; }
 .om-app span { font-family: var(--font-mono); font-size: 11px; }
 .rail-versjon { font: 500 10px var(--font-mono); color: #8a9a91; opacity: .85; text-align: center; margin-top: auto; padding-top: 6px; cursor: default; }
 @media (max-width: 860px) { .rail-versjon { display: none; } }
+
+/* Kommuneanalyse: driftsforhold og kjøreskader */
+.kom-drift-kort { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 10px 0; background: var(--surface-2); }
+.kom-drift-kort p { margin: 6px 0; }
+.kom-forhold { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px; margin-top: 6px; }
+.kom-forhold > div { background: var(--surface); border-radius: 9px; padding: 6px 8px; }
+.kom-forhold small { display: block; color: var(--muted); font-size: 11px; }
+.kom-forhold b { font: 700 15px var(--font-mono); }
+.kom-dager { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 4px; }
+.kom-dager button { border: 1px solid var(--border); background: var(--surface); border-radius: 9px; padding: 5px 4px; cursor: pointer; font: 500 11px var(--font-body); color: var(--text); display: grid; gap: 4px; justify-items: center; }
+.kom-dager button i { display: block; width: 100%; height: 6px; border-radius: 3px; background: var(--farge); }
+.kom-dager button.aktiv { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); font-weight: 700; }
+.kom-nivaa { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; margin-top: 6px; }
+.kom-nivaa i, .kom-risiko::before { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--farge); margin-right: 5px; vertical-align: 0; content: ''; }
+.kom-risiko { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.kom-drift-pop { margin: 6px 0; padding-top: 6px; border-top: 1px solid var(--grid); font-size: 12.5px; }
+.kom-drift-om { margin-top: 8px; } .kom-drift-om summary { cursor: pointer; font-size: 12.5px; } .kom-drift-om ul { padding-left: 18px; margin: 6px 0; display: grid; gap: 4px; }

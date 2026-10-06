@@ -20,6 +20,7 @@ import { RAPPORTER, lagRapport, lagRapportCsv, hogstprognose } from '../js/rappo
 import { klassifiser as klassifiserMarkslag, lagFigurer, arealfordeling } from '../js/markslag.js';
 import { genererTiltak, anvend as anvendMotor, endringer as motorEndringer, plantetall, maalTetthet, oppdaterBestand } from '../js/tiltaksmotor.js';
 import * as SP from '../js/skifteplan.js';
+import * as DF from '../js/driftsforhold.js';
 import { VERSJON, UTVIKLER, signatur } from '../js/versjon.js';
 import { readFileSync } from 'node:fs';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
@@ -692,6 +693,45 @@ test('Versjon og utvikler', () => {
   const S = lagDemo(2026); S.innstillinger = { ...STANDARD_INNSTILLINGER, ...S.innstillinger };
   const html = lagRapport('hovedtall', S, { iAar: 2026 });
   assert.ok(html.includes(signatur()), 'rapporten viser versjon og utvikler');
+});
+
+test('Driftsforhold: markfuktighet, bæreevne, helning, vær og prioritering', () => {
+  // DTW-farger fra NIBIOs WMS
+  assert.equal(DF.dtwKlasse(0, 0, 255, 255), 'd0'); assert.equal(DF.dtwKlasse(135, 206, 250, 255), 'd75'); assert.equal(DF.dtwKlasse(0, 0, 0, 0), 'torr'); assert.equal(DF.dtwKlasse(255, 0, 0, 255), null);
+  // Raster 10×10 piksler à 10 m: venstre halvdel 0–0,25 m, høyre halvdel tørr. Flate dekker hele ruten.
+  const data = new Uint8ClampedArray(10 * 10 * 4);
+  for (let j = 0; j < 10; j++) for (let i = 0; i < 5; i++) { const o = (j * 10 + i) * 4; data[o + 2] = 255; data[o + 3] = 255; }
+  const flate = { type: 'Polygon', coordinates: [[[0, 0], [100, 0], [100, 100], [0, 100], [0, 0]]] };
+  const a = DF.dtwForFlate(flate, { w: 10, h: 10, data, bbox: [0, 0, 100, 100] });
+  assert.ok(Math.abs(a.d0 - 0.5) < 0.01 && Math.abs(a.torr - 0.5) < 0.01);
+  assert.equal(DF.fuktIndeks(a), 0.8);
+  // Bæreevne
+  assert.equal(DF.baereevne('Torv og myr'), 'svaktDarlig'); assert.equal(DF.baereevne('Hav- og fjordavsetning, sammenhengende dekke'), 'darlig');
+  assert.equal(DF.baereevne('Elve- og bekkeavsetning (Fluvial avsetning)'), 'middels'); assert.equal(DF.baereevne('Morenemateriale, sammenhengende dekke'), 'god');
+  // Helning: plan som stiger 25 m per 100 m østover
+  const pk = []; for (const x of [0, 50, 100]) for (const y of [0, 50, 100]) pk.push({ x, y, z: 0.25 * x + 100 });
+  assert.ok(Math.abs(DF.helningProsent(pk) - 25) < 0.01); assert.equal(DF.helningKlasse(25).klasse, 3); assert.equal(DF.helningKlasse(60).klasse, 5);
+  // Statisk risiko og sesong
+  const torrMorene = DF.statiskRisiko({ dtw: { torr: 0.95, d75: 0.05 }, losmasse: 'Morenemateriale', helning: 8 });
+  const vatLeire = DF.statiskRisiko({ dtw: { torr: 0.4, d0: 0.3, d25: 0.3 }, losmasse: 'Hav- og fjordavsetning', helning: 5 });
+  const myr = DF.statiskRisiko({ dtw: { d0: 0.8, vann: 0.1, d25: 0.1 }, losmasse: 'Torv og myr', helning: 2 });
+  assert.equal(torrMorene.sesong, 'helaar'); assert.ok(['vinter', 'tele'].includes(vatLeire.sesong)); assert.equal(myr.sesong, 'tele');
+  assert.ok(torrMorene.poeng < vatLeire.poeng && vatLeire.poeng < myr.poeng);
+  // Vær: tele gjør selv myr kjørbar, vannmettet jord og regn gjør leire verre
+  assert.equal(DF.risikoNaa(myr, { teledyp: 25, snodybde: 40 }).nivaa.id, 'god');
+  const vatt = DF.risikoNaa(vatLeire, { teledyp: 0, vannmetning: 95, nedbor3: 45 });
+  assert.ok(vatt.risiko > vatLeire.poeng && ['utsett', 'stopp'].includes(vatt.nivaa.id));
+  assert.ok(DF.risikoNaa(vatLeire, { teledyp: 0, vannmetning: 25 }).risiko < vatLeire.poeng, 'tørr mark senker risikoen');
+  // NVE-svar og beste dag
+  const nve = DF.parseNve({ StartDate: '05.10.2026 06:00:00', NoDataValue: 65535, Data: [1, 65535, 3] });
+  assert.deepEqual(nve.map((x) => x.dato), ['2026-10-05', '2026-10-06', '2026-10-07']); assert.equal(nve[1].v, null);
+  const dager = DF.medNedbor3([{ dato: '2026-10-06', vannmetning: 95, nedbor: 30 }, { dato: '2026-10-07', vannmetning: 92, nedbor: 20 }, { dato: '2026-10-08', teledyp: 25 }]);
+  assert.equal(dager[1].nedbor3, 50);
+  assert.equal(DF.besteDag(vatLeire, dager, '2026-10-06').dato, '2026-10-08');
+  // Prioritering: kjørbar flate før verdifull, men våt flate
+  const fl = [{ id: 'a', rotnetto: 900000, drift: { naa: { risiko: 80 } } }, { id: 'b', rotnetto: 300000, drift: { naa: { risiko: 10 } } }, { id: 'c', rotnetto: 800000, drift: { naa: { risiko: 12 } } }];
+  assert.deepEqual(DF.prioriter(fl).map((f) => f.id), ['c', 'b', 'a']);
+  assert.equal(DF.celleFor(11.0, 60.2), DF.celleFor(11.0005, 60.2001));
 });
 
 await Promise.all(venter);
