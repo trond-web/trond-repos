@@ -1,5 +1,7 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
+**Versjon 1.0.0** (2026-10-06) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
 direkte. På mobil blir arbeidsflaten et bunnark som kan dras opp, og ikonlisten en fanerad. Appen har lyst og mørkt tema,

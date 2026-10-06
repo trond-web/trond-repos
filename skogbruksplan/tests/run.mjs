@@ -20,6 +20,8 @@ import { RAPPORTER, lagRapport, lagRapportCsv, hogstprognose } from '../js/rappo
 import { klassifiser as klassifiserMarkslag, lagFigurer, arealfordeling } from '../js/markslag.js';
 import { genererTiltak, anvend as anvendMotor, endringer as motorEndringer, plantetall, maalTetthet, oppdaterBestand } from '../js/tiltaksmotor.js';
 import * as SP from '../js/skifteplan.js';
+import { VERSJON, UTVIKLER, signatur } from '../js/versjon.js';
+import { readFileSync } from 'node:fs';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
 
 let ok = 0;
@@ -680,6 +682,16 @@ test('Skifteplan: automatisk skifteinndeling (AR5 + jordsmonn)', async () => {
   assert.ok(Math.abs(fra[0].areal - 60) < 1.5 && Math.abs(fra[1].areal - 40) < 1.5, `${fra.map((x) => x.areal)}`);
   assert.equal(fra[0].inndeling.klasse, 'siltlett|god'); assert.equal(fra[1].inndeling.klasse, 'leire|svak');
   assert.ok(fra[0].jordsmonn.tekstur && fra.every((x) => x.inndeling.delt));
+});
+
+test('Versjon og utvikler', () => {
+  const pk = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(pk.version, VERSJON, 'package.json og js/versjon.js må ha samme versjon');
+  assert.equal(pk.author, 'Trond Harald Sand'); assert.equal(UTVIKLER, 'Trond Harald Sand');
+  assert.match(VERSJON, /^\d+\.\d+\.\d+$/);
+  const S = lagDemo(2026); S.innstillinger = { ...STANDARD_INNSTILLINGER, ...S.innstillinger };
+  const html = lagRapport('hovedtall', S, { iAar: 2026 });
+  assert.ok(html.includes(signatur()), 'rapporten viser versjon og utvikler');
 });
 
 await Promise.all(venter);

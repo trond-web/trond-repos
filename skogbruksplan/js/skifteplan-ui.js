@@ -8,6 +8,7 @@ import {
 } from './skifteplan.js';
 import { arealM2 } from './proj.js';
 import { fmt } from './charts.js';
+import { signatur } from './versjon.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -337,7 +338,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
   // ---------- utskrift ----------
   function aapneVindu(tittel, kropp) {
     const w = window.open('', '_blank'); if (!w) { melding('Nettleseren blokkerte utskriftsvinduet.'); return; }
-    w.document.write(`<!doctype html><meta charset="utf-8"><title>${esc(tittel)}</title><style>body{font:12px/1.45 system-ui,sans-serif;max-width:1000px;margin:20px auto;padding:0 16px;color:#111}h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:18px 0 6px}table{border-collapse:collapse;width:100%;margin:6px 0}th,td{border:1px solid #bbb;padding:3px 5px;text-align:left;vertical-align:top}th{background:#f1f1ee}td.t{text-align:right}.hint{color:#555}.leg{display:inline-block;width:10px;height:10px;border:1px solid #333;margin:0 4px 0 10px}@media print{h2{break-after:avoid}tr{break-inside:avoid}}</style>${kropp}<script>setTimeout(()=>print(),400)<\/script>`);
+    w.document.write(`<!doctype html><meta charset="utf-8"><title>${esc(tittel)}</title><style>body{font:12px/1.45 system-ui,sans-serif;max-width:1000px;margin:20px auto;padding:0 16px;color:#111}h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:18px 0 6px}table{border-collapse:collapse;width:100%;margin:6px 0}th,td{border:1px solid #bbb;padding:3px 5px;text-align:left;vertical-align:top}th{background:#f1f1ee}td.t{text-align:right}.hint{color:#555}.leg{display:inline-block;width:10px;height:10px;border:1px solid #333;margin:0 4px 0 10px}@media print{h2{break-after:avoid}tr{break-inside:avoid}}</style>${kropp}<p class="hint" style="margin-top:18px">Laget med ${esc(signatur())}.</p><script>setTimeout(()=>print(),400)<\/script>`);
     w.document.close();
   }
   function skrivGjodslingsplan() {
