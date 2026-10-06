@@ -108,12 +108,12 @@
         <ul class="kilder"><li>Kartverket · eiendom</li><li>NIBIO · tidligere plan</li><li>SR16 · skogressurs</li><li>MiS · miljø</li></ul>
         <form id="genSkjema" class="skjema gen-skjema">
           <label class="hel">Kommune
-            <input id="genKommune" name="kommune" list="kommuneListe" placeholder="Navn eller kommunenummer, f.eks. Nannestad" autocomplete="off" required>
+            <input id="genKommune" name="kommune" list="kommuneListe" placeholder="F.eks. Nannestad eller 3238" autocomplete="off" required>
             <datalist id="kommuneListe"></datalist>
           </label>
-          <label>Gårdsnummer <input id="genGnr" name="gnr" type="number" min="1" inputmode="numeric" required></label>
-          <label>Bruksnummer <input id="genBnr" name="bnr" type="number" min="1" inputmode="numeric" required></label>
-          <label>Festenummer <input id="genFnr" name="fnr" type="number" min="0" inputmode="numeric" placeholder="Valgfritt"></label>
+          <label>Gårdsnummer <input id="genGnr" name="gnr" type="number" min="1" inputmode="numeric" autocomplete="off" placeholder="F.eks. 29" required></label>
+          <label>Bruksnummer <input id="genBnr" name="bnr" type="number" min="1" inputmode="numeric" autocomplete="off" placeholder="F.eks. 2" required></label>
+          <label>Festenummer <input id="genFnr" name="fnr" type="number" min="0" inputmode="numeric" autocomplete="off" placeholder="Valgfritt"></label>
           <div class="hel knapperad"><button id="genBtn" class="knapp primar" type="submit">Lag skogbruksplan</button></div>
         </form>
       </div>
