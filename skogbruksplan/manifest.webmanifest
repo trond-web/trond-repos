@@ -1,0 +1,9 @@
+{
+  "name": "SkogIQ.ai",
+  "short_name": "SkogIQ",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f1",
+  "theme_color": "#10241c",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

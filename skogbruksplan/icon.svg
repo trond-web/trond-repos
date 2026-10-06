@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="16" fill="#10241c"/>
+  <!-- Gran tegnet som tre høydekurver/datalag, med et signalpunkt -->
+  <path d="M32 12 L44 26 H20 Z" fill="#7fd1a4"/>
+  <path d="M32 22 L48 39 H16 Z" fill="#4fae7f"/>
+  <path d="M32 33 L52 52 H12 Z" fill="#1f6b4a"/>
+  <circle cx="47" cy="15" r="5" fill="#ff5c78"/>
+</svg>

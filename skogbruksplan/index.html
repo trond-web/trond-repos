@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SkogIQ.ai</title>
+<meta name="description" content="SkogIQ.ai – skogbruksplan fra åpne data: kart, bestand, tiltak, framskriving, veier og kommuneanalyse. Lokalt og offline.">
+<meta name="theme-color" content="#10241c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Schibsted+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="style.css">
+<script>try { const t = localStorage.getItem('skogiq-tema'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<aside class="rail">
+  <a class="logo" href="#" data-gaa="oversikt" aria-label="SkogIQ.ai – til oversikten">
+    <img src="icon.svg" alt="" width="36" height="36">
+  </a>
+  <nav class="faner" role="tablist" aria-label="Moduler">
+    <button role="tab" data-fane="planer" title="Planer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 4.5 9-4.5" opacity=".5"/></svg><span>Planer</span></button>
+    <button role="tab" data-fane="kommune" title="Kommune"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5 9 4l6 2.5L20 4v13.5L15 20l-6-2.5L4 20Z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span>Kommune</span></button>
+    <button role="tab" data-fane="oversikt" class="aktiv" title="Oversikt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14a8 8 0 1 1 16 0"/><path d="m12 14 4-5"/><circle cx="12" cy="14" r="1.5"/><path d="M4 18h16"/></svg><span>Oversikt</span></button>
+    <button role="tab" data-fane="bestand" title="Bestand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5 11 3l9 4-2 10-8 4-6-6Z"/><path d="M11 3 10 12l8 5M10 12l-6 3"/></svg><span>Bestand</span></button>
+    <button role="tab" data-fane="tiltak" title="Tiltak"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11"/><circle cx="5" cy="18" r="1.3"/></svg><span>Tiltak</span></button>
+    <button role="tab" data-fane="framskriving" title="Framskriving"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18"/><path d="M4 16c3-1 4-6 7-6s4 3 9-6"/><path d="M16 4h4v4"/></svg><span>Prognose</span></button>
+    <button role="tab" data-fane="veier" title="Veier"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21 10.5 3M16 21 13.5 3"/><path d="M12 7v2M12 12.5v2M12 18v2"/></svg><span>Veier</span></button>
+    <button role="tab" data-fane="verdi" title="Verdi"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="10" cy="7" rx="6" ry="2.5"/><path d="M4 7v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V7"/><path d="M8 16.3c.6.1 1.3.2 2 .2 3.3 0 6-1.1 6-2.5"/><path d="M14 13.6c.6-.1 1.3-.1 2-.1 2.2 0 4 .8 4 1.8v3.2c0 1-1.8 1.8-4 1.8s-4-.8-4-1.8v-1.5"/></svg><span>Verdi</span></button>
+    <button role="tab" data-fane="rapporter" title="Rapporter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 7 20Z" transform="translate(-1 0)"/><path d="M13 3.5V8h4"/><path d="M9 12.5h6M9 15.5h6M9 18h3"/></svg><span>Rapporter</span></button>
+    <button role="tab" data-fane="skogbrand" title="Skogbrand – skadeforebygging og skaderegistrering"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6.2 0-3.4 2.4-5.4 3.6-8.3.5 1.7 1.5 2.8 2.6 3.2C12.3 6.6 13.6 4.4 15.6 3c-.4 2.9.9 4.7 2 6.4 1 1.5 1.4 2.9 1.4 4.6 0 4.1-3 7-7 7Z"/><path d="M12 21c-1.7 0-2.9-1.2-2.9-2.9 0-1.6 1.2-2.6 1.9-3.9.4 1 1 1.5 1.6 1.6.3-1.2.9-2 1.7-2.6 0 1.6 1.5 2.6 1.5 4.6 0 1.8-1.6 3.2-3.8 3.2Z"/></svg><span>Skogbrand</span></button>
+    <button role="tab" data-fane="skifteplan" title="Skifteplan – jordbruksskifter, gjødslingsplan og plantevernjournal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V8"/><path d="M12 12c-2.5 0-4-1.6-4-4 2.5 0 4 1.6 4 4ZM12 12c2.5 0 4-1.6 4-4-2.5 0-4 1.6-4 4ZM12 16.5c-2.5 0-4-1.6-4-4 2.5 0 4 1.6 4 4ZM12 16.5c2.5 0 4-1.6 4-4-2.5 0-4 1.6-4 4ZM12 7.5c-1-1-1-3 0-4.5 1 1.5 1 3.5 0 4.5Z"/></svg><span>Skifteplan</span></button>
+    <button role="tab" data-fane="pefc" title="PEFC skogstandard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg><span>PEFC</span></button>
+    <button role="tab" data-fane="ai" title="Spør AI om planen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5h0a2 2 0 0 1-2-2Z"/><path d="m12 7.5.9 1.9 1.9.9-1.9.9-.9 1.9-.9-1.9-1.9-.9 1.9-.9Z"/></svg><span>Spør AI</span></button>
+    <button role="tab" data-fane="felt" title="Felt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span>Felt</span></button>
+    <button role="tab" data-fane="data" title="Data"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.5"/><path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13"/><path d="M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5"/></svg><span>Data</span></button>
+  </nav>
+  <button class="tema-knapp" id="temaBtn" type="button" title="Bytt mellom lyst og mørkt tema" aria-label="Bytt tema">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>
+  </button>
+</aside>
+
+<main class="hoved">
+  <section class="kartdel">
+    <div id="kart"></div>
+    <button class="kommandolinje" id="kommandoBtn" type="button" aria-label="Søk og kommandoer">
+      <span class="ordmerke">SkogIQ<span>.ai</span></span>
+      <span class="sok"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><span id="kommandoHint">Søk bestand, planer, kommuner eller handlinger</span></span>
+      <kbd>⌘K</kbd>
+    </button>
+    <div class="kartverktoy">
+      <label><span class="etikett-tekst">Farge etter</span>
+        <select id="fargeEtter">
+          <option value="hogstklasse">Hogstklasse</option>
+          <option value="treslag">Treslag</option>
+          <option value="bonitet">Bonitet</option>
+          <option value="volum">Volum per daa</option>
+          <option value="tiltak">Planlagte tiltak</option>
+          <option value="terreng">Avstand til bilvei</option>
+          <option value="framskrevet">Hogstklasse om … år (Framskriving)</option>
+          <option value="stormrisiko">Stormrisiko</option>
+          <option value="billerisiko">Granbarkbillerisiko</option>
+          <option value="snorisiko">Snøbrekkrisiko</option>
+          <option value="brannrisiko">Brannrisiko</option>
+        </select>
+      </label>
+      <button id="tegnBtn" class="knapp" type="button" title="Tegn nytt bestand i kartet"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></svg>Tegn bestand</button>
+      <button id="posBtn" class="knapp" type="button" title="Vis min posisjon" aria-label="Vis min posisjon"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7.5"/></svg></button>
+    </div>
+    <div id="tegnHjelp" class="tegn-hjelp" hidden>
+      Klikk i kartet for å sette hjørnepunkter. <button id="tegnFerdig" class="knapp primar" type="button">Fullfør</button> <button id="tegnAvbryt" class="knapp" type="button">Avbryt</button>
+    </div>
+    <div id="delHjelp" class="tegn-hjelp" hidden>
+      <span class="tekst">Tegn en linje tvers over bestandet. Dobbeltklikk eller trykk «Del» for å avslutte.</span> <button id="delAngrePunkt" class="knapp" type="button" title="Fjern siste punkt">↶</button> <button id="delFerdig" class="knapp primar" type="button" disabled>Del</button> <button id="delAvbryt" class="knapp" type="button">Avbryt</button>
+    </div>
+    <div id="sbTegnHjelp" class="tegn-hjelp" hidden>
+      <span class="tekst"></span> <button id="sbTegnFerdig" class="knapp primar" type="button">Fullfør</button> <button id="sbTegnAvbryt" class="knapp" type="button">Avbryt</button>
+    </div>
+    <div id="veiTegnHjelp" class="tegn-hjelp" hidden>
+      <span class="tekst"></span> <button id="veiTegnFerdig" class="knapp primar" type="button">Fullfør</button> <button id="veiTegnAvbryt" class="knapp" type="button">Avbryt</button>
+    </div>
+    <div id="pefcTegnHjelp" class="tegn-hjelp" hidden>
+      <span class="tekst"></span> <button id="pefcTegnFerdig" class="knapp primar" type="button">Fullfør</button> <button id="pefcTegnAvbryt" class="knapp" type="button">Avbryt</button>
+    </div>
+    <div id="spTegnHjelp" class="tegn-hjelp" hidden>
+      <span class="tekst">Klikk rundt skiftet i kartet, og trykk «Fullfør».</span> <button id="spTegnFerdig" class="knapp primar" type="button">Fullfør</button> <button id="spTegnAvbryt" class="knapp" type="button">Avbryt</button>
+    </div>
+    <div id="kartLegend" class="kart-legend"></div>
+  </section>
+
+  <section class="panel" id="panel" data-ark="halv">
+    <header class="panel-topp">
+      <button class="ark-hank" id="arkHank" type="button" aria-label="Endre størrelse på panelet"><span></span></button>
+      <div class="panel-tittel">
+        <span class="overtittel" id="eiendomNavn">SkogIQ.ai</span>
+        <h2 id="faneTittel">Oversikt</h2>
+      </div>
+      <button class="knapp ikon-knapp" id="panelLukk" type="button" title="Skjul panelet" aria-label="Skjul panelet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
+    </header>
+    <div class="panel-innhold">
+    <!-- PLANER -->
+    <div class="fane" id="fane-planer" hidden>
+      <div class="kort helt">
+        <h3>Skogbruksplan på under ett minutt</h3>
+        <p>Skriv inn kommune, gårds- og bruksnummer. SkogIQ setter sammen planen fra åpne data og sammenligner den gamle taksten med nye fjernmålinger.</p>
+        <ul class="kilder"><li>Kartverket · eiendom</li><li>NIBIO · tidligere plan</li><li>SR16 · skogressurs</li><li>MiS · miljø</li></ul>
+        <form id="genSkjema" class="skjema gen-skjema">
+          <label class="hel">Kommune
+            <input id="genKommune" name="kommune" list="kommuneListe" placeholder="Navn eller kommunenummer, f.eks. Nannestad" autocomplete="off" required>
+            <datalist id="kommuneListe"></datalist>
+          </label>
+          <label>Gårdsnummer <input id="genGnr" name="gnr" type="number" min="1" inputmode="numeric" required></label>
+          <label>Bruksnummer <input id="genBnr" name="bnr" type="number" min="1" inputmode="numeric" required></label>
+          <label>Festenummer <input id="genFnr" name="fnr" type="number" min="0" inputmode="numeric" placeholder="Valgfritt"></label>
+          <div class="hel knapperad"><button id="genBtn" class="knapp primar" type="submit">Lag skogbruksplan</button></div>
+        </form>
+      </div>
+      <div id="genFramdrift" class="kort" hidden>
+        <h3 id="genTittel">Lager skogbruksplan …</h3>
+        <ol id="genSteg" class="gen-steg"></ol>
+        <div id="genResultat"></div>
+      </div>
+      <div class="kort">
+        <h3>Mine skogbruksplaner</h3>
+        <div id="planListe"></div>
+      </div>
+    </div>
+
+    <!-- KOMMUNE -->
+    <div class="fane" id="fane-kommune" hidden>
+      <div class="kort">
+        <h3>Finn skogområder i en kommune</h3>
+        <p class="hint">Går gjennom alle skogflatene i SR16 for kommunen og finner hogstmoden skog, skog egnet for lukket hogst og ungskog som trenger pleie. Verneområder og nøkkelbiotoper holdes utenfor hogstforslagene. Første gang tar det rundt ett minutt og laster ned 20–40 MB. Resultatet lagres på enheten.</p>
+        <form id="komSkjema" class="verktoyrad">
+          <input id="komKommune" list="kommuneListe" placeholder="Kommune, f.eks. Nannestad" autocomplete="off" required aria-label="Kommune">
+          <button id="komBtn" class="knapp primar" type="submit">Analyser kommunen</button>
+          <button id="komOppdater" class="knapp" type="submit" title="Hent dataene på nytt i stedet for å bruke lagret analyse">Hent på nytt</button>
+        </form>
+        <div id="komFramdrift" hidden>
+          <progress id="komFramdriftBar" max="1" value="0"></progress>
+          <div id="komFramdriftTekst" class="hint"></div>
+        </div>
+      </div>
+      <div id="komResultat" hidden>
+        <p id="komInfo" class="kom-info"></p>
+        <div class="kom-kategorier" role="tablist">
+          <button type="button" role="tab" data-kategori="hogst"><span class="navn">Sluttavvirkning</span><span class="tall"></span><span class="under"></span></button>
+          <button type="button" role="tab" data-kategori="lukket"><span class="navn">Lukket hogst</span><span class="tall"></span><span class="under"></span></button>
+          <button type="button" role="tab" data-kategori="ungskog"><span class="navn">Ungskogpleie</span><span class="tall"></span><span class="under"></span></button>
+        </div>
+        <div class="kort">
+          <p id="komBeskrivelse" class="hint" style="margin-top:0"></p>
+          <div id="komSum" class="nokkeltall"></div>
+          <div class="verktoyrad">
+            <select id="komTreslag" aria-label="Treslag"><option value="">Alle treslag</option><option value="G">Gran</option><option value="F">Furu</option><option value="L">Lauv</option></select>
+            <button type="button" class="knapp" data-kom-eksport="geojson">Last ned GeoJSON</button>
+            <button type="button" class="knapp" data-kom-eksport="csv">Last ned CSV</button>
+          </div>
+          <details class="kom-kriterier">
+            <summary>Kriterier</summary>
+            <div id="komKriterier" class="skjema tre-kol"></div>
+            <button id="komNullstill" class="knapp liten" type="button">Tilbakestill kriterier</button>
+          </details>
+          <div id="komListe" class="kom-liste"></div>
+        </div>
+        <p class="fotnote">Klikk på en flate i kartet og velg «Finn eiendom» for å se gårds- og bruksnummer og lage en skogbruksplan for eiendommen. Forslagene bygger på SR16 og forenklede kriterier, og må vurderes i felt.</p>
+      </div>
+    </div>
+
+    <!-- OVERSIKT -->
+    <div class="fane" id="fane-oversikt">
+      <section class="innsikt" id="innsikt" aria-label="SkogIQ-innsikt" hidden>
+        <div class="innsikt-topp"><span class="iq-merke">IQ</span><h3>Innsikt</h3><span class="hint">beregnet fra planens data</span></div>
+        <div id="innsiktListe" class="innsikt-liste"></div>
+      </section>
+      <div class="kpi-rad" id="kpi"></div>
+      <div class="kort">
+        <h3>Areal per hogstklasse og treslag (daa)</h3>
+        <div id="hkDiagram"></div>
+      </div>
+      <div class="kort">
+        <h3>Arealfordeling og markslag</h3>
+        <div id="arealfordeling"></div>
+      </div>
+      <div class="kort">
+        <h3>Neste tiltak</h3>
+        <div id="nesteTiltak"></div>
+      </div>
+      <p class="fotnote">Alle tall beregnes direkte fra bestandsdataene. Tilvekst og verdier er forenklede estimater – satsene kan justeres under <a href="#" data-gaa="data">Data → Innstillinger</a>.</p>
+    </div>
+
+    <!-- BESTAND -->
+    <div class="fane" id="fane-bestand" hidden>
+      <div class="verktoyrad">
+        <input type="search" id="bestandSok" placeholder="Søk nr, merknad …">
+        <select id="bestandFilterHk"><option value="">Alle hogstklasser</option></select>
+        <select id="bestandFilterTs"><option value="">Alle treslag</option></select>
+      </div>
+      <div id="bestandDetalj" class="kort" hidden></div>
+      <div class="tabell-wrap">
+        <table class="tabell" id="bestandTabell">
+          <thead><tr>
+            <th data-sort="nr">Nr</th><th data-sort="areal" class="tall">Daa</th><th data-sort="treslag">Tsl</th>
+            <th data-sort="bonitet" class="tall">Bon</th><th data-sort="hogstklasse">HK</th><th data-sort="alder" class="tall">Alder</th>
+            <th data-sort="volumDaa" class="tall">m³/daa</th><th data-sort="volum" class="tall">m³</th><th data-sort="hogstmoden" class="tall">Hogstmoden</th>
+          </tr></thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- TILTAK -->
+    <div class="fane" id="fane-tiltak" hidden>
+      <div class="verktoyrad">
+        <select id="tiltakFilterStatus">
+          <option value="planlagt">Planlagte</option><option value="utfort">Utførte</option><option value="">Alle</option>
+        </select>
+        <select id="tiltakFilterType"><option value="">Alle typer</option></select>
+        <button id="foreslaBtn" class="knapp" type="button"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>Tiltaksmotor</button>
+      </div>
+      <div id="motorPanel"></div>
+      <div id="forslagListe"></div>
+      <div id="tiltakListe"></div>
+    </div>
+
+    <!-- FRAMSKRIVING -->
+    <div class="fane" id="fane-framskriving" hidden>
+      <div class="kort">
+        <div class="verktoyrad">
+          <label>Periode <select id="frPeriode"><option>10</option><option selected>20</option><option>30</option><option>50</option></select> år</label>
+          <label class="avkrysning"><input type="checkbox" id="frFolgPlan" checked> Følg tiltaksplanen</label>
+        </div>
+        <label class="glider">Vis kartet i år <b id="frAarTekst"></b>
+          <input type="range" id="frAar" min="0" max="20" value="0">
+        </label>
+      </div>
+      <div class="kort"><h3>Stående volum (m³)</h3><div id="frVolum"></div></div>
+      <div class="kort"><h3>Avvirkning og tilvekst per år (m³)</h3><div id="frAvv"></div></div>
+      <div class="kort"><h3>Tabell</h3><div class="tabell-wrap"><table class="tabell" id="frTabell"></table></div></div>
+    </div>
+
+    <!-- VEIER -->
+    <div class="fane" id="fane-veier" hidden>
+      <div class="kpi-rad" id="veiKpi"></div>
+      <div class="kort">
+        <h3>Registrer veier</h3>
+        <p class="hint">Hent skogsbilveier (og private veier) som går på eller inntil eiendommen fra Nasjonal vegdatabank (NVDB), med veiklasse, bommer, snuplasser og stikkrenner der de er registrert. Du kan også tegne veier og plassere punkter selv.</p>
+        <div class="knapperad">
+          <button id="veiNvdbBtn" class="knapp primar" type="button">Hent veier fra NVDB</button>
+          <label class="avkrysning"><input type="checkbox" id="veiMedPrivate" checked> Ta med private veier (P)</label>
+        </div>
+        <div id="veiNvdbStatus" class="hint"></div>
+        <div class="knapperad">
+          <button id="veiTegnBtn" class="knapp" type="button"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></svg>Tegn vei</button>
+          <select id="veiNyStatus" aria-label="Status for ny vei"><option value="eksisterende">som eksisterende</option><option value="planlagt">som planlagt ny vei</option></select>
+          <select id="veiPunktType" aria-label="Punkttype">
+            <option value="bom">Bom</option><option value="stikkrenne">Stikkrenne</option><option value="snuplass">Snuplass</option>
+            <option value="velteplass">Velteplass / tømmerplass</option><option value="moteplass">Møteplass</option><option value="bru">Bru</option><option value="skade">Skade / utbedring</option>
+          </select>
+          <button id="veiPunktBtn" class="knapp" type="button"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Plasser punkt</button>
+          <button id="veiEksportBtn" class="knapp" type="button">Last ned GeoJSON</button>
+        </div>
+      </div>
+      <div class="kort"><h3>Veier</h3><div id="veiListe" class="vei-liste"></div></div>
+      <div id="veiDetalj" class="kort" hidden></div>
+      <div class="kort">
+        <div class="detalj-topp"><h3>Vedlikeholdsplan</h3><button id="veiForeslaBtn" class="knapp liten" type="button"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>Foreslå vedlikehold</button></div>
+        <div id="veiForslag"></div>
+        <div id="veiPlan"></div>
+      </div>
+      <div class="kort">
+        <h3>Terrengtransport</h3>
+        <p class="hint">Bestand der midten ligger langt fra nærmeste bilvei, målt i luftlinje. Dette er kandidater for ny vei eller traktorvei. Velg «Avstand til bilvei» under «Farge etter» for å se det i kartet.</p>
+        <div id="veiTerreng" class="tabell-wrap"></div>
+      </div>
+      <details class="kort vei-satser">
+        <summary>Satser og intervaller</summary>
+        <div id="veiSatser" class="skjema tre-kol"></div>
+        <p class="hint">Eksempelsatser. Legg inn egne priser fra entreprenør eller veilag. Tilskudd til nye skogsveier varierer mellom kommuner.</p>
+      </details>
+    </div>
+
+    <!-- PEFC -->
+    <div class="fane" id="fane-pefc" hidden>
+      <section class="kort pefc-topp"><div id="pefcStatus" class="pefc-status"></div></section>
+      <section class="kort" aria-labelledby="dgTittel">
+        <h3 id="dgTittel">Datagrunnlag</h3>
+        <div id="pefcDatagrunnlag"></div>
+      </section>
+      <div class="kort">
+        <h3>Offentlige miljødata</h3>
+        <p class="hint">Henter nøkkelbiotoper (MiS), verneområder, viktige naturtyper (A/B og NiN), utvalgte naturtyper, funksjonsområder for rødlistede og prioriterte arter, viktige friluftslivsområder og kulturminner for eiendommen. Rovfuglreir og tiurleiker er ikke åpent tilgjengelige, og må registreres manuelt.</p>
+        <div class="knapperad"><button id="pefcHentBtn" class="knapp primar" type="button">Hent miljødata for eiendommen</button></div>
+        <div id="pefcHentStatus" class="hint"></div>
+      </div>
+      <div class="kort">
+        <h3>Avvik og oppfølging</h3>
+        <div id="pefcFunn" class="pefc-funnliste"></div>
+      </div>
+      <div class="kort">
+        <h3>Klarering før hogst</h3>
+        <p class="hint">Operativ planlegging etter standarden for hver planlagt sluttavvirkning og tynning: databaser, rovfugl, tiurleik, kulturminner, friluftsliv, hogstform, foryngelse, livsløpstrær og kantsoner.</p>
+        <div id="pefcKlarering"></div>
+      </div>
+      <div class="kort">
+        <div class="detalj-topp"><h3>Miljøobjekter</h3></div>
+        <div class="verktoyrad">
+          <select id="pefcNyType" aria-label="Type miljøobjekt">
+            <option value="rovfuglreir">Rovfugl-/uglereir</option><option value="tiurleik">Tiurleik</option><option value="noekkelbiotop">Nøkkelbiotop</option>
+            <option value="bvo">Biologisk viktig område (BVO)</option><option value="livslopstre">Livsløpstre</option><option value="vann">Bekk / elv / vann</option>
+            <option value="myr">Myr / sumpskog</option><option value="sti">Sti / skiløype</option><option value="kulturminne">Kulturminne</option>
+            <option value="friluftsomrade">Viktig friluftslivsområde</option><option value="brann">Brannflate</option><option value="utenlandsk">Utenlandske treslag</option>
+          </select>
+          <button id="pefcNyBtn" class="knapp" type="button">Registrer i kartet</button>
+        </div>
+        <div id="pefcObjekter" class="pefc-objekter"></div>
+        <div id="pefcObjektDetalj" class="pefc-objektdetalj" hidden></div>
+      </div>
+      <div class="kort">
+        <h3>Eiendom</h3>
+        <div id="pefcEiendom" class="skjema to-kol"></div>
+      </div>
+      <div class="kort">
+        <h3>Alle 30 kravpunkter</h3>
+        <div id="pefcKrav"></div>
+      </div>
+      <p class="fotnote">Basert på Norsk PEFC Skogstandard (PEFC N 02:2022), gjeldende fra 1. mars 2023. SkogIQ kontrollerer det som kan kontrolleres med planens data, og gir sjekklister for resten. Skogeier er ansvarlig for etterlevelsen, og gruppesertifikatholderen kan ha egne rutiner og krav.</p>
+    </div>
+
+    <!-- VERDI -->
+    <div class="fane" id="fane-verdi" hidden>
+      <div class="kpi-rad" id="verdiKpi"></div>
+      <div class="kort">
+        <h3>Forutsetninger</h3>
+        <div id="verdiForutsetninger" class="skjema to-kol"></div>
+      </div>
+      <div class="kort">
+        <h3>Tømmerpriser og driftskostnader</h3>
+        <div id="verdiPriser"></div>
+      </div>
+      <div class="kort">
+        <h3>Skogverdi per hogstklasse <span class="hint">(1000 kr)</span></h3>
+        <div id="verdiDiagram"></div>
+      </div>
+      <div class="kort">
+        <h3>Følsomhet for renten</h3>
+        <div id="verdiFolsomhet"></div>
+      </div>
+      <div class="kort">
+        <h3>Verdi per bestand</h3>
+        <div id="verdiTabell"></div>
+      </div>
+      <details class="kort metode">
+        <summary><b>Slik regnes verdiene</b></summary>
+        <ul class="hint">
+          <li><b>Slaktverdi</b>: stående volum × rotnetto (tømmerpris − driftskostnad). Det du ville fått om alt ble hogd i dag.</li>
+          <li><b>Jordverdi</b> (Faustmann): nåverdien av uendelig mange omløp fra snaumark, med planting og ungskogpleie som kostnader. Omløpstiden velges optimalt, men aldri under PEFCs nedre aldersgrense.</li>
+          <li><b>Skogverdi</b> (forventningsverdi): for hvert bestand nåverdien av hogst på beste tidspunkt (tidligst ved PEFCs nedre aldersgrense) pluss jordverdien etterpå. Volumet framskrives med samme vekstkurver som framskrivingen.</li>
+          <li><b>Eiendomsverdi</b>: skogverdi + andre årlige inntekter og kostnader (inkl. veivedlikehold) kapitalisert med renten.</li>
+          <li><b>Nåverdi av tiltaksplanen</b>: netto kontantstrøm fra planlagte tiltak i horisonten, diskontert.</li>
+          <li>Bestand i nøkkelbiotoper, BVO og verneområder regnes uten tømmerproduksjon.</li>
+          <li>Alle beløp er reelle (uten prisstigning) og før skatt. Skogfond, tilskudd, jakt og bygninger er ikke med med mindre du legger dem inn som andre inntekter. Verdien er et beregnet estimat – ikke en takst.</li>
+        </ul>
+      </details>
+    </div>
+
+    <!-- AI-ASSISTENT -->
+    <div class="fane" id="fane-ai" hidden>
+      <div id="aiOppsett" class="kort">
+        <h3>Spør AI om skogbruksplanen</h3>
+        <p class="hint">Assistenten bruker Claude fra Anthropic til å svare på spørsmål om planen: bestand, hogst, tiltak, verdier, veier og PEFC. Planens data sendes til Anthropic sammen med spørsmålet ditt.</p>
+        <p class="hint">Du trenger en egen API-nøkkel fra <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. Bruken faktureres på din Anthropic-konto. Nøkkelen lagres bare i denne nettleseren, og sendes bare til Anthropic.</p>
+        <form id="aiNokkelSkjema" class="ai-nokkel">
+          <input id="aiNokkel" type="password" autocomplete="off" placeholder="sk-ant-…" aria-label="Anthropic API-nøkkel">
+          <button class="knapp primar" type="submit">Lagre nøkkel</button>
+        </form>
+        <div id="aiNokkelStatus" class="hint"></div>
+      </div>
+      <div id="aiChat" class="ai-chat" hidden>
+        <div class="ai-topp">
+          <span class="hint">Svarene er AI-generert ut fra planens data og kan inneholde feil. Kontroller viktige tall.</span>
+          <span class="knapperad" style="margin:0"><button id="aiNy" class="knapp liten" type="button">Ny samtale</button><button id="aiEndreNokkel" class="knapp liten" type="button">Endre nøkkel</button></span>
+        </div>
+        <div id="aiLogg" class="ai-logg" aria-live="polite"></div>
+        <div id="aiForslag" class="ai-forslagliste"></div>
+        <form id="aiSkjema" class="ai-skjema">
+          <textarea id="aiInput" rows="2" placeholder="Spør om planen, f.eks. «Hvilke bestand er hogstmodne?»" aria-label="Spørsmål"></textarea>
+          <button id="aiSend" class="knapp primar" type="submit">Send</button>
+          <button id="aiStopp" class="knapp" type="button" hidden>Stopp</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- RAPPORTER -->
+    <div class="fane" id="fane-rapporter" hidden>
+      <div id="rapportKort" class="rapport-kort"></div>
+      <div class="kort">
+        <h3>Hele planen</h3>
+        <p class="hint">Alle fire rapportene samlet i ett dokument, klart for utskrift eller PDF.</p>
+        <div class="knapperad"><button type="button" class="knapp" data-rapport="alle" data-r-handling="vis">Vis samlet rapport</button><button type="button" class="knapp" data-rapport="alle" data-r-handling="pdf">Skriv ut / PDF</button></div>
+      </div>
+      <p class="fotnote">Velg «Lagre som PDF» i utskriftsdialogen for å få en PDF. Bestandslisten skrives ut liggende. CSV-filene åpnes i Excel med norske desimaltall.</p>
+    </div>
+
+    <!-- SKIFTEPLAN -->
+    <div class="fane" id="fane-skifteplan" hidden>
+      <div class="sb-under" role="tablist">
+        <button type="button" data-sp-under="skifter" class="aktiv">Skifter</button>
+        <button type="button" data-sp-under="gjodsling">Gjødsling</button>
+        <button type="button" data-sp-under="sproyting">Plantevern</button>
+        <button type="button" data-sp-under="krav">Krav</button>
+      </div>
+      <div id="spInnhold"></div>
+    </div>
+
+    <!-- SKOGBRAND -->
+    <div class="fane" id="fane-skogbrand" hidden>
+      <div class="sb-under" role="tablist">
+        <button type="button" data-sb-under="naa" class="aktiv">Risiko nå</button>
+        <button type="button" data-sb-under="forebygging">Forebygging</button>
+        <button type="button" data-sb-under="skader">Skader</button>
+      </div>
+      <div id="sbInnhold"></div>
+      <p class="fotnote">Bygger på Skogbrands råd om forebygging og oppfølging etter skade, skogforsikringsvilkårene og «Retningslinjer for skogsdrift og skjøtsel i skogbrannsesongen» (april 2026), og på åpne data fra Meteorologisk institutt og NIBIO. Skademelding sendes via forsikringsselskapet. Ved brann: ring 110.</p>
+    </div>
+
+    <!-- FELT -->
+    <div class="fane" id="fane-felt" hidden>
+      <div class="kort">
+        <h3>Hvor er jeg?</h3>
+        <p id="gpsStatus" class="hint">Trykk på knappen for å slå på GPS. Appen viser hvilket bestand du står i.</p>
+        <button id="gpsBtn" class="knapp primar" type="button">Start GPS</button>
+        <div id="gpsBestand"></div>
+      </div>
+      <div class="kort">
+        <h3>Ny registrering</h3>
+        <form id="regSkjema" class="skjema">
+          <label>Kategori
+            <select name="kategori">
+              <option>Observasjon</option><option>Skade (vind/snø/råte)</option><option>Barkbille</option><option>Viltskade</option>
+              <option>Miljøverdi</option><option>Grense/merke</option><option>Vei/grøft</option><option>Kontroll etter tiltak</option>
+            </select>
+          </label>
+          <label>Beskrivelse <textarea name="tekst" rows="2"></textarea></label>
+          <label>Bilde <input type="file" name="bilde" accept="image/*" capture="environment"></label>
+          <p class="hint">Posisjon tas fra GPS, eller klikk i kartet før du lagrer.</p>
+          <button class="knapp primar" type="submit">Lagre registrering</button>
+        </form>
+      </div>
+      <div class="kort">
+        <h3>Registreringer</h3>
+        <div id="regListe"></div>
+      </div>
+    </div>
+
+    <!-- DATA -->
+    <div class="fane" id="fane-data" hidden>
+      <div class="kort">
+        <h3>Eiendom</h3>
+        <form id="eiendomSkjema" class="skjema to-kol">
+          <label>Navn <input name="navn"></label>
+          <label>Eier <input name="eier"></label>
+          <label>Kommune <input name="kommune"></label>
+          <label>Gnr/bnr <input name="gnrbnr"></label>
+          <label>Takstår <input name="takstAar" type="number"></label>
+        </form>
+      </div>
+      <div class="kort">
+        <h3>Importer skogbruksplan</h3>
+        <p class="hint">SOSI (.sos), GeoJSON eller CSV/Excel-eksport (bestandsliste). Feltnavn som BESTANDNR, TRESLAG, BONITET, HOGSTKLASSE, ALDER, VOLUM osv. gjenkjennes automatisk.</p>
+        <div class="skjema to-kol">
+          <label>Koordinatsystem
+            <select id="impKoord">
+              <option value="auto">Automatisk</option><option value="UTM32">EUREF89 UTM32</option><option value="UTM33">EUREF89 UTM33</option>
+              <option value="UTM35">EUREF89 UTM35</option><option value="WGS84">WGS84 (grader)</option>
+            </select>
+          </label>
+          <label>Ved import
+            <select id="impModus"><option value="flett">Flett med eksisterende (oppdater på bestandsnr)</option><option value="erstatt">Erstatt alle bestand</option></select>
+          </label>
+        </div>
+        <div id="slippSone" class="slipp-sone">Dra filer hit, eller <label class="lenke">velg fil<input type="file" id="impFil" multiple accept=".sos,.sosi,.geojson,.json,.csv,.txt,.tsv" hidden></label></div>
+        <div id="impResultat"></div>
+      </div>
+      <div class="kort">
+        <h3>Eksport og sikkerhetskopi</h3>
+        <div class="knapperad">
+          <button class="knapp" data-eksport="backup" type="button"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Full sikkerhetskopi (.json)</button>
+          <button class="knapp" data-eksport="geojson" type="button">GeoJSON (WGS84)</button>
+          <button class="knapp" data-eksport="sosi32" type="button">SOSI (UTM32)</button>
+          <button class="knapp" data-eksport="sosi33" type="button">SOSI (UTM33)</button>
+          <button class="knapp" data-eksport="csv" type="button">Bestandsliste (CSV)</button>
+          <button class="knapp" data-eksport="tiltakcsv" type="button">Tiltaksplan (CSV)</button>
+          <button class="knapp" data-eksport="rapport" type="button"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4h10v5M7 17H5v-7h14v7h-2"/><path d="M7 14h10v6H7Z"/></svg>Rapport / PDF</button>
+        </div>
+        <div class="knapperad">
+          <label class="knapp">Gjenopprett sikkerhetskopi<input type="file" id="gjenopprettFil" accept=".json" hidden></label>
+          <button class="knapp" id="demoBtn" type="button">Last demo-eiendom</button>
+          <button class="knapp" type="button" data-eksempel="data/nannestad-29-2.geojson" data-navn="Nannestad 29/2" data-kommune="Nannestad">Last Nannestad 29/2 (åpne data)</button>
+          <button class="knapp fare" id="slettAltBtn" type="button">Slett alt</button>
+        </div>
+      </div>
+      <div class="kort">
+        <h3>Offline-kart</h3>
+        <p class="hint">Last ned kartfliser for eiendommen slik at kartet virker uten dekning i skogen.</p>
+        <div class="knapperad">
+          <button class="knapp" id="offlineBtn" type="button"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Last ned kart for eiendommen</button>
+          <span id="offlineStatus" class="hint"></span>
+        </div>
+      </div>
+      <div class="kort">
+        <h3>Innstillinger – priser og modell</h3>
+        <form id="innstSkjema" class="skjema tre-kol"></form>
+        <details>
+          <summary>Laveste hogstalder per bonitet</summary>
+          <div id="hogstalderTabell" class="tabell-wrap"></div>
+        </details>
+        <button id="innstNullstill" class="knapp" type="button">Tilbakestill standardverdier</button>
+      </div>
+    </div>
+    </div>
+  </section>
+</main>
+<div class="kommando" id="kommando" hidden>
+  <div class="kommando-boks" role="dialog" aria-modal="true" aria-label="Søk og kommandoer">
+    <div class="kommando-sok"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="kommandoInput" placeholder="Søk, eller skriv f.eks. «Nannestad 29/2»" autocomplete="off" spellcheck="false" aria-label="Søk"><kbd>Esc</kbd></div>
+    <ul id="kommandoListe" class="kommando-liste" role="listbox"></ul>
+  </div>
+</div>
+
+<div id="rapport" class="rapport"></div>
+<div id="melding" class="melding" role="status" hidden></div>
+<div id="rapportVisning" class="rapport-visning" hidden>
+  <div class="rapport-verktoy">
+    <b id="rapportTittel">Rapport</b>
+    <select id="rapportVelg" aria-label="Velg rapport"></select>
+    <span class="rom"></span>
+    <button type="button" class="knapp primar" id="rapportSkriv">Skriv ut / PDF</button>
+    <button type="button" class="knapp" id="rapportCsv">CSV</button>
+    <button type="button" class="knapp" id="rapportLukk" aria-label="Lukk">Lukk</button>
+  </div>
+  <iframe id="rapportRamme" title="Rapport"></iframe>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
