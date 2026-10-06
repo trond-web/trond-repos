@@ -178,6 +178,8 @@ Tallene for husdyrgjødsel er typiske verdier – bruk egen gjødselanalyse når
 
 ## Publisering på Railway
 
+I produksjon: **https://skogiq-production.up.railway.app** (Railway-prosjekt `skogiq`, tjenesten er koblet til `main` og publiseres på nytt ved hver endring i `skogbruksplan/`).
+
 Appen er statisk og kjøres med en liten Node-server uten avhengigheter (`server.js`). Den har komprimering, ETag/304,
 sikkerhetshoder og helsesjekk på `/healthz`. Testfiler, verktøy og konfigurasjon publiseres ikke.
 
@@ -185,7 +187,8 @@ sikkerhetshoder og helsesjekk på `/healthz`. Testfiler, verktøy og konfigurasj
 2. Under tjenestens **Settings**:
    - **Root Directory**: `/skogbruksplan`
    - **Branch**: grenen som skal publiseres (f.eks. `main`)
-   - **Railway Config File**: `/skogbruksplan/railway.json` (gir helsesjekk, omstart og watch-paths)
+   - **Start Command**: `node server.js`, **Healthcheck Path**: `/healthz`, **Watch Paths**: `/skogbruksplan/**`
+     (Railway har faset ut `railway.json` som «Config File»; filen ligger igjen som dokumentasjon av innstillingene)
 3. **Networking** → **Generate Domain** for å få en offentlig adresse (`*.up.railway.app`), eller legg til eget domene.
 
 Railway bygger med Railpack (Node ≥ 20) og starter `node server.js` på porten i `PORT`. Ingen miljøvariabler er nødvendige –
