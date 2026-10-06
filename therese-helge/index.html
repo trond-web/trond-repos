@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Therese &amp; Helge</title>
+<meta name="theme-color" content="#c8385a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,650;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <canvas id="contours" aria-hidden="true"></canvas>
+    <p class="eyebrow">Kjærlighet over tregrensa · <span id="todayLabel"></span></p>
+    <h1>Therese <span class="amp">&amp;</span> Helge</h1>
+    <p class="tagline">To topper, én kartlinje. Økologisk drevet, kaffekokt på primus og geologisk stabilt siden kambrium.</p>
+    <div class="stats">
+      <div class="stat"><span class="num" id="statDays">0</span><span class="eyebrow">dager sammen</span></div>
+      <div class="stat"><span class="num" id="statVert">0</span><span class="eyebrow">høydemeter i lag</span></div>
+      <div class="stat"><span class="num" id="statEco">0 %</span><span class="eyebrow">øko i kurven</span></div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Seksjoner">
+    <div class="tabs-inner">
+      <button class="tab" role="tab" id="tab-hjem" aria-controls="hjem" aria-selected="true">
+        <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Oss to</button>
+      <button class="tab" role="tab" id="tab-turer" aria-controls="turer" aria-selected="false">
+        <svg viewBox="0 0 24 24"><path d="M2 20l7-12 4 6 3-4 6 10z"/><path d="M7.5 10.5l1.5 1 1.5-1"/></svg>Turer</button>
+      <button class="tab" role="tab" id="tab-kjokken" aria-controls="kjokken" aria-selected="false">
+        <svg viewBox="0 0 24 24"><path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14z"/><path d="M5 19l7-7"/></svg>Øko-kjøkken</button>
+      <button class="tab" role="tab" id="tab-geologi" aria-controls="geologi" aria-selected="false">
+        <svg viewBox="0 0 24 24"><path d="M4 15l4-8h8l4 8-8 5z"/><path d="M8 7l4 13M16 7l-4 13M4 15h16"/></svg>Geologi</button>
+      <button class="tab" role="tab" id="tab-lapper" aria-controls="lapper" aria-selected="false">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Lapper</button>
+    </div>
+  </nav>
+
+  <!-- ============ OSS TO ============ -->
+  <main>
+  <section class="panel" id="hjem" role="tabpanel" aria-labelledby="tab-hjem">
+    <div class="card quote-card">
+      <p class="eyebrow">Dagens geologiske kjærlighetserklæring</p>
+      <p class="quote" id="compliment"></p>
+      <div class="btn-row">
+        <button class="btn btn-small" id="complimentFor" type="button">Til Therese</button>
+        <button class="btn btn-small btn-ghost" id="complimentNext" type="button">Ny erklæring</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Forholdsvarsel</h2>
+        <span class="eyebrow">Skredfare i parforholdet, oppdatert i dag</span>
+      </div>
+      <div class="card">
+        <div class="danger">
+          <div class="danger-badge" id="dangerBadge">1</div>
+          <div>
+            <h3 id="dangerTitle">Liten fare</h3>
+            <p class="muted" id="dangerText"></p>
+          </div>
+        </div>
+        <div class="mood-row">
+          <div class="mood"><strong>Therese</strong><div class="mood-btns" data-who="therese"></div></div>
+          <div class="mood"><strong>Helge</strong><div class="mood-btns" data-who="helge"></div></div>
+        </div>
+        <p class="muted" style="font-size:.82rem">Trykk dagsformen fra 1 (blodsukker i kjelleren) til 5 (alpenglød i sjelen).</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Neste eventyr</h2>
+        <button class="btn btn-primary btn-small" id="adventureBtn" type="button">Rull terningen</button>
+      </div>
+      <div class="card" id="adventure"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Ukens kjærlighetsoppdrag</h2>
+        <span class="eyebrow" id="challengeWeek"></span>
+      </div>
+      <div class="card">
+        <div class="meter glow"><span id="challengeMeter" style="width:0"></span></div>
+        <div id="challenges"></div>
+      </div>
+    </div>
+
+    <details class="card settings">
+      <summary>Innstillinger</summary>
+      <form class="stack" id="settingsForm">
+        <div class="field">
+          <label for="startDate">Vi ble kjærester</label>
+          <input type="date" id="startDate">
+        </div>
+        <div class="field">
+          <button class="btn btn-small" type="submit">Lagre dato</button>
+        </div>
+        <div class="field wide">
+          <button class="btn btn-small btn-ghost" type="button" id="clearExamples">Fjern alle eksempeldata</button>
+        </div>
+      </form>
+    </details>
+  </section>
+
+  <!-- ============ TURER ============ -->
+  <section class="panel" id="turer" role="tabpanel" aria-labelledby="tab-turer" hidden>
+    <div class="section">
+      <div class="section-head">
+        <h2>Loggfør en tur</h2>
+        <span class="eyebrow">Randonee, topptur, fjelltur</span>
+      </div>
+      <form class="card stack" id="tripForm">
+        <div class="field wide">
+          <label for="tripName">Topp eller område</label>
+          <input id="tripName" required placeholder="f.eks. Store Vengetind">
+        </div>
+        <div class="field">
+          <label for="tripDate">Dato</label>
+          <input type="date" id="tripDate" required>
+        </div>
+        <div class="field">
+          <label for="tripType">Type</label>
+          <select id="tripType">
+            <option value="randonee">Randonee</option>
+            <option value="fjelltur">Fjelltur</option>
+            <option value="topptur">Topptur til fots</option>
+            <option value="langrenn">Langrenn (unnskyld)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="tripVert">Høydemeter</label>
+          <input type="number" id="tripVert" min="0" step="10" required placeholder="1200">
+        </div>
+        <div class="field">
+          <label for="tripCond">Forhold</label>
+          <select id="tripCond">
+            <option>Pudder til knærne</option>
+            <option>Vårsnø / firn</option>
+            <option>Skare som en kjøkkenbenk</option>
+            <option>Bruddskare (vi snakker ikke om det)</option>
+            <option>Sol og tørr sti</option>
+            <option>Vestlandsvær</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="tripCoffee">Hvem kokte kaffen?</label>
+          <select id="tripCoffee">
+            <option value="Therese">Therese</option>
+            <option value="Helge">Helge</option>
+            <option value="Ingen">Ingen (krise)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="tripRomance">Romantikk (1–5)</label>
+          <input type="number" id="tripRomance" min="1" max="5" value="4">
+        </div>
+        <div class="field wide">
+          <label for="tripRock">Fant vi en fin stein?</label>
+          <input id="tripRock" placeholder="f.eks. granatglimmerskifer med ekte granater">
+        </div>
+        <div class="field wide"><button class="btn btn-primary" type="submit">Lagre turen</button></div>
+      </form>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Høydemeter sammen</h2>
+        <span class="eyebrow" id="vertSummary"></span>
+      </div>
+      <div class="card">
+        <canvas class="profile" id="profile" aria-label="Akkumulerte høydemeter over tid"></canvas>
+        <div class="milestones" id="milestones"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Turdagbok</h2>
+      <div class="card"><ul class="list" id="tripList"></ul></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Ønskelista</h2>
+        <span class="eyebrow">Topper vi skal kysse på</span>
+      </div>
+      <div class="card">
+        <form class="stack" id="wishForm">
+          <div class="field"><label for="wishName">Topp</label><input id="wishName" required placeholder="Slogen"></div>
+          <div class="field"><label for="wishHeight">Moh.</label><input type="number" id="wishHeight" min="0" placeholder="1564"></div>
+          <div class="field"><button class="btn btn-small" type="submit">Legg til</button></div>
+        </form>
+        <ul class="list" id="wishList"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ØKO-KJØKKEN ============ -->
+  <section class="panel" id="kjokken" role="tabpanel" aria-labelledby="tab-kjokken" hidden>
+    <div class="section">
+      <div class="section-head">
+        <h2>Handlelista</h2>
+        <span class="eyebrow" id="ecoLabel"></span>
+      </div>
+      <div class="card">
+        <div class="meter"><span id="ecoMeter" style="width:0"></span></div>
+        <p class="muted" id="ecoVerdict"></p>
+        <form class="stack" id="shopForm">
+          <div class="field"><label for="shopItem">Vare</label><input id="shopItem" required placeholder="Havregryn"></div>
+          <div class="field"><label for="shopEco">Økologisk?</label>
+            <select id="shopEco"><option value="1">Ja, Debio-merket</option><option value="0">Nei (skam)</option></select></div>
+          <div class="field"><button class="btn btn-small" type="submit">Legg til</button></div>
+        </form>
+        <ul class="list" id="shopList"></ul>
+        <div class="btn-row"><button class="btn btn-small btn-ghost" id="clearBought" type="button">Fjern det som er kjøpt</button></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Turmat for to</h2>
+        <span class="eyebrow">Økologisk, varm og verdt høydemeterne</span>
+      </div>
+      <div class="grid-2" id="recipes"></div>
+    </div>
+
+    <div class="section">
+      <h2>Sesongkalenderen</h2>
+      <div class="card" id="season"></div>
+    </div>
+  </section>
+
+  <!-- ============ GEOLOGI ============ -->
+  <section class="panel" id="geologi" role="tabpanel" aria-labelledby="tab-geologi" hidden>
+    <div class="section">
+      <div class="section-head">
+        <h2>Hvilken bergart er forholdet i dag?</h2>
+        <button class="btn btn-small btn-primary" id="rockBtn" type="button">Analyser</button>
+      </div>
+      <div class="card" id="rockCard"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Steinhard quiz</h2>
+        <span class="eyebrow" id="quizScore"></span>
+      </div>
+      <div class="card" id="quiz"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Steinsamlingen</h2>
+        <span class="eyebrow">Fra turdagboka</span>
+      </div>
+      <div class="card"><ul class="list" id="rockList"></ul></div>
+    </div>
+
+    <div class="section">
+      <h2>Forholdets geologiske tidsskala</h2>
+      <div class="card"><ul class="list" id="timescale"></ul></div>
+    </div>
+  </section>
+
+  <!-- ============ LAPPER ============ -->
+  <section class="panel" id="lapper" role="tabpanel" aria-labelledby="tab-lapper" hidden>
+    <div class="section">
+      <h2>Skriv en kjærlighetslapp</h2>
+      <form class="card stack" id="noteForm">
+        <div class="field">
+          <label for="noteFrom">Fra</label>
+          <select id="noteFrom"><option value="therese">Therese</option><option value="helge">Helge</option></select>
+        </div>
+        <div class="field">
+          <button class="btn btn-small btn-ghost" type="button" id="noteInspire">Gi meg inspirasjon</button>
+        </div>
+        <div class="field wide">
+          <label for="noteText">Lappen</label>
+          <textarea id="noteText" required maxlength="400" placeholder="Du er toppen. Bokstavelig talt, du kom først opp."></textarea>
+        </div>
+        <div class="field wide"><button class="btn btn-primary" type="submit">Heng opp lappen</button></div>
+      </form>
+    </div>
+    <div class="section">
+      <div class="section-head">
+        <h2>Kjøleskapsdøra</h2>
+        <span class="eyebrow" id="noteCount"></span>
+      </div>
+      <div class="notes" id="notes"></div>
+    </div>
+  </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>
