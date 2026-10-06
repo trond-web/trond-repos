@@ -15,7 +15,7 @@
   /* ---------------- Lagring ---------------- */
   const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
   const SEED = {
-    startDate: "2024-02-14",
+    startDate: "2026-10-04",
     moods: {},
     trips: [
       { id: uid(), name: "Kvitegga", date: daysAgo(190), type: "randonee", vert: 1050, cond: "Pudder til knærne", coffee: "Helge", romance: 5, rock: "Gneis med kvartsårer", ex: true },
@@ -44,6 +44,8 @@
   let state;
   try { state = JSON.parse(localStorage.getItem(KEY)) || null; } catch { state = null; }
   state = Object.assign(structuredClone(SEED), state || {});
+  // Den gamle plassholderdatoen byttes ut med den ekte: 4. oktober 2026.
+  if (state.startDate === "2024-02-14") state.startDate = SEED.startDate;
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* privat modus */ } };
 
   const toastEl = $("#toast");

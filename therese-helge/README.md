@@ -18,4 +18,4 @@ i nettleseren (`localStorage`), så ingenting sendes noe sted.
 
 Åpne `index.html` i en nettleser, eller server mappen statisk (f.eks. `npx serve .`).
 Appen starter med noen eksempler merket *eksempel*. Under **Oss to → Innstillinger**
-setter dere datoen dere ble kjærester og fjerner eksemplene.
+kan dere endre datoen dere ble kjærester (satt til 4. oktober 2026) og fjerne eksemplene.
