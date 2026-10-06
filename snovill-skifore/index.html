@@ -26,8 +26,8 @@
       <p class="tagline" id="tagline">Hei, Snøvill! Jeg rister værmodellene og ser om det blir skiføre …</p>
     </div>
     <div class="hero-meter" id="heroMeter" role="img" aria-label="Snøvill-indeks">
-      <div class="meter-ring"><span id="heroIndex">–</span><small>%</small></div>
-      <div class="meter-label">Snøvill-indeks<br><small>beste sjanse neste 10 dager</small></div>
+      <div class="meter-ring"><span id="heroIndex">–</span></div>
+      <div class="meter-label">Snøvill-indeks<br><small>beste dag neste 10 dager</small></div>
     </div>
   </header>
 
@@ -43,8 +43,13 @@
     <h2>⚙️ Innstillinger</h2>
     <div class="settings-grid">
       <label class="field">
-        <span>Snødybde som trengs for oppkjørte spor</span>
+        <span>🎿 Snødybde som trengs for oppkjørte spor</span>
         <span class="range-row"><input type="range" id="thresholdInput" min="10" max="50" step="5" value="25"> <output id="thresholdOut">25 cm</output></span>
+      </label>
+      <label class="field">
+        <span>👣 Minste snømengde for å tråkke spor selv</span>
+        <span class="range-row"><input type="range" id="selfThresholdInput" min="1" max="20" step="1" value="2"> <output id="selfThresholdOut">2 cm</output></span>
+        <small class="hint">Snøvill tråkker gjerne spor selv – 2 cm holder for et smil.</small>
       </label>
       <div class="field">
         <span>Snødybde i dag (start for beregningen)</span>
@@ -135,7 +140,8 @@
       <li><strong>Yr (MET Norge)</strong> og <strong>Storm (StormGeo via TV 2 Vær)</strong> gir nedbør og temperatur time for time for hvert sted.</li>
       <li>Nedbøren deles i snø og regn etter temperatur (helt snø under 0 °C, helt regn over +2 °C). 1 mm nedbør ≈ 1 cm snø.</li>
       <li>En liten snømodell legger på nysnø, smelter med plussgrader (≈1,2 cm per graddøgn), lar regn spise snø og lar snøen sette seg ~3 % i døgnet.</li>
-      <li>For å få en <em>sannsynlighet</em> kjøres 30 varianter: begge modellene × fem temperaturavvik (som vokser jo lenger frem vi ser) × tre nedbørsmengder. Andelen varianter som gir nok snø = sjansen for skiføre.</li>
+      <li>For å få en <em>sannsynlighet</em> kjøres 30 varianter: begge modellene × fem temperaturavvik (som vokser jo lenger frem vi ser) × tre nedbørsmengder. Andelen varianter med nok snø gir to sjanser: 🎿 <em>oppkjørte spor</em> (standard ≥ 25 cm) og 👣 <em>tråkke spor selv</em> (standard ≥ 2 cm).</li>
+      <li><strong>Snøvill-indeksen</strong> (0–100) = 75 % × sjansen for å kunne tråkke selv + 25 % × sjansen for oppkjørte spor. Nok snø til egne spor gir altså opptil 75, og oppkjørte spor på toppen gir full pott.</li>
       <li><strong>Sporet.no</strong> viser når løypene sist ble kjørt, og brukes til å gjette hvor mye snø som ligger der i dag. <strong>Netatmo</strong> viser hva hyttenaboene måler akkurat nå.</li>
     </ol>
     <p class="hint">Dette er en morsom gjetning, ikke en garanti. Snøvill tar ikke ansvar for bortkastede feriedager eller ødelagte skisåler. 😇</p>

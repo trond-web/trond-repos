@@ -185,7 +185,7 @@ function storageSet(key, value) {
 }
 
 function loadSettings() {
-  const defaults = { threshold: 25, netatmoToken: "", baseDepth: {} };
+  const defaults = { threshold: 25, selfThreshold: 2, netatmoToken: "", baseDepth: {} };
   try {
     return { ...defaults, ...JSON.parse(storageGet("snovill.settings") || "{}") };
   } catch {
@@ -334,15 +334,15 @@ async function fetchStorm(loc, force) {
 /* ------------------------- data: Sporet --------------------------- */
 
 async function fetchSporet(loc, force) {
-  return cached(`sporet.${loc.id}`, async () => {
+  return cached(`sporet2.${loc.id}`, async () => {
     const [x, y] = loc.utm;
     const r = loc.sporetRadius;
     const url = `https://api.sporet.no/loypeapi/publicfree/skiroutes/detailsbybbox?xMin=${x - r}&yMin=${y - r}&xMax=${x + r}&yMax=${y + r}`;
     const routes = await fetchJson(url);
+    // Ved sesongstart nullstiller Sporet tidspunktene, så løyper uten preparering beholdes (sist i listen)
     return routes
-      .filter((rt) => rt.preppedTime)
-      .map((rt) => ({ id: rt.id, name: rt.name, prepped: rt.preppedTime }))
-      .sort((a, b) => Date.parse(b.prepped) - Date.parse(a.prepped));
+      .map((rt) => ({ id: rt.id, name: rt.name, prepped: rt.preppedTime || null }))
+      .sort((a, b) => (b.prepped ? Date.parse(b.prepped) : 0) - (a.prepped ? Date.parse(a.prepped) : 0));
   }, { force });
 }
 
@@ -454,7 +454,16 @@ function simulate(dayBlocks, startDepth, offsets, pscale) {
 const TEMP_STEPS = [-2, -1, 0, 1, 2];
 const PRECIP_SCALES = [0.6, 1, 1.4];
 
-function runEnsemble(sourceDays, days, startDepth, threshold) {
+// Snøvill-indeks: Snøvill blir glad bare det er nok snø til å tråkke spor selv,
+// men oppkjørte spor gjør dagen perfekt.
+const INDEX_WEIGHTS = { self: 0.75, groom: 0.25 };
+
+function snovillIndex(probSelf, probGroom) {
+  return Math.round(INDEX_WEIGHTS.self * probSelf + INDEX_WEIGHTS.groom * probGroom);
+}
+
+/** thresholds: { groom: cm for oppkjørte spor, self: cm for å tråkke spor selv } */
+function runEnsemble(sourceDays, days, startDepth, thresholds) {
   const sourceIds = Object.keys(sourceDays).filter((s) => sourceDays[s]);
   if (!sourceIds.length) return null;
 
@@ -483,7 +492,9 @@ function runEnsemble(sourceDays, days, startDepth, threshold) {
 
   return days.map((d, i) => {
     const depths = scenarios.map((s) => s.depths[i]);
-    const ok = depths.filter((v) => v >= threshold).length;
+    const share = (cm) => Math.round((depths.filter((v) => v >= cm).length / scenarios.length) * 100);
+    const probGroom = share(thresholds.groom);
+    const probSelf = share(thresholds.self);
     const fresh = scenarios.filter((s) => s.newSnow[i] >= 1).length;
     const summaries = {};
     sourceIds.forEach((sid) => {
@@ -494,7 +505,9 @@ function runEnsemble(sourceDays, days, startDepth, threshold) {
     return {
       key: d.key,
       date: d.date,
-      prob: Math.round((ok / scenarios.length) * 100),
+      prob: snovillIndex(probSelf, probGroom),
+      probGroom,
+      probSelf,
       probNewSnow: Math.round((fresh / scenarios.length) * 100),
       depth: median(central.map((c) => c.depths[i])),
       depthLo: quantile(depths, 0.1),
@@ -510,6 +523,7 @@ function runEnsemble(sourceDays, days, startDepth, threshold) {
 
 function autoBaseDepth(routes) {
   if (!routes?.length) return { depth: 0, why: "ingen prepareringsdata" };
+  if (!routes[0].prepped) return { depth: 0, why: "ikke kjørt ennå denne sesongen" };
   const newest = Date.parse(routes[0].prepped);
   const days = (Date.now() - newest) / 86400000;
   if (days <= 2) return { depth: 35, why: "løyper kjørt siste døgn" };
@@ -566,12 +580,12 @@ const EXCUSES = [
   "Hei! Jeg har dessverre fått akutt Snøvill-syndrom. Eneste kjente kur er {km} km klassisk på {sted} {dag}. Er tilbake fullt restituert dagen etter.",
   "Hei sjef! Jeg skal på et viktig eksternt møte med {sted}-løypene {dag}. Agenda: glid, feste og vaffel.",
   "Beklager, jeg må jobbe hjemmefra {dag}. «Hjemme» er en hytte på {sted}, og «jobbe» betyr {km} km skøyting.",
-  "Viktig beskjed: Værmodellene viser {pct} % sjanse for skiføre på {sted} {dag}. Det er statistisk uforsvarlig å sitte inne.",
-  "Hei! Jeg tar en avspaseringsdag {dag}. Grunn: {pct} % sjanse for perfekte spor på {sted}. Håper du forstår. ❄️",
+  "Viktig beskjed: Værmodellene viser Snøvill-indeks {pct} på {sted} {dag}. Det er statistisk uforsvarlig å sitte inne.",
+  "Hei! Jeg tar en avspaseringsdag {dag}. Grunn: Snøvill-indeks {pct} på {sted}. Håper du forstår. ❄️",
 ];
 
 function waxTip(day) {
-  if (day.depth < 5 || day.tmax == null) return { name: "Ingen snø", cls: "wax-none", short: "–" };
+  if (day.depth < state.settings.selfThreshold || day.tmax == null) return { name: "Ingen snø", cls: "wax-none", short: "–" };
   if (day.tmax <= -10) return { name: "Grønn voks", cls: "wax-green", short: "Grønn" };
   if (day.tmax <= -3) return { name: "Blå voks", cls: "wax-blue", short: "Blå" };
   if (day.tmax <= 0) return { name: "Fiolett voks", cls: "wax-violet", short: "Fiolett" };
@@ -614,9 +628,11 @@ function renderResorts() {
 
     const sporet = r.sporet;
     let sporetHtml = `<span class="muted">Ingen data</span>`;
-    if (sporet?.length) {
+    if (sporet?.length && !sporet[0].prepped) {
+      sporetHtml = `<strong>Ikke kjørt ennå</strong><br><small>${sporet.length} løyper venter på sesongens første tur</small>`;
+    } else if (sporet?.length) {
       const newest = new Date(sporet[0].prepped);
-      const last24 = sporet.filter((s) => Date.now() - Date.parse(s.prepped) < 86400000).length;
+      const last24 = sporet.filter((s) => s.prepped && Date.now() - Date.parse(s.prepped) < 86400000).length;
       sporetHtml = `<strong>${timeAgo(newest)}</strong><br><small>${escapeHtml(sporet[0].name)}${last24 ? ` · ${last24} løyper kjørt siste døgn` : ""}</small>`;
     } else if (sporet && !sporet.length) {
       sporetHtml = `<span class="muted">Ingen løyper funnet</span>`;
@@ -645,14 +661,15 @@ function renderResorts() {
               : st
                 ? `Storm ${fmt1(st.snow)} cm nysnø`
                 : "";
-        const title = `${weekdayLongFmt.format(d.date)}: ${d.prob} % sjanse for skiføre. Beregnet snødybde ${fmt0(d.depth)} cm (${fmt0(d.depthLo)}–${fmt0(d.depthHi)}). ${fight}. Nedbør ${fmt1(d.precip)} mm. ${wax.name}.`;
+        const title = `${weekdayLongFmt.format(d.date)}: Snøvill-indeks ${d.prob}. Oppkjørte spor (≥ ${state.settings.threshold} cm): ${d.probGroom} %. Tråkke selv (≥ ${state.settings.selfThreshold} cm): ${d.probSelf} %. Beregnet snødybde ${fmt0(d.depth)} cm (${fmt0(d.depthLo)}–${fmt0(d.depthHi)}). ${fight}. Nedbør ${fmt1(d.precip)} mm. ${wax.name}.`;
         return `
           <li class="day ${l.cls}" title="${escapeHtml(title)}" tabindex="0">
             <span class="day-name">${escapeHtml(label)}</span>
             <span class="day-date">${dayMonthFmt.format(d.date)}</span>
             <span class="day-face" aria-hidden="true">${l.face}</span>
-            <span class="day-prob">${d.prob}<small>%</small></span>
+            <span class="day-prob">${d.prob}</span>
             <span class="bar"><span style="width:${d.prob}%"></span></span>
+            <span class="day-split" aria-label="Oppkjørte spor ${d.probGroom} prosent, tråkke selv ${d.probSelf} prosent"><span title="Oppkjørte spor">🎿 ${d.probGroom}%</span><span title="Tråkke spor selv">👣 ${d.probSelf}%</span></span>
             <span class="day-snow">${d.newSnow >= 0.5 ? `❄️ ${fmt0(d.newSnow)} cm` : `<span class="muted">ingen nysnø</span>`}</span>
             <span class="day-temp">${fmt0(d.tmin)}° / ${fmt0(d.tmax)}°</span>
             <span class="wax ${wax.cls}">${wax.short}</span>
@@ -688,7 +705,7 @@ function renderSporetList(routes) {
   if (!routes?.length) return "";
   const items = routes
     .slice(0, 6)
-    .map((r) => `<li><span>${escapeHtml(r.name)}</span><span class="muted">${timeAgo(new Date(r.prepped))}</span></li>`)
+    .map((r) => `<li><span>${escapeHtml(r.name)}</span><span class="muted">${r.prepped ? timeAgo(new Date(r.prepped)) : "ikke kjørt i år"}</span></li>`)
     .join("");
   return `<details class="sporet-list"><summary>Løyper i nærheten (${routes.length})</summary><ul>${items}</ul></details>`;
 }
@@ -709,10 +726,10 @@ function renderHero() {
   const lvl = level(bestProb);
   $("heroIndex").textContent = bestProb;
   $("heroMeter").style.setProperty("--pct", bestProb);
-  $("heroMeter").setAttribute("aria-label", `Snøvill-indeks ${bestProb} prosent`);
+  $("heroMeter").setAttribute("aria-label", `Snøvill-indeks ${bestProb} av 100`);
   $("mascot").textContent = bestProb >= 80 ? "⛷️" : bestProb >= 55 ? "⛄" : bestProb >= 30 ? "🌨️" : bestProb >= 10 ? "🍂" : "🏃";
   $("tagline").textContent = best
-    ? `Hei, Snøvill! ${lvl.label} – beste sjanse er ${best.loc.name} ${dayPhrase(best.day)} (${bestProb} %).`
+    ? `Hei, Snøvill! ${lvl.label} – beste dag er ${best.loc.name} ${dayPhrase(best.day)} (Snøvill-indeks ${bestProb}).`
     : "Hei, Snøvill! Ingen skiføre i sikte de neste 10 dagene. Rulleskisesongen forlenges. 🛼";
   setSnowIntensity(bestProb);
 
@@ -728,7 +745,7 @@ function renderHero() {
       <span class="best-emoji">${lvl.face}</span>
       <div>
         <h2>Beste skidag: ${escapeHtml(best.loc.name)} ${escapeHtml(dayPhrase(best.day))}</h2>
-        <p>${bestProb} % sjanse for skiføre · ca. ${fmt0(best.day.depth)} cm snø · ${fmt0(best.day.tmin)}° til ${fmt0(best.day.tmax)}° · ${escapeHtml(waxTip(best.day).name)}</p>
+        <p>Snøvill-indeks ${bestProb} · 🎿 oppkjørte spor ${best.day.probGroom} % · 👣 tråkke selv ${best.day.probSelf} % · ca. ${fmt0(best.day.depth)} cm snø · ${fmt0(best.day.tmin)}° til ${fmt0(best.day.tmax)}° · ${escapeHtml(waxTip(best.day).name)}</p>
       </div>
       <button class="btn btn-accent" id="excuseBtn" type="button">📞 Ta fri-generator</button>
     </div>
@@ -799,8 +816,11 @@ function renderChart() {
     out += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/>`;
     out += `<text class="axis" x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${fmt0(v)}${k === ticks ? " cm" : ""}</text>`;
   }
+  const selfT = state.settings.selfThreshold;
   out += `<line class="threshold" x1="${m.l}" x2="${W - m.r}" y1="${y(threshold)}" y2="${y(threshold)}"/>`;
-  out += `<text class="threshold-label" x="${W - m.r}" y="${y(threshold) - 6}" text-anchor="end">Skiføre-grense ${threshold} cm</text>`;
+  out += `<text class="threshold-label" x="${W - m.r}" y="${y(threshold) - 6}" text-anchor="end">🎿 Oppkjørte spor ${threshold} cm</text>`;
+  out += `<line class="threshold-self" x1="${m.l}" x2="${W - m.r}" y1="${y(selfT)}" y2="${y(selfT)}"/>`;
+  out += `<text class="threshold-label" x="${m.l + 6}" y="${y(selfT) - 6}" text-anchor="start">👣 Tråkke selv ${selfT} cm</text>`;
   series[0].days.forEach((d, i) => {
     const label = i === 0 ? "I dag" : cap(weekdayFmt.format(d.date).replace(".", ""));
     out += `<text class="axis axis-x" x="${x(i)}" y="${H - 12}" text-anchor="middle">${escapeHtml(label)}</text>`;
@@ -837,7 +857,7 @@ function renderChart() {
     const rows = series
       .map(
         (s) =>
-          `<div class="tip-row"><span class="swatch" style="background:${s.color}"></span>${s.loc.name}<strong>${fmt0(s.days[i].depth)} cm</strong><span class="muted">${s.days[i].prob} %</span></div>`
+          `<div class="tip-row"><span class="swatch" style="background:${s.color}"></span>${s.loc.name}<strong>${fmt0(s.days[i].depth)} cm</strong><span class="muted">indeks ${s.days[i].prob}</span></div>`
       )
       .join("");
     tip.innerHTML = `<div class="tip-title">${escapeHtml(cap(weekdayLongFmt.format(series[0].days[i].date)))}</div>${rows}`;
@@ -859,7 +879,7 @@ function renderChart() {
   const body = series
     .map(
       (s) =>
-        `<tr><th scope="row">${s.loc.name}</th>${s.days.map((d) => `<td>${fmt0(d.depth)} cm<br><small>${d.prob} %</small></td>`).join("")}</tr>`
+        `<tr><th scope="row">${s.loc.name}</th>${s.days.map((d) => `<td>${fmt0(d.depth)} cm<br><small>indeks ${d.prob}</small></td>`).join("")}</tr>`
     )
     .join("");
   $("depthTable").innerHTML = `<div class="table-scroll"><table><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
@@ -870,6 +890,8 @@ function renderChart() {
 function renderSettings() {
   $("thresholdInput").value = state.settings.threshold;
   $("thresholdOut").textContent = `${state.settings.threshold} cm`;
+  $("selfThresholdInput").value = state.settings.selfThreshold;
+  $("selfThresholdOut").textContent = `${state.settings.selfThreshold} cm`;
   $("netatmoToken").value = state.settings.netatmoToken || "";
   $("baseDepthInputs").innerHTML = LOCATIONS.map((loc) => {
     const v = state.settings.baseDepth[loc.id];
@@ -878,8 +900,13 @@ function renderSettings() {
   }).join("");
 }
 
+function thresholds() {
+  return { groom: state.settings.threshold, self: state.settings.selfThreshold };
+}
+
 function readSettings() {
   state.settings.threshold = Number($("thresholdInput").value) || 25;
+  state.settings.selfThreshold = Number($("selfThresholdInput").value) || 2;
   state.settings.netatmoToken = $("netatmoToken").value.trim();
   const bd = {};
   document.querySelectorAll("#baseDepthInputs input").forEach((inp) => {
@@ -1211,7 +1238,7 @@ async function loadAll(force = false) {
         storm: stormV ? blocksByDay(stormV.blocks) : null,
       };
       state.results[loc.id] = {
-        days: runEnsemble(sourceDays, state.days, startDepth, state.settings.threshold),
+        days: runEnsemble(sourceDays, state.days, startDepth, thresholds()),
         sporet: sporetV,
         netatmo: netatmo.status === "rejected" ? { error: netatmoError(netatmo.reason) } : netV,
         yrNow: yrV?.now,
@@ -1251,7 +1278,7 @@ function recompute() {
     const manual = state.settings.baseDepth[loc.id];
     r.startDepth = manual != null ? manual : auto.depth;
     r.startWhy = manual != null ? "satt manuelt" : auto.why;
-    r.days = runEnsemble(r.sourceDays, state.days, r.startDepth, state.settings.threshold);
+    r.days = runEnsemble(r.sourceDays, state.days, r.startDepth, thresholds());
   }
   renderResorts();
   renderHero();
@@ -1271,6 +1298,9 @@ function init() {
   });
   $("thresholdInput").addEventListener("input", (e) => {
     $("thresholdOut").textContent = `${e.target.value} cm`;
+  });
+  $("selfThresholdInput").addEventListener("input", (e) => {
+    $("selfThresholdOut").textContent = `${e.target.value} cm`;
   });
   $("saveSettings").addEventListener("click", () => {
     const hadToken = state.settings.netatmoToken;
