@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Et par er bare tilgjengelig for den som kjenner parkoden (20 tilfeldige tegn).
+    // Listing av alle par er ikke tillatt.
+    match /par/{kode} {
+      allow get, create, update: if kode.size() >= 16;
+      match /{samling}/{dok} {
+        allow read, write: if kode.size() >= 16
+          && samling in ['trips', 'wishes', 'shop', 'notes'];
+      }
+    }
+  }
+}

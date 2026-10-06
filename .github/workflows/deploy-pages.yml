@@ -1,10 +1,12 @@
-name: Deploy GitHub Pages (tretetthet-flyfoto + skogbruksplan)
+name: Deploy apps to GitHub Pages
 
 on:
   push:
     branches: [main]
     paths:
       - "tretetthet-flyfoto/**"
+      - "snovill-skifore/**"
+      - "therese-helge/**"
       - "skogbruksplan/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
@@ -28,14 +30,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # tretetthet-flyfoto beholder rot-URL-en; skogbruksplan publiseres under /skogbruksplan/
-      - name: Build site
+      # tretetthet-flyfoto ligger fortsatt på rot-URL-en, øvrige apper under egne stier
+      - name: Assemble site
         run: |
-          mkdir -p _site
+          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan
           cp -r tretetthet-flyfoto/. _site/
-          mkdir -p _site/skogbruksplan
+          cp -r snovill-skifore/. _site/snovill-skifore/
+          cp -r therese-helge/. _site/therese-helge/
           cp -r skogbruksplan/. _site/skogbruksplan/
-          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json
+          # Tester, verktøy og serverfiler (Railway) publiseres ikke på GitHub Pages
+          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

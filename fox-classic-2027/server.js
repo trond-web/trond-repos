@@ -9,7 +9,7 @@ const DATA_FILE = path.join(DATA_DIR, "participants.json");
 const RACE_FILE = path.join(DATA_DIR, "race.json");
 
 const KJONN_VALUES = ["Mann", "Kvinne"];
-const OVELSE_VALUES = ["Trim uten tid", "Konkurranse med tid", "Tilskuer"];
+const OVELSE_VALUES = ["Trim uten tid", "Konkurranse med tid", "Barn 300 meter", "Tilskuer"];
 const TID_PATTERN = /^([0-9]{1,2}:)?[0-5]?[0-9]:[0-5][0-9]$/;
 const ARRANGOR_PASSORD = process.env.ARRANGOR_PASSORD || "";
 const ARRANGOR_BRUKERNAVN = process.env.ARRANGOR_BRUKERNAVN || "admin";
@@ -65,7 +65,7 @@ function validateParticipant(body) {
   if (!etternavn) return "Etternavn er påkrevd.";
   if (!KJONN_VALUES.includes(kjonn)) return "Kjønn må være Mann eller Kvinne.";
   if (!OVELSE_VALUES.includes(ovelse)) {
-    return "Øvelse må være Trim uten tid, Konkurranse med tid eller Tilskuer.";
+    return "Øvelse må være Trim uten tid, Konkurranse med tid, Barn 300 meter eller Tilskuer.";
   }
   return null;
 }
@@ -104,7 +104,7 @@ function requireArrangorBasicAuth(req, res, next) {
     const passord = separatorIndex === -1 ? "" : decoded.slice(separatorIndex + 1);
     if (isCorrectCredentials(brukernavn, passord)) return next();
   }
-  res.set("WWW-Authenticate", 'Basic realm="Fox Classic 2026 - Arrangor"');
+  res.set("WWW-Authenticate", 'Basic realm="Fox Classic 2027 - Arrangor"');
   res.status(401).send("Innlogging som arrangør kreves.");
 }
 
@@ -232,7 +232,7 @@ app.patch("/api/participants/:id", requireArrangor, (req, res) => {
   if ("ovelse" in req.body) {
     const ovelse = String(req.body.ovelse || "").trim();
     if (!OVELSE_VALUES.includes(ovelse)) {
-      return res.status(400).json({ error: "Øvelse må være Trim uten tid, Konkurranse med tid eller Tilskuer." });
+      return res.status(400).json({ error: "Øvelse må være Trim uten tid, Konkurranse med tid, Barn 300 meter eller Tilskuer." });
     }
     updates.ovelse = ovelse;
   }
@@ -358,12 +358,12 @@ app.get("/api/export", async (req, res) => {
     "Content-Type",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   );
-  res.setHeader("Content-Disposition", 'attachment; filename="fox-classic-2026-paameldte.xlsx"');
+  res.setHeader("Content-Disposition", 'attachment; filename="fox-classic-2027-paameldte.xlsx"');
   await workbook.xlsx.write(res);
   res.end();
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Fox Classic 2026-påmelding kjører på http://localhost:${PORT}`);
+  console.log(`Fox Classic 2027-påmelding kjører på http://localhost:${PORT}`);
 });
