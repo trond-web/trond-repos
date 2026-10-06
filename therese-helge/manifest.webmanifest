@@ -1,0 +1,14 @@
+{
+  "name": "Therese & Helge",
+  "short_name": "T & H",
+  "description": "Kjærlighet over tregrensa: turlogg, øko-kjøkken, geologi og kjærlighetslapper for Therese og Helge.",
+  "lang": "no",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef2f1",
+  "theme_color": "#c8385a",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
