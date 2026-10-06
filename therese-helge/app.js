@@ -46,7 +46,9 @@
   state = Object.assign(structuredClone(SEED), state || {});
   // Den gamle plassholderdatoen byttes ut med den ekte: 4. oktober 2026.
   if (state.startDate === "2024-02-14") state.startDate = SEED.startDate;
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* privat modus */ } };
+  const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* privat modus */ } };
+  // Lagrer lokalt, og sender endringene til den andre telefonen når synk er på.
+  const save = () => { persist(); pushSync(); };
 
   const toastEl = $("#toast");
   let toastT;
@@ -602,6 +604,193 @@
     state.notes = state.notes.filter((n) => n.id !== id); save(); renderNotes();
   });
 
+  /* ---------------- Synk mellom telefoner (Firebase Firestore) ---------------- */
+  // Data ligger under par/<parkode>: turer, ønsker, handleliste og lapper som egne
+  // dokumenter (så to telefoner kan endre samtidig), og dato, humør og oppdrag i
+  // selve par-dokumentet. Quizen er personlig og synkes ikke.
+  const PAIR_KEY = "therese-helge-par";
+  const COLS = ["trips", "wishes", "shop", "notes"];
+  const FB = "https://www.gstatic.com/firebasejs/10.14.1/";
+  const Sync = { code: null, db: null, root: null, base: null, unsub: [], status: "", error: "" };
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  const baseOf = () => clone({ trips: state.trips, wishes: state.wishes, shop: state.shop, notes: state.notes, startDate: state.startDate, moods: state.moods, challenges: state.challenges });
+  const fmtCode = (c) => c.match(/.{1,4}/g).join("-");
+  const normCode = (c) => String(c).toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  function loadScript(src) {
+    return new Promise((res, rej) => {
+      const el = document.createElement("script");
+      el.src = src; el.onload = res; el.onerror = () => rej(new Error("load"));
+      document.head.appendChild(el);
+    });
+  }
+  async function fbInit() {
+    if (Sync.db) return Sync.db;
+    if (!window.firebase) {
+      await loadScript(FB + "firebase-app-compat.js");
+      await loadScript(FB + "firebase-firestore-compat.js");
+    }
+    if (!firebase.apps.length) firebase.initializeApp(window.FIREBASE_CONFIG);
+    Sync.db = firebase.firestore();
+    return Sync.db;
+  }
+  function newCode() {
+    const abc = "abcdefghjkmnpqrstuvwxyz23456789";
+    const bytes = crypto.getRandomValues(new Uint8Array(20));
+    return [...bytes].map((b) => abc[b % abc.length]).join("");
+  }
+  function syncError(e) {
+    const code = e && (e.code || e.message);
+    Sync.error =
+      code === "not-found" ? "Fant ingen par med den koden. Sjekk at den er skrevet riktig." :
+      code === "permission-denied" ? "Firebase avviste tilgangen. Sjekk sikkerhetsreglene (se README)." :
+      code === "load" ? "Fikk ikke kontakt med Firebase. Sjekk nettforbindelsen og prøv igjen." :
+      "Synken stoppet: " + (e && e.message ? e.message : "ukjent feil");
+    Sync.status = "feil";
+    renderSync();
+  }
+
+  // mode: "create" (ny parkode), "join" (fått kode fra den andre) eller "resume" (åpner appen igjen).
+  async function connectSync(code, mode) {
+    const creating = mode === "create";
+    Sync.unsub.forEach((u) => u()); Sync.unsub = [];
+    Sync.status = "kobler til"; Sync.error = ""; renderSync();
+    try {
+      const db = await fbInit();
+      const root = db.collection("par").doc(code);
+      if (mode === "join") {
+        const snap = await root.get();
+        if (!snap.exists) throw { code: "not-found" };
+      }
+      // Eksempeldata skal ikke inn i det felles dokumentet.
+      COLS.forEach((k) => (state[k] = state[k].filter((x) => !x.ex)));
+      Sync.code = code; Sync.root = root;
+      try { localStorage.setItem(PAIR_KEY, code); } catch { /* privat modus */ }
+      if (mode === "resume") {
+        // Det som ligger i skyen gjelder; lokale data er en kopi fra forrige gang.
+        Sync.base = baseOf();
+      } else {
+        // Tomme kart tas ikke med: med merge ville de tømt det den andre har registrert.
+        const rootData = creating ? { startDate: state.startDate } : {};
+        if (Object.keys(state.moods).length) rootData.moods = state.moods;
+        if (Object.keys(state.challenges).length) rootData.challenges = state.challenges;
+        root.set(rootData, { merge: true }).catch(syncError);
+        // Tom grunnlinje for listene: alt som finnes lokalt lastes opp og slås sammen med det som er der.
+        Sync.base = Object.assign(baseOf(), { trips: [], wishes: [], shop: [], notes: [] });
+        if (!creating) Sync.base.startDate = state.startDate;
+        pushSync();
+        toast(creating ? "Parkoden er laget. Del lenken med den andre telefonen." : "Tilkoblet. Nå deler dere alt.");
+      }
+      persist();
+      subscribe();
+    } catch (e) {
+      Sync.code = null; Sync.root = null; Sync.base = null;
+      syncError(e);
+    }
+  }
+
+  function subscribe() {
+    const after = () => { persist(); rerender(); if (Sync.status !== "feil") { Sync.status = "synket"; renderSync(); } };
+    Sync.unsub.push(Sync.root.onSnapshot((s) => {
+      const d = s.data() || {};
+      if (d.startDate) state.startDate = d.startDate;
+      state.moods = d.moods || {};
+      state.challenges = d.challenges || {};
+      Object.assign(Sync.base, clone({ startDate: state.startDate, moods: state.moods, challenges: state.challenges }));
+      after();
+    }, syncError));
+    COLS.forEach((k) => Sync.unsub.push(Sync.root.collection(k).onSnapshot((qs) => {
+      state[k] = qs.docs.map((d) => d.data());
+      Sync.base[k] = clone(state[k]);
+      after();
+    }, syncError)));
+  }
+
+  function pushSync() {
+    if (!Sync.root || !Sync.base) return;
+    const b = Sync.base;
+    const batch = Sync.db.batch();
+    let n = 0;
+    COLS.forEach((k) => {
+      const old = new Map(b[k].map((x) => [x.id, JSON.stringify(x)]));
+      const cur = new Set();
+      state[k].forEach((x) => {
+        cur.add(x.id);
+        if (old.get(x.id) !== JSON.stringify(x)) { batch.set(Sync.root.collection(k).doc(x.id), x); n++; }
+      });
+      old.forEach((_, id) => { if (!cur.has(id)) { batch.delete(Sync.root.collection(k).doc(id)); n++; } });
+    });
+    const FP = firebase.firestore.FieldPath;
+    const upd = [];
+    if (state.startDate !== b.startDate) upd.push(new FP("startDate"), state.startDate);
+    Object.entries(state.moods).forEach(([d, m]) => Object.entries(m).forEach(([w, v]) => {
+      if (b.moods?.[d]?.[w] !== v) upd.push(new FP("moods", d, w), v);
+    }));
+    Object.entries(state.challenges).forEach(([wk, arr]) => {
+      if (JSON.stringify(b.challenges?.[wk]) !== JSON.stringify(arr)) upd.push(new FP("challenges", wk), arr);
+    });
+    if (upd.length) { batch.update(Sync.root, ...upd); n++; }
+    if (!n) return;
+    Sync.base = baseOf();
+    batch.commit().catch(syncError);
+  }
+
+  function disconnectSync() {
+    Sync.unsub.forEach((u) => u());
+    Object.assign(Sync, { code: null, root: null, base: null, unsub: [], status: "", error: "" });
+    try { localStorage.removeItem(PAIR_KEY); } catch { /* privat modus */ }
+    renderSync();
+    toast("Denne telefonen synker ikke lenger. Dataene ligger fortsatt her.");
+  }
+
+  function shareLink() {
+    return location.origin + location.pathname + "?par=" + Sync.code;
+  }
+  function renderSync() {
+    const box = $("#syncBox");
+    if (!window.FIREBASE_CONFIG) {
+      box.innerHTML = `<p class="muted">Synk er ikke satt opp ennå. Firebase-prosjektet må kobles til i <code>firebase-config.js</code> (se README). Til da lagres alt bare på denne enheten.</p>`;
+      return;
+    }
+    const err = Sync.error ? `<p class="sync-error" role="alert">${esc(Sync.error)}</p>` : "";
+    if (!Sync.code) {
+      box.innerHTML = `
+        <p class="muted">Koble telefonene sammen, så ser dere de samme turene, lappene og handlelista. Den ene lager en parkode, den andre åpner lenken.</p>
+        ${err}
+        <div class="btn-row"><button class="btn btn-primary btn-small" type="button" id="syncCreate" ${Sync.status === "kobler til" ? "disabled" : ""}>Lag parkode</button></div>
+        <form class="stack" id="syncJoin">
+          <div class="field"><label for="syncCode">Har du fått en kode?</label><input id="syncCode" autocomplete="off" placeholder="abcd-efgh-…" required></div>
+          <div class="field"><button class="btn btn-small" type="submit">Koble til</button></div>
+        </form>`;
+      $("#syncCreate").onclick = () => connectSync(newCode(), "create");
+      $("#syncJoin").onsubmit = (e) => { e.preventDefault(); const c = normCode($("#syncCode").value); if (c.length >= 16) connectSync(c, "join"); else { Sync.error = "Koden er for kort. Den har 20 tegn."; renderSync(); } };
+      return;
+    }
+    const label = { "kobler til": "Kobler til …", synket: "Synket", feil: "Feil" }[Sync.status] || "Kobler til …";
+    box.innerHTML = `
+      <div class="section-head"><span class="eyebrow">Parkode</span><span class="chip ${Sync.status === "synket" ? "eco" : Sync.status === "feil" ? "love" : ""}">${label}</span></div>
+      <p class="num sync-code">${esc(fmtCode(Sync.code))}</p>
+      ${err}
+      <div class="field"><label for="syncLink">Åpne denne lenken på den andre telefonen</label><input id="syncLink" readonly value="${esc(shareLink())}"></div>
+      <div class="btn-row">
+        <button class="btn btn-small" type="button" id="syncCopy">Kopier lenken</button>
+        <button class="btn btn-small btn-ghost" type="button" id="syncOff">Slå av synk på denne telefonen</button>
+      </div>
+      <p class="muted" style="font-size:.82rem">Alle som har koden kan se og endre dataene deres, så del den bare med hverandre.</p>`;
+    $("#syncCopy").onclick = () => {
+      const inp = $("#syncLink");
+      const fallback = () => { inp.select(); toast("Lenken er markert. Kopier den manuelt."); };
+      if (navigator.clipboard) navigator.clipboard.writeText(inp.value).then(() => toast("Lenken er kopiert"), fallback);
+      else fallback();
+    };
+    $("#syncOff").onclick = disconnectSync;
+  }
+
+  function rerender() {
+    renderAll(); renderMood(); renderChallenges(); renderTimescale();
+    $("#startDate").value = state.startDate;
+  }
+
   /* ---------------- Oppstart ---------------- */
   function renderAll() {
     renderStats(); renderTrips(); renderWishes(); renderShop(); renderRocks(); renderNotes(); drawProfile();
@@ -615,6 +804,18 @@
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawContours(); drawProfile(); }, 150); });
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { drawContours(); drawProfile(); });
   if (document.fonts) document.fonts.ready.then(() => { drawContours(); drawProfile(); });
+
+  renderSync();
+  if (window.FIREBASE_CONFIG) {
+    const params = new URLSearchParams(location.search);
+    const fromLink = normCode(params.get("par") || "");
+    let saved = null;
+    try { saved = localStorage.getItem(PAIR_KEY); } catch { /* privat modus */ }
+    if (fromLink) {
+      try { history.replaceState(null, "", location.pathname + location.hash); } catch { /* sandbox */ }
+      connectSync(fromLink, fromLink === saved ? "resume" : "join");
+    } else if (saved) connectSync(saved, "resume");
+  }
 
   const start = (location.hash || "").slice(1);
   if (["hjem", "turer", "kjokken", "geologi", "lapper"].includes(start)) showTab(start, false);
