@@ -6,6 +6,7 @@ import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST, nyId } from './m
 import { hentAr5, lagFigurer, MARKSLAG } from './markslag.js';
 import { tomSkifteplan, lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
 import { geoTilUtm, utmTilGeo, punktIGeometri } from './proj.js';
+import { placemarkGeometri } from './kml.js';
 
 const KARTVERKET = 'https://api.kartverket.no';
 const NIBIO = 'https://wms.nibio.no/cgi-bin';
@@ -57,17 +58,10 @@ async function hentTekst(hent, url, tidsavbrudd = 45000) {
 
 function parseKml(tekst) {
   const ut = [];
-  const tall = (s) => s.trim().split(/\s+/).map((p) => p.split(',').slice(0, 2).map(Number));
   for (const [, pm] of tekst.matchAll(/<Placemark>([\s\S]*?)<\/Placemark>/g)) {
     const id = (pm.match(/<name>[^<]*?\.?(\w+)<\/name>/) || [])[1];
-    const polys = [];
-    for (const [, poly] of pm.matchAll(/<Polygon>([\s\S]*?)<\/Polygon>/g)) {
-      const ytre = poly.match(/<outerBoundaryIs>[\s\S]*?<coordinates>([\s\S]*?)<\/coordinates>/);
-      if (!ytre) continue;
-      const indre = [...poly.matchAll(/<innerBoundaryIs>[\s\S]*?<coordinates>([\s\S]*?)<\/coordinates>/g)].map((m) => tall(m[1]));
-      polys.push([tall(ytre[1]), ...indre]);
-    }
-    if (polys.length) ut.push({ id, geometry: polys.length === 1 ? { type: 'Polygon', coordinates: polys[0] } : { type: 'MultiPolygon', coordinates: polys } });
+    const geometry = placemarkGeometri(pm);
+    if (geometry) ut.push({ id, geometry });
   }
   return ut;
 }

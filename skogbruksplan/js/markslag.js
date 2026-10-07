@@ -2,6 +2,7 @@
 // skog (impediment), myr, åpen fastmark, jordbruk, bebyggelse, samferdsel og vann. Uproduktiv mark får ikke volum.
 // Ingen DOM; geometrioperasjoner sendes inn.
 import { geoTilUtm, utmTilGeo, arealM2 } from './proj.js';
+import { placemarkGeometri } from './kml.js';
 
 const NIBIO = 'https://wms.nibio.no/cgi-bin/ar5';
 const KML_MAKS = 1000;
@@ -51,16 +52,10 @@ async function hentTekst(hent, url, ms = 60000) {
 }
 export function parseKml(tekst) {
   const ut = [];
-  const tall = (s) => s.trim().split(/\s+/).map((p) => p.split(',').slice(0, 2).map(Number));
   for (const [, pm] of tekst.matchAll(/<Placemark>([\s\S]*?)<\/Placemark>/g)) {
     const id = (pm.match(/<name>[^<]*?\.?(\w+)<\/name>/) || [])[1];
-    const polys = [];
-    for (const [, poly] of pm.matchAll(/<Polygon>([\s\S]*?)<\/Polygon>/g)) {
-      const ytre = poly.match(/<outerBoundaryIs>[\s\S]*?<coordinates>([\s\S]*?)<\/coordinates>/);
-      if (!ytre) continue;
-      polys.push([tall(ytre[1]), ...[...poly.matchAll(/<innerBoundaryIs>[\s\S]*?<coordinates>([\s\S]*?)<\/coordinates>/g)].map((m) => tall(m[1]))]);
-    }
-    if (polys.length) ut.push({ id, geometri: polys.length === 1 ? { type: 'Polygon', coordinates: polys[0] } : { type: 'MultiPolygon', coordinates: polys } });
+    const geometri = placemarkGeometri(pm);
+    if (geometri) ut.push({ id, geometri });
   }
   return ut;
 }

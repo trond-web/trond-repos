@@ -18,6 +18,7 @@ import { delFlate, nyttNr } from './del.js';
 import { initAssistent } from './assistent.js';
 import { initSkogbrand } from './skogbrand-ui.js';
 import { initSkifteplan } from './skifteplan-ui.js';
+import { misMonster, misFigurer, misKartlag, misLegendStil, miljoLegendStil } from './miljokart.js';
 import { VERSJON, UTGITT, UTVIKLER, APPNAVN, signatur } from './versjon.js';
 import { lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
 import { genererTiltak, oppsummer as motorOppsummer, PRINSIPPER, KILDER as MOTOR_KILDER, endringer as motorEndringer, merkKjort, tilTiltak, anvend as anvendMotor, oppdaterBestand as motorOppdaterBestand, MOTOR_VERSJON, signatur as motorSignatur } from './tiltaksmotor.js';
@@ -89,7 +90,7 @@ function filnavn(ending) {
 
 // ---------------------------------------------------------------- kart
 let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks. veier)
-let kart; let bestandLag; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
+let kart; let bestandLag; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
 let etikettLag; let flyfotoAktiv = false;
@@ -118,11 +119,14 @@ function initKart() {
   graa.addTo(kart);
   markslagLag = L.featureGroup().addTo(kart);
   bestandLag = L.featureGroup().addTo(kart);
-  // SVG-mønstre for markslagssymbolene (myr, impediment, …) – brukes av kartet via fill="url(#ms-…)".
-  document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms')}</svg>`);
+  // Nøkkelbiotoper (MiS) og miljøfigurer i eget lag over bestandene, synlig i alle faner. Klikk går gjennom til bestandene.
+  kart.createPane('misPane'); kart.getPane('misPane').style.zIndex = 450; kart.getPane('misPane').style.pointerEvents = 'none';
+  misLag = L.featureGroup().addTo(kart);
+  // SVG-mønstre for markslagssymbolene (myr, impediment, …) og MiS-skravur – brukes av kartet via fill="url(#…)".
+  document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto }, { ...overlays, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto }, { ...overlays, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
 
   kart.on('click', (e) => {
@@ -131,8 +135,8 @@ function initKart() {
     if (tegning) { leggTilTegnepunkt(e.latlng); return; }
     settValgtPunkt(e.latlng);
   });
-  kart.on('zoomend', oppdaterEtiketter);
-  kart.on('overlayadd overlayremove', () => { oppdaterEtiketter(); tegnLegend(); });
+  kart.on('zoomend', () => { oppdaterEtiketter(); visMisMerker(); });
+  kart.on('overlayadd overlayremove', () => { oppdaterEtiketter(); visMisMerker(); tegnLegend(); });
   // På flyfoto tegnes bestandene som i skogbruksplankart: gule grenser og hvit tekst.
   kart.on('baselayerchange', (e) => {
     flyfotoAktiv = e.layer === flyfoto;
@@ -198,6 +202,12 @@ function tegnLegend() {
   else if (/risiko$/.test(modus)) html = `<b>${$('#fargeEtter').selectedOptions[0].textContent}</b>` + [...RISIKONIVAA].reverse().map((n) => rad(n.farge, n.navn)).join('') + '<div class="hint" style="font-size:11px">Se Skogbrand → Forebygging</div>';
   else if (modus === 'tiltak') html = '<b>Første planlagte tiltak</b>' + rad(TILTAK_FARGER.hogst, 'Hogst') + rad(TILTAK_FARGER.kultur, 'Skogkultur') + rad(TILTAK_FARGER.annet, 'Annet') + rad('transparent;border:1px solid #999', 'Ingen');
   const kat = [...new Set((S.markslag || []).map((f) => f.kategori))];
+  const mis = misFigurer(S);
+  if (mis.length && kart.hasLayer(misLag)) {
+    html += `<b style="display:block;margin-top:6px">Miljø</b>`;
+    if (mis.some((f) => f.type === 'mis')) html += `<div><i style="${misLegendStil}"></i>Nøkkelbiotop (MiS)</div>`;
+    if (mis.some((f) => f.type === 'miljofigur')) html += `<div><i style="${miljoLegendStil}"></i>Miljøfigur (bestand)</div>`;
+  }
   if (kat.length && kart.hasLayer(markslagLag)) html += `<b style="display:block;margin-top:6px">Uproduktiv mark</b>${Object.keys(MARKSLAG).filter((k) => kat.includes(k)).map((k) => `<div>${symbolRute(k)} ${esc(MARKSLAG[k].kort)}</div>`).join('')}`;
   $('#kartLegend').innerHTML = `<button type="button" class="legend-knapp" aria-expanded="${!legendLukket}">Tegnforklaring ${legendLukket ? '▸' : '▾'}</button><div class="legend-innhold" ${legendLukket ? 'hidden' : ''}>${html}</div>`;
 }
@@ -209,6 +219,23 @@ function stilFor(b) {
     color: valgt ? (flyfotoAktiv ? '#36e0ff' : '#ffd400') : flyfotoAktiv ? '#e6e04b' : '#1b1c19', weight: valgt ? 3.5 : flyfotoAktiv ? 1.6 : 1.2, opacity: 0.9,
     fillColor: farge || '#999', fillOpacity: !farge ? 0.08 : flyfotoAktiv ? 0.3 : HK_FARGER.includes(farge) ? 0.85 : 0.7,
   };
+}
+
+// Nøkkelbiotoper (MiS) og miljøfigurer – felles stil fra miljokart.js.
+let misNokkel = '';
+function tegnMis(bareVedEndring = false) {
+  const nokkel = misFigurer(S).map((f) => `${f.id}:${f.type}:${f.areal.toFixed(2)}`).join('|');
+  if (bareVedEndring && nokkel === misNokkel) return;
+  misNokkel = nokkel;
+  misLag.clearLayers();
+  const { flater, merker } = misKartlag(L, misFigurer(S), { pane: 'misPane' });
+  flater.addTo(misLag); misMerker = merker; visMisMerker();
+}
+function visMisMerker() {
+  if (!misMerker) return;
+  const vis = kart.getZoom() >= 12 && kart.hasLayer(misLag);
+  if (vis && !misLag.hasLayer(misMerker)) misMerker.addTo(misLag);
+  if (!vis && misLag.hasLayer(misMerker)) misLag.removeLayer(misMerker);
 }
 
 let grenseLag = null;
@@ -240,12 +267,14 @@ function tegnBestandKart(zoom = false) {
     const pt = etikettPunkt(b.geometri);
     if (pt) etikettPerBestand.set(b.id, L.tooltip({ permanent: true, direction: 'center', className: 'bestand-etikett', interactive: false }).setLatLng([pt[1], pt[0]]).setContent(etikettHtml(b)).addTo(etikettLag));
   }
+  tegnMis();
   oppdaterEtiketter();
   tegnLegend();
   if (zoom) zoomTilAlle();
 }
 
 function oppdaterStiler() {
+  tegnMis(true);
   terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null;
   for (const b of S.bestand) { lagPerBestand.get(b.id)?.setStyle(stilFor(b)); etikettPerBestand.get(b.id)?.setContent(etikettHtml(b)); }
   tegnLegend();

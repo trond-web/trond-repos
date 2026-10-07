@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.1.0** (2026-10-07) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.1.1** (2026-10-07) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -215,6 +215,17 @@ sporskader fra hogstmaskin og lassbærer.
 Hver flate får grunnrisiko og driftssesong (helårsdrift / tørr barmark eller vinter / vinterdrift / kun tele eller snø), risiko
 for valgt dag (gode – akseptable – utsett – ikke kjør), beste dag i prognosen og prioritet (70 % driftbarhet, 30 % rotnetto).
 Kartet fargelegges etter risiko, markfuktighetskartet kan vises som kartlag, og alt følger med i GeoJSON/CSV-eksporten.
+
+## Nøkkelbiotoper (MiS) i kartene
+
+Nøkkelbiotoper vises likt i alle kart (plankart i alle faner, Kommuneanalyse og rapportene) via `js/miljokart.js`:
+magenta diagonal skravur med hvit halo, kraftig omriss og et «MiS»-merke (fra zoom 12–13, med verktøytips om at figuren settes
+av urørt etter PEFC krav 22). Bestand merket som miljøfigur får stiplet magenta omriss. Laget «Nøkkelbiotoper (MiS)» ligger
+over bestandene, kan slås av i lagvelgeren og slipper klikk gjennom til bestandene.
+
+NIBIOs MiS-tjeneste leverer figurene som omriss (`LineString`) i KML. `js/kml.js` gjør lukkede linjer om til flater (indre
+ringer blir hull), slik at nøkkelbiotopene kommer med ved oppretting av planen (miljøfigurer), i PEFC-data og i kommuneanalysen.
+Lagrede kommuneanalyser uten nøkkelbiotoper oppdateres automatisk når de åpnes.
 
 ## Spør AI (fanen «Spør AI»)
 

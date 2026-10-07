@@ -55,7 +55,9 @@ export function initPefc({ kart, hentPlan, endret, melding, nyId, settKartKlikk,
       }
       const l = o.geometri.type === 'Point'
         ? L.circleMarker([o.geometri.coordinates[1], o.geometri.coordinates[0]], { radius: o.type === 'livslopstre' ? 5 : 7, color: '#fff', weight: 2, fillColor: t.farge, fillOpacity: 1 })
-        : L.geoJSON(o.geometri, { style: { color: valgt ? '#ffd400' : t.farge, weight: valgt ? 4 : (/Line/.test(o.geometri.type) ? 3 : 1.5), fillColor: t.farge, fillOpacity: 0.18, dashArray: o.type === 'friluftsomrade' ? '4 4' : null } });
+        : L.geoJSON(o.geometri, { style: { color: valgt ? '#ffd400' : t.farge, weight: valgt ? 4 : (/Line/.test(o.geometri.type) ? 3 : 1.5), fillColor: t.farge,
+          // Nøkkelbiotoper tegnes med skravur i plankartets MiS-lag; her er de bare klikkbare (og markeres når de er valgt).
+          fillOpacity: o.type === 'noekkelbiotop' ? 0.01 : 0.18, opacity: o.type === 'noekkelbiotop' && !valgt ? 0 : 1, dashArray: o.type === 'friluftsomrade' ? '4 4' : null } });
       l.bindTooltip(`${esc(t.navn)}: ${esc(o.navn || '')}`, { sticky: true });
       // Mens det tegnes, går klikk på eksisterende objekter til tegningen.
       l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (tegner) tegner.klikk(e.latlng); else velgObjekt(o.id); });

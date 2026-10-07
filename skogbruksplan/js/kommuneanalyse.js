@@ -5,6 +5,7 @@
 // Skogflater i MiS-nøkkelbiotoper og naturvernområder holdes utenfor hogstforslagene.
 // Modulen bruker ikke DOM og kan kjøres i både nettleser og Node.
 import { geoTilUtm, arealM2, punktIGeometri } from './proj.js';
+import { placemarkGeometri } from './kml.js';
 import { laavesteHogstalder, STANDARD_INNSTILLINGER, treslagFraSR16, SR16_TRESLAG_TEKST } from './model.js';
 
 const KARTVERKET = 'https://api.kartverket.no';
@@ -78,13 +79,8 @@ export function parseKml(tekst) {
   for (const [, pm] of tekst.matchAll(/<Placemark>([\s\S]*?)<\/Placemark>/g)) {
     const id = (pm.match(/<name>[^<]*?\.(\w+)<\/name>/) || [])[1];
     if (!id) continue;
-    const polys = [];
-    for (const [, poly] of pm.matchAll(/<Polygon>([\s\S]*?)<\/Polygon>/g)) {
-      const ytre = poly.match(/<outerBoundaryIs>[\s\S]*?<coordinates>([\s\S]*?)<\/coordinates>/);
-      if (!ytre) continue;
-      polys.push([ring(ytre[1]), ...[...poly.matchAll(/<innerBoundaryIs>[\s\S]*?<coordinates>([\s\S]*?)<\/coordinates>/g)].map((m) => ring(m[1]))]);
-    }
-    if (polys.length) ut.set(id, polys.length === 1 ? { type: 'Polygon', coordinates: polys[0] } : { type: 'MultiPolygon', coordinates: polys });
+    const g = placemarkGeometri(pm, ring);
+    if (g) ut.set(id, g);
   }
   return ut;
 }
@@ -243,7 +239,23 @@ export async function hentKommunedata(kommune, { hent = fetch, framdrift = () =>
     const v = vern.find((o) => o.geometri && punktIGeometri(f.senter, o.geometri));
     f.vern = v ? `${v.verneform || 'Verneområde'}: ${v.navn}` : null;
   }
-  return { kommune: grense, flater: ut, mis: misListe, vern, hentet: new Date().toISOString(), ruter: alleRuter.length };
+  return { kommune: grense, flater: ut, mis: misListe, misV2: true, vern, hentet: new Date().toISOString(), ruter: alleRuter.length };
+}
+
+// Nøkkelbiotoper (MiS) for hele kommunen – brukes for å oppdatere lagrede analyser.
+export async function hentMis(kommuneGeom, { hent = fetch, parallelle = 4 } = {}) {
+  const mis = new Map();
+  const hentRute = async (b, dybde = 0) => {
+    const kml = await hentTekst(hent, `${NIBIO}/mis?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&STYLES=&REQUEST=GetMap&LAYERS=Nokkelbiotop&WIDTH=2000&HEIGHT=2000&FORMAT=kml`);
+    if ((kml.match(/<Placemark>/g) || []).length >= KML_MAKS && dybde < 4) {
+      const mx = (b[0] + b[2]) / 2; const my = (b[1] + b[3]) / 2;
+      for (const d of [[b[0], b[1], mx, my], [mx, b[1], b[2], my], [b[0], my, mx, b[3]], [mx, my, b[2], b[3]]]) await hentRute(d, dybde + 1);
+      return;
+    }
+    for (const [id, g] of parseKml(kml)) mis.set(id, g);
+  };
+  await parallelt(ruter(kommuneGeom), parallelle, (b) => hentRute(b));
+  return [...mis.values()];
 }
 
 // ---------- klassifisering ----------

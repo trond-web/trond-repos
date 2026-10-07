@@ -1,8 +1,10 @@
 // Fanen «Kommune»: analyse av en hel kommune med kart, liste, kriterier og kobling til planlaging for eiendommen.
-import { hentKommunedata, klassifiser, oppsummer, eiendomIPunkt, STANDARD_KRITERIER } from './kommuneanalyse.js';
+import { hentKommunedata, hentMis, klassifiser, oppsummer, eiendomIPunkt, STANDARD_KRITERIER } from './kommuneanalyse.js';
 import { TRESLAG } from './model.js';
 import { lagreVerdi, hentVerdi } from './store.js';
 import { fmt } from './charts.js';
+import { misMonster, misKartlag, misLegendStil, merkerVedZoom } from './miljokart.js';
+import { arealM2, punktIGeometri } from './proj.js';
 import {
   analyserFlater, hentMarkVaer, hentMetNedbor, celleFor, risikoNaa, besteDag, prioriter, forholdOppsummert,
   SESONG, NAA, BAEREEVNE, DTW_KLASSER, KILDER as DRIFT_KILDER, vatAndel, naaNivaa,
@@ -42,6 +44,12 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
   let sorterDrift = true; let valgtDag = idagIso(); let driftArbeider = ''; let antallDrift = 150; let visDtw = false; let dtwLag = null; let bareDrivbar = false;
   let kriterier = { ...STANDARD_KRITERIER };
   const renderer = L.canvas({ padding: 0.3 });
+  // Egen rute og SVG-renderer for nøkkelbiotopene (skravur krever SVG), over hogstflatene.
+  kart.createPane('komMisPane'); kart.getPane('komMisPane').style.zIndex = 450; kart.getPane('komMisPane').style.pointerEvents = 'none';
+  const misRenderer = L.svg({ pane: 'komMisPane' });
+  let misMerker = null; let stoppMisMerker = null;
+  if (!document.getElementById('mis-skravur')) document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${misMonster('mis')}</defs></svg>`);
+  const arealDaa = (g) => arealM2(g) / 1000;
   const lag = L.layerGroup();
   const vernLag = L.layerGroup();
   let aktiv = false;
@@ -54,7 +62,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     if (!aktiv || !resultat) return;
     const k = KATEGORIER[kategori];
     const drift = kategori === 'hogst' && harDrift();
-    $('#kartLegend').innerHTML = `<div class="legend-innhold"><b>${drift ? `Kjøreskaderisiko ${ukedag(valgtDag)}` : k.navn}</b>${drift ? `${NAA.map((n) => `<div><i style="background:${n.farge}"></i>${n.navn}</div>`).join('')}<div><i style="background:${k.farge};opacity:.45"></i>Ikke analysert</div>` : `<div><i style="background:${k.farge}"></i>Forslag (${fmt(resultat[kategori].length)} flater)</div>`}<div><i style="background:transparent;border:2px dashed #d03b3b"></i>Vern / nøkkelbiotop</div><div><i style="background:transparent;border:2px solid #1b1c19"></i>Kommunegrense</div>${visDtw ? `<b style="display:block;margin-top:6px">Markfuktighet (DTW)</b>${DTW_KLASSER.map((d) => `<div><i style="background:rgb(${d.rgb.join(',')})"></i>${d.id === 'vann' ? 'Vann' : `Grunnvann ${d.navn}`}</div>`).join('')}` : ''}</div>`;
+    $('#kartLegend').innerHTML = `<div class="legend-innhold"><b>${drift ? `Kjøreskaderisiko ${ukedag(valgtDag)}` : k.navn}</b>${drift ? `${NAA.map((n) => `<div><i style="background:${n.farge}"></i>${n.navn}</div>`).join('')}<div><i style="background:${k.farge};opacity:.45"></i>Ikke analysert</div>` : `<div><i style="background:${k.farge}"></i>Forslag (${fmt(resultat[kategori].length)} flater)</div>`}<div><i style="${misLegendStil}"></i>Nøkkelbiotop (MiS)</div><div><i style="background:transparent;border:2px dashed #d03b3b"></i>Verneområde</div><div><i style="background:transparent;border:2px solid #1b1c19"></i>Kommunegrense</div>${visDtw ? `<b style="display:block;margin-top:6px">Markfuktighet (DTW)</b>${DTW_KLASSER.map((d) => `<div><i style="background:rgb(${d.rgb.join(',')})"></i>${d.id === 'vann' ? 'Vann' : `Grunnvann ${d.navn}`}</div>`).join('')}` : ''}</div>`;
   }
 
   // ---------- driftsforhold ----------
@@ -113,7 +121,11 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
       flateLag.set(f.id, l);
     }
     for (const v of data.vern) if (v.geometri) L.geoJSON(v.geometri, { style: { color: '#d03b3b', weight: 1.5, dashArray: '5 4', fill: false }, interactive: false, renderer }).addTo(vernLag);
-    for (const m of data.mis) L.geoJSON(m, { style: { color: '#d03b3b', weight: 1.5, dashArray: '2 3', fill: false }, interactive: false, renderer }).addTo(vernLag);
+    // Nøkkelbiotoper: felles MiS-stil med skravur (SVG) og «MiS»-merke når man zoomer inn.
+    stoppMisMerker?.();
+    const mis = misKartlag(L, data.mis.map((g, i) => ({ id: `mis${i}`, type: 'mis', navn: 'Nøkkelbiotop (MiS)', geometri: g, areal: arealDaa(g) })), { pane: 'komMisPane', renderer: misRenderer });
+    mis.flater.addTo(vernLag); misMerker = mis.merker;
+    if (aktiv) stoppMisMerker = merkerVedZoom(kart, misMerker, 13);
     tegnLegend();
   }
 
@@ -218,8 +230,21 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     tegnListe(); tegnKart();
   }
 
+  // Analyser lagret før MiS-rettingen (v1.1.1) mangler nøkkelbiotopene – hent dem og merk flatene på nytt.
+  async function oppdaterMis(d) {
+    if (d.misV2) return false;
+    try {
+      d.mis = await hentMis(d.kommune.geometri);
+      for (const f of d.flater) f.mis = d.mis.some((m) => punktIGeometri(f.senter, m));
+      d.misV2 = true;
+      try { await lagreVerdi(`kommune:${d.kommune.nr}`, d); } catch { /* valgfritt */ }
+      return true;
+    } catch { return false; }
+  }
+
   function visResultat(d, fraLager) {
     data = d;
+    if (!d.misV2) oppdaterMis(d).then((ok) => { if (ok && data === d) { visResultat(d, fraLager); melding(`${d.mis.length} nøkkelbiotoper (MiS) hentet for ${d.kommune.navn}.`); } });
     const aar = d.flater.map((f) => f.maaleaar).filter(Boolean).sort((a, b) => a - b);
     const median = aar.length ? aar[Math.floor(aar.length / 2)] : null;
     $('#komInfo').innerHTML = `<b>${esc(d.kommune.navn)}</b>: ${fmt(d.flater.length)} skogflater fra SR16${median ? `, hovedsakelig målt ${median}` : ''}. ${d.vern.length} verneområder og ${d.mis.length} nøkkelbiotoper er holdt utenfor hogstforslagene. ${fraLager ? `Lagret analyse fra ${new Date(d.hentet).toLocaleDateString('nb-NO')}.` : ''}
@@ -340,10 +365,11 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
   return {
     vis() {
       aktiv = true; lag.addTo(kart); vernLag.addTo(kart); if (visDtw && dtwLag) dtwLag.addTo(kart);
+      if (misMerker) stoppMisMerker = merkerVedZoom(kart, misMerker, 13);
       lastKommuner();
       if (data) { tegnLegend(); kart.fitBounds(L.geoJSON(data.kommune.geometri).getBounds(), { padding: [10, 10] }); }
     },
-    skjul() { aktiv = false; lag.remove(); vernLag.remove(); dtwLag?.remove(); },
+    skjul() { aktiv = false; lag.remove(); vernLag.remove(); dtwLag?.remove(); stoppMisMerker?.(); stoppMisMerker = null; },
     oppdaterPriser() { if (data) oppdater(); },
   };
 }
