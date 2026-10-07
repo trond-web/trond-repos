@@ -1,6 +1,6 @@
 // SkogIQ-innsikt: regelbaserte funn beregnet fra planens egne data. Ingen språkmodell – hvert funn
 // kan spores tilbake til en regel her, og hvert har en handling som tar brukeren dit det kan følges opp.
-import { startTilstand, laavesteHogstalder, rotnettoPerM3, foreslaaTiltak, sammendrag, TILTAKSTYPER } from './model.js';
+import { startTilstand, laavesteHogstalder, rotnettoPerM3, foreslaaTiltak, sammendrag, TILTAKSTYPER, hogstklasseAvvik } from './model.js';
 
 const FARGE = { handling: 'var(--signal)', advarsel: 'var(--serious)', info: 'var(--accent)', god: 'var(--good)' };
 const tall = (v, d = 0) => Number(v).toLocaleString('nb-NO', { maximumFractionDigits: d });
@@ -37,6 +37,10 @@ export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtranspor
   if (skogbrand?.brann && ['rod', 'morkerod', 'oransje'].includes(skogbrand.brann.id)) ut.push({ vekt: 92, type: 'advarsel', tittel: `Skogbrannfare: ${skogbrand.brann.navn.toLowerCase()}`, tekst: 'Følg retningslinjene for skogsdrift i brannsesongen. Røyking og bål er forbudt i skogen.', handling: { tekst: 'Se Skogbrand', id: 'fane:skogbrand' } });
 
   if (motorEndringer) ut.push({ vekt: 88, type: 'handling', tittel: `${motorEndringer} bestand er endret – nye tiltaksforslag`, tekst: 'Tiltaksmotoren har oppdaterte forslag etter endringer i bestandsdata eller utførte tiltak.', handling: { tekst: 'Se forslag', id: 'fane:tiltak' } });
+
+  // Hogstklasse som ikke stemmer med alder og bonitet (manuelt satt eller importert)
+  const hkAvvik = S.bestand.filter((b) => hogstklasseAvvik(b, inn));
+  if (hkAvvik.length) ut.push({ vekt: 75, type: 'advarsel', tittel: `${hkAvvik.length} bestand har hogstklasse som ikke stemmer med alder og bonitet`, tekst: hkAvvik.slice(0, 3).map((b) => { const a = hogstklasseAvvik(b, inn); return `${b.nr}: HK ${a.registrert}, beregnet ${a.beregnet} (${a.alder} år)`; }).join(' · ') + (hkAvvik.length > 3 ? ' …' : ''), handling: { tekst: 'Vis bestand', id: `bestand:${hkAvvik[0].id}` } });
 
   // 2. Forfalte tiltak
   const forfalt = S.bestand.flatMap((b) => (b.tiltak || []).filter((t) => t.status !== 'utfort' && t.aar < iAar));

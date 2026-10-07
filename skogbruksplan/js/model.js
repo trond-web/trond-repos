@@ -230,14 +230,43 @@ export function laavesteHogstalder(b, inn = STANDARD_INNSTILLINGER) {
   return tab[naermesteBonitet(b.bonitet)] ?? null;
 }
 
-// Hogstklasse ut fra alder og laveste hogstalder (brukes i framskriving og når HK mangler).
-export function beregnetHogstklasse(alder, minAlder, volumDaa) {
-  if (alder === null || alder === undefined || !minAlder) return null;
+// Nedre aldersgrense (totalalder) for hogstklasse III og IV etter treslag og bonitet (H40). Hogstklasse V starter ved
+// laveste hogstalder (innstillingene). Kalibrert mot NIBIOs skogbruksplandata (2 905 takserte bestand, Flå 2009 og
+// Nannestad): grensene skiller takstmennenes klasser best, og stemmer med Landsskogtakseringen (III fra 15–55 år etter
+// bonitet; G20: III 20, IV 45, V 70 år). Gran og furu har samme grenser.
+export const HK_GRENSER = {
+  bar: { III: { 6: 55, 8: 45, 11: 35, 14: 30, 17: 25, 20: 20, 23: 15, 26: 15 }, IV: { 6: 85, 8: 75, 11: 70, 14: 60, 17: 55, 20: 45, 23: 40, 26: 35 } },
+  L: { III: { 6: 40, 8: 35, 11: 30, 14: 25, 17: 20, 20: 15, 23: 15, 26: 10 }, IV: { 6: 65, 8: 60, 11: 55, 14: 45, 17: 40, 20: 30, 23: 30, 26: 25 } },
+};
+// Aldersgrensene for et bestand: { III, IV, V }.
+export function hkGrenser(b, inn = STANDARD_INNSTILLINGER) {
+  if (!b?.bonitet) return null;
+  const t = HK_GRENSER[b.treslag === 'L' ? 'L' : 'bar']; const bon = naermesteBonitet(b.bonitet);
+  return { III: t.III[bon], IV: t.IV[bon], V: laavesteHogstalder(b, inn) };
+}
+
+// Hogstklasse ut fra alder (brukes i framskriving og når HK mangler). grenser = hkGrenser(b); uten grenser brukes
+// forholdstall av laveste hogstalder (0,3 og 0,65) som reserve.
+export function beregnetHogstklasse(alder, minAlder, volumDaa, grenser = null) {
+  const V = grenser?.V ?? minAlder;
+  if (alder === null || alder === undefined || !V) return null;
   if (alder < 3 || volumDaa === 0) return alder < 3 ? 1 : 2;
-  if (alder < 0.3 * minAlder) return 2;
-  if (alder < 0.65 * minAlder) return 3;
-  if (alder < minAlder) return 4;
+  if (alder < (grenser?.III ?? 0.3 * V)) return 2;
+  if (alder < (grenser?.IV ?? 0.65 * V)) return 3;
+  if (alder < V) return 4;
   return 5;
+}
+
+// Kontroll: registrert (manuell/importert) hogstklasse mot klassen alder og bonitet tilsier. Hogstklasse I og II
+// avgjøres av foryngelsen, ikke alderen alene, så de godtas så lenge alderen er under grensen for III.
+export function hogstklasseAvvik(b, inn = STANDARD_INNSTILLINGER) {
+  if (!b.hogstklasse || !b.bonitet) return null;
+  const s = startTilstand(b); if (!s.alder && s.alder !== 0) return null;
+  const g = hkGrenser(b, inn); if (!g) return null;
+  const beregnet = beregnetHogstklasse(s.alder, g.V, null, g);
+  if (!beregnet || beregnet === b.hogstklasse) return null;
+  if (b.hogstklasse <= 2 && beregnet <= 2) return null;
+  return { registrert: b.hogstklasse, beregnet, alder: Math.round(s.alder), grenser: g };
 }
 
 // ---------- Tilvekstmodell ----------
@@ -279,6 +308,20 @@ function vekst(volumDaa, alder, h40, treslag, aar) {
   if (volumDaa > 0 && f0 > 0.5) return volumDaa * (f1 / f0);
   // Svært unge bestand eller manglende volum: følg kurven direkte.
   return Math.max(volumDaa, f1);
+}
+
+// Skriver alder og volum frem fra bestandets takstår til iAar med vekstmodellen, slik at hogstklasse, hogstmodenhet og
+// tiltak stemmer når planen åpnes et senere år. Gir antall år det ble skrevet frem (0 = uendret).
+export function framskrivTilAar(b, iAar = new Date().getFullYear()) {
+  const fra = Number(b.takstAar); const aar = iAar - fra;
+  if (!fra || aar <= 0 || aar > 60) return 0;
+  const s = startTilstand(b);
+  if ((b.alder !== null && b.alder !== undefined) || s.alder) {
+    b.volumDaa = Math.round(vekst(s.volumDaa, s.alder, s.h40, b.treslag, aar) * 10) / 10;
+    b.alder = Math.round(s.alder + aar);
+  }
+  b.takstAar = iAar;
+  return aar;
 }
 
 export function arligTilvekstDaa(b) {
@@ -338,7 +381,7 @@ export function framskriv(bestandListe, aarFrem, inn = STANDARD_INNSTILLINGER, {
         }
       }
       const minAlder = laavesteHogstalder({ ...b, bonitet: s.h40 }, inn);
-      perBestand.get(b.id).push({ aar, alder: Math.round(s.alder), volumDaa: s.volumDaa, hk: beregnetHogstklasse(s.alder, minAlder, s.volumDaa) });
+      perBestand.get(b.id).push({ aar, alder: Math.round(s.alder), volumDaa: s.volumDaa, hk: beregnetHogstklasse(s.alder, minAlder, s.volumDaa, hkGrenser({ ...b, bonitet: s.h40 }, inn)) });
       const neste = vekst(s.volumDaa, s.alder, s.h40, b.treslag, 1);
       tilvekst += (neste - s.volumDaa) * areal;
       s.volumDaa = neste;
@@ -354,7 +397,7 @@ export function foreslaaTiltak(b, inn = STANDARD_INNSTILLINGER, iAar = new Date(
   const forslag = [];
   const s = startTilstand(b);
   const minAlder = laavesteHogstalder(b, inn);
-  const hk = b.hogstklasse || beregnetHogstklasse(s.alder, minAlder, s.volumDaa);
+  const hk = b.hogstklasse || beregnetHogstklasse(s.alder, minAlder, s.volumDaa, hkGrenser(b, inn));
   const har = (type) => (b.tiltak || []).some((t) => t.type === type && t.status !== 'utfort');
   if (b.miljo) return forslag; // aldri foreslå hogst i miljøfigurer
 
@@ -419,7 +462,7 @@ export function sammendrag(bestandListe, inn = STANDARD_INNSTILLINGER) {
     volum += s.volumDaa * a;
     tilvekst += arligTilvekstDaa(b) * a;
     perTreslag[b.treslag || 'G'] += s.volumDaa * a;
-    const hk = b.hogstklasse || beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn), s.volumDaa);
+    const hk = b.hogstklasse || beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn), s.volumDaa, hkGrenser(b, inn));
     if (hk) perHk[hk][b.treslag || 'G'] += a; else utenHk += a;
     if (hk === 5) verdiHogstmoden += s.volumDaa * a * rotnettoPerM3(b.treslag, inn);
   }

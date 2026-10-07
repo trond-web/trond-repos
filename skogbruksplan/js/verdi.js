@@ -5,7 +5,7 @@
 //                       Hogsttidspunktet kan aldri være under PEFCs nedre aldersgrense.
 //   Eiendomsverdi     – sum bestandsverdier pluss kapitaliserte årlige inntekter og kostnader.
 // Alle beløp er reelle (uten inflasjon), før skatt. Ingen DOM – kan testes i Node.
-import { startTilstand, volumKurve, rotnettoPerM3, framskriv, beregnetHogstklasse, laavesteHogstalder } from './model.js';
+import { startTilstand, volumKurve, rotnettoPerM3, framskriv, beregnetHogstklasse, laavesteHogstalder, hkGrenser } from './model.js';
 import { pefcAlder } from './pefc.js';
 
 export const STANDARD_VERDI = {
@@ -133,7 +133,7 @@ export function verdiberegning(S, vInn = STANDARD_VERDI, { iAar = new Date().get
   const rader = S.bestand.map((b) => {
     const v = bestandsverdi(b, inn, vInn, { iAar, utenProduksjon: b.miljo || utenProduksjonIder.has(b.id) });
     const s = startTilstand(b);
-    const hk = b.hogstklasse || beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn), s.volumDaa);
+    const hk = b.hogstklasse || beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn), s.volumDaa, hkGrenser(b, inn));
     return { id: b.id, nr: b.nr, treslag: b.treslag, bonitet: b.bonitet, hk, areal: b.areal || 0, alder: Math.round(s.alder), volum: s.volumDaa * (b.areal || 0), ...v, verdi: v.perDaa * (b.areal || 0), slakt: v.slaktPerDaa * (b.areal || 0) };
   });
   const skog = rader.reduce((s, x) => s + x.verdi, 0);

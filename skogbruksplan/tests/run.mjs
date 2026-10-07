@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { utmTilGeo, geoTilUtm, arealM2, punktIGeometri, etikettPunkt } from '../js/proj.js';
 import { parseSosi, lagSosi } from '../js/sosi.js';
+import { hkGrenser, beregnetHogstklasse, hogstklasseAvvik, framskrivTilAar, startTilstand as startT } from '../js/model.js';
 import { STANDARD_INNSTILLINGER, normaliserBestand, framskriv, foreslaaForEiendom, treslagFraSR16, foreslaaTiltak, laavesteHogstalder, sammendrag, tolkHogstklasse, tolkTreslag } from '../js/model.js';
 import { lesGeojson, lesCsv, lesSosi, slaaSammen } from '../js/importers.js';
 import { lagDemo } from '../js/demo.js';
@@ -756,6 +757,49 @@ test('Nøkkelbiotoper: MiS som linjer i KML blir flater, og vises i rapportkarte
   assert.ok(f.some((x) => x.type === 'mis') && f.some((x) => x.type === 'miljofigur'));
   const html = lagRapport('hovedtall', S, { iAar: 2026 });
   assert.ok(html.includes('rkmis-skravur') && html.includes('Nøkkelbiotop (MiS)'), 'rapportkartet viser MiS med skravur');
+});
+
+test('Hogstklasse: aldersgrenser etter treslag og bonitet (kalibrert mot NIBIO-planer)', () => {
+  const hk = (ts, bon, alder) => { const g = hkGrenser({ treslag: ts, bonitet: bon }); return beregnetHogstklasse(alder, g.V, 10, g); };
+  // G20: III fra 20, IV fra 45, V fra 70 år (Landsskogtakseringen / NIBIO)
+  assert.deepEqual(hkGrenser({ treslag: 'G', bonitet: 20 }), { III: 20, IV: 45, V: 70 });
+  assert.deepEqual([19, 20, 44, 45, 69, 70].map((a) => hk('G', 20, a)), [2, 3, 3, 4, 4, 5]);
+  // Takstmennenes klasser i dataene: G11 HK3 opp til 65 år, HK4 fra 70; G6 HK V fra 120; furu som gran
+  assert.equal(hk('G', 11, 65), 3); assert.equal(hk('G', 11, 70), 4); assert.equal(hk('G', 11, 100), 5);
+  assert.equal(hk('G', 6, 119), 4); assert.equal(hk('F', 6, 120), 5); assert.equal(hk('F', 14, 60), 4);
+  // Lauv: L17 III fra 20, IV fra 40, V fra 60
+  assert.deepEqual([15, 20, 40, 60].map((a) => hk('L', 17, a)), [2, 3, 4, 5]);
+  // Grensene øker jevnt når boniteten synker, og III < IV < V
+  for (const ts of ['G', 'F', 'L']) {
+    let forrige = null;
+    for (const bon of [26, 23, 20, 17, 14, 11, 8, 6]) {
+      const g = hkGrenser({ treslag: ts, bonitet: bon });
+      assert.ok(g.III < g.IV && g.IV < g.V, `${ts}${bon}`);
+      if (forrige) assert.ok(g.III >= forrige.III && g.IV >= forrige.IV && g.V >= forrige.V, `${ts}${bon} monoton`);
+      forrige = g;
+    }
+  }
+  // Hogstklasse I ved alder under 3 år eller hogd (volum 0)
+  assert.equal(beregnetHogstklasse(0, 70, 0, hkGrenser({ treslag: 'G', bonitet: 20 })), 1);
+  // Avvik: registrert HK V på 40 år gammel G17 varsles; HK II på ung skog godtas
+  const av = hogstklasseAvvik({ treslag: 'G', bonitet: 17, alder: 40, volumDaa: 12, hogstklasse: 5 });
+  assert.equal(av.registrert, 5); assert.equal(av.beregnet, 3);
+  assert.equal(hogstklasseAvvik({ treslag: 'G', bonitet: 17, alder: 10, volumDaa: 1, hogstklasse: 2 }), null);
+  assert.equal(hogstklasseAvvik({ treslag: 'G', bonitet: 17, alder: 60, volumDaa: 20, hogstklasse: 4 }), null);
+  assert.equal(hogstklasseAvvik({ treslag: 'G', bonitet: 17, alder: 60, volumDaa: 20 }), null, 'uten registrert HK – ingen kontroll');
+});
+
+test('Hogstklasse: alder og volum skrives frem fra takståret', () => {
+  const b = { treslag: 'G', bonitet: 20, alder: 68, volumDaa: 30, takstAar: 2026 };
+  const hkNaa = (x) => { const s2 = startT(x); const g = hkGrenser(x); return beregnetHogstklasse(s2.alder, g.V, s2.volumDaa, g); };
+  assert.equal(hkNaa(b), 4);
+  assert.equal(framskrivTilAar(b, 2026), 0, 'samme år: uendret');
+  assert.equal(framskrivTilAar(b, 2028), 2);
+  assert.equal(b.alder, 70); assert.equal(b.takstAar, 2028); assert.ok(b.volumDaa > 30, 'volumet har vokst');
+  assert.equal(hkNaa(b), 5, '70 år på G20 er hogstklasse V');
+  assert.equal(framskrivTilAar(b, 2028), 0, 'skrives ikke frem to ganger');
+  const hogd = { treslag: 'G', bonitet: 17, alder: 0, volumDaa: 0, takstAar: 2020 };
+  framskrivTilAar(hogd, 2026); assert.equal(hogd.alder, 6, 'hogstflate eldes også');
 });
 
 await Promise.all(venter);

@@ -1,7 +1,7 @@
 // Tiltaksmotor: lager tiltak for kort (0–10 år) og lang sikt (10–30 år) ut fra biologi, bærekraft og økonomi.
 // Fokus: flatehogst, lukket hogst, tynning, planting, markberedning og ungskogpleie. Reglene bygger på forskrift,
 // forskning og fagråd (se KILDER). Ingen DOM – kan testes i Node.
-import { STANDARD_INNSTILLINGER, startTilstand, laavesteHogstalder, beregnetHogstklasse, arligTilvekstDaa, hogstAndel, hogstNettoPerM3, tiltakKostnad, nyId, TILTAKSTYPER } from './model.js';
+import { STANDARD_INNSTILLINGER, startTilstand, laavesteHogstalder, beregnetHogstklasse, arligTilvekstDaa, hogstAndel, hogstNettoPerM3, tiltakKostnad, nyId, TILTAKSTYPER, hkGrenser } from './model.js';
 import { pefcAlder, avstand } from './pefc.js';
 import { bestandsverdi, STANDARD_VERDI } from './verdi.js';
 import { risikoPerBestand } from './skade.js';
@@ -144,7 +144,7 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
     if (vern) continue;
     const s = startTilstand(b); const ts = b.treslag || 'G'; const bo = s.h40;
     const min = laavesteHogstalder(b, inn) || 999;
-    const hk = b.hogstklasse || beregnetHogstklasse(s.alder, min, s.volumDaa);
+    const hk = b.hogstklasse || beregnetHogstklasse(s.alder, min, s.volumDaa, hkGrenser(b, inn));
     const h = hoydeOm(b, 0);
     const r = risiko?.get(b.id);
     const storm = r?.storm?.nivaa?.id === 'hoy';

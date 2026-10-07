@@ -5,12 +5,14 @@
 import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST, nyId } from './model.js';
 import { hentAr5, lagFigurer, MARKSLAG } from './markslag.js';
 import { tomSkifteplan, lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
-import { geoTilUtm, utmTilGeo, punktIGeometri } from './proj.js';
+import { geoTilUtm, utmTilGeo, punktIGeometri, etikettPunkt } from './proj.js';
 import { placemarkGeometri } from './kml.js';
 
 const KARTVERKET = 'https://api.kartverket.no';
 const NIBIO = 'https://wms.nibio.no/cgi-bin';
 const PLAN_TRESLAG = { Gran: 'G', Furu: 'F', Lauv: 'L', Bjørk: 'L' };
+// AR5-skogbonitet → H40 (laveste trinn i klassen: lav 6–8, middels 11–14, høy 17–20, særs høy 23–26).
+const AR5_BONITET_H40 = { lav: 8, middels: 11, 'høy': 17, 'særs høy': 23 };
 // NIBIOs MapServer gir maks 1000 objekter per KML-svar. Treffes taket, deles området i fire og hentes på nytt.
 export const KML_MAKS = 1000;
 
@@ -370,9 +372,19 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
       bonitet = srBon ? Math.round(srBon) : null;
       alder = srAlder ? Math.round(srAlder) : null;
     }
+    // SR16 mangler ofte bonitet på gammel skog med lite volum. Da brukes skogboniteten i AR5 (lav, middels, høy,
+    // særs høy), satt til laveste H40-trinn i klassen – forsiktig valg som gir høyere hogstalder.
+    let bonitetFraAr5 = null;
+    if (!bonitet) {
+      const pt = etikettPunkt(k.g.geometry);
+      const f = pt && ar5.find((x) => x.kategori === 'produktiv' && x.ar5?.bonitet && punktIGeometri(pt, x.geometri));
+      const h40 = f ? AR5_BONITET_H40[String(f.ar5.bonitet).toLowerCase()] : null;
+      if (h40) { bonitet = h40; bonitetFraAr5 = f.ar5.bonitet; }
+    }
     const treslag = srTreslag && dekning > 0.5 ? srTreslag : (planTs || srTreslag || 'G');
     const merknader = [];
     if (k.kilde === 'sr16') merknader.push('Ikke med i tidligere plan – data fra SR16');
+    if (bonitetFraAr5) merknader.push(`Bonitet anslått fra AR5 (${String(bonitetFraAr5).toLowerCase()} bonitet) – kontroller i felt`);
     if (hkPlan >= 4 && volub !== null && volub < 3 && dekning > 0.5) {
       merknader.push(`Mulig hogd etter ${regaar}: SR16 viser ${komma(volub)} m³/daa mot HK ${hkPlan} i planen – kontroller`);
       alder = 0;
@@ -412,6 +424,16 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     const b = normaliserBestand(props, k.g.geometry, areal / 1000, iAar);
     b.hogstklasse = null; // beregnes av appen fra dagens alder; planens HK ligger i ekstra
     bestand.push(b);
+  }
+  // Siste reserve for bonitet: nærmeste nabobestand med bonitet innenfor 300 m (små kantflater utenfor AR5-figurene).
+  const senterUtm = new Map(bestand.map((b) => { const p = etikettPunkt(b.geometri); return [b, p ? geoTilUtm(p[0], p[1], 33) : null]; }));
+  for (const b of bestand.filter((x) => !x.bonitet)) {
+    const c = senterUtm.get(b); if (!c) continue;
+    let best = null; let bd = 300;
+    for (const n of bestand) { if (!n.bonitet || n === b) continue; const d = senterUtm.get(n); if (!d) continue; const avst = Math.hypot(c[0] - d[0], c[1] - d[1]); if (avst < bd) { bd = avst; best = n; } }
+    if (!best) continue;
+    b.bonitet = best.bonitet;
+    b.merknad = [b.merknad, `Bonitet anslått fra nabobestand ${best.nr} (${Math.round(bd)} m unna) – kontroller i felt`].filter(Boolean).join('; ');
   }
   const nokkel = (b) => [b.nr.startsWith('S') ? 1 : 0, ...b.nr.replace(/^S/, '').split('-').map((x) => parseInt(x, 10) || 0)];
   bestand.sort((a, b) => { const x = nokkel(a); const y = nokkel(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0); } return 0; });
