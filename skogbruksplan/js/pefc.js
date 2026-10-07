@@ -2,7 +2,7 @@
 // Kravpunktene, tabellene og grenseverdiene her er hentet fra standardteksten. Modulen kontrollerer det som
 // kan kontrolleres med planens data, og gir sjekklister og dokumentasjon for resten. Ingen DOM – testes i Node.
 import { geoTilUtm, punktIGeometri } from './proj.js';
-import { startTilstand, laavesteHogstalder, beregnetHogstklasse } from './model.js';
+import { startTilstand, laavesteHogstalder, beregnetHogstklasse, hkGrenser } from './model.js';
 
 export const STANDARD = { kode: 'PEFC N 02:2022', navn: 'Norsk PEFC Skogstandard', gjelderFra: '2023-03-01' };
 
@@ -275,7 +275,7 @@ export function kontroller(S, P = tomPefc(), { iAar = new Date().getFullYear() }
     const slutt = egne.filter((t) => t.type === 'sluttavvirkning');
     const naer = (type, m) => obj(type).filter((o) => avstand(b.geometri, o.geometri, m) <= m);
     const s = startTilstand(b);
-    const hk = b.hogstklasse || beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn), s.volumDaa);
+    const hk = b.hogstklasse || beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn), s.volumDaa, hkGrenser(b, inn));
 
     // K15 minstealder
     for (const t of slutt) {

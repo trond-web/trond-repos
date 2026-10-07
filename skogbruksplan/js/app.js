@@ -3,7 +3,7 @@ import { lagSosi } from './sosi.js';
 import {
   TRESLAG, HOGSTKLASSER, HK_NAVN, HK_ROMERTALL, BONITETER, TILTAKSTYPER, STANDARD_INNSTILLINGER,
   normaliserBestand, laavesteHogstalder, beregnetHogstklasse, startTilstand, arligTilvekstDaa,
-  rotnettoPerM3, tiltakKostnad, framskriv, foreslaaForEiendom, sammendrag, nyId, runde, HOGSTTYPER, hogstAndel, hogstNettoPerM3,
+  rotnettoPerM3, tiltakKostnad, framskriv, foreslaaForEiendom, sammendrag, nyId, runde, HOGSTTYPER, hogstAndel, hogstNettoPerM3,hkGrenser, hogstklasseAvvik, framskrivTilAar
 } from './model.js';
 import { lesFil, slaaSammen } from './importers.js';
 import { lagDemo } from './demo.js';
@@ -53,7 +53,7 @@ function css(navn) { return getComputedStyle(document.documentElement).getProper
 function hk(b) {
   if (b.hogstklasse) return b.hogstklasse;
   const s = startTilstand(b);
-  return beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn()), s.volumDaa);
+  return beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn()), s.volumDaa, hkGrenser(b, inn()));
 }
 function hogstmodenAar(b) {
   const min = laavesteHogstalder(b, inn());
@@ -195,6 +195,7 @@ function tegnLegend() {
   if (modus === 'hogstklasse' || modus === 'framskrevet') {
     if (modus === 'framskrevet') html += `<b>Hogstklasse i ${IAAR + Number($('#frAar').value)}</b>`;
     html += HOGSTKLASSER.map((h) => rad(HK_FARGER[h - 1], HK_NAVN[h])).join('');
+    if (modus === 'hogstklasse' && S.bestand.some((b) => !hk(b))) html += rad('transparent;border:1px solid #999', 'Ukjent (mangler bonitet eller alder)');
   } else if (modus === 'treslag') html = Object.entries(TRESLAG).map(([k, v]) => rad(css(`--ts-${k.toLowerCase()}`), v)).join('');
   else if (modus === 'bonitet') html = '<b>Bonitet (H40)</b>' + [6, 11, 17, 23, 26].map((v) => rad(rampe(v, 6, 26), `${v}`)).join('');
   else if (modus === 'volum') html = '<b>Volum m³/daa</b>' + [0, 10, 20, 30, 45].map((v) => rad(rampe(v, 0, 45), v === 45 ? '45+' : `${v}`)).join('');
@@ -636,7 +637,7 @@ function visDetalj() {
       <label>Areal (daa) <input name="areal" type="number" step="0.1" value="${b.areal ?? ''}"></label>
       <label>Treslag <select name="treslag">${opsjoner(Object.entries(TRESLAG), b.treslag)}</select></label>
       <label>Bonitet (H40) <select name="bonitet"><option value="">–</option>${opsjoner(BONITETER.map((v) => [v, `${b.treslag || 'G'}${v}`]), b.bonitet)}</select></label>
-      <label>Hogstklasse <select name="hogstklasse"><option value="">Beregn fra alder</option>${opsjoner(HOGSTKLASSER.map((h) => [h, HK_NAVN[h]]), b.hogstklasse)}</select></label>
+      <label>Hogstklasse <select name="hogstklasse"><option value="">Beregn fra alder${!b.hogstklasse && hk(b) ? ` (${HK_ROMERTALL[hk(b)]})` : ''}</option>${opsjoner(HOGSTKLASSER.map((h) => [h, HK_NAVN[h]]), b.hogstklasse)}</select>${(() => { const a = hogstklasseAvvik(b, inn()); return a ? `<span class="hk-avvik">Alder ${a.alder} år og bonitet ${esc(b.treslag || 'G')}${b.bonitet} tilsier hogstklasse ${HK_ROMERTALL[a.beregnet]} (III fra ${a.grenser.III}, IV fra ${a.grenser.IV}, V fra ${a.grenser.V} år). Velg «Beregn fra alder» hvis registreringen er utdatert.</span>` : ''; })()}</label>
       <label>Alder (år) <input name="alder" type="number" value="${b.alder ?? ''}"></label>
       <label>Volum (m³/daa) <input name="volumDaa" type="number" step="0.1" value="${b.volumDaa ?? ''}"></label>
       <label>Treantall (per daa) <input name="treantall" type="number" value="${b.treantall ?? ''}"></label>
@@ -660,6 +661,7 @@ function visDetalj() {
     let v = f.type === 'checkbox' ? f.checked : f.value;
     if (['areal', 'alder', 'volumDaa', 'treantall', 'hoyde', 'bonitet', 'hogstklasse'].includes(navn)) v = v === '' ? null : Number(v);
     b[navn] = v;
+    if (['alder', 'volumDaa', 'treantall', 'hoyde'].includes(navn)) b.takstAar = IAAR; // registrert i år
     endret({ kart: false });
     if (navn === 'treslag') visDetalj();
     // Tiltaksmotoren sjekker om endringen gir nye eller utgåtte tiltak.
@@ -848,7 +850,7 @@ function handterTiltakKlikk(e) {
     t.status = ferdig ? 'utfort' : 'planlagt';
     t.utfortDato = ferdig ? new Date().toISOString().slice(0, 10) : undefined;
     if (ferdig && t.type === 'sluttavvirkning' && confirm(`Oppdatere bestand ${b.nr} til hogstklasse I (alder 0, volum 0)?`)) {
-      b.hogstklasse = 1; b.alder = 0; b.volumDaa = 0; b.treantall = null; b.hoyde = null;
+      b.hogstklasse = null; b.alder = 0; b.volumDaa = 0; b.treantall = null; b.hoyde = null; // alder 0 → beregnet hogstklasse I
     }
     if (ferdig && t.type === 'lukkethogst' && b.volumDaa && confirm(`Redusere volumet i bestand ${b.nr} med uttaket (${Math.round(hogstAndel('lukkethogst', inn(), t) * 100)} %)?`)) b.volumDaa = runde(b.volumDaa * (1 - hogstAndel('lukkethogst', inn(), t)), 1);
     if (ferdig && t.type === 'planting' && confirm(`Sette bestand ${b.nr} til hogstklasse II (ungskog) med alder 1?`)) { b.hogstklasse = 2; b.alder = 1; }
@@ -1227,6 +1229,13 @@ async function lagreAktivPlan() {
   await lagrePlan(S);
 }
 
+// Planer som åpnes et senere år enn de ble taksert: alder og volum skrives frem til i år (én gang, lagres).
+function framskrivPlanTilIAar() {
+  let n = 0; let aar = 0;
+  for (const b of S.bestand) { const d = framskrivTilAar(b, IAAR); if (d) { n++; aar = Math.max(aar, d); } }
+  if (n) { lagreSnart(); setTimeout(() => melding(`Alder og volum i ${n} bestand er skrevet frem ${aar} år til ${IAAR} med vekstmodellen.`, 6000), 400); }
+}
+
 async function aapnePlan(id) {
   stoppDeling(); sisteDeling = null;
   if (id === S.planId) { visFane('oversikt'); zoomTilAlle(); return; }
@@ -1234,6 +1243,7 @@ async function aapnePlan(id) {
   if (!plan) { melding('Fant ikke planen. Den kan være slettet.'); tegnPlanListe(); return; }
   await lagreAktivPlan();
   S = { ...plan, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...plan.innstillinger } };
+  framskrivPlanTilIAar();
   valgtId = null; forslag = []; avsluttGrenseRedigering();
   tegnEiendom(); tegnInnstillinger(); tegnRegistreringer();
   endret({ kart: true, zoom: true });
@@ -1630,7 +1640,7 @@ async function start() {
   initKart();
   kobleHendelser();
   const lagret = await hent();
-  if (lagret) S = { ...S, ...lagret, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...lagret.innstillinger } };
+  if (lagret) { S = { ...S, ...lagret, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...lagret.innstillinger } }; framskrivPlanTilIAar(); }
   tegnEiendom(); tegnInnstillinger(); tegnRegistreringer();
   endret({ kart: true, zoom: true });
   if (!lagret) lagreSnart();

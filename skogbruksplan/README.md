@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.1.1** (2026-10-07) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.1.2** (2026-10-07) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -226,6 +226,27 @@ over bestandene, kan slås av i lagvelgeren og slipper klikk gjennom til bestand
 NIBIOs MiS-tjeneste leverer figurene som omriss (`LineString`) i KML. `js/kml.js` gjør lukkede linjer om til flater (indre
 ringer blir hull), slik at nøkkelbiotopene kommer med ved oppretting av planen (miljøfigurer), i PEFC-data og i kommuneanalysen.
 Lagrede kommuneanalyser uten nøkkelbiotoper oppdateres automatisk når de åpnes.
+
+## Hogstklasse
+
+Hogstklassen beregnes fra dagens alder, treslag og bonitet (H40) med nedre aldersgrenser per klasse (`HK_GRENSER` i
+`js/model.js`). Hogstklasse V starter ved laveste hogstalder (innstillingene, 60–120 år for bartrær).
+
+| H40 | 26 | 23 | 20 | 17 | 14 | 11 | 8 | 6 |
+|---|---|---|---|---|---|---|---|---|
+| Gran/furu III fra | 15 | 15 | 20 | 25 | 30 | 35 | 45 | 55 |
+| Gran/furu IV fra | 35 | 40 | 45 | 55 | 60 | 70 | 75 | 85 |
+| Gran/furu V fra | 60 | 60 | 70 | 80 | 90 | 100 | 110 | 120 |
+| Lauv III / IV / V fra | 10/25/45 | 15/30/45 | 15/30/50 | 20/40/60 | 25/45/70 | 30/55/80 | 35/60/85 | 40/65/95 |
+
+Grensene er kalibrert mot NIBIOs skogbruksplandata (2 790 takserte bestand i hogstklasse II–V): beregnet klasse er lik
+takstmannens i 99,9 % av bestandene (før: 97,1 %), og stemmer med Landsskogtakseringen (III fra 15–55 år; G20: III 20, IV 45,
+V 70). Hogstklasse I er alder under 3 år eller hogd flate.
+
+- Bonitet som mangler i SR16 anslås fra AR5-skogbonitet (laveste H40 i klassen), ellers fra nærmeste nabobestand innenfor 300 m
+  – med merknad på bestandet.
+- Manuelt satt eller importert hogstklasse som ikke stemmer med alder og bonitet varsles på bestandet og under Innsikt.
+- Når en plan åpnes et senere år, skrives alder og volum frem fra takståret med vekstmodellen (én gang, lagres).
 
 ## Spør AI (fanen «Spør AI»)
 

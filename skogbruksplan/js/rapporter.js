@@ -2,8 +2,7 @@
 // Hver rapport er et selvstendig HTML-dokument (A4, klart for utskrift/PDF) og har en CSV-variant. Ingen DOM.
 import {
   TRESLAG, HK_NAVN, HK_ROMERTALL, HOGSTKLASSER, BONITETER, TILTAKSTYPER, startTilstand, arligTilvekstDaa,
-  laavesteHogstalder, beregnetHogstklasse, rotnettoPerM3, tiltakKostnad, framskriv, sammendrag, HOGSTTYPER, hogstAndel, hogstNettoPerM3,
-} from './model.js';
+  laavesteHogstalder, beregnetHogstklasse, rotnettoPerM3, tiltakKostnad, framskriv, sammendrag, HOGSTTYPER, hogstAndel, hogstNettoPerM3,hkGrenser, } from './model.js';
 import { etikettPunkt } from './proj.js';
 import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling } from './markslag.js';
 import { KRAVPUNKTER, TEMA, OBJEKTTYPER, KLARERING, HOGSTFORMER, FORYNGELSE, arealDaa, klareringStatus } from './pefc.js';
@@ -21,7 +20,7 @@ export const RAPPORTER = {
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const tall = (v, d = 0) => (v === null || v === undefined || Number.isNaN(v) ? '–' : Number(v).toLocaleString('nb-NO', { minimumFractionDigits: d, maximumFractionDigits: d }));
 const sortNr = (a, b) => String(a).localeCompare(String(b), 'nb', { numeric: true });
-const hkFor = (b, inn) => { const s = startTilstand(b); return b.hogstklasse || beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn), s.volumDaa); };
+const hkFor = (b, inn) => { const s = startTilstand(b); return b.hogstklasse || beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn), s.volumDaa, hkGrenser(b, inn)); };
 const HK_FARGER = { 1: '#fcfdfe', 2: '#f8f6a9', 3: '#d9f6c7', 4: '#9bd47f', 5: '#ef9a7c' };
 const TS_FARGER = { G: '#1baf7a', F: '#eb6834', L: '#2a78d6' };
 const csvCelle = (v) => { const s = typeof v === 'number' ? String(Math.round(v * 100) / 100).replace('.', ',') : String(v ?? ''); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
