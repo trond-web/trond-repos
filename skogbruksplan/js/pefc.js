@@ -85,7 +85,7 @@ export const periodeTekst = (p) => `${dato(p[0])}–${dato(p[1])}`;
 
 // Miljøobjekter som kan registreres eller hentes fra offentlige registre.
 export const OBJEKTTYPER = {
-  noekkelbiotop: { navn: 'Nøkkelbiotop', geom: 'flate', farge: '#d03b3b', krav: [22] },
+  noekkelbiotop: { navn: 'Nøkkelbiotop', geom: 'flate', farge: '#c2187a', krav: [22] },
   bvo: { navn: 'Biologisk viktig område (BVO)', geom: 'flate', farge: '#e0567a', krav: [23] },
   vern: { navn: 'Verneområde', geom: 'flate', farge: '#8b2fc9', krav: [3, 11] },
   naturtype: { navn: 'Viktig naturtype', geom: 'flate', farge: '#eb6834', krav: [3, 22] },

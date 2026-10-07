@@ -8,6 +8,7 @@ import { etikettPunkt } from './proj.js';
 import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling } from './markslag.js';
 import { KRAVPUNKTER, TEMA, OBJEKTTYPER, KLARERING, HOGSTFORMER, FORYNGELSE, arealDaa, klareringStatus } from './pefc.js';
 import { signatur } from './versjon.js';
+import { MIS, misMonster, misFigurer } from './miljokart.js';
 
 export const RAPPORTER = {
   hovedtall: { navn: 'Hovedtall', beskrivelse: 'Areal, volum, tilvekst og verdi fordelt på hogstklasse, treslag og bonitet, med kart og avvirkningsmuligheter.' },
@@ -35,7 +36,7 @@ function hode(S, tittel, iAar) {
 const fot = (tekst) => `<footer class="r-fot">${tekst} Volum, tilvekst og verdier er beregnet med SkogIQ.ai sine modeller og innstilte priser, og er estimater. Laget med ${signatur()}.</footer>`;
 
 // Kart over bestandene som SVG (skarpt på papir). farge(b) gir fyllfarge.
-export function svgKart(S, farge, { bredde = 720, hoyde = 460, etiketter = true, ekstra = [], markslag = true } = {}) {
+export function svgKart(S, farge, { bredde = 720, hoyde = 460, etiketter = true, ekstra = [], markslag = true, mis = true } = {}) {
   const med = S.bestand.filter((b) => b.geometri && /Polygon/.test(b.geometri.type));
   const grense = S.eiendom?.grense;
   const ringer = (g) => (g.type === 'Polygon' ? g.coordinates : g.coordinates.flat());
@@ -52,10 +53,24 @@ export function svgKart(S, farge, { bredde = 720, hoyde = 460, etiketter = true,
   const sti = (g) => ringer(g).map((r) => `M${r.map(p).join('L')}Z`).join('');
   const meter = (kx * 111320) / sk; // meter per piksel ≈ 1/sk grader → meter
   const malestokk = [100, 200, 500, 1000, 2000, 5000].find((m) => m / meter > 60) || 5000;
-  let ut = `<svg class="r-kart" viewBox="0 0 ${bredde} ${hoyde}" xmlns="http://www.w3.org/2000/svg">${ms.length ? monsterDefs('rk') : ''}`;
+  const misFig = mis ? misFigurer(S) : [];
+  let ut = `<svg class="r-kart" viewBox="0 0 ${bredde} ${hoyde}" xmlns="http://www.w3.org/2000/svg">${ms.length ? monsterDefs('rk') : ''}${misFig.length ? `<defs>${misMonster('rkmis')}</defs>` : ''}`;
   for (const f of ms) ut += `<path d="${sti(f.geometri)}" fill="${symbolFyll(f.kategori, 'rk')}" stroke="#6b6358" stroke-width="0.5" fill-rule="evenodd"/>`;
   for (const b of med) ut += `<path d="${sti(b.geometri)}" fill="${farge(b) || '#eee'}" stroke="#1b1c19" stroke-width="0.6" fill-rule="evenodd"/>`;
   if (grense) ut += `<path d="${sti(grense)}" fill="none" stroke="#d03b3b" stroke-width="1.6" stroke-dasharray="6 4"/>`;
+  // Nøkkelbiotoper (MiS) og miljøfigurer: skravur og kraftig magenta omriss med hvit halo.
+  for (const f of misFig) {
+    ut += `<path d="${sti(f.geometri)}" fill="none" stroke="#fff" stroke-width="4" stroke-opacity="0.9"/>`;
+    ut += f.type === 'mis'
+      ? `<path d="${sti(f.geometri)}" fill="url(#rkmis-skravur)" stroke="${MIS.farge}" stroke-width="1.8" fill-rule="evenodd"/>`
+      : `<path d="${sti(f.geometri)}" fill="none" stroke="${MIS.farge}" stroke-width="1.5" stroke-dasharray="5 3"/>`;
+  }
+  if (misFig.length) {
+    const harMis = misFig.some((f) => f.type === 'mis'); const harMiljo = misFig.some((f) => f.type === 'miljofigur');
+    let ly = hoyde - 8 - (harMis && harMiljo ? 16 : 0);
+    if (harMis) { ut += `<rect x="12" y="${ly - 9}" width="14" height="10" fill="url(#rkmis-skravur)" stroke="${MIS.farge}" stroke-width="1.5"/><text x="31" y="${ly}" font-size="10" fill="#333">Nøkkelbiotop (MiS)</text>`; ly += 16; }
+    if (harMiljo) ut += `<rect x="12" y="${ly - 9}" width="14" height="10" fill="none" stroke="${MIS.farge}" stroke-width="1.5" stroke-dasharray="4 2"/><text x="31" y="${ly}" font-size="10" fill="#333">Miljøfigur</text>`;
+  }
   // Ekstra objekter (f.eks. miljøobjekter): flater, linjer og punkter i egen farge.
   for (const o of ekstra) {
     const g = o.geometri; if (!g) continue;
@@ -326,7 +341,7 @@ function pefcHtml(S, { iAar, pefc }) {
       ${KRAVPUNKTER.filter((k) => k.tema === ti).map((k) => { const st = status[k.nr] || {}; const m = P.kravstatus?.[k.nr] || {}; return `<tr><td>${k.nr}</td><td>${esc(k.tittel)}</td><td>${pille(st.status || 'ikke-vurdert')}</td><td class="r-merk">${esc(m.notat || '')}${m.dato ? ` <i>(${esc(m.dato)})</i>` : ''}</td></tr>`; }).join('')}</tbody></table>`).join('')}
     <div class="r-brudd"></div>
     <h2>Miljøobjekter (${obj.length})</h2>
-    ${svgKart(S, (b) => (b.miljo ? '#b9d7a8' : '#f4f4f0'), { hoyde: 380, etiketter: false, ekstra: obj.filter((o) => o.geometri).map((o) => ({ geometri: o.geometri, farge: OBJEKTTYPER[o.type]?.farge || '#555' })) })}
+    ${svgKart(S, (b) => (b.miljo ? '#b9d7a8' : '#f4f4f0'), { hoyde: 380, etiketter: false, ekstra: obj.filter((o) => o.geometri && o.type !== 'noekkelbiotop').map((o) => ({ geometri: o.geometri, farge: OBJEKTTYPER[o.type]?.farge || '#555' })) })}
     ${tegnforklaring([...new Set(obj.map((o) => o.type))].filter((t) => OBJEKTTYPER[t]).map((t) => [OBJEKTTYPER[t].farge, OBJEKTTYPER[t].navn]))}
     ${obj.length ? `<table><thead><tr><th>Type</th><th class="t">Antall</th><th class="t">Areal daa</th></tr></thead><tbody>${Object.entries(perType).sort((a, b) => b[1].n - a[1].n).map(([t, x]) => `<tr><td>${esc(t)}</td><td class="t">${x.n}</td><td class="t">${x.daa ? tall(x.daa, 1) : ''}</td></tr>`).join('')}</tbody></table>
       <table><thead><tr><th>Type</th><th>Navn</th><th>Kilde</th><th>Registrert</th></tr></thead><tbody>${obj.map((o) => `<tr><td>${esc(OBJEKTTYPER[o.type]?.navn || o.type)}</td><td>${esc(o.navn || '')}</td><td>${o.kilde === 'offentlig' ? 'Offentlig data' : 'Egen registrering'}</td><td>${esc(o.registrert || '')}</td></tr>`).join('')}</tbody></table>` : '<p>Ingen miljøobjekter registrert.</p>'}

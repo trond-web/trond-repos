@@ -21,6 +21,9 @@ import { klassifiser as klassifiserMarkslag, lagFigurer, arealfordeling } from '
 import { genererTiltak, anvend as anvendMotor, endringer as motorEndringer, plantetall, maalTetthet, oppdaterBestand } from '../js/tiltaksmotor.js';
 import * as SP from '../js/skifteplan.js';
 import * as DF from '../js/driftsforhold.js';
+import { placemarkGeometri } from '../js/kml.js';
+import { misFigurer } from '../js/miljokart.js';
+import { parseKml as parseKmlKommune } from '../js/kommuneanalyse.js';
 import { VERSJON, UTVIKLER, signatur } from '../js/versjon.js';
 import { readFileSync } from 'node:fs';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
@@ -732,6 +735,27 @@ test('Driftsforhold: markfuktighet, bæreevne, helning, vær og prioritering', (
   const fl = [{ id: 'a', rotnetto: 900000, drift: { naa: { risiko: 80 } } }, { id: 'b', rotnetto: 300000, drift: { naa: { risiko: 10 } } }, { id: 'c', rotnetto: 800000, drift: { naa: { risiko: 12 } } }];
   assert.deepEqual(DF.prioriter(fl).map((f) => f.id), ['c', 'b', 'a']);
   assert.equal(DF.celleFor(11.0, 60.2), DF.celleFor(11.0005, 60.2001));
+});
+
+test('Nøkkelbiotoper: MiS som linjer i KML blir flater, og vises i rapportkartet', () => {
+  const ring = (x0, y0, d) => `${x0},${y0} ${x0 + d},${y0} ${x0 + d},${y0 + d} ${x0},${y0 + d} ${x0},${y0}`;
+  // NIBIO leverer MiS som <LineString>; indre ring blir hull
+  const pm = `<name>Nokkelbiotop.4071</name><MultiGeometry><LineString><coordinates>${ring(11, 60, 0.01)}</coordinates></LineString><LineString><coordinates>${ring(11.004, 60.004, 0.002)}</coordinates></LineString></MultiGeometry>`;
+  const g = placemarkGeometri(pm);
+  assert.equal(g.type, 'Polygon'); assert.equal(g.coordinates.length, 2, 'ytre ring + hull');
+  const m = parseKmlKommune(`<kml><Placemark>${pm}</Placemark><Placemark><name>Nokkelbiotop.9</name><LineString><coordinates>11.1,60.1 11.11,60.1 11.11,60.11</coordinates></LineString></Placemark></kml>`);
+  assert.equal(m.size, 2); assert.equal(m.get('9').coordinates[0].length, 4, 'åpen linje lukkes');
+  // Polygoner tolkes som før
+  assert.equal(placemarkGeometri(`<Polygon><outerBoundaryIs><LinearRing><coordinates>${ring(10, 59, 0.01)}</coordinates></LinearRing></outerBoundaryIs></Polygon>`).type, 'Polygon');
+  // Figurer fra planen og rapportkart
+  const S = lagDemo(2026); S.innstillinger = { ...STANDARD_INNSTILLINGER, ...S.innstillinger };
+  const b0 = S.bestand.find((b) => b.geometri);
+  S.pefc = { objekter: [{ id: 'o1', type: 'noekkelbiotop', navn: 'Nøkkelbiotop (MiS 1)', geometri: b0.geometri }] };
+  S.bestand[1].miljo = true;
+  const f = misFigurer(S);
+  assert.ok(f.some((x) => x.type === 'mis') && f.some((x) => x.type === 'miljofigur'));
+  const html = lagRapport('hovedtall', S, { iAar: 2026 });
+  assert.ok(html.includes('rkmis-skravur') && html.includes('Nøkkelbiotop (MiS)'), 'rapportkartet viser MiS med skravur');
 });
 
 await Promise.all(venter);

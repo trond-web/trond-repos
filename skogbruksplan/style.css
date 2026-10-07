@@ -777,3 +777,7 @@ progress { accent-color: var(--accent); height: 8px; }
 .kom-risiko { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; }
 .kom-drift-pop { margin: 6px 0; padding-top: 6px; border-top: 1px solid var(--grid); font-size: 12.5px; }
 .kom-drift-om { margin-top: 8px; } .kom-drift-om summary { cursor: pointer; font-size: 12.5px; } .kom-drift-om ul { padding-left: 18px; margin: 6px 0; display: grid; gap: 4px; }
+
+/* Nøkkelbiotoper (MiS) – merke i kartet */
+.mis-merke span { display: block; font: 800 10.5px/18px var(--font-body); letter-spacing: .04em; text-align: center; color: #fff; background: #c2187a; border: 2px solid #fff; border-radius: 99px; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.mis-merke { background: none; border: 0; }
