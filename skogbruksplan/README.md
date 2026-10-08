@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.3.0** (2026-10-08) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.4.0** (2026-10-08) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -88,6 +88,27 @@ Store eiendommer støttes:
 - **Begrunnelse:** hvert tiltak har en begrunnelse og kilder («Hvorfor?») og er merket som automatisk. Manuelle tiltak endres aldri.
 - **Endringer:** når et bestand endres (alder, volum, høyde, treantall, treslag, bonitet, areal eller utførte tiltak), varsler appen i bestandsdetaljen, i Tiltak-fanen og under Innsikt. Du kan oppdatere tiltakene med ett klikk eller beholde dem som de er.
 - **Lukket hogst** er en egen tiltakstype. Den er med i framskriving, økonomi, hogstprognose, verdiberegning og PEFC-klarering.
+
+## Oppdrag (Tiltak → Oppdrag)
+
+Planlagte tiltak kan samles til **oppdrag** og sendes til en utfører, for eksempel en hogstentreprenør, et plantelag eller en veientreprenør.
+
+- **Lage oppdrag:**
+  1. Trykk «Velg til oppdrag» i Tiltaksplan og kryss av ett eller flere tiltak. «Velg alle synlige» tar med alt i gjeldende filter.
+  2. Trykk «Lag oppdrag». Velger du flere tiltakstyper, lages ett oppdrag per type.
+  3. Oppdragene nummereres O-år-løpenummer, for eksempel O-2026-01.
+  - Et tiltak kan bare ligge i ett aktivt oppdrag (utkast, bestilt eller pågår). Utførte tiltak kan ikke velges.
+- **Én oppdragstype per tiltakstype** (`OPPDRAGSTYPER` i `js/oppdrag.js`), med egne felt og egen sjekkliste:
+  - Sluttavvirkning, tynning og lukket hogst har felt for tømmerkjøper, driftsmetode, sortiment, velteplass, uttak og foryngelse.
+  - Planting og suppleringsplanting har felt for treslag, plantetall, proveniens og plantetype.
+  - Markberedning, ungskogpleie, stammekvisting, gjødsling, grøfterensk, vei, miljøtiltak og annet har hvert sitt sett med felt.
+  - Sjekklistene viser til kravpunktene i Norsk PEFC Skogstandard, for eksempel nøkkelbiotoper (22), vannbeskyttelse (27), livsløpstrær (13), kulturminner (30) og terrengtransport (14).
+- **Oppfølging:**
+  - Hvert oppdrag har status (utkast, bestilt, pågår, utført eller avbrutt), utfører med kontaktinfo, oppstart og frist, og instruks.
+  - Oppdraget viser areal, volum og plantetall, og estimert netto.
+  - Når status settes til *utført*, kan alle tiltakene i oppdraget markeres som utført, og bestandene oppdateres som ved enkelttiltak.
+  - Tiltak i et oppdrag får et merke med oppdragsnummer og status i tiltakslisten. Bestandene i oppdraget som er åpent, utheves med oransje i kartet.
+- **Arbeidsordre:** «Skriv ut arbeidsordre» lager en side for utskrift eller PDF. Den har utfører, periode og omfang, de oppdragsspesifikke feltene og instruksen. Den har også kart med bestandene i oppdraget, bilvei, traktorvei, sti og velteplasser, en bestandstabell, sjekklisten og felt for kvittering.
 
 ## Markslag og uproduktiv mark (AR5)
 

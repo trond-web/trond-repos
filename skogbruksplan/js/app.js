@@ -30,10 +30,14 @@ import { hentDatagrunnlag } from './datagrunnlag.js';
 import { kalibrerPriser, verdiberegning, STANDARD_VERDI } from './verdi.js';
 import { VEIKLASSER, VEDLIKEHOLDSTYPER, VEISTIL } from './veier.js';
 import { synligPadding } from './kartutsnitt.js';
+import { initOppdrag } from './oppdrag-ui.js';
+import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, typeFor as oppdragstype } from './oppdrag.js';
 import { KRAVPUNKTER } from './pefc.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
 const VEIKLASSER_NAVN = (k) => (VEIKLASSER[k] || VEIKLASSER[0]).navn;
+// Oppdrag: valg av tiltak i tiltakslisten og bestand som er uthevet i kartet for oppdraget som er åpent.
+let valgModus = false; let valgteTiltak = new Set(); let maalOppdrag = null; let uthevet = new Set(); let oppdragVisning = null;
 const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
 import { stabletSoyle, linje, fmt } from './charts.js';
 
@@ -232,9 +236,9 @@ function tegnLegend() {
 
 function stilFor(b) {
   const farge = fargeFor(b);
-  const valgt = b.id === valgtId;
+  const valgt = b.id === valgtId; const ut = uthevet.has(b.id);
   return {
-    color: valgt ? (flyfotoAktiv ? '#36e0ff' : '#ffd400') : flyfotoAktiv ? '#e6e04b' : '#1b1c19', weight: valgt ? 3.5 : flyfotoAktiv ? 1.6 : 1.2, opacity: 0.9,
+    color: valgt ? (flyfotoAktiv ? '#36e0ff' : '#ffd400') : ut ? '#ff6a00' : flyfotoAktiv ? '#e6e04b' : '#1b1c19', weight: valgt ? 3.5 : ut ? 3 : flyfotoAktiv ? 1.6 : 1.2, opacity: 0.9,
     fillColor: farge || '#999', fillOpacity: !farge ? 0.08 : flyfotoAktiv ? 0.3 : HK_FARGER.includes(farge) ? 0.85 : 0.7,
     // Anslått vegetasjonstype vises med stiplet kant, kartlagt med heltrukken.
     ...($('#fargeEtter').value === 'vegetasjon' && b.vegetasjon?.kilde === 'anslag' && !valgt ? { dashArray: '4 3' } : { dashArray: null }),
@@ -472,6 +476,8 @@ function visFane(navn) {
   $('.kartverktoy').hidden = navn === 'kommune';
   $$('.faner button').forEach((b) => b.classList.toggle('aktiv', b.dataset.fane === navn));
   $$('.fane').forEach((f) => { f.hidden = f.id !== `fane-${navn}`; });
+  if (navn !== 'tiltak' && uthevet.size) { uthevet = new Set(); oppdaterStiler(); }
+  if (navn === 'tiltak' && !$('#oppdragPanel').hidden) oppdragVisning?.tegn();
   if (navn === 'framskriving') tegnFramskriving();
   if (navn === 'verdi') verdiVisning?.tegn();
   if (navn === 'ai') aiVisning?.vis();
@@ -756,13 +762,22 @@ function begrunnelseHtml(t) {
   return `<details class="begrunnelse"><summary><span class="auto-merke">Auto</span> Hvorfor?${(t.periode || t.motor?.periode) === 'lang' ? ' · lang sikt' : ''}</summary><p>${esc(tekst)}</p>${kilder.length ? `<ul>${kilder.map((k) => MOTOR_KILDER[k]).filter(Boolean).map((k) => `<li>${k.url ? `<a href="${esc(k.url)}" target="_blank" rel="noopener">${esc(k.navn)}</a>` : esc(k.navn)}</li>`).join('')}</ul>` : ''}</details>`;
 }
 
-function tiltakRadHtml(t) {
+// Merke på tiltak som ligger i et oppdrag (trykk åpner oppdraget).
+function oppdragMerke(t) {
+  const o = t.oppdragId && (S.oppdrag || []).find((x) => x.id === t.oppdragId); if (!o) return '';
+  const st = OPPDRAGSSTATUS[o.status] || OPPDRAGSSTATUS.utkast;
+  return ` <a href="#" class="oppdrag-merke" data-handling="oppdrag" data-oppdrag="${o.id}" style="--farge:${st.farge}">${esc(o.nr)} · ${esc(st.navn)}</a>`;
+}
+
+function tiltakRadHtml(t, { velg = false } = {}) {
   const b = t.bestand; const ok = tiltakOkonomi(t);
   const utfort = t.status === 'utfort';
-  return `<div class="tiltak-rad ${utfort ? 'status-utfort' : ''} ${t.forslag ? 'forslag' : ''}" data-bestand="${b.id}" data-tiltak="${t.id || ''}">
+  const kanVelges = velg && !t.forslag && tiltakLedig(t, S.oppdrag) && (!maalOppdrag || oppdragstype(t.type) === oppdragstype(maalOppdrag.type));
+  return `<div class="tiltak-rad ${utfort ? 'status-utfort' : ''} ${t.forslag ? 'forslag' : ''} ${velg ? 'velgbar' : ''} ${valgteTiltak.has(t.id) ? 'valgt' : ''}" data-bestand="${b.id}" data-tiltak="${t.id || ''}">
+    ${velg && !t.forslag ? `<input type="checkbox" class="velg-tiltak" data-handling="velg" aria-label="Velg tiltaket" ${valgteTiltak.has(t.id) ? 'checked' : ''} ${kanVelges ? '' : 'disabled'}>` : ''}
     ${t.forslag ? `<button class="knapp liten primar" data-handling="godta" type="button">Legg til</button>` : `<button class="knapp liten utfort-knapp${utfort ? ' er-utfort' : ''}" data-handling="utfort" type="button" aria-pressed="${utfort}" title="${utfort ? 'Angre – sett tilbake til planlagt' : 'Marker som utført'}">${utfort ? '✓ Utført' : 'Utført'}</button>`}
     <div>
-      <div class="tittel">${esc(TILTAKSTYPER[t.type]?.navn || t.type)} – bestand <a href="#" data-handling="vis">${esc(b.nr)}</a> <span class="hint">${t.aar}${utfort && t.utfortDato ? `, utført ${esc(t.utfortDato)}` : ''}</span></div>
+      <div class="tittel">${esc(TILTAKSTYPER[t.type]?.navn || t.type)} – bestand <a href="#" data-handling="vis">${esc(b.nr)}</a> <span class="hint">${t.aar}${utfort && t.utfortDato ? `, utført ${esc(t.utfortDato)}` : ''}</span>${oppdragMerke(t)}</div>
       <div class="info">${fmt(b.areal, 1)} daa · ${b.treslag || ''}${b.bonitet ?? ''}${ok.m3 ? ` · ca. ${fmt(ok.m3)} m³` : ''} · ${ok.netto >= 0 ? 'netto' : 'kostnad'} ca. ${fmt(Math.abs(ok.netto))} kr${ok.skogfond ? ` · skogfond ${fmt(ok.skogfond)} kr` : ''}${t.kommentar ? ` · ${esc(t.kommentar)}` : ''}</div>
       ${begrunnelseHtml(t)}
     </div>
@@ -780,8 +795,9 @@ function tegnTiltak() {
   $('#tiltakListe').innerHTML = [...perAar].map(([aar, ts]) => {
     const ok = ts.map(tiltakOkonomi);
     const netto = ok.reduce((s, o) => s + o.netto, 0); const m3 = ok.reduce((s, o) => s + o.m3, 0); const fond = ok.reduce((s, o) => s + o.skogfond, 0);
-    return `<div class="tiltak-aar"><h4>${aar}${aar < IAAR && status !== 'utfort' ? ' ⚠️ forfalt' : ''}<span>${m3 ? `${fmt(m3)} m³ · ` : ''}netto ${fmt(netto)} kr${fond ? ` · skogfond ${fmt(fond)} kr` : ''}</span></h4>${ts.map(tiltakRadHtml).join('')}</div>`;
+    return `<div class="tiltak-aar"><h4>${aar}${aar < IAAR && status !== 'utfort' ? ' ⚠️ forfalt' : ''}<span>${m3 ? `${fmt(m3)} m³ · ` : ''}netto ${fmt(netto)} kr${fond ? ` · skogfond ${fmt(fond)} kr` : ''}</span></h4>${ts.map((t) => tiltakRadHtml(t, { velg: valgModus })).join('')}</div>`;
   }).join('') || '<div class="tom">Ingen tiltak i utvalget.</div>';
+  tegnValgLinje();
   $('#motorPanel').innerHTML = motorKortHtml() + endringerHtml();
   const motor = forslag.some((f) => f.motorForslag);
   const gruppe = (navn, liste) => (liste.length ? `<h4 class="forslag-gruppe">${navn} <span class="hint">${liste.length} tiltak</span></h4>${liste.map(tiltakRadHtml).join('')}` : '');
@@ -882,23 +898,62 @@ function handterTiltakKlikk(e) {
   const rad = e.target.closest('.tiltak-rad'); if (!rad) return;
   const b = finnBestand(rad.dataset.bestand); const h = e.target.dataset.handling;
   if (!b || !h) return;
+  if (h === 'oppdrag') { e.preventDefault(); visFane('tiltak'); visTiltakVisning('oppdrag'); oppdragVisning?.apne(e.target.dataset.oppdrag); return; }
+  if (h === 'velg') { const id = rad.dataset.tiltak; if (e.target.checked) valgteTiltak.add(id); else valgteTiltak.delete(id); rad.classList.toggle('valgt', e.target.checked); tegnValgLinje(); return; }
   const t = b.tiltak.find((x) => x.id === rad.dataset.tiltak);
   if (h === 'vis') { e.preventDefault(); velgBestand(b.id); visFane('bestand'); return; }
   if (h === 'zoom') { velgBestand(b.id); if (erMobil()) settArk('lav'); return; }
   if (h === 'godta') { const f = forslag.find((x) => x.id === rad.dataset.tiltak); if (f) { godtaForslag(f); forslag = forslag.filter((x) => x !== f); endret(); } return; }
   if (!t) return;
   if (h === 'slett-tiltak') { b.tiltak = b.tiltak.filter((x) => x !== t); endret(); if (valgtId === b.id) visDetalj(); return; }
-  if (h === 'utfort') {
-    const ferdig = t.status !== 'utfort';
-    t.status = ferdig ? 'utfort' : 'planlagt';
-    t.utfortDato = ferdig ? new Date().toISOString().slice(0, 10) : undefined;
-    if (ferdig && t.type === 'sluttavvirkning' && confirm(`Oppdatere bestand ${b.nr} til hogstklasse I (alder 0, volum 0)?`)) {
-      b.hogstklasse = null; b.alder = 0; b.volumDaa = 0; b.treantall = null; b.hoyde = null; // alder 0 → beregnet hogstklasse I
-    }
-    if (ferdig && t.type === 'lukkethogst' && b.volumDaa && confirm(`Redusere volumet i bestand ${b.nr} med uttaket (${Math.round(hogstAndel('lukkethogst', inn(), t) * 100)} %)?`)) b.volumDaa = runde(b.volumDaa * (1 - hogstAndel('lukkethogst', inn(), t)), 1);
-    if (ferdig && t.type === 'planting' && confirm(`Sette bestand ${b.nr} til hogstklasse II (ungskog) med alder 1?`)) { b.hogstklasse = 2; b.alder = 1; }
-    endret(); if (valgtId === b.id) visDetalj();
+  if (h === 'utfort') { settUtfort(b, t, t.status !== 'utfort'); endret(); if (valgtId === b.id) visDetalj(); }
+}
+
+// Marker et tiltak som utført (eller tilbake til planlagt), og tilby å oppdatere bestandet etter tiltaket.
+function settUtfort(b, t, ferdig) {
+  t.status = ferdig ? 'utfort' : 'planlagt';
+  t.utfortDato = ferdig ? new Date().toISOString().slice(0, 10) : undefined;
+  if (ferdig && t.type === 'sluttavvirkning' && confirm(`Oppdatere bestand ${b.nr} til hogstklasse I (alder 0, volum 0)?`)) {
+    b.hogstklasse = null; b.alder = 0; b.volumDaa = 0; b.treantall = null; b.hoyde = null; // alder 0 → beregnet hogstklasse I
   }
+  if (ferdig && t.type === 'lukkethogst' && b.volumDaa && confirm(`Redusere volumet i bestand ${b.nr} med uttaket (${Math.round(hogstAndel('lukkethogst', inn(), t) * 100)} %)?`)) b.volumDaa = runde(b.volumDaa * (1 - hogstAndel('lukkethogst', inn(), t)), 1);
+  if (ferdig && t.type === 'planting' && confirm(`Sette bestand ${b.nr} til hogstklasse II (ungskog) med alder 1?`)) { b.hogstklasse = 2; b.alder = 1; }
+}
+
+// ---------------------------------------------------------------- oppdrag
+function settValgModus(paa, maal = null) {
+  valgModus = paa; maalOppdrag = paa ? maal : null; if (!paa) valgteTiltak = new Set();
+  const k = $('#velgTiltakBtn'); if (k) { k.setAttribute('aria-pressed', String(paa)); k.classList.toggle('aktiv', paa); }
+  if (paa && maal) { $('#tiltakFilterStatus').value = 'planlagt'; $('#tiltakFilterType').value = maal.type in TILTAKSTYPER ? maal.type : ''; }
+  tegnTiltak();
+}
+function valgteListe() {
+  return [...valgteTiltak].map((id) => { for (const b of S.bestand) { const t = (b.tiltak || []).find((x) => x.id === id); if (t) return { bestand: b, tiltak: t }; } return null; }).filter(Boolean);
+}
+function tegnValgLinje() {
+  const el = $('#valgLinje'); if (!el) return;
+  el.hidden = !valgModus;
+  if (!valgModus) { el.innerHTML = ''; return; }
+  const v = valgteListe(); const typer = [...new Set(v.map((x) => x.tiltak.type))];
+  el.innerHTML = `<span><b>${v.length}</b> tiltak valgt${typer.length > 1 ? ` · ${typer.length} typer → ${typer.length} oppdrag` : typer.length ? ` · ${esc(TILTAKSTYPER[typer[0]]?.navn || typer[0])}` : ''}${maalOppdrag ? ` · legges i ${esc(maalOppdrag.nr)}` : ''}</span>
+    <span class="knapperad" style="margin:0"><button class="knapp liten" type="button" data-valg="alle">Velg alle synlige</button><button class="knapp liten primar" type="button" data-valg="lag" ${v.length ? '' : 'disabled'}>${maalOppdrag ? `Legg til i ${esc(maalOppdrag.nr)}` : 'Lag oppdrag'}</button><button class="knapp liten" type="button" data-valg="avbryt">Avbryt</button></span>`;
+}
+function visTiltakVisning(navn) {
+  $$('#tiltakVisning [data-tv]').forEach((b) => b.classList.toggle('aktiv', b.dataset.tv === navn));
+  $('#oppdragPanel').hidden = navn !== 'oppdrag'; $('#tiltakPlanPanel').hidden = navn !== 'plan';
+  if (navn === 'oppdrag') oppdragVisning?.tegn(); else { oppdragVisning?.lukk(); oppdaterStiler(); }
+}
+function lagOppdragFraValg() {
+  const v = valgteListe(); if (!v.length) return;
+  if (maalOppdrag) {
+    const n = leggTilOppdrag(S, maalOppdrag, v); const id = maalOppdrag.id;
+    settValgModus(false); endret(); visTiltakVisning('oppdrag'); oppdragVisning?.apne(id);
+    melding(`${n} tiltak lagt til i ${maalOppdrag?.nr || 'oppdraget'}.`); return;
+  }
+  const r = lagOppdrag(S, v, { nyId, iAar: IAAR });
+  settValgModus(false); endret(); visTiltakVisning('oppdrag');
+  if (r.oppdrag.length === 1) oppdragVisning?.apne(r.oppdrag[0].id);
+  melding(`${r.oppdrag.length} oppdrag laget (${r.oppdrag.map((o) => o.nr).join(', ')})${r.hoppetOver.length ? `. ${r.hoppetOver.length} tiltak lå allerede i et aktivt oppdrag eller var utført.` : '.'}`);
 }
 
 // ---------------------------------------------------------------- framskriving
@@ -1230,6 +1285,7 @@ function endret({ kart: kartEndret = false, zoom = false } = {}) {
   tegnOversikt();
   tegnBestandTabell();
   tegnTiltak();
+  if (!$('#oppdragPanel').hidden && !document.activeElement?.closest?.('#oppdragPanel')) oppdragVisning?.tegn();
   if (!$('#fane-framskriving').hidden) tegnFramskriving();
   if (!$('#fane-verdi').hidden && !document.activeElement?.closest?.('#fane-verdi')) verdiVisning?.tegn();
   if (valgtId && !finnBestand(valgtId)) { valgtId = null; visDetalj(); }
@@ -1288,6 +1344,7 @@ async function aapnePlan(id) {
   S = { ...plan, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...plan.innstillinger } };
   framskrivPlanTilIAar();
   valgtId = null; forslag = []; avsluttGrenseRedigering();
+  valgModus = false; valgteTiltak = new Set(); maalOppdrag = null; uthevet = new Set(); oppdragVisning?.lukk();
   tegnEiendom(); tegnInnstillinger(); tegnRegistreringer();
   endret({ kart: true, zoom: true });
   visFane('oversikt');
@@ -1533,6 +1590,25 @@ function kobleHendelser() {
       if (klipping && fig.some((f) => f.kategori === 'jordbruk')) { logg('Henter jordsmonn …'); jordsmonn = await hentJordsmonnFlater(jordbruksBoks(fig), { logg }).catch(() => []); }
       return lagSkifteinndeling(fig, { klipping, jordsmonn, iAar: IAAR, nyId });
     },
+  });
+  oppdragVisning = initOppdrag({
+    hentPlan: () => S, endret, melding, okonomi: tiltakOkonomi, settUtfort,
+    tiltakNavn: (k) => TILTAKSTYPER[k]?.navn || k,
+    uthev: (ider) => { uthevet = new Set(ider); oppdaterStiler(); },
+    visBestander: (ider) => {
+      const lag = ider.map((id) => lagPerBestand.get(id)).filter(Boolean); if (!lag.length) return;
+      kart.fitBounds(L.featureGroup(lag).getBounds(), { maxZoom: 16, ...synligPadding(kart, 40) });
+      if (erMobil()) settArk('halv');
+    },
+    startValg: (o) => { visTiltakVisning('plan'); settValgModus(true, o); },
+  });
+  $('#tiltakVisning').addEventListener('click', (e) => { const b = e.target.closest('[data-tv]'); if (b) visTiltakVisning(b.dataset.tv); });
+  $('#velgTiltakBtn').addEventListener('click', () => settValgModus(!valgModus));
+  $('#valgLinje').addEventListener('click', (e) => {
+    const k = e.target.closest('[data-valg]')?.dataset.valg; if (!k) return;
+    if (k === 'avbryt') settValgModus(false);
+    if (k === 'lag') lagOppdragFraValg();
+    if (k === 'alle') { $$('#tiltakListe .velg-tiltak:not(:disabled)').forEach((c) => { c.checked = true; valgteTiltak.add(c.closest('.tiltak-rad').dataset.tiltak); c.closest('.tiltak-rad').classList.add('valgt'); }); tegnValgLinje(); }
   });
   aiVisning = initAssistent({
     hentPlan: () => S, iAar: IAAR,

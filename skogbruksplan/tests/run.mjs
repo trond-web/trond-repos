@@ -30,6 +30,8 @@ import { VEIKLASSER } from '../js/veier.js';
 const VEIKLASSER_TEST = (k) => VEIKLASSER[k].bilvei;
 import { readFileSync } from 'node:fs';
 import * as VEG from '../js/vegetasjon.js';
+import * as OPP from '../js/oppdrag.js';
+import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER, kjedeSammen, hentTraktorveierOgStier, slaaInnFkb, tomtVeiregister } from '../js/veier.js';
 
 let ok = 0;
@@ -888,6 +890,44 @@ test('Traktorveier og stier fra Kartverket FKB: henting, sammenslåing og fletti
   assert.equal(reg.veier.find((v) => v.id === v1.id).tilstand, 'darlig', 'tilstand beholdes');
   // Terrengtransport regner bare bilvei – traktorveier endrer ikke avstanden
   assert.equal(VEIKLASSER_TEST(7), false);
+});
+
+test('Oppdrag: én oppdragstype per tiltakstype, valg av tiltak, linjer, sammendrag og sletting', () => {
+  // Alle tiltakstyper har en oppdragstype med felt og sjekkliste, og PEFC-henvisningene finnes
+  for (const k of Object.keys(TILTAKSTYPER_T)) {
+    const ot = OPP.OPPDRAGSTYPER[k];
+    assert.ok(ot && ot.navn && ot.felt.length && ot.sjekk.length, k);
+    for (const sj of ot.sjekk) if (sj.pefc) assert.ok(KRAVPUNKTER.some((kp) => kp.nr === sj.pefc), `${k}: PEFC ${sj.pefc}`);
+  }
+  let n = 0; const nyId = (p) => `${p}${++n}`;
+  const S = { bestand: [
+    { id: 'b1', nr: '1-1', areal: 10, tiltak: [{ id: 't1', type: 'sluttavvirkning', aar: 2027, status: 'planlagt' }, { id: 't2', type: 'planting', aar: 2028, status: 'planlagt' }] },
+    { id: 'b2', nr: '1-2', areal: 5, tiltak: [{ id: 't3', type: 'sluttavvirkning', aar: 2026, status: 'planlagt' }, { id: 't4', type: 'tynning', aar: 2026, status: 'utfort' }] },
+  ] };
+  const v = (bi, ti) => ({ bestand: S.bestand[bi], tiltak: S.bestand[bi].tiltak[ti] });
+  const r = OPP.lagOppdrag(S, [v(0, 0), v(1, 0), v(0, 1), v(1, 1)], { nyId, iAar: 2026, idag: '2026-10-08' });
+  assert.equal(r.oppdrag.length, 2, 'hogst og planting blir to oppdrag');
+  assert.equal(r.hoppetOver.length, 1, 'utført tiltak hoppes over');
+  const hogst = r.oppdrag.find((o) => o.type === 'sluttavvirkning');
+  assert.equal(hogst.nr, 'O-2026-01'); assert.equal(hogst.status, 'utkast'); assert.equal(hogst.linjer.length, 2);
+  assert.equal(hogst.felt.driftsmetode, 'Hogstmaskin og lassbærer', 'standardverdier fylles inn');
+  assert.equal(r.oppdrag.find((o) => o.type === 'planting').nr, 'O-2026-02');
+  assert.equal(S.bestand[0].tiltak[0].oppdragId, hogst.id);
+  // Samme tiltak kan ikke legges i to aktive oppdrag
+  const r2 = OPP.lagOppdrag(S, [v(0, 0)], { nyId, iAar: 2026 });
+  assert.equal(r2.oppdrag.length, 0); assert.equal(r2.hoppetOver.length, 1);
+  // Sammendrag: areal, m³ fra økonomifunksjonen, plantetall fra feltet
+  const sm = OPP.sammendrag(S, hogst, (t) => ({ m3: t.bestand.areal * 20, netto: 1000 }));
+  assert.equal(sm.areal, 15); assert.equal(sm.m3, 300); assert.equal(sm.aar, 2026); assert.equal(sm.sjekk, 0);
+  const pl = r.oppdrag.find((o) => o.type === 'planting');
+  assert.equal(OPP.sammendrag(S, pl).antall, 2200, '220 planter per daa × 10 daa');
+  // Fjerne linje og slette oppdrag frigjør tiltakene
+  OPP.fjernLinje(S, hogst, 't3'); assert.equal(hogst.linjer.length, 1); assert.equal(S.bestand[1].tiltak[0].oppdragId, undefined);
+  assert.equal(OPP.leggTil(S, hogst, [v(1, 0), v(0, 1)]), 1, 'bare samme type legges til');
+  OPP.slettOppdrag(S, hogst); assert.equal(S.oppdrag.length, 1); assert.equal(S.bestand[0].tiltak[0].oppdragId, undefined);
+  // Avsluttet oppdrag frigjør tiltaket for nytt oppdrag
+  pl.status = 'avbrutt'; assert.ok(OPP.ledig(S.bestand[0].tiltak[1], S.oppdrag));
+  assert.equal(OPP.nesteNr(S.oppdrag, 2026), 'O-2026-03');
 });
 
 await Promise.all(venter);
