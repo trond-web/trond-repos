@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.2.0** (2026-10-08) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.2.1** (2026-10-08) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -98,6 +98,7 @@ Når planen lages, hentes markslag fra NIBIOs arealressurskart AR5 (`js/markslag
   - uproduktiv skog (impediment) og myr
   - åpen fastmark, jordbruk, bebyggelse, samferdsel, vann og snø/is
 - **Ingen volum på uproduktiv mark:** alt som ikke er produktiv skog, trekkes ut av bestandene før volum beregnes. Merknaden på bestandet sier hvor mye som er trukket ut.
+- **Utdatert AR5 overstyres:** Mye av AR5 er feltkartlagt rundt 1990. Grøftet og tilplantet myr eller gjengrodd mark kan derfor fortsatt stå som impediment, myr eller åpen fastmark. En slik figur regnes som produktiv skog når nyere data viser skog på minst halvparten av den, og trekkes da ikke ut av bestandene. Nyere data betyr enten SR16 med minst 5 m³/daa og bonitet 8 eller høyere, eller en skogbruksplan registrert etter AR5-kartleggingen. Bestandet får en merknad om hvorfor, og loggen viser antall figurer og areal.
 - **Uproduktive figurer** lagres som U1, U2 … med AR5-treslag, grunnforhold og kartleggingsdato.
 - **Kartsymboler:** myr (strek med tuster på blå bunn), impediment (prikker og små trær), åpen fastmark (prikker), jordbruk (skravur), bebygd (kryss), samferdsel (strek) og vann (bølger). Symbolene er med i tegnforklaringen og kan slås av i kartlagsmenyen.
 - **Oversikt** viser arealfordelingen per markslag. For planer laget tidligere kan markslag hentes og trekkes ut av bestandene derfra.

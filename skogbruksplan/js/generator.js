@@ -3,7 +3,7 @@
 //   NIBIO SR16 vektor (volum, høyde, treantall, treslag, alder) og NIBIO MiS (nøkkelbiotoper).
 // Geometrioperasjoner gjøres med Turf (sendes inn, slik at modulen også kan kjøres i Node).
 import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST, nyId } from './model.js';
-import { hentAr5, lagFigurer, MARKSLAG } from './markslag.js';
+import { hentAr5, lagFigurer, MARKSLAG, OVERSTYRBAR } from './markslag.js';
 import { tomSkifteplan, lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
 import { geoTilUtm, utmTilGeo, punktIGeometri, etikettPunkt } from './proj.js';
 import { placemarkGeometri } from './kml.js';
@@ -262,9 +262,44 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   try {
     ar5 = await hentAr5(eiendom.geometry, { hent, boksTreff, klipp: (g) => klipp(g)?.geometry || null, logg: (t) => logg('markslag', 'aktiv', t) });
   } catch (e) { ar5Feil = e.message; }
+  // AR5 kan være flere tiår gammel (mye er feltkartlagt rundt 1990). Grøftet og tilplantet myr eller gjengrodd mark
+  // står da fortsatt som impediment, myr eller åpen fastmark. Viser nyere data produktiv skog på mesteparten av
+  // figuren – SR16 med volum og bonitet, eller en skogbruksplan registrert etter AR5 – regnes figuren som produktiv.
+  const overstyrt = [];
+  const olap = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
+  for (const f of ar5) {
+    if (!OVERSTYRBAR.includes(f.kategori)) continue;
+    const ff = feat(f.geometri); const bb = T.bbox(ff); const tot = arealM2(f.geometri);
+    if (tot < 500) continue;
+    let srDekket = 0; let vol = 0; let bon = 0; let bonVekt = 0;
+    for (const sd of sr16Data) {
+      if (!olap(bb, sd.bbox)) continue;
+      const a = arealM2(snitt(ff, feat(sd.geometry))); if (a < 1) continue;
+      srDekket += a; vol += a * (tall(sd.attr.srvolub) || 0) * 0.1;
+      const b = tall(sd.attr.srbonitet); if (b > 0) { bon += a * b; bonVekt += a; }
+    }
+    const sr = srDekket / tot >= 0.5 ? { vol: vol / srDekket, bon: bonVekt ? bon / bonVekt : null } : null;
+    const ar5Aar = Number(String(f.ar5?.datafangst || '').slice(-4)) || null;
+    let planDekket = 0; let planBest = null; let planBestA = 0;
+    for (const pl of plan) {
+      if (!pl.klipp || !pl.attr) continue;
+      if (!pl.bb) pl.bb = T.bbox(pl.klipp);
+      if (!olap(bb, pl.bb)) continue;
+      const a = arealM2(snitt(ff, pl.klipp)); if (a < 1) continue;
+      planDekket += a; if (a > planBestA) { planBestA = a; planBest = pl.attr; }
+    }
+    const planAar = planBest ? Number(String(planBest.regaar_korr || '').slice(0, 4)) || null : null;
+    const srOk = sr && sr.vol >= 5 && (sr.bon || 0) >= 8;
+    const planOk = planDekket / tot >= 0.5 && planAar && (!ar5Aar || planAar > ar5Aar);
+    if (!srOk && !planOk) continue;
+    const grunn = [srOk ? `SR16 viser ${komma(sr.vol)} m³/daa og bonitet ${Math.round(sr.bon)}` : null,
+      planOk ? `skogbruksplanen fra ${planAar} har bestand ${planBest.teig_best_nr || ''} her` : null].filter(Boolean).join(', og ');
+    overstyrt.push({ fra: f.kategori, aar: ar5Aar, areal: f.areal, grunn, f: ff, bb });
+    f.kategori = 'produktiv';
+  }
   const uproduktiv = ar5.filter((f) => f.kategori !== 'produktiv').map((f) => ({ ...f, f: feat(f.geometri), bb: T.bbox(f.geometri) }));
   const ar5Sum = {}; for (const f of ar5) ar5Sum[f.kategori] = (ar5Sum[f.kategori] || 0) + f.areal;
-  logg('markslag', ar5Feil ? 'feil' : 'ok', ar5Feil ? `AR5 kunne ikke hentes (${ar5Feil}) – uproduktiv mark er ikke skilt ut` : `Markslag: ${Object.entries(ar5Sum).filter(([k]) => k !== 'produktiv').map(([k, v]) => `${MARKSLAG[k].kort} ${Math.round(v)} daa`).join(', ') || 'ingen uproduktiv mark'}`);
+  logg('markslag', ar5Feil ? 'feil' : 'ok', ar5Feil ? `AR5 kunne ikke hentes (${ar5Feil}) – uproduktiv mark er ikke skilt ut` : `Markslag: ${Object.entries(ar5Sum).filter(([k]) => k !== 'produktiv').map(([k, v]) => `${MARKSLAG[k].kort} ${Math.round(v)} daa`).join(', ') || 'ingen uproduktiv mark'}${overstyrt.length ? ` – ${overstyrt.length} utdatert${overstyrt.length > 1 ? 'e' : ''} AR5-figur${overstyrt.length > 1 ? 'er' : ''} (${Math.round(overstyrt.reduce((x, o) => x + o.areal, 0))} daa) regnet som produktiv etter SR16/skogbruksplan` : ''}`);
 
   // 5b. Skifteinndeling av jordbruksarealet (AR5 + jordsmonn) – se skifteplan.js for prinsippene.
   const markslag = lagFigurer(ar5, nyId);
@@ -398,6 +433,10 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     if (miljo) merknader.push('Overlapper MiS-nøkkelbiotop');
     if (!deler.length) merknader.push('Ingen SR16-data – volum er ikke kjent');
     if (k.uproduktiv) merknader.push(`Uproduktiv mark trukket ut etter AR5: ${k.uproduktiv}`);
+    for (const o of overstyrt) {
+      if (!overlapper(bb, o.bb) || arealM2(snitt(k.g, o.f)) < 500) continue;
+      merknader.push(`AR5${o.aar ? ` (${o.aar})` : ''} viser ${MARKSLAG[o.fra].kort.toLowerCase()} her, men ${o.grunn} – regnet som produktiv skog`);
+    }
 
     const r1 = (v) => (v === null || v === undefined ? null : Math.round(v * 10) / 10);
     const props = {

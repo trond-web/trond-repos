@@ -20,6 +20,8 @@ export const MARKSLAG = {
   sno: { navn: 'Snø og isbre', kort: 'Snø/is', farge: '#eef4f8', symbol: 'sno' },
   ukjent: { navn: 'Ikke kartlagt', kort: 'Ikke kartlagt', farge: '#e5e5e5', symbol: 'ukjent' },
 };
+// Kategorier der AR5 kan overstyres av nyere data som viser produktiv skog (se generator.js).
+export const OVERSTYRBAR = ['impediment', 'myr', 'apen'];
 const BONITET = { 11: 'Impediment', 12: 'Lav', 13: 'Middels', 14: 'Høy', 15: 'Særs høy' };
 
 export function klassifiser(a) {
