@@ -420,6 +420,8 @@ progress { accent-color: var(--accent); height: 8px; }
 .vei-rad.valgt { background: var(--accent-soft); border-color: var(--accent); }
 .vei-rad .strek { height: 5px; border-radius: 3px; background: var(--farge); }
 .vei-rad .strek[data-planlagt="true"] { background: repeating-linear-gradient(90deg, var(--farge) 0 6px, transparent 6px 10px); }
+.vei-rad .strek.sti { height: 3px; background: repeating-linear-gradient(90deg, #b8402e 0 2px, transparent 2px 6px); }
+.vei-rad .strek.traktorvei { height: 4px; background: repeating-linear-gradient(90deg, #8a5a2b 0 7px, transparent 7px 11px); }
 .vei-rad .tall { font-variant-numeric: tabular-nums; color: var(--text-2); }
 .pille { font: 600 10.5px/1 var(--font-mono); padding: 4px 8px; border-radius: 99px; border: 1.5px solid var(--farge); color: var(--text); white-space: nowrap; }
 .vei-h4 { margin: 18px 0 8px; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }

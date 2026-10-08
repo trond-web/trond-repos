@@ -26,9 +26,11 @@ import { placemarkGeometri } from '../js/kml.js';
 import { misFigurer } from '../js/miljokart.js';
 import { parseKml as parseKmlKommune } from '../js/kommuneanalyse.js';
 import { VERSJON, UTVIKLER, signatur } from '../js/versjon.js';
+import { VEIKLASSER } from '../js/veier.js';
+const VEIKLASSER_TEST = (k) => VEIKLASSER[k].bilvei;
 import { readFileSync } from 'node:fs';
 import * as VEG from '../js/vegetasjon.js';
-import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
+import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER, kjedeSammen, hentTraktorveierOgStier, slaaInnFkb, tomtVeiregister } from '../js/veier.js';
 
 let ok = 0;
 const venter = [];
@@ -850,6 +852,42 @@ test('Vegetasjonstype: NIBIO vegetasjonskart, anslag fra treslag/bonitet og impo
   const b2 = [{ nr: '1', treslag: 'G', bonitet: 17, geometri: firkant(11.0, 11.01, 60.0, 60.01) }];
   const r2 = await VEG.settVegetasjon(b2, { klipping: pc, hent: async () => ({ ok: false, status: 503 }) });
   assert.ok(r2.feil); assert.equal(b2[0].vegetasjon.kode, '7c');
+});
+
+test('Traktorveier og stier fra Kartverket FKB: henting, sammenslåing og fletting', async () => {
+  // Eiendom ca. 1 × 1 km rundt UTM33 (300000, 6700000)
+  const g = (x, y) => utmTilGeo(x, y, 33);
+  const grense = { type: 'Polygon', coordinates: [[g(300000, 6700000), g(301000, 6700000), g(301000, 6701000), g(300000, 6701000), g(300000, 6700000)]] };
+  // To traktorveilenker som henger sammen, én frittliggende, én sti, og én traktorvei langt utenfor eiendommen
+  const f = (typeveg, ...pts) => ({ type: 'Feature', properties: { typeveg, klasselandbruksveg: '' }, geometry: { type: 'LineString', coordinates: pts } });
+  const fc = { type: 'FeatureCollection', features: [
+    f('traktorveg', [300100, 6700100], [300400, 6700100]), f('traktorveg', [300400, 6700100], [300400, 6700500]),
+    f('traktorveg', [300800, 6700800], [300900, 6700900]),
+    f('sti', [300200, 6700600], [300600, 6700600]),
+    f('traktorveg', [305000, 6705000], [305500, 6705000]),
+  ] };
+  let url = '';
+  const hent = async (u) => { url = u; return { ok: true, json: async () => fc }; };
+  const r = await hentTraktorveierOgStier(grense, { hent });
+  assert.ok(/typeNames=ms:traktorveg_sti/.test(url) && /srsName=EPSG:25833/.test(url));
+  assert.equal(r.traktorveier.length, 2, 'to sammenhengende lenker blir én vei, lenken utenfor er utelatt');
+  assert.ok(Math.abs(r.traktorveier[0].lengde - 700) < 3, `${r.traktorveier[0].lengde}`);
+  assert.equal(r.traktorveier[0].klasse, 7); assert.equal(r.traktorveier[0].navn, 'Traktorvei 1');
+  assert.equal(r.stier.length, 1); assert.ok(Math.abs(r.stier[0].lengde - 400) < 3);
+  assert.equal(kjedeSammen([[g(0, 0), g(10, 0)], [g(10, 0), g(20, 0)], [g(50, 0), g(60, 0)]].map((l) => l)).length, 2);
+  // Fletting: ny henting beholder tilstand og vedlikehold, legger ikke til duplikater
+  let n = 0; const nyId = (p) => `${p}${++n}`;
+  const reg = tomtVeiregister();
+  reg.veier.push({ id: 'nvdb1', nvdb: true, navn: 'PV1', klasse: 2, geometri: { type: 'LineString', coordinates: [g(300000, 6700000), g(300100, 6700000)] }, lengde: 100 });
+  const a = slaaInnFkb(reg, r, nyId);
+  assert.equal(a.nye, 2); assert.equal(reg.veier.length, 3); assert.equal(reg.stier.length, 1);
+  const v1 = reg.veier.find((v) => v.fkb && v.navn === 'Traktorvei 1');
+  v1.tilstand = 'darlig'; reg.vedlikehold.push({ id: 'l1', veiId: v1.id, type: 'grofterensk', aar: 2027 });
+  const b = slaaInnFkb(reg, await hentTraktorveierOgStier(grense, { hent }), nyId);
+  assert.equal(b.nye, 0); assert.equal(b.oppdatert, 2); assert.equal(reg.veier.length, 3); assert.equal(reg.stier.length, 1);
+  assert.equal(reg.veier.find((v) => v.id === v1.id).tilstand, 'darlig', 'tilstand beholdes');
+  // Terrengtransport regner bare bilvei – traktorveier endrer ikke avstanden
+  assert.equal(VEIKLASSER_TEST(7), false);
 });
 
 await Promise.all(venter);

@@ -28,7 +28,8 @@ import { skadeOppsummering, RISIKONIVAA } from './skade.js';
 import { initVerdi, utenProduksjon } from './verdi-ui.js';
 import { hentDatagrunnlag } from './datagrunnlag.js';
 import { kalibrerPriser, verdiberegning, STANDARD_VERDI } from './verdi.js';
-import { VEIKLASSER, VEDLIKEHOLDSTYPER } from './veier.js';
+import { VEIKLASSER, VEDLIKEHOLDSTYPER, VEISTIL } from './veier.js';
+import { synligPadding } from './kartutsnitt.js';
 import { KRAVPUNKTER } from './pefc.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
@@ -216,6 +217,15 @@ function tegnLegend() {
     if (mis.some((f) => f.type === 'mis')) html += `<div><i style="${misLegendStil}"></i>Nøkkelbiotop (MiS)</div>`;
     if (mis.some((f) => f.type === 'miljofigur')) html += `<div><i style="${miljoLegendStil}"></i>Miljøfigur (bestand)</div>`;
   }
+  const vr = S.veier || {};
+  const harBil = (vr.veier || []).some((v) => (VEIKLASSER[v.klasse] || VEIKLASSER[0]).bilvei); const harTrak = (vr.veier || []).some((v) => !(VEIKLASSER[v.klasse] || VEIKLASSER[0]).bilvei);
+  if (harBil || harTrak || vr.stier?.length) {
+    const strek = (farge, monster, h = 3) => `<i style="height:${h}px;align-self:center;background:${monster ? `repeating-linear-gradient(90deg, ${farge} 0 ${monster[0]}px, transparent ${monster[0]}px ${monster[0] + monster[1]}px)` : farge}"></i>`;
+    html += '<b style="display:block;margin-top:6px">Veier</b>'
+      + (harBil ? `<div>${strek('#8a8a85', null, 4)}Bilvei</div>` : '')
+      + (harTrak ? `<div>${strek(VEISTIL.traktorvei.farge, [6, 3])}Traktorvei</div>` : '')
+      + (vr.stier?.length ? `<div>${strek(VEISTIL.sti.farge, [2, 4])}Sti</div>` : '');
+  }
   if (kat.length && kart.hasLayer(markslagLag)) html += `<b style="display:block;margin-top:6px">Uproduktiv mark</b>${Object.keys(MARKSLAG).filter((k) => kat.includes(k)).map((k) => `<div>${symbolRute(k)} ${esc(MARKSLAG[k].kort)}</div>`).join('')}`;
   $('#kartLegend').innerHTML = `<button type="button" class="legend-knapp" aria-expanded="${!legendLukket}">Tegnforklaring ${legendLukket ? '▸' : '▾'}</button><div class="legend-innhold" ${legendLukket ? 'hidden' : ''}>${html}</div>`;
 }
@@ -315,7 +325,7 @@ function oppdaterEtiketter() {
 
 function zoomTilAlle() {
   const bb = bbox([...S.bestand.map((b) => b.geometri), S.eiendom.grense]);
-  if (bb) kart.fitBounds([[bb[1], bb[0]], [bb[3], bb[2]]], { padding: [20, 20] });
+  if (bb) kart.fitBounds([[bb[1], bb[0]], [bb[3], bb[2]]], synligPadding(kart, 20));
 }
 
 // ---------------------------------------------------------------- tegning og redigering av grenser
@@ -383,7 +393,7 @@ function startDeling(b) {
   $('#delHjelp').hidden = false; $('#delFerdig').disabled = true;
   $('#delHjelp .tekst').textContent = `Del bestand ${b.nr}: klikk punkter for en linje tvers over bestandet.`;
   if (erMobil()) settArk('lav');
-  const lag = lagPerBestand.get(b.id); if (lag) kart.fitBounds(lag.getBounds(), { padding: [60, 60], maxZoom: 18 });
+  const lag = lagPerBestand.get(b.id); if (lag) kart.fitBounds(lag.getBounds(), { ...synligPadding(kart, 60), maxZoom: 18 });
 }
 function tegnDeling() {
   const d = deling; const lls = d.punkter.map(([x, y]) => [y, x]);
@@ -604,7 +614,7 @@ function velgBestand(id, { zoom = true } = {}) {
   visDetalj();
   const lag = lagPerBestand.get(id);
   if (id) $('#bestandDetalj').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  if (zoom && lag) kart.fitBounds(lag.getBounds(), { maxZoom: 16, padding: [40, 40] });
+  if (zoom && lag) kart.fitBounds(lag.getBounds(), { maxZoom: 16, ...synligPadding(kart, 40) });
   if (lag) lag.bringToFront();
 }
 
@@ -1297,7 +1307,7 @@ async function tegnPlanListe() {
 const GEN_STEG = [
   ['eiendom', 'Eiendomsgrense (Kartverket)'], ['plan', 'Tidligere skogbruksplan (NIBIO)'],
   ['sr16', 'Skogressurskart SR16 (NIBIO)'], ['mis', 'Miljøregistreringer (MiS)'], ['markslag', 'Markslag – uproduktiv mark (AR5, NIBIO)'], ['skifter', 'Skifteinndeling av jordbruksareal (AR5 og jordsmonn)'], ['bygg', 'Bestand og sammenligning'], ['vegetasjon', 'Vegetasjonstype per bestand (NIBIO vegetasjonskart)'],
-  ['miljo', 'Miljødata til PEFC (NIBIO, Miljødirektoratet, Riksantikvaren)'], ['nvdb', 'Skogsbilveier (NVDB)'], ['ssb', 'Tømmerpriser (SSB)'],
+  ['miljo', 'Miljødata til PEFC (NIBIO, Miljødirektoratet, Riksantikvaren)'], ['nvdb', 'Skogsbilveier (NVDB)'], ['fkb', 'Traktorveier og stier (Kartverket FKB)'], ['ssb', 'Tømmerpriser (SSB)'],
 ];
 
 // Henter PEFC-miljødata, veier og tømmerpriser for planen som er åpen (fra PEFC-, Veier- og Verdi-fanen).
@@ -1361,7 +1371,7 @@ async function startGenerering(e) {
     const plan = await genererPlan({ kommune, gnr, bnr, festenr }, { turf, klipping, iAar: IAAR, logg: (st, status, t) => { aktivtSteg = st; logg(st, status, t); } });
     const ny = { versjon: 1, planId: nyId('p'), eiendom: plan.eiendom, bestand: plan.bestand, markslag: plan.markslag || [], ...(plan.skifteplan ? { skifteplan: plan.skifteplan } : {}), registreringer: [], innstillinger: klon(S.innstillinger), metadata: plan.metadata, datakilder: { ...plan.kilder } };
     // Alt datagrunnlag for PEFC, veier og verdi hentes med en gang. Feil her stopper ikke planen.
-    const dgSteg = ['miljo', 'nvdb', 'ssb'];
+    const dgSteg = ['miljo', 'nvdb', 'fkb', 'ssb'];
     dgSteg.forEach((st) => logg(st, 'aktiv', 'Henter …'));
     const dg = await hentDatagrunnlag(ny, { hvilke: dgSteg, nyId, kommunenr: kommune.nr, logg: (st, t, ok) => logg(st, ok === true ? 'ok' : ok === false ? 'feil' : 'aktiv', t) });
     let kalibrert = null;

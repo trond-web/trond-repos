@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.2.1** (2026-10-08) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.3.0** (2026-10-08) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -335,6 +335,13 @@ Hver plan har sitt eget veiregister:
 - **Hent veier fra NVDB.** Skogsbilveier (vegkategori S) og eventuelt private veier (P) som går på eller inntil eiendommen
   hentes fra Nasjonal vegdatabank. Med dem følger landbruksvegklasse (objekttype 822), bommer, snuplasser og stikkrenner der
   de er registrert. Klassen er ofte ikke registrert. Da settes den manuelt.
+- **Traktorveier og stier fra Kartverket.** Disse hentes fra FKB-TraktorvegSti, en åpen WFS med GeoJSON i UTM33 (`wms.traktorveg_skogsbilveger`, lag `ms:traktorveg_sti`). Linjer på eller inntil eiendommen tas med:
+  - FKB leverer korte veglenker. Lenker som henger sammen, slås sammen til «Traktorvei 1, 2 …» og «Sti 1, 2 …».
+  - Traktorveier blir klasse 7 i veiregisteret, med tilstand, eiere og vedlikehold som andre veier. Stier lagres i en egen liste.
+  - Begge hentes automatisk når planen lages (steget «Traktorveier og stier»). De kan også hentes eller oppdateres med «Hent traktorveier og stier» og «Oppdater alle».
+  - Ved ny henting beholdes det som er registrert på en traktorvei.
+  - I alle kart vises traktorvei som brun stiplet linje og sti som rød prikket linje, med egen del i tegnforklaringen.
+  - Terrengtransport regnes fortsatt bare til bilvei.
 - **Tegn veier** (eksisterende eller planlagte) og **plasser punkter**: bom, stikkrenne, snuplass, velteplass, møteplass,
   bru og skade.
 - **Per vei:** klasse (Landbruksdirektoratets klasse 1–8), tilstand, dekke, bredde, aksellast, totalvekt, åpningstid,

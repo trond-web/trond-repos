@@ -2,10 +2,10 @@
 // tømmerpriser fra SSB. Brukes når planen lages og fra «Oppdater alle» i oversikten. Ingen DOM.
 import { hentMiljodata } from './pefc-data.js';
 import { tomPefc } from './pefc.js';
-import { hentNvdbVeier, tomtVeiregister } from './veier.js';
+import { hentNvdbVeier, tomtVeiregister, hentTraktorveierOgStier, slaaInnFkb } from './veier.js';
 import { hentSsbPriser, STANDARD_VERDI } from './verdi.js';
 
-export const KILDEREKKEFOLGE = ['eiendom', 'plan', 'sr16', 'ar5', 'vegetasjon', 'nvdb', 'mis', 'vern', 'hb13', 'nin', 'utvalgte', 'art', 'friluft', 'kultur', 'ssb'];
+export const KILDEREKKEFOLGE = ['eiendom', 'plan', 'sr16', 'ar5', 'vegetasjon', 'nvdb', 'fkb', 'mis', 'vern', 'hb13', 'nin', 'utvalgte', 'art', 'friluft', 'kultur', 'ssb'];
 
 export function grenseFor(plan) {
   if (plan.eiendom?.grense) return plan.eiendom.grense;
@@ -13,7 +13,7 @@ export function grenseFor(plan) {
   return flater.length ? { type: 'MultiPolygon', coordinates: flater } : null;
 }
 
-export async function hentDatagrunnlag(plan, { hvilke = ['miljo', 'nvdb', 'ssb'], nyId, kommunenr = plan.eiendom?.kommunenr, logg = () => {}, hent = fetch } = {}) {
+export async function hentDatagrunnlag(plan, { hvilke = ['miljo', 'nvdb', 'fkb', 'ssb'], nyId, kommunenr = plan.eiendom?.kommunenr, logg = () => {}, hent = fetch } = {}) {
   const grense = grenseFor(plan);
   const feil = [];
   plan.datakilder = plan.datakilder || {};
@@ -42,6 +42,15 @@ export async function hentDatagrunnlag(plan, { hvilke = ['miljo', 'nvdb', 'ssb']
       plan.datakilder.nvdb = r.kilde;
       logg('nvdb', `${r.veier.length} veier (${Math.round(r.veier.reduce((s, v) => s + v.lengde, 0) / 100) / 10} km) og ${r.punkter.length} punkter`, true);
     } catch (e) { feil.push(`NVDB: ${e.message}`); logg('nvdb', `Feil: ${e.message}`, false); }
+  }
+  if (hvilke.includes('fkb')) {
+    try {
+      const r = await hentTraktorveierOgStier(grense, { hent, logg: (t) => logg('fkb', t) });
+      plan.veier = plan.veier || tomtVeiregister();
+      slaaInnFkb(plan.veier, r, nyId);
+      plan.datakilder.fkb = r.kilde;
+      logg('fkb', `${r.traktorveier.length} traktorveier og ${r.stier.length} stier (${r.kilde.merknad})`, true);
+    } catch (e) { feil.push(`Traktorveier og stier: ${e.message}`); logg('fkb', `Feil: ${e.message}`, false); }
   }
   if (hvilke.includes('ssb')) {
     if (!kommunenr) { logg('ssb', 'Mangler kommunenummer – hopper over tømmerpriser', false); } else {
