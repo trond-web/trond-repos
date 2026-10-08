@@ -252,9 +252,10 @@
       <div class="kpi-rad" id="veiKpi"></div>
       <div class="kort">
         <h3>Registrer veier</h3>
-        <p class="hint">Hent skogsbilveier (og private veier) som går på eller inntil eiendommen fra Nasjonal vegdatabank (NVDB), med veiklasse, bommer, snuplasser og stikkrenner der de er registrert. Du kan også tegne veier og plassere punkter selv.</p>
+        <p class="hint">Hent skogsbilveier (og private veier) som går på eller inntil eiendommen fra Nasjonal vegdatabank (NVDB), med veiklasse, bommer, snuplasser og stikkrenner der de er registrert. Traktorveier og stier hentes fra Kartverkets FKB-TraktorvegSti. Begge deler hentes automatisk når planen lages. Du kan også tegne veier og plassere punkter selv.</p>
         <div class="knapperad">
           <button id="veiNvdbBtn" class="knapp primar" type="button">Hent veier fra NVDB</button>
+          <button id="veiFkbBtn" class="knapp" type="button">Hent traktorveier og stier</button>
           <label class="avkrysning"><input type="checkbox" id="veiMedPrivate" checked> Ta med private veier (P)</label>
         </div>
         <div id="veiNvdbStatus" class="hint"></div>

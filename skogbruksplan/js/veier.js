@@ -19,6 +19,9 @@ const NVDB_KLASSE = {
   'Vinterbilveg': 5, 'Traktorveg': 7, 'Enkel traktorveg': 8,
 };
 
+// Kartstil for traktorvei og sti (samme i veifanen, plankartet og tegnforklaringen).
+export const VEISTIL = { traktorvei: { farge: '#8a5a2b', strek: '9 5' }, sti: { farge: '#b8402e', strek: '1 6' } };
+
 export const TILSTAND = {
   god: { navn: 'God', farge: '#0ca30c' },
   middels: { navn: 'Middels', farge: '#fab219' },
@@ -56,7 +59,7 @@ export const STANDARD_VEIINNSTILLINGER = {
 };
 
 export function tomtVeiregister() {
-  return { veier: [], punkter: [], vedlikehold: [], innstillinger: JSON.parse(JSON.stringify(STANDARD_VEIINNSTILLINGER)) };
+  return { veier: [], punkter: [], stier: [], vedlikehold: [], innstillinger: JSON.parse(JSON.stringify(STANDARD_VEIINNSTILLINGER)) };
 }
 
 // ---------- geometri (meter, via UTM33) ----------
@@ -275,4 +278,90 @@ export async function hentNvdbVeier(grense, { hent = fetch, medPrivate = true, l
   const datoer = segmenter.map((x) => x.metadata?.startdato).filter(Boolean).sort();
   const kilde = { id: 'nvdb', navn: 'Skogsbilveier (NVDB)', eier: 'Statens vegvesen', hentet: new Date().toISOString(), antall: veier.length + punkter.length, dataFra: datoer[0] || null, dataTil: datoer.at(-1) || null, krav: [3, 5] };
   return { veier, punkter, kilde };
+}
+
+// ---------- traktorveier og stier (Kartverket FKB-TraktorvegSti) ----------
+// Åpen WFS (GeoJSON i UTM33) med traktorveier og stier fra FKB. FKB leverer korte veglenker; lenker som henger
+// sammen slås sammen til én vei eller sti, slik at registeret blir oversiktlig.
+const FKB_WFS = 'https://wms.geonorge.no/skwms1/wms.traktorveg_skogsbilveger';
+const FKB_KLASSE = { 7: 7, 8: 8, '7': 7, '8': 8 };
+
+// Slår sammen linjer (lister av [lon, lat]) som deler endepunkt (innenfor toleranse i meter) til grupper.
+export function kjedeSammen(linjeliste, toleranse = 2) {
+  const n = linjeliste.length; const forelder = [...Array(n).keys()];
+  const finn = (i) => { while (forelder[i] !== i) { forelder[i] = forelder[forelder[i]]; i = forelder[i]; } return i; };
+  const nokkel = (p) => { const [x, y] = tilM(p); return `${Math.round(x / toleranse)}:${Math.round(y / toleranse)}`; };
+  const ende = new Map();
+  linjeliste.forEach((l, i) => {
+    for (const p of [l[0], l.at(-1)]) {
+      const k = nokkel(p);
+      if (ende.has(k)) forelder[finn(i)] = finn(ende.get(k)); else ende.set(k, i);
+    }
+  });
+  const grupper = new Map();
+  linjeliste.forEach((l, i) => { const r = finn(i); if (!grupper.has(r)) grupper.set(r, []); grupper.get(r).push(l); });
+  return [...grupper.values()];
+}
+const signatur = (geom) => linjer(geom).flatMap((l) => [l[0], l.at(-1)]).map((p) => { const [x, y] = tilM(p); return `${Math.round(x / 5)}:${Math.round(y / 5)}`; }).sort().join('|');
+
+export async function hentTraktorveierOgStier(grense, { hent = fetch, logg = () => {} } = {}) {
+  const pts = (grense.type === 'Polygon' ? grense.coordinates : grense.coordinates.flat()).flat().map(tilM);
+  const xs = pts.map((p) => p[0]); const ys = pts.map((p) => p[1]);
+  const bb = [Math.min(...xs) - 100, Math.min(...ys) - 100, Math.max(...xs) + 100, Math.max(...ys) + 100].map((v) => Math.round(v));
+  logg('Henter traktorveier og stier fra Kartverket (FKB) …');
+  const url = `${FKB_WFS}?service=WFS&version=2.0.0&request=GetFeature&typeNames=ms:traktorveg_sti&srsName=EPSG:25833&bbox=${bb.join(',')},urn:ogc:def:crs:EPSG::25833&outputFormat=${encodeURIComponent('application/json; subtype=geojson')}&count=20000`;
+  let d = null;
+  for (let i = 0; ; i++) {
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 60000);
+    try {
+      const r = await hent(url, { signal: ctrl.signal });
+      if (!r.ok) throw new Error(`Kartverket svarte ${r.status}`);
+      d = await r.json(); break;
+    } catch (e) {
+      if (i >= 2) throw e.name === 'AbortError' ? new Error('Kartverket (FKB) svarte ikke') : e;
+      await new Promise((res) => setTimeout(res, 800 * 2 ** i));
+    } finally { clearTimeout(t); }
+  }
+  const tilGeo = (l) => l.map(([x, y]) => utmTilGeo(x, y, 33).map((v) => Math.round(v * 1e7) / 1e7));
+  const per = { traktorveg: [], sti: [] }; const klasser = new Map();
+  for (const f of d.features || []) {
+    const g = f.geometry; if (!g) continue;
+    const ls = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+    for (const l of ls) {
+      if (l.length < 2) continue;
+      const geo = tilGeo(l);
+      if (!naerEiendom({ type: 'LineString', coordinates: geo }, grense, 30)) continue;
+      const type = f.properties?.typeveg === 'traktorveg' ? 'traktorveg' : 'sti';
+      per[type].push(geo);
+      const k = FKB_KLASSE[f.properties?.klasselandbruksveg]; if (k) klasser.set(geo, k);
+    }
+  }
+  const lagGrupper = (liste) => kjedeSammen(liste).map((deler) => {
+    const geometri = { type: 'MultiLineString', coordinates: deler };
+    const k = deler.map((l) => klasser.get(l)).filter(Boolean);
+    return { geometri, lengde: Math.round(lengdeM(geometri)), klasse: k.length ? Math.min(...k) : 7, signatur: signatur(geometri) };
+  }).filter((x) => x.lengde >= 10).sort((a, b) => b.lengde - a.lengde);
+  const traktorveier = lagGrupper(per.traktorveg).map((v, i) => ({ navn: `Traktorvei ${i + 1}`, vegnummer: '', fkb: true, status: 'eksisterende', klasse: v.klasse, klasseKilde: 'FKB', kategori: 'Traktorvei (FKB)', geometri: v.geometri, lengde: v.lengde, signatur: v.signatur }));
+  const stier = lagGrupper(per.sti).map((s, i) => ({ navn: `Sti ${i + 1}`, fkb: true, geometri: s.geometri, lengde: s.lengde, signatur: s.signatur }));
+  const km = (l) => (Math.round(l.reduce((s, v) => s + v.lengde, 0) / 100) / 10).toFixed(1).replace('.', ',');
+  logg(`Fant ${traktorveier.length} traktorveier (${km(traktorveier)} km) og ${stier.length} stier (${km(stier)} km)`);
+  const kilde = { id: 'fkb', navn: 'Traktorveier og stier (FKB)', eier: 'Kartverket', hentet: new Date().toISOString(), antall: traktorveier.length + stier.length, krav: [3, 5], merknad: `${km(traktorveier)} km traktorvei, ${km(stier)} km sti` };
+  return { traktorveier, stier, kilde };
+}
+
+// Fletter et nytt FKB-uttrekk inn i veiregisteret. Traktorveier som finnes fra før (samme endepunkter) beholder
+// tilstand, eiere, vedlikehold og merknader. Forsvunne FKB-veier fjernes bare hvis ingenting er registrert på dem.
+export function slaaInnFkb(reg, res, nyId) {
+  const gamle = reg.veier.filter((v) => v.fkb);
+  const brukt = new Set(); let nye = 0; let oppdatert = 0;
+  for (const v of res.traktorveier) {
+    const finnes = gamle.find((g) => !brukt.has(g) && g.signatur === v.signatur);
+    if (finnes) { brukt.add(finnes); finnes.geometri = v.geometri; finnes.lengde = v.lengde; oppdatert++; continue; }
+    reg.veier.push({ id: nyId('v'), tilstand: 'ukjent', eiere: [], merknad: '', ...v }); nye++;
+  }
+  const iBruk = (v) => (v.tilstand && v.tilstand !== 'ukjent') || v.eiere?.length || v.merknad || reg.vedlikehold.some((l) => l.veiId === v.id);
+  const fjern = new Set(gamle.filter((g) => !brukt.has(g) && !iBruk(g)));
+  reg.veier = reg.veier.filter((v) => !fjern.has(v));
+  reg.stier = [...(reg.stier || []).filter((s) => !s.fkb), ...res.stier.map((s) => ({ id: nyId('st'), ...s }))];
+  return { nye, oppdatert, fjernet: fjern.size, stier: res.stier.length };
 }

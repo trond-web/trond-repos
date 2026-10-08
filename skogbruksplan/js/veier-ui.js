@@ -3,8 +3,10 @@
 import {
   VEIKLASSER, TILSTAND, PUNKTTYPER, VEDLIKEHOLDSTYPER, STANDARD_VEIINNSTILLINGER,
   lengdeM, terrengtransport, foreslaaVedlikehold, vedlikeholdKostnad, fordelKostnad, nyVeiKostnad, hentNvdbVeier, tomtVeiregister,
+  hentTraktorveierOgStier, slaaInnFkb, VEISTIL,
 } from './veier.js';
 import { fmt } from './charts.js';
+import { synligPadding } from './kartutsnitt.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -37,12 +39,21 @@ export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk
     for (const v of r.veier) {
       if (!v.geometri) continue;
       const k = VEIKLASSER[v.klasse] || VEIKLASSER[0];
-      const farge = TILSTAND[v.tilstand || 'ukjent'].farge;
+      const vurdert = v.tilstand && v.tilstand !== 'ukjent';
+      // Traktorvei: brun stiplet (tilstandsfarge når den er vurdert). Bilvei: tilstandsfarge, heltrukket.
+      const farge = !k.bilvei && !vurdert ? VEISTIL.traktorvei.farge : TILSTAND[v.tilstand || 'ukjent'].farge;
       const valgt = v.id === valgtVei;
       L.geoJSON(v.geometri, {
-        style: { color: valgt ? '#ffd400' : farge, weight: (k.bilvei ? 5 : 3) + (valgt ? 2 : 0), opacity: 0.95, dashArray: v.status === 'planlagt' ? '8 6' : null, lineCap: 'round' },
+        style: { color: valgt ? '#ffd400' : farge, weight: (k.bilvei ? 5 : 3) + (valgt ? 2 : 0), opacity: 0.95, dashArray: v.status === 'planlagt' ? '8 6' : k.bilvei ? null : VEISTIL.traktorvei.strek, lineCap: k.bilvei ? 'round' : 'butt' },
       }).bindTooltip(`${esc(v.navn || 'Vei')} · ${k.kort} · ${fmt(v.lengde)} m`, { sticky: true })
         .on('click', (e) => { L.DomEvent.stopPropagation(e); if (tegner) tegner.klikk(e.latlng); else velgVei(v.id); })
+        .addTo(lag);
+    }
+    for (const st of r.stier || []) {
+      if (!st.geometri) continue;
+      L.geoJSON(st.geometri, { style: { color: VEISTIL.sti.farge, weight: 2.5, opacity: 0.95, dashArray: VEISTIL.sti.strek, lineCap: 'round' } })
+        .bindTooltip(`${esc(st.navn || 'Sti')} · ${fmt(st.lengde)} m`, { sticky: true })
+        .on('click', (e) => { if (tegner) { L.DomEvent.stopPropagation(e); tegner.klikk(e.latlng); } })
         .addTo(lag);
     }
     for (const p of r.punkter) {
@@ -195,7 +206,7 @@ export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk
     const darlig = r.veier.filter((v) => v.tilstand === 'darlig').length + r.punkter.filter((p) => p.tilstand === 'darlig').length;
 
     $('#veiKpi').innerHTML = `
-      <div class="kpi"><div class="verdi">${km(bil)} km</div><div class="etikett">bilvei</div><div class="under">${km(trak)} km traktorvei${r.veier.some((v) => v.status === 'planlagt') ? ` · ${km(r.veier.filter((v) => v.status === 'planlagt'))} km planlagt` : ''}</div></div>
+      <div class="kpi"><div class="verdi">${km(bil)} km</div><div class="etikett">bilvei</div><div class="under">${km(trak)} km traktorvei${r.stier?.length ? ` · ${km(r.stier)} km sti` : ''}${r.veier.some((v) => v.status === 'planlagt') ? ` · ${km(r.veier.filter((v) => v.status === 'planlagt'))} km planlagt` : ''}</div></div>
       <div class="kpi"><div class="verdi">${r.punkter.length}</div><div class="etikett">punkter</div><div class="under">${Object.entries(PUNKTTYPER).map(([k, d]) => [d.navn, r.punkter.filter((p) => p.type === k).length]).filter(([, n]) => n).map(([n, c]) => `${c} ${n.toLowerCase()}`).join(', ') || 'bom, stikkrenner, snuplasser …'}</div></div>
       <div class="kpi"><div class="verdi">${fmt(plan.reduce((s, l) => s + (l.kostnad || 0), 0))} kr</div><div class="etikett">planlagt vedlikehold</div><div class="under">${IAAR}–${IAAR + 4}, ${plan.length} tiltak</div></div>
       <div class="kpi"><div class="verdi">${darlig ? `⚠ ${darlig}` : '0'}</div><div class="etikett">i dårlig tilstand</div><div class="under">veier og punkter</div></div>
@@ -205,12 +216,16 @@ export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk
       const k = VEIKLASSER[v.klasse] || VEIKLASSER[0];
       const t = TILSTAND[v.tilstand || 'ukjent'];
       return `<button type="button" class="vei-rad ${v.id === valgtVei ? 'valgt' : ''}" data-vei="${v.id}">
-        <span class="strek" style="--farge:${t.farge}" data-planlagt="${v.status === 'planlagt'}"></span>
+        <span class="strek${!k.bilvei && t === TILSTAND.ukjent ? ' traktorvei' : ''}" style="--farge:${t.farge}" data-planlagt="${v.status === 'planlagt'}"></span>
         <span><b>${esc(v.navn || 'Vei')}</b> <span class="hint">${esc(k.kort)}${v.status !== 'eksisterende' ? ` · ${STATUS[v.status]}` : ''}</span></span>
         <span class="tall">${fmt(v.lengde)} m</span>
         <span class="pille" style="--farge:${t.farge}">${t.navn}</span>
       </button>`;
-    }).join('') : '<div class="tom">Ingen veier registrert. Hent veiene fra NVDB, eller tegn dem i kartet.</div>';
+    }).join('') + (r.stier || []).map((st) => `<button type="button" class="vei-rad" data-sti="${st.id}">
+        <span class="strek sti"></span>
+        <span><b>${esc(st.navn)}</b> <span class="hint">Sti${st.fkb ? ' · FKB' : ''}</span></span>
+        <span class="tall">${fmt(st.lengde)} m</span><span></span>
+      </button>`).join('') : '<div class="tom">Ingen veier registrert. Hent veiene fra NVDB og Kartverket, eller tegn dem i kartet.</div>';
 
     const pv = r.punkter.find((p) => p.id === valgtPunkt);
     const vv = r.veier.find((v) => v.id === valgtVei);
@@ -252,13 +267,15 @@ export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk
     const r = reg();
     const vei = r.veier.find((x) => x.id === valgtVei);
     const punkt = r.punkter.find((x) => x.id === valgtPunkt);
+    const sti = e.target.closest('[data-sti]');
+    if (sti && !h) { const st = (r.stier || []).find((x) => x.id === sti.dataset.sti); if (st?.geometri) kart.fitBounds(L.geoJSON(st.geometri).getBounds(), { ...synligPadding(kart), maxZoom: 16 }); return; }
     const rad = e.target.closest('[data-vei]');
-    if (rad && !h) { velgVei(rad.dataset.vei); const v = r.veier.find((x) => x.id === rad.dataset.vei); if (v?.geometri) kart.fitBounds(L.geoJSON(v.geometri).getBounds(), { padding: [40, 40], maxZoom: 16 }); return; }
+    if (rad && !h) { velgVei(rad.dataset.vei); const v = r.veier.find((x) => x.id === rad.dataset.vei); if (v?.geometri) kart.fitBounds(L.geoJSON(v.geometri).getBounds(), { ...synligPadding(kart), maxZoom: 16 }); return; }
     const best = e.target.closest('[data-bestand]');
     if (best) { visBestand(best.dataset.bestand); return; }
     if (!h) return;
     const loggId = e.target.closest('[data-logg]')?.dataset.logg;
-    if (h === 'zoom' && vei) kart.fitBounds(L.geoJSON(vei.geometri).getBounds(), { padding: [40, 40], maxZoom: 16 });
+    if (h === 'zoom' && vei) kart.fitBounds(L.geoJSON(vei.geometri).getBounds(), { ...synligPadding(kart), maxZoom: 16 });
     if (h === 'zoom-punkt' && punkt) kart.setView([punkt.geometri.coordinates[1], punkt.geometri.coordinates[0]], 17);
     if (h === 'slett' && vei && confirm(`Slette ${vei.navn || 'veien'} og vedlikeholdet som er registrert på den?`)) {
       r.veier = r.veier.filter((x) => x !== vei); r.vedlikehold = r.vedlikehold.filter((l) => l.veiId !== vei.id); valgtVei = null; lagre();
@@ -323,8 +340,21 @@ export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk
       for (const p of res.punkter) if (!r.punkter.some((x) => x.nvdbId === p.nvdbId)) { r.punkter.push({ id: nyId('vp'), tilstand: 'ukjent', merknad: '', ...p }); nyePunkter++; }
       $('#veiNvdbStatus').textContent = `${nye} nye og ${oppdatert} oppdaterte veier, ${nyePunkter} nye punkter fra NVDB.${res.veier.some((v) => !v.klasseKilde) ? ' Veiklasse mangler i NVDB for noen veier – sett den manuelt.' : ''}`;
       lagre();
-      if (res.veier.length) kart.fitBounds(L.geoJSON({ type: 'FeatureCollection', features: res.veier.map((v) => ({ type: 'Feature', geometry: v.geometri, properties: {} })) }).getBounds(), { padding: [30, 30] });
+      if (res.veier.length) kart.fitBounds(L.geoJSON({ type: 'FeatureCollection', features: res.veier.map((v) => ({ type: 'Feature', geometry: v.geometri, properties: {} })) }).getBounds(), { ...synligPadding(kart) });
     } catch (err) { $('#veiNvdbStatus').textContent = `Kunne ikke hente fra NVDB: ${err.message}`; } finally { knapp.disabled = false; }
+  });
+  $('#veiFkbBtn').addEventListener('click', async () => {
+    const S = hentPlan();
+    const grense = S.eiendom.grense || (S.bestand.length ? { type: 'MultiPolygon', coordinates: S.bestand.filter((b) => b.geometri).flatMap((b) => (b.geometri.type === 'Polygon' ? [b.geometri.coordinates] : b.geometri.coordinates)) } : null);
+    if (!grense) { melding('Planen mangler eiendomsgrense og bestand. Lag eller importer en plan først.'); return; }
+    const knapp = $('#veiFkbBtn'); knapp.disabled = true;
+    try {
+      const res = await hentTraktorveierOgStier(grense, { logg: (t) => { $('#veiNvdbStatus').textContent = t; } });
+      S.datakilder = { ...(S.datakilder || {}), fkb: res.kilde };
+      const x = slaaInnFkb(reg(), res, nyId);
+      $('#veiNvdbStatus').textContent = `Traktorveier: ${x.nye} nye, ${x.oppdatert} oppdaterte${x.fjernet ? `, ${x.fjernet} fjernet` : ''}. ${x.stier} stier (${res.kilde.merknad}).`;
+      lagre();
+    } catch (err) { $('#veiNvdbStatus').textContent = `Kunne ikke hente fra Kartverket: ${err.message}`; } finally { knapp.disabled = false; }
   });
   $('#veiTegnBtn').addEventListener('click', () => startTegning('vei'));
   $('#veiPunktBtn').addEventListener('click', () => startTegning('punkt', $('#veiPunktType').value));
@@ -340,6 +370,7 @@ export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk
     const r = reg();
     const fc = { type: 'FeatureCollection', features: [
       ...r.veier.map((v) => ({ type: 'Feature', geometry: v.geometri, properties: { OBJEKT: 'Vei', NAVN: v.navn, VEGNUMMER: v.vegnummer, KLASSE: VEIKLASSER[v.klasse]?.navn, STATUS: v.status, TILSTAND: TILSTAND[v.tilstand || 'ukjent'].navn, LENGDE_M: v.lengde, EIERE: (v.eiere || []).map((x) => `${x.navn} ${x.andel}%`).join('; ') || null, MERKNAD: v.merknad || null } })),
+      ...(r.stier || []).map((st) => ({ type: 'Feature', geometry: st.geometri, properties: { OBJEKT: 'Sti', NAVN: st.navn, LENGDE_M: st.lengde, KILDE: st.fkb ? 'Kartverket FKB' : null } })),
       ...r.punkter.map((p) => ({ type: 'Feature', geometry: p.geometri, properties: { OBJEKT: PUNKTTYPER[p.type]?.navn, NAVN: p.navn, TILSTAND: TILSTAND[p.tilstand || 'ukjent'].navn, MERKNAD: p.merknad || null } })),
     ] };
     const url = URL.createObjectURL(new Blob([JSON.stringify(fc)], { type: 'application/geo+json' }));

@@ -175,8 +175,8 @@ export function initPefc({ kart, hentPlan, endret, melding, nyId, settKartKlikk,
     const dk = S.datakilder || {};
     const aar = (a) => (a ? String(a).slice(0, 4) : null);
     const periode = (k) => (k?.dataFra ? (aar(k.dataFra) === aar(k.dataTil) ? aar(k.dataFra) : `${aar(k.dataFra)}–${aar(k.dataTil)}`) : null);
-    const navn = { eiendom: 'Eiendomsgrense', plan: 'Tidligere skogbruksplan', sr16: 'Skogressurskart SR16', ar5: 'Markslag AR5', vegetasjon: 'Vegetasjonskart', nvdb: 'Skogsbilveier', mis: 'Nøkkelbiotoper (MiS)', vern: 'Verneområder', hb13: 'Naturtyper (DN-HB13)', nin: 'Naturtyper (NiN)', utvalgte: 'Utvalgte naturtyper', art: 'Artsområder', friluft: 'Friluftslivsområder', kultur: 'Kulturminner', ssb: 'Tømmerpriser' };
-    const eier = { eiendom: 'Kartverket', plan: 'NIBIO', sr16: 'NIBIO', ar5: 'NIBIO', vegetasjon: 'NIBIO', nvdb: 'Statens vegvesen', mis: 'NIBIO', vern: 'Miljødirektoratet', hb13: 'Miljødirektoratet', nin: 'Miljødirektoratet', utvalgte: 'Miljødirektoratet', art: 'Miljødirektoratet', friluft: 'Miljødirektoratet', kultur: 'Riksantikvaren', ssb: 'SSB' };
+    const navn = { eiendom: 'Eiendomsgrense', plan: 'Tidligere skogbruksplan', sr16: 'Skogressurskart SR16', ar5: 'Markslag AR5', vegetasjon: 'Vegetasjonskart', nvdb: 'Skogsbilveier', fkb: 'Traktorveier og stier', mis: 'Nøkkelbiotoper (MiS)', vern: 'Verneområder', hb13: 'Naturtyper (DN-HB13)', nin: 'Naturtyper (NiN)', utvalgte: 'Utvalgte naturtyper', art: 'Artsområder', friluft: 'Friluftslivsområder', kultur: 'Kulturminner', ssb: 'Tømmerpriser' };
+    const eier = { eiendom: 'Kartverket', plan: 'NIBIO', sr16: 'NIBIO', ar5: 'NIBIO', vegetasjon: 'NIBIO', nvdb: 'Statens vegvesen', fkb: 'Kartverket', mis: 'NIBIO', vern: 'Miljødirektoratet', hb13: 'Miljødirektoratet', nin: 'Miljødirektoratet', utvalgte: 'Miljødirektoratet', art: 'Miljødirektoratet', friluft: 'Miljødirektoratet', kultur: 'Riksantikvaren', ssb: 'SSB' };
     // Advarsler om alder på selve dataene
     const dataVarsel = (id, k) => {
       const til = Number(aar(k?.dataTil));
@@ -327,7 +327,7 @@ export function initPefc({ kart, hentPlan, endret, melding, nyId, settKartKlikk,
     } catch (e) { const el = $(statusEl); if (el) el.textContent = `Kunne ikke oppdatere: ${e.message}`; } finally { knapper.forEach((k) => { k.disabled = false; }); }
   }
   $('#pefcHentBtn').addEventListener('click', () => oppdater(['miljo'], '#pefcHentStatus'));
-  panel.addEventListener('click', (e) => { if (e.target.id === 'pefcOppdaterAlle') oppdater(['miljo', 'nvdb', 'ssb'], '#pefcOppdaterStatus'); });
+  panel.addEventListener('click', (e) => { if (e.target.id === 'pefcOppdaterAlle') oppdater(['miljo', 'nvdb', 'fkb', 'ssb'], '#pefcOppdaterStatus'); });
   $('#pefcNyBtn').addEventListener('click', () => startTegning($('#pefcNyType').value));
   $('#pefcTegnFerdig').addEventListener('click', fullfor);
   $('#pefcTegnAvbryt').addEventListener('click', stopp);
