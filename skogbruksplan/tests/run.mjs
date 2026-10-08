@@ -27,6 +27,7 @@ import { misFigurer } from '../js/miljokart.js';
 import { parseKml as parseKmlKommune } from '../js/kommuneanalyse.js';
 import { VERSJON, UTVIKLER, signatur } from '../js/versjon.js';
 import { readFileSync } from 'node:fs';
+import * as VEG from '../js/vegetasjon.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER } from '../js/veier.js';
 
 let ok = 0;
@@ -800,6 +801,55 @@ test('Hogstklasse: alder og volum skrives frem fra takståret', () => {
   assert.equal(framskrivTilAar(b, 2028), 0, 'skrives ikke frem to ganger');
   const hogd = { treslag: 'G', bonitet: 17, alder: 0, volumDaa: 0, takstAar: 2020 };
   framskrivTilAar(hogd, 2026); assert.equal(hogd.alder, 6, 'hogstflate eldes også');
+});
+
+test('Vegetasjonstype: NIBIO vegetasjonskart, anslag fra treslag/bonitet og import', async () => {
+  // Anslag: gran blåbær/småbregne, furu lav/lyng, høy bonitet lauv, organisk jord gir sumpskog
+  assert.equal(VEG.anslaVegetasjon({ treslag: 'G', bonitet: 14 }).kode, '7b');
+  assert.equal(VEG.anslaVegetasjon({ treslag: 'G', bonitet: 20 }).kode, '7c');
+  assert.equal(VEG.anslaVegetasjon({ treslag: 'F', bonitet: 8 }).kode, '6a');
+  assert.equal(VEG.anslaVegetasjon({ treslag: 'L', bonitet: 17 }).navn, 'Engbjørkeskog');
+  assert.equal(VEG.anslaVegetasjon({ treslag: 'G', bonitet: 11, organisk: 0.7 }).kode, '8c');
+  assert.equal(VEG.anslaVegetasjon({ treslag: 'G', bonitet: null }), null);
+  // Import: kode, kode + navn, navn og fritekst
+  assert.equal(VEG.tolkVegetasjon('7b').navn, 'Blåbærgranskog');
+  assert.equal(VEG.tolkVegetasjon('6a Lav- og lyngrik furuskog').kode, '6a');
+  assert.equal(VEG.tolkVegetasjon('Blåbærbjørkeskog').kode, '4b');
+  assert.equal(VEG.tolkVegetasjon('storbregne gran').kode, '7c');
+  assert.equal(VEG.tolkVegetasjon('Rik sumpskog').kode, '8d');
+  assert.equal(normaliserBestand({ BESTANDNR: '1', VEGETASJONSTYPE: '7c Enggranskog' }, null, 1).vegetasjon.kode, '7c');
+  assert.equal(normaliserBestand({ BESTANDNR: '1' }, null, 1).vegetasjon, null);
+  // GML-egenskaper fra GetFeatureInfo
+  const gml = `<msGMLOutput><Vegetasjonstypar_layer><Vegetasjonstypar_feature><figur_id>11</figur_id><reg_aar>2019</reg_aar><kartleggingsenhet_type1>7b</kartleggingsenhet_type1><type1_beskrivelse>Blåbærgranskog</type1_beskrivelse><hovudtype_beskrivelse>Granskog</hovudtype_beskrivelse></Vegetasjonstypar_feature><Vegetasjonstypar_feature><figur_id>12</figur_id><reg_aar>2019</reg_aar><kartleggingsenhet_type1>9c</kartleggingsenhet_type1><type1_beskrivelse>Grasmyr</type1_beskrivelse></Vegetasjonstypar_feature></Vegetasjonstypar_layer></msGMLOutput>`;
+  assert.equal(VEG.parseVkGml(gml).get('12').type1_beskrivelse, 'Grasmyr');
+  let pc = null; try { pc = (await import('polygon-clipping')).default; } catch { /* valgfritt i testmiljøet */ }
+  if (!pc) return;
+  // Kartlagt område: vestre 70 % blåbærgranskog, østre 30 % grasmyr. Bestand 1 ligger der; bestand 2 er utenfor.
+  const firkant = (x0, x1, y0, y1) => ({ type: 'Polygon', coordinates: [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]] });
+  const kmlPm = (id, g) => `<Placemark><name>Vegetasjonstypar.${id}</name><Polygon><outerBoundaryIs><LinearRing><coordinates>${g.coordinates[0].map((p) => p.join(',')).join(' ')}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>`;
+  const kml = `<kml><Document>${kmlPm(11, firkant(11.0, 11.007, 60.0, 60.01))}${kmlPm(12, firkant(11.007, 11.02, 60.0, 60.01))}</Document></kml>`;
+  const hent = async (url) => ({ ok: true, text: async () => (/GetMap/.test(url) ? kml : gml) });
+  const bestand = [
+    { nr: '1', treslag: 'G', bonitet: 14, geometri: firkant(11.0, 11.01, 60.0, 60.01) },
+    { nr: '2', treslag: 'F', bonitet: 8, geometri: firkant(11.5, 11.51, 60.5, 60.51) },
+    { nr: '3', treslag: 'G', bonitet: 20, geometri: firkant(11.5, 11.51, 60.5, 60.51), vegetasjon: { kode: '8d', navn: 'Rik sumpskog', kilde: 'manuell' } },
+  ];
+  const r = await VEG.settVegetasjon(bestand, { klipping: pc, hent });
+  assert.equal(r.kartlagt, 1); assert.equal(r.anslatt, 1); assert.equal(r.aar, 2019);
+  assert.equal(bestand[0].vegetasjon.kilde, 'vk'); assert.equal(bestand[0].vegetasjon.kode, '7b');
+  assert.ok(Math.abs(bestand[0].vegetasjon.andel - 0.7) < 0.02, `${bestand[0].vegetasjon.andel}`);
+  assert.equal(bestand[0].vegetasjon.typer[1].kode, '9c');
+  assert.equal(bestand[1].vegetasjon.kilde, 'anslag'); assert.equal(bestand[1].vegetasjon.kode, '6a');
+  assert.equal(bestand[2].vegetasjon.kode, '8d', 'manuell type beholdes');
+  // Kartlagt som myr/hei (lite skog): skogtypen anslås, det kartlagte følger med
+  const ikkeSkog = VEG.velgVegetasjon({ treslag: 'G', bonitet: 11 }, { vk: { dekning: 1, typer: [{ kode: '2e', navn: 'Rishei', andel: 0.8 }, { kode: '7b', navn: 'Blåbærgranskog', andel: 0.2 }] }, aar: 1986 });
+  assert.equal(ikkeSkog.kilde, 'anslag'); assert.equal(ikkeSkog.kode, '7b'); assert.equal(ikkeSkog.kartlagt.typer[0].kode, '2e');
+  const blandet = VEG.velgVegetasjon({ treslag: 'G', bonitet: 11 }, { vk: { dekning: 1, typer: [{ kode: '9c', navn: 'Grasmyr', andel: 0.6 }, { kode: '7c', navn: 'Enggranskog', andel: 0.4 }] } });
+  assert.equal(blandet.kilde, 'vk'); assert.equal(blandet.kode, '7c', 'skogtypen velges når den dekker minst 25 %');
+  // Tjenesten svarer ikke: alle anslås, feilen rapporteres
+  const b2 = [{ nr: '1', treslag: 'G', bonitet: 17, geometri: firkant(11.0, 11.01, 60.0, 60.01) }];
+  const r2 = await VEG.settVegetasjon(b2, { klipping: pc, hent: async () => ({ ok: false, status: 503 }) });
+  assert.ok(r2.feil); assert.equal(b2[0].vegetasjon.kode, '7c');
 });
 
 await Promise.all(venter);

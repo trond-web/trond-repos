@@ -175,8 +175,8 @@ export function initPefc({ kart, hentPlan, endret, melding, nyId, settKartKlikk,
     const dk = S.datakilder || {};
     const aar = (a) => (a ? String(a).slice(0, 4) : null);
     const periode = (k) => (k?.dataFra ? (aar(k.dataFra) === aar(k.dataTil) ? aar(k.dataFra) : `${aar(k.dataFra)}–${aar(k.dataTil)}`) : null);
-    const navn = { eiendom: 'Eiendomsgrense', plan: 'Tidligere skogbruksplan', sr16: 'Skogressurskart SR16', nvdb: 'Skogsbilveier', mis: 'Nøkkelbiotoper (MiS)', vern: 'Verneområder', hb13: 'Naturtyper (DN-HB13)', nin: 'Naturtyper (NiN)', utvalgte: 'Utvalgte naturtyper', art: 'Artsområder', friluft: 'Friluftslivsområder', kultur: 'Kulturminner', ssb: 'Tømmerpriser' };
-    const eier = { eiendom: 'Kartverket', plan: 'NIBIO', sr16: 'NIBIO', nvdb: 'Statens vegvesen', mis: 'NIBIO', vern: 'Miljødirektoratet', hb13: 'Miljødirektoratet', nin: 'Miljødirektoratet', utvalgte: 'Miljødirektoratet', art: 'Miljødirektoratet', friluft: 'Miljødirektoratet', kultur: 'Riksantikvaren', ssb: 'SSB' };
+    const navn = { eiendom: 'Eiendomsgrense', plan: 'Tidligere skogbruksplan', sr16: 'Skogressurskart SR16', ar5: 'Markslag AR5', vegetasjon: 'Vegetasjonskart', nvdb: 'Skogsbilveier', mis: 'Nøkkelbiotoper (MiS)', vern: 'Verneområder', hb13: 'Naturtyper (DN-HB13)', nin: 'Naturtyper (NiN)', utvalgte: 'Utvalgte naturtyper', art: 'Artsområder', friluft: 'Friluftslivsområder', kultur: 'Kulturminner', ssb: 'Tømmerpriser' };
+    const eier = { eiendom: 'Kartverket', plan: 'NIBIO', sr16: 'NIBIO', ar5: 'NIBIO', vegetasjon: 'NIBIO', nvdb: 'Statens vegvesen', mis: 'NIBIO', vern: 'Miljødirektoratet', hb13: 'Miljødirektoratet', nin: 'Miljødirektoratet', utvalgte: 'Miljødirektoratet', art: 'Miljødirektoratet', friluft: 'Miljødirektoratet', kultur: 'Riksantikvaren', ssb: 'SSB' };
     // Advarsler om alder på selve dataene
     const dataVarsel = (id, k) => {
       const til = Number(aar(k?.dataTil));

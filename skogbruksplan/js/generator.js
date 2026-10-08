@@ -7,6 +7,7 @@ import { hentAr5, lagFigurer, MARKSLAG } from './markslag.js';
 import { tomSkifteplan, lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
 import { geoTilUtm, utmTilGeo, punktIGeometri, etikettPunkt } from './proj.js';
 import { placemarkGeometri } from './kml.js';
+import { settVegetasjon } from './vegetasjon.js';
 
 const KARTVERKET = 'https://api.kartverket.no';
 const NIBIO = 'https://wms.nibio.no/cgi-bin';
@@ -443,6 +444,15 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   logg('bygg', 'ok', `${bestand.length} bestand på ${skogDaa.toFixed(0)} daa skog${flagget ? `, ${flagget} merket for kontroll` : ''}`);
   if (!bestand.length) throw new Error('Fant ingen skogdata innenfor eiendommen. Er eiendommen skogkledd?');
 
+  // 6. Vegetasjonstype per bestand: NIBIOs vegetasjonskart der det finnes, ellers anslag fra treslag, bonitet og
+  // AR5-grunnforhold (organiske jordlag gir sumpskog). Se vegetasjon.js.
+  logg('vegetasjon', 'aktiv', 'Henter vegetasjonskart (NIBIO) …');
+  const organisk = ar5.filter((f) => /organisk/i.test(f.ar5?.grunnforhold || '')).map((f) => ({ geometri: f.geometri, bb: T.bbox(f.geometri) }));
+  const veg = await settVegetasjon(bestand, { klipping, hent, organisk, logg: (t) => logg('vegetasjon', 'aktiv', t) });
+  logg('vegetasjon', veg.feil && !veg.anslatt ? 'feil' : 'ok', veg.kartlagt
+    ? `${veg.kartlagt} bestand fra vegetasjonskartet${veg.aar ? ` (kartlagt ${veg.aar})` : ''}, ${veg.anslatt} anslått fra treslag og bonitet`
+    : `Ikke vegetasjonskartlagt her – ${veg.anslatt} bestand anslått fra treslag, bonitet og AR5${veg.feil ? ` (vegetasjonskartet svarte ikke: ${veg.feil})` : ''}`);
+
   const naa = new Date().toISOString();
   const oppdatert = teiger.map((t) => t.properties?.oppdateringsdato).filter(Boolean).sort();
   const planAar = [...new Set(plan.map((p) => p.attr?.regaar_korr).filter(Boolean))].sort();
@@ -452,6 +462,7 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     sr16: { id: 'sr16', navn: 'Skogressurskart SR16', eier: 'NIBIO', hentet: naa, antall: sr16Data.length, dataFra: sr16Aar ? `${sr16Aar.fra}` : null, dataTil: sr16Aar ? `${sr16Aar.til}` : null, versjon: sr16Aar?.versjon || null, krav: [3] },
   };
   const ar5Datoer = ar5.map((f) => f.ar5.datafangst).filter(Boolean).map((d) => d.split('.').reverse().join('-')).sort();
+  kilder.vegetasjon = { id: 'vegetasjon', navn: 'Vegetasjonskart', eier: 'NIBIO', hentet: naa, antall: veg.flater, dataFra: veg.aar ? `${veg.aar}` : null, dataTil: veg.aar ? `${veg.aar}` : null, feil: veg.feil, merknad: veg.kartlagt ? `${veg.kartlagt} bestand kartlagt, ${veg.anslatt} anslått` : 'Ikke kartlagt her – vegetasjonstype anslått fra treslag, bonitet og AR5', krav: [3] };
   kilder.ar5 = { id: 'ar5', navn: 'Markslag AR5', eier: 'NIBIO', hentet: naa, antall: ar5.length, dataFra: ar5Datoer[0] || null, dataTil: ar5Datoer.at(-1) || null, feil: ar5Feil, krav: [3] };
   return {
     kilder,

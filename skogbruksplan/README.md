@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.1.2** (2026-10-07) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.2.0** (2026-10-08) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -226,6 +226,20 @@ over bestandene, kan slås av i lagvelgeren og slipper klikk gjennom til bestand
 NIBIOs MiS-tjeneste leverer figurene som omriss (`LineString`) i KML. `js/kml.js` gjør lukkede linjer om til flater (indre
 ringer blir hull), slik at nøkkelbiotopene kommer med ved oppretting av planen (miljøfigurer), i PEFC-data og i kommuneanalysen.
 Lagrede kommuneanalyser uten nøkkelbiotoper oppdateres automatisk når de åpnes.
+
+## Vegetasjonstype per bestand
+
+Når en plan lages fra gårds- og bruksnummer, får hvert bestand en vegetasjonstype i steget «Vegetasjonstype per bestand». Typene følger NIBIOs system for vegetasjonskartlegging (Rekdal & Larsson 2005), for eksempel *7b Blåbærgranskog* eller *6a Lav- og lyngrik furuskog*.
+
+- **Kartlagt (NIBIO vegetasjonskart):** WMS-tjenesten `vegetasjon` har lag `Vegetasjonstypar`, med geometri fra KML og egenskaper fra GetFeatureInfo (GML). Dekker kartet minst halvparten av bestandet, og utgjør skogtyper (gruppe 4–8) minst 25 % av det, brukes den dominerende skogtypen. Andelene og kartleggingsåret lagres. Er bestandet kartlagt som hei, myr eller beite (ofte eldre kartlegging eller grove figurer), anslås skogtypen i stedet, og det kartlagte vises som opplysning. Kartet er feltkartlagt, men dekker bare om lag 25 000 km², mest utmark og fjell.
+- **Anslått der kartet mangler:** Typen anslås fra treslag og bonitet (H40):
+  - Gran: ≤ G8 gir 7a, G11–14 gir 7b og fra G17 gir 7c.
+  - Furu og lauv følger samme inndeling, med 6a–6c og 4a–4c.
+  - Er minst halve bestandet *organiske jordlag* i AR5, blir det sumpskog: 8b, 8c eller 8d etter bonitet.
+  - Detaljen viser grunnlaget og den tilsvarende Larsson-typen, for eksempel «G14 (blåbær-/småbregnetype)». Anslaget bør kontrolleres i felt.
+- **Import og manuelt:** Felt som `VEGETASJONSTYPE`, `VEGTYPE` eller `SKOGTYPE` i importerte filer tolkes. Både «7b», «7b Blåbærgranskog» og «blåbær gran» forstås. Typen kan også velges i bestandsdetaljen. Manuelle og importerte typer overskrives ikke.
+- **I appen:** Velg «Farge etter → Vegetasjonstype» for å se typene i kartet. Anslåtte bestand har stiplet kant. Typen er også med i GeoJSON-, SOSI- og CSV-eksporten (`VEGETASJONSTYPE`). For eldre planer kan typen hentes fra bestandsdetaljen med «Hent for planen».
+- Modulen ligger i `js/vegetasjon.js`.
 
 ## Hogstklasse
 
