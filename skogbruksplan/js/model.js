@@ -1,5 +1,6 @@
 // Fagmodell: normalisering av bestandsdata, hogstmodenhet, tilvekst/framskriving, økonomi og tiltaksforslag.
 // Modellene er forenklede og ment for planlegging – alle satser kan justeres under Innstillinger.
+import { tolkVegetasjon } from './vegetasjon.js';
 
 export const TRESLAG = { G: 'Gran', F: 'Furu', L: 'Lauv' };
 export const HOGSTKLASSER = [1, 2, 3, 4, 5];
@@ -89,6 +90,7 @@ const FELT = {
   tiltakAar: ['TILTAK_AAR', 'TILTAKAAR', 'TILTAKSAAR', 'AAR_TILTAK', 'TILTAK1_AAR'],
   merknad: ['MERKNAD', 'KOMMENTAR', 'BESKRIVELSE', 'NOTAT', 'NOTE'],
   miljo: ['MILJOFIGUR', 'NOKKELBIOTOP', 'MIS', 'MILJO'],
+  vegetasjon: ['VEGETASJONSTYPE', 'VEGETASJON', 'VEGTYPE', 'VEG_TYPE', 'VEGETASJONSKODE', 'SKOGTYPE'],
 };
 
 export function normaliserNokkel(k) {
@@ -205,6 +207,7 @@ export function normaliserBestand(props, geometri, arealGeomDaa, iAar = new Date
     hoyde: tall(hent('hoyde')),
     miljo: Boolean(hent('miljo')) && !['0', 'NEI', 'N', 'FALSE'].includes(String(hent('miljo')).toUpperCase()),
     merknad: hent('merknad') ? String(hent('merknad')) : '',
+    vegetasjon: tolkVegetasjon(hent('vegetasjon')),
     tiltak,
     ekstra,
     takstAar: iAar,

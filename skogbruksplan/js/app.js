@@ -30,6 +30,7 @@ import { hentDatagrunnlag } from './datagrunnlag.js';
 import { kalibrerPriser, verdiberegning, STANDARD_VERDI } from './verdi.js';
 import { VEIKLASSER, VEDLIKEHOLDSTYPER } from './veier.js';
 import { KRAVPUNKTER } from './pefc.js';
+import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
 const VEIKLASSER_NAVN = (k) => (VEIKLASSER[k] || VEIKLASSER[0]).navn;
 const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
@@ -165,6 +166,7 @@ function fargeFor(b) {
   if (modus === 'hogstklasse') { const h = hk(b); return h ? HK_FARGER[h - 1] : null; }
   if (modus === 'treslag') return css(`--ts-${(b.treslag || 'G').toLowerCase()}`);
   if (modus === 'bonitet') return rampe(b.bonitet, 6, 26);
+  if (modus === 'vegetasjon') return b.vegetasjon?.kode ? vegFarge(b.vegetasjon.kode) : null;
   if (modus === 'volum') return rampe(startTilstand(b).volumDaa, 0, 45);
   if (modus === 'tiltak') {
     const t = (b.tiltak || []).filter((x) => x.status !== 'utfort').sort((x, y) => x.aar - y.aar)[0];
@@ -198,7 +200,12 @@ function tegnLegend() {
     if (modus === 'hogstklasse' && S.bestand.some((b) => !hk(b))) html += rad('transparent;border:1px solid #999', 'Ukjent (mangler bonitet eller alder)');
   } else if (modus === 'treslag') html = Object.entries(TRESLAG).map(([k, v]) => rad(css(`--ts-${k.toLowerCase()}`), v)).join('');
   else if (modus === 'bonitet') html = '<b>Bonitet (H40)</b>' + [6, 11, 17, 23, 26].map((v) => rad(rampe(v, 6, 26), `${v}`)).join('');
-  else if (modus === 'volum') html = '<b>Volum m³/daa</b>' + [0, 10, 20, 30, 45].map((v) => rad(rampe(v, 0, 45), v === 45 ? '45+' : `${v}`)).join('');
+  else if (modus === 'vegetasjon') {
+    const koder = [...new Set(S.bestand.map((b) => b.vegetasjon?.kode).filter(Boolean))].sort((a, b) => parseInt(a, 10) - parseInt(b, 10) || a.localeCompare(b));
+    html = '<b>Vegetasjonstype</b>' + koder.map((k) => rad(vegFarge(k), `${k} ${VEG_TYPER[k]?.navn || S.bestand.find((b) => b.vegetasjon?.kode === k).vegetasjon.navn}`)).join('')
+      + (S.bestand.some((b) => !b.vegetasjon?.kode) ? rad('transparent;border:1px solid #999', 'Ikke satt') : '')
+      + (S.bestand.some((b) => b.vegetasjon?.kilde === 'anslag') ? '<div class="hint" style="font-size:11px">Stiplet kant = anslått fra treslag og bonitet</div>' : '');
+  } else if (modus === 'volum') html = '<b>Volum m³/daa</b>' + [0, 10, 20, 30, 45].map((v) => rad(rampe(v, 0, 45), v === 45 ? '45+' : `${v}`)).join('');
   else if (modus === 'terreng') html = '<b>Avstand til bilvei</b>' + [0, 250, 500, 750, 1000].map((v) => rad(rampe(v, 0, 1000), v === 1000 ? '1000 m +' : `${v} m`)).join('') + rad('transparent;border:1px solid #999', 'Ingen veier registrert');
   else if (/risiko$/.test(modus)) html = `<b>${$('#fargeEtter').selectedOptions[0].textContent}</b>` + [...RISIKONIVAA].reverse().map((n) => rad(n.farge, n.navn)).join('') + '<div class="hint" style="font-size:11px">Se Skogbrand → Forebygging</div>';
   else if (modus === 'tiltak') html = '<b>Første planlagte tiltak</b>' + rad(TILTAK_FARGER.hogst, 'Hogst') + rad(TILTAK_FARGER.kultur, 'Skogkultur') + rad(TILTAK_FARGER.annet, 'Annet') + rad('transparent;border:1px solid #999', 'Ingen');
@@ -219,6 +226,8 @@ function stilFor(b) {
   return {
     color: valgt ? (flyfotoAktiv ? '#36e0ff' : '#ffd400') : flyfotoAktiv ? '#e6e04b' : '#1b1c19', weight: valgt ? 3.5 : flyfotoAktiv ? 1.6 : 1.2, opacity: 0.9,
     fillColor: farge || '#999', fillOpacity: !farge ? 0.08 : flyfotoAktiv ? 0.3 : HK_FARGER.includes(farge) ? 0.85 : 0.7,
+    // Anslått vegetasjonstype vises med stiplet kant, kartlagt med heltrukken.
+    ...($('#fargeEtter').value === 'vegetasjon' && b.vegetasjon?.kilde === 'anslag' && !valgt ? { dashArray: '4 3' } : { dashArray: null }),
   };
 }
 
@@ -601,6 +610,27 @@ function velgBestand(id, { zoom = true } = {}) {
 
 function opsjoner(liste, valgt) { return liste.map(([v, t]) => `<option value="${esc(v)}" ${String(v) === String(valgt ?? '') ? 'selected' : ''}>${esc(t)}</option>`).join(''); }
 
+// Kilde og grunnlag for vegetasjonstypen, vist under feltet i bestandsdetaljen.
+function vegKildeHtml(b) {
+  const v = b.vegetasjon;
+  if (!v) return `<span class="veg-kilde">Ikke satt.${S.bestand.some((x) => !x.vegetasjon) ? ' <button class="lenkeknapp" type="button" data-handling="hent-veg">Hent for planen</button>' : ''}</span>`;
+  const pst = (x) => `${Math.round(x * 100)} %`;
+  if (v.kilde === 'vk') return `<span class="veg-kilde">NIBIO vegetasjonskart${v.aar ? ` (${v.aar})` : ''}: ${v.typer.map((t) => `${esc(t.kode)} ${pst(t.andel)}`).join(', ')}${v.dekning < 0.95 ? ` – ${pst(v.dekning)} kartlagt` : ''}</span>`;
+  if (v.kilde === 'anslag') return `<span class="veg-kilde">Anslått fra ${esc(v.grunnlag)} (${esc(v.skogtype)}) – ${v.kartlagt ? `vegetasjonskartet${v.kartlagt.aar ? ` (${v.kartlagt.aar})` : ''} viser ${v.kartlagt.typer.map((t) => `${esc(t.kode)} ${esc(t.navn.toLowerCase())} ${pst(t.andel)}`).join(', ')}` : 'ikke kartlagt her'}, kontroller i felt</span>`;
+  return `<span class="veg-kilde">${v.kilde === 'import' ? 'Fra importert fil' : 'Satt manuelt'}</span>`;
+}
+
+// Vegetasjonstype for en plan som er laget før funksjonen fantes (eller importert uten typen).
+async function hentVegetasjonForPlan() {
+  melding('Henter vegetasjonskart fra NIBIO …');
+  try {
+    const r = await settVegetasjon(S.bestand, { klipping: await lastKlipping() });
+    S.datakilder = { ...S.datakilder, vegetasjon: { id: 'vegetasjon', navn: 'Vegetasjonskart', eier: 'NIBIO', hentet: new Date().toISOString(), antall: r.flater, dataFra: r.aar ? `${r.aar}` : null, dataTil: r.aar ? `${r.aar}` : null, feil: r.feil, krav: [3] } };
+    endret({ kart: true }); visDetalj();
+    melding(r.kartlagt ? `Vegetasjonstype: ${r.kartlagt} bestand fra vegetasjonskartet, ${r.anslatt} anslått` : `Ikke vegetasjonskartlagt her – ${r.anslatt} bestand anslått fra treslag og bonitet${r.feil ? ` (${r.feil})` : ''}`);
+  } catch (e) { melding(`Kunne ikke hente vegetasjonstype: ${e.message}`); }
+}
+
 function visDetalj() {
   const boks = $('#bestandDetalj');
   const b = finnBestand(valgtId);
@@ -642,6 +672,7 @@ function visDetalj() {
       <label>Volum (m³/daa) <input name="volumDaa" type="number" step="0.1" value="${b.volumDaa ?? ''}"></label>
       <label>Treantall (per daa) <input name="treantall" type="number" value="${b.treantall ?? ''}"></label>
       <label>Middelhøyde (m) <input name="hoyde" type="number" step="0.1" value="${b.hoyde ?? ''}"></label>
+      <label>Vegetasjonstype <select name="vegetasjon"><option value="">–</option>${opsjoner([...new Set([...SKOGTYPER, b.vegetasjon?.kode].filter(Boolean))].map((k) => [k, `${k} ${VEG_TYPER[k]?.navn || b.vegetasjon?.navn || ''}`]), b.vegetasjon?.kode)}</select>${vegKildeHtml(b)}</label>
       <label class="avkrysning" style="flex-direction:row;align-items:center;margin-top:18px"><input type="checkbox" name="miljo" ${b.miljo ? 'checked' : ''}> Miljøfigur / nøkkelbiotop</label>
       <label class="hel">Merknad <textarea name="merknad" rows="2">${esc(b.merknad)}</textarea></label>
     </form>
@@ -660,6 +691,7 @@ function visDetalj() {
     const f = e.target; const navn = f.name;
     let v = f.type === 'checkbox' ? f.checked : f.value;
     if (['areal', 'alder', 'volumDaa', 'treantall', 'hoyde', 'bonitet', 'hogstklasse'].includes(navn)) v = v === '' ? null : Number(v);
+    if (navn === 'vegetasjon') { b.vegetasjon = v ? { kode: v, navn: VEG_TYPER[v]?.navn || b.vegetasjon?.navn || v, kilde: 'manuell' } : null; endret({ kart: true }); visDetalj(); return; }
     b[navn] = v;
     if (['alder', 'volumDaa', 'treantall', 'hoyde'].includes(navn)) b.takstAar = IAAR; // registrert i år
     endret({ kart: false });
@@ -674,6 +706,7 @@ function visDetalj() {
     endret(); visDetalj();
   });
   boks.querySelector('[data-handling="zoom"]').onclick = () => velgBestand(b.id);
+  const vegKnapp = boks.querySelector('[data-handling="hent-veg"]'); if (vegKnapp) vegKnapp.onclick = hentVegetasjonForPlan;
   boks.querySelector('[data-handling="del"]').onclick = () => startDeling(b);
   const angre = boks.querySelector('[data-handling="angre-deling"]'); if (angre) angre.onclick = angreDeling;
   boks.querySelector('[data-handling="grense"]').onclick = () => {
@@ -997,7 +1030,7 @@ function bestandTilFeature(b, koordsys = 'WGS84') {
     properties: {
       BESTANDNR: b.nr, TEIG: b.teig || null, AREAL_DAA: b.areal, TRESLAG: b.treslag, BONITET: b.bonitet, HOGSTKLASSE: hk(b),
       ALDER: b.alder ?? null, VOLUM_DAA: b.volumDaa ?? runde(s.volumDaa, 1), VOLUM_M3: runde(s.volumDaa * (b.areal || 0), 0),
-      TREANTALL: b.treantall ?? null, MIDDELHOYDE: b.hoyde ?? null, MILJOFIGUR: b.miljo ? 'Ja' : null, MERKNAD: b.merknad || null,
+      TREANTALL: b.treantall ?? null, MIDDELHOYDE: b.hoyde ?? null, MILJOFIGUR: b.miljo ? 'Ja' : null, VEGETASJONSTYPE: vegTekst(b.vegetasjon) || null, MERKNAD: b.merknad || null,
       TILTAK: (b.tiltak || []).filter((t) => t.status !== 'utfort').map((t) => `${TILTAKSTYPER[t.type]?.navn || t.type} ${t.aar}`).join('; ') || null,
       ...b.ekstra,
     },
@@ -1015,7 +1048,7 @@ function eksporter(type) {
   }
   if (type === 'csv') {
     const f = S.bestand.map((b) => bestandTilFeature(b).properties);
-    const kol = ['BESTANDNR', 'TEIG', 'AREAL_DAA', 'TRESLAG', 'BONITET', 'HOGSTKLASSE', 'ALDER', 'VOLUM_DAA', 'VOLUM_M3', 'TREANTALL', 'MIDDELHOYDE', 'MILJOFIGUR', 'TILTAK', 'MERKNAD'];
+    const kol = ['BESTANDNR', 'TEIG', 'AREAL_DAA', 'TRESLAG', 'BONITET', 'HOGSTKLASSE', 'ALDER', 'VOLUM_DAA', 'VOLUM_M3', 'TREANTALL', 'MIDDELHOYDE', 'MILJOFIGUR', 'VEGETASJONSTYPE', 'TILTAK', 'MERKNAD'];
     return lastNed(filnavn('csv'), `﻿${[kol.join(';'), ...f.map((p) => csvRad(kol.map((k) => p[k])))].join('\n')}`, 'text/csv');
   }
   if (type === 'tiltakcsv') {
@@ -1263,7 +1296,7 @@ async function tegnPlanListe() {
 
 const GEN_STEG = [
   ['eiendom', 'Eiendomsgrense (Kartverket)'], ['plan', 'Tidligere skogbruksplan (NIBIO)'],
-  ['sr16', 'Skogressurskart SR16 (NIBIO)'], ['mis', 'Miljøregistreringer (MiS)'], ['markslag', 'Markslag – uproduktiv mark (AR5, NIBIO)'], ['skifter', 'Skifteinndeling av jordbruksareal (AR5 og jordsmonn)'], ['bygg', 'Bestand og sammenligning'],
+  ['sr16', 'Skogressurskart SR16 (NIBIO)'], ['mis', 'Miljøregistreringer (MiS)'], ['markslag', 'Markslag – uproduktiv mark (AR5, NIBIO)'], ['skifter', 'Skifteinndeling av jordbruksareal (AR5 og jordsmonn)'], ['bygg', 'Bestand og sammenligning'], ['vegetasjon', 'Vegetasjonstype per bestand (NIBIO vegetasjonskart)'],
   ['miljo', 'Miljødata til PEFC (NIBIO, Miljødirektoratet, Riksantikvaren)'], ['nvdb', 'Skogsbilveier (NVDB)'], ['ssb', 'Tømmerpriser (SSB)'],
 ];
 
