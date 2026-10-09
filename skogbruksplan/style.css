@@ -814,3 +814,35 @@ progress { accent-color: var(--accent); height: 8px; }
 .oppdrag-sjekk input { margin-top: 3px; flex: none; }
 .oppdrag-detalj .tiltak-rad { grid-template-columns: auto minmax(0, 1fr) auto; }
 #velgTiltakBtn.aktiv { background: var(--accent-soft); border-color: var(--accent); }
+
+/* KSL */
+#kslUnder { overflow-x: auto; }
+#kslUnder button { white-space: nowrap; padding: 8px 4px; font-size: 12.5px; }
+.ksl-kapitler { display: grid; gap: 8px; margin: 6px 0; }
+.ksl-kapitler .avkrysning { align-items: flex-start; gap: 8px; }
+.ksl-kapitler input { margin-top: 3px; flex: none; }
+.ksl-varsel { display: grid; gap: 2px; padding: 8px 10px; border-left: 4px solid var(--warning); background: var(--surface-2); border-radius: 8px; margin-bottom: 6px; }
+.ksl-varsel.handling { border-left-color: var(--critical); }
+.ksl-fremdrift { height: 6px; border-radius: 99px; background: var(--surface-2); margin-top: 10px; overflow: hidden; }
+.ksl-fremdrift span { display: block; height: 100%; background: var(--accent); }
+.ksl-kap { margin: 18px 0 8px; }
+.ksl-seksjon { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); margin-bottom: 8px; padding: 0 12px; }
+.ksl-seksjon > summary { padding: 10px 0; cursor: pointer; }
+.ksl-q { border-top: 1px solid var(--border); padding: 10px 0; display: grid; gap: 6px; }
+.ksl-q-topp { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: baseline; }
+.ksl-nr { font: 700 12px/1 var(--font-mono); color: var(--text-2); }
+.ksl-dok { display: inline-block; font: 600 10px/1 var(--font-mono); padding: 3px 6px; border-radius: 99px; border: 1.5px solid #2a78d6; color: #2a78d6; vertical-align: 1px; }
+.ksl-bevis { font-size: 12.5px; padding: 6px 8px; border-radius: 8px; background: var(--surface-2); border-left: 3px solid #8a8a85; }
+.ksl-bevis.ok { border-left-color: #0ca30c; } .ksl-bevis.delvis { border-left-color: #fab219; } .ksl-bevis.mangler { border-left-color: #d03b3b; }
+.ksl-doker { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12.5px; }
+.ksl-krav { font-size: 12.5px; color: var(--text-2); }
+.ksl-krav ul { margin: 4px 0 0; padding-left: 18px; }
+.ksl-svar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ksl-svar-knapp { font: 600 13px var(--font-body); padding: 7px 14px; border-radius: 99px; border: 1.5px solid var(--border-sterk); background: var(--surface); color: var(--text); cursor: pointer; }
+.ksl-svar-knapp[aria-pressed="true"].ja { background: #0ca30c; border-color: #0ca30c; color: #fff; }
+.ksl-svar-knapp[aria-pressed="true"].nei { background: #d03b3b; border-color: #d03b3b; color: #fff; }
+.ksl-svar-knapp[aria-pressed="true"].ia { background: #8a8a85; border-color: #8a8a85; color: #fff; }
+.ksl-kommentar { width: 100%; }
+.ksl-avvik.forfalt { border-color: var(--critical); }
+.ksl-avvik.lukket { opacity: .65; }
+.ksl-dok-rad { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }

@@ -31,6 +31,7 @@ const VEIKLASSER_TEST = (k) => VEIKLASSER[k].bilvei;
 import { readFileSync } from 'node:fs';
 import * as VEG from '../js/vegetasjon.js';
 import * as OPP from '../js/oppdrag.js';
+import * as KSL from '../js/ksl.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER, kjedeSammen, hentTraktorveierOgStier, slaaInnFkb, tomtVeiregister } from '../js/veier.js';
 
@@ -928,6 +929,53 @@ test('Oppdrag: én oppdragstype per tiltakstype, valg av tiltak, linjer, sammend
   // Avsluttet oppdrag frigjør tiltaket for nytt oppdrag
   pl.status = 'avbrutt'; assert.ok(OPP.ledig(S.bestand[0].tiltak[1], S.oppdrag));
   assert.equal(OPP.nesteNr(S.oppdrag, 2026), 'O-2026-03');
+});
+
+test('KSL: sjekklister, svar og avvik, kontroller med frister, dokumentasjon fra planen og egenrevisjon', () => {
+  // Sjekklistene: kapittel 1 (2026.8), 10 (2026.9) og 15 (2024.4) med dokumentasjonskrav
+  const k1 = KSL.KSL_KAPITLER.find((k) => k.nr === 1); const k10 = KSL.KSL_KAPITLER.find((k) => k.nr === 10);
+  assert.equal(k1.versjon, '2026.8'); assert.equal(k1.sporsmal.length, 44); assert.equal(k10.sporsmal.length, 56);
+  assert.ok(KSL.sporsmal('1.2.1').dok && KSL.sporsmal('10.2.1').dok && !KSL.sporsmal('1.3.1').dok);
+  for (const k of KSL.KSL_KAPITLER) for (const q of k.sporsmal) assert.ok(k.seksjoner.some((sk) => q.nr.startsWith(`${sk.nr}.`)), q.nr);
+  for (const t of [...Object.values(KSL.KONTROLLTYPER), ...Object.values(KSL.DOKUMENTTYPER)]) for (const nr of t.ksl) assert.ok(KSL.sporsmal(nr), `ukjent KSL-punkt ${nr}`);
+  assert.equal(KSL.leggTilMnd('2026-01-31', 1), '2026-02-28');
+  let n = 0; const nyId = (p) => `${p}${++n}`;
+  const S = { skifteplan: { aar: 2026, skifter: [
+    { id: 's1', nr: '1', areal: 20, vekster: { 2026: { kultur: 'engInt3' } }, jordprove: { dato: '2022-05-01' }, gjodsling: [{ id: 'g1', aar: 2026, type: 'mineral', mengde: 40, dato: '2026-05-02', status: 'utfort' }] },
+    { id: 's2', nr: '2', areal: 10, vekster: { 2026: { kultur: 'bygg' } }, jordprove: { dato: '2015-05-01' }, gjodsling: [] },
+  ], sproyting: [], ipv: {} } };
+  const ksl = KSL.sikreKsl(S);
+  assert.deepEqual(ksl.kapitler, [1, 10, 15], 'kapittel 15 tas med når gården har skifter');
+  // Dokumentasjon fra skifteplanen
+  assert.equal(KSL.appBevis(S, '1.2.1', 2026).status, 'delvis', 'skifte 2 har jordprøve eldre enn 8 år');
+  assert.equal(KSL.appBevis(S, '1.2.2', 2026).status, 'delvis', 'skifte 2 mangler planlagt gjødsling');
+  assert.equal(KSL.appBevis(S, '1.2.3', 2026).status, 'ok');
+  assert.equal(KSL.appBevis({ skifteplan: { skifter: [{ id: 'x', nr: '1', vekster: {} }] } }, '1.2.1', 2026).status, 'mangler', 'skifter uten vekst');
+  assert.equal(KSL.appBevis(S, '10.2.1', 2026, '2026-10-09').status, 'mangler');
+  // Kontroller og frister
+  ksl.kontroller.push({ id: 'k1', type: 'vernerunde', dato: '2025-09-01' }, { id: 'k2', type: 'funksjonstest', dato: '2025-04-01' });
+  const st = KSL.kontrollStatus(ksl, '2026-10-09');
+  assert.equal(st.find((k) => k.type === 'vernerunde').status, 'forfalt'); assert.equal(st.find((k) => k.type === 'vernerunde').neste, '2026-09-01');
+  assert.equal(st.find((k) => k.type === 'funksjonstest').neste, '2028-04-01'); assert.equal(st.find((k) => k.type === 'funksjonstest').status, 'ok');
+  assert.equal(KSL.appBevis(S, '1.5.7', 2026, '2026-10-09').status, 'ok');
+  // Svar «nei» gir avvik, dokument dekker dokumentasjonskravet
+  const r = KSL.revisjon(ksl, 2026, { nyId });
+  KSL.settSvar(ksl, r, '10.3.1', 'nei', { nyId, idag: '2026-10-09' });
+  KSL.settSvar(ksl, r, '10.3.1', 'nei', { nyId, idag: '2026-10-09' });
+  assert.equal(ksl.avvik.length, 1, 'ett åpent avvik per punkt'); assert.equal(ksl.avvik[0].frist, '2026-11-09');
+  ksl.dokumenter.push({ id: 'd1', type: 'risikovurdering', navn: 'Risikovurdering 2026', dato: '2026-03-01', ksl: [] });
+  const v = KSL.vurdering(S, 2026, '2026-10-09');
+  assert.ok(v.find((q) => q.nr === '10.3.1').dokumentert, 'dokumenttypen dekker 10.3.1');
+  assert.ok(!v.find((q) => q.nr === '1.1.1').dokumentert);
+  // Varsler og fullføring
+  const vars = KSL.kslVarsler(S, 2026, '2026-10-09');
+  assert.ok(vars.some((x) => /egenrevisjon/i.test(x.tittel)) && vars.some((x) => /kontroller/i.test(x.tittel)));
+  assert.equal(KSL.fullfor(S, 2026, { dato: '2026-10-09', nyId }).ok, false, 'ubesvarte spørsmål');
+  for (const q of KSL.vurdering(S, 2026)) if (!q.svar) KSL.settSvar(ksl, r, q.nr, 'ja', { nyId });
+  assert.equal(KSL.fullfor(S, 2026, { dato: '2026-10-09', utfortAv: 'Test', nyId }).ok, true);
+  const o = KSL.oppsummering(S, 2026, '2026-10-09');
+  assert.ok(o.ferdig && !o.revisjonForfalt); assert.equal(o.nesteRevisjon, '2027-10-09');
+  assert.equal(KSL.kontrollStatus(ksl, '2026-10-09').find((k) => k.type === 'egenrevisjon').status, 'ok');
 });
 
 await Promise.all(venter);

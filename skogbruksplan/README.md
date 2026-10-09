@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.4.0** (2026-10-08) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.5.0** (2026-10-09) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -88,6 +88,38 @@ Store eiendommer støttes:
 - **Begrunnelse:** hvert tiltak har en begrunnelse og kilder («Hvorfor?») og er merket som automatisk. Manuelle tiltak endres aldri.
 - **Endringer:** når et bestand endres (alder, volum, høyde, treantall, treslag, bonitet, areal eller utførte tiltak), varsler appen i bestandsdetaljen, i Tiltak-fanen og under Innsikt. Du kan oppdatere tiltakene med ett klikk eller beholde dem som de er.
 - **Lukket hogst** er en egen tiltakstype. Den er med i framskriving, økonomi, hogstprognose, verdiberegning og PEFC-klarering.
+
+## KSL – Kvalitetssystem i landbruket (fanen «KSL»)
+
+Modulen dekker dokumentasjonskravene i KSL-standarden fra Stiftelsen Norsk Mat for gården.
+
+- **Sjekklister:** Disse er hentet fra de offisielle PDF-ene (`js/ksl-standard.js`).
+  - Kapittel 1 *Generelle krav til gården* (versjon 2026.8): 44 spørsmål, hvorav 19 krever dokumentasjon.
+  - Kapittel 10 *Helse, miljø og sikkerhet* (versjon 2026.9): 56 spørsmål, hvorav 18 krever dokumentasjon.
+  - Kapittel 15 *Grovfôr, korn, frø, olje- og belgvekster* (versjon 2024.4): 4 spørsmål. Kapittelet velges automatisk når gården har skifter.
+  - Dokumentasjonssymbolet er lest ut av PDF-ene. «Hva kreves» viser et utdrag av «For å oppfylle dette kravet må du».
+- **Egenrevisjon per år:** Hvert spørsmål besvares Ja, Nei eller Ikke aktuelt, med kommentar.
+  - «Nei» oppretter et avvik med frist om én måned.
+  - «Fullfør egenrevisjon» krever at alle spørsmål er besvart, og registrerer revisjonen som en kontroll. Neste revisjon forfaller etter 12 måneder.
+- **Dokumentasjon fra planen** (`appBevis`) vises ved hvert punkt med status ✓, ◐ eller ✕:
+  - skifteregistrering (1.1.3)
+  - jordprøver maks 8 år (1.2.1)
+  - gjødslingsplan med skiftekart (1.2.2)
+  - gjødseljournal (1.2.3)
+  - spredetidspunkt for husdyrgjødsel (1.3.2)
+  - sprøytejournal og IPV (1.5.4)
+  - behandlingsfrist (1.5.8)
+  - kulturminner fra Riksantikvaren (1.10.1)
+  - avstand fra skifte til vann (1.10.2)
+  - kontrollene nedenfor
+- **Avvik:** avvik, tiltak, ansvarlig, frist og lukking (10.1.2).
+- **Periodiske kontroller med frister:** vernerunde, el-egenkontroll, termografering (3 år), brannalarm (månedlig og årlig), brannslokkingsutstyr, tanker, gjødsellager, funksjonstest av sprøyte (3 år), sakkyndig kontroll, autorisasjon for plantevernmidler (10 år), varme arbeider (5 år), HMS-opplæring og førstehjelp.
+- **Dokumentarkiv:** dokumenttyper som er koblet til KSL-punkter, med gyldighet. Filer (PDF, bilder, maks 15 MB) lagres lokalt i nettleseren (IndexedDB, nøkkel `fil:<id>`) og følger ikke med i sikkerhetskopien.
+- **Innsikt** varsler om forfalt egenrevisjon, avvik og kontroller, og om punkter som mangler dokumentasjon.
+- **KSL-mappe:** en utskrift med status, alle spørsmål med svar og dokumentasjon, avvik, kontroller og dokumentliste.
+- **Begrensninger:**
+  - Husdyr-, potet- og hagebrukskapitlene er ikke med.
+  - Egenrevisjonen må fortsatt registreres på ksl.no.
 
 ## Oppdrag (Tiltak → Oppdrag)
 
