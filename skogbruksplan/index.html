@@ -33,6 +33,7 @@
     <button role="tab" data-fane="rapporter" title="Rapporter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 7 20Z" transform="translate(-1 0)"/><path d="M13 3.5V8h4"/><path d="M9 12.5h6M9 15.5h6M9 18h3"/></svg><span>Rapporter</span></button>
     <button role="tab" data-fane="skogbrand" title="Skogbrand – skadeforebygging og skaderegistrering"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6.2 0-3.4 2.4-5.4 3.6-8.3.5 1.7 1.5 2.8 2.6 3.2C12.3 6.6 13.6 4.4 15.6 3c-.4 2.9.9 4.7 2 6.4 1 1.5 1.4 2.9 1.4 4.6 0 4.1-3 7-7 7Z"/><path d="M12 21c-1.7 0-2.9-1.2-2.9-2.9 0-1.6 1.2-2.6 1.9-3.9.4 1 1 1.5 1.6 1.6.3-1.2.9-2 1.7-2.6 0 1.6 1.5 2.6 1.5 4.6 0 1.8-1.6 3.2-3.8 3.2Z"/></svg><span>Skogbrand</span></button>
     <button role="tab" data-fane="skifteplan" title="Skifteplan – jordbruksskifter, gjødslingsplan og plantevernjournal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V8"/><path d="M12 12c-2.5 0-4-1.6-4-4 2.5 0 4 1.6 4 4ZM12 12c2.5 0 4-1.6 4-4-2.5 0-4 1.6-4 4ZM12 16.5c-2.5 0-4-1.6-4-4 2.5 0 4 1.6 4 4ZM12 16.5c2.5 0 4-1.6 4-4-2.5 0-4 1.6-4 4ZM12 7.5c-1-1-1-3 0-4.5 1 1.5 1 3.5 0 4.5Z"/></svg><span>Skifteplan</span></button>
+    <button role="tab" data-fane="ksl" title="KSL – egenrevisjon, avvik, kontroller og dokumentasjon for gården"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6v2H9z"/><path d="M8 5H6v15h12V5h-2"/><path d="m9 12 2 2 4-4"/><path d="M9 17h6"/></svg><span>KSL</span></button>
     <button role="tab" data-fane="pefc" title="PEFC skogstandard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg><span>PEFC</span></button>
     <button role="tab" data-fane="ai" title="Spør AI om planen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5h0a2 2 0 0 1-2-2Z"/><path d="m12 7.5.9 1.9 1.9.9-1.9.9-.9 1.9-.9-1.9-1.9-.9 1.9-.9Z"/></svg><span>Spør AI</span></button>
     <button role="tab" data-fane="felt" title="Felt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span>Felt</span></button>
@@ -421,6 +422,18 @@
     </div>
 
     <!-- SKIFTEPLAN -->
+    <!-- KSL -->
+    <div class="fane" id="fane-ksl" hidden>
+      <div class="sb-under" role="tablist" id="kslUnder">
+        <button type="button" data-ksl-under="oversikt" class="aktiv">Oversikt</button>
+        <button type="button" data-ksl-under="revisjon">Revisjon</button>
+        <button type="button" data-ksl-under="avvik">Avvik</button>
+        <button type="button" data-ksl-under="kontroller">Kontroller</button>
+        <button type="button" data-ksl-under="dokumenter">Arkiv</button>
+      </div>
+      <div id="kslInnhold"></div>
+    </div>
+
     <div class="fane" id="fane-skifteplan" hidden>
       <div class="sb-under" role="tablist">
         <button type="button" data-sp-under="skifter" class="aktiv">Skifter</button>

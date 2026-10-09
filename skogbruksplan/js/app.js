@@ -31,12 +31,14 @@ import { kalibrerPriser, verdiberegning, STANDARD_VERDI } from './verdi.js';
 import { VEIKLASSER, VEDLIKEHOLDSTYPER, VEISTIL } from './veier.js';
 import { synligPadding } from './kartutsnitt.js';
 import { initOppdrag } from './oppdrag-ui.js';
+import { initKsl } from './ksl-ui.js';
 import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, typeFor as oppdragstype } from './oppdrag.js';
 import { KRAVPUNKTER } from './pefc.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
 const VEIKLASSER_NAVN = (k) => (VEIKLASSER[k] || VEIKLASSER[0]).navn;
 // Oppdrag: valg av tiltak i tiltakslisten og bestand som er uthevet i kartet for oppdraget som er åpent.
+let kslVisning = null;
 let valgModus = false; let valgteTiltak = new Set(); let maalOppdrag = null; let uthevet = new Set(); let oppdragVisning = null;
 const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
 import { stabletSoyle, linje, fmt } from './charts.js';
@@ -462,7 +464,7 @@ let verdiVisning = null;
 let aiVisning = null;
 let skogbrandVisning = null;
 let skifteplanVisning = null;
-const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', skifteplan: 'Skifteplan', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
+const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', skifteplan: 'Skifteplan', ksl: 'KSL', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 function visFane(navn) {
@@ -478,6 +480,7 @@ function visFane(navn) {
   $$('.fane').forEach((f) => { f.hidden = f.id !== `fane-${navn}`; });
   if (navn !== 'tiltak' && uthevet.size) { uthevet = new Set(); oppdaterStiler(); }
   if (navn === 'tiltak' && !$('#oppdragPanel').hidden) oppdragVisning?.tegn();
+  if (navn === 'ksl') kslVisning?.vis();
   if (navn === 'framskriving') tegnFramskriving();
   if (navn === 'verdi') verdiVisning?.tegn();
   if (navn === 'ai') aiVisning?.vis();
@@ -492,7 +495,7 @@ function visFane(navn) {
 
 // ---------------------------------------------------------------- oversikt
 function tegnInnsikt() {
-  const liste = lagInnsikt(S, { iAar: IAAR, pefcFunn: pefcVisning?.funn(), motorEndringer: S.motor ? aktuelleEndringer().filter((e) => e.leggTil.length || e.fjern.length).length : 0, skogbrand: { ...skadeOppsummering(S), brann: S.skogbrand?.data?.brann?.dager?.[0]?.nivaa || null }, skifteplan: skifteplanVisning?.oppsummering() || null, terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
+  const liste = lagInnsikt(S, { iAar: IAAR, pefcFunn: pefcVisning?.funn(), motorEndringer: S.motor ? aktuelleEndringer().filter((e) => e.leggTil.length || e.fjern.length).length : 0, skogbrand: { ...skadeOppsummering(S), brann: S.skogbrand?.data?.brann?.dager?.[0]?.nivaa || null }, skifteplan: skifteplanVisning?.oppsummering() || null, ksl: kslVisning?.varsler() || [], terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
   $('#innsikt').hidden = !liste.length;
   $('#innsiktListe').innerHTML = liste.slice(0, 4).map((i) => `<div class="innsikt-kort" style="--farge:${i.farge}"><span class="prikk"></span><div><b>${esc(i.tittel)}</b><span>${esc(i.tekst)}</span></div>${i.handling ? `<button type="button" class="knapp liten" data-innsikt="${esc(i.handling.id)}">${esc(i.handling.tekst)}</button>` : ''}</div>`).join('');
 }
@@ -1286,6 +1289,7 @@ function endret({ kart: kartEndret = false, zoom = false } = {}) {
   tegnBestandTabell();
   tegnTiltak();
   if (!$('#oppdragPanel').hidden && !document.activeElement?.closest?.('#oppdragPanel')) oppdragVisning?.tegn();
+  kslVisning?.oppdater();
   if (!$('#fane-framskriving').hidden) tegnFramskriving();
   if (!$('#fane-verdi').hidden && !document.activeElement?.closest?.('#fane-verdi')) verdiVisning?.tegn();
   if (valgtId && !finnBestand(valgtId)) { valgtId = null; visDetalj(); }
@@ -1509,6 +1513,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Gjødslingsplan', under: 'Gjødselbehov per skifte, forslag og utskrift (gjødselforskriften § 26)', sok: 'skifteplan gjødsel gjødsling jordprøve nitrogen fosfor kalium husdyrgjødsel jordbruk', utfor: () => { visFane('skifteplan'); skifteplanVisning?.underfane('gjodsling'); } },
     { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Sprøytejournal / plantevernjournal', under: 'Registrer sprøyting og skriv ut journalen', sok: 'skifteplan sprøyting plantevern plantevernmidler ugras journal ipv', utfor: () => { visFane('skifteplan'); skifteplanVisning?.underfane('sproyting'); } },
     { gruppe: 'Handlinger', ikon: '¤', tittel: 'Verdiberegning', under: 'Eiendomsverdi, slaktverdi, jordverdi og nåverdi', sok: 'verdi nåverdi slaktverdi takst lev faustmann', utfor: () => visFane('verdi') },
+    { gruppe: 'Handlinger', ikon: '✓', tittel: 'KSL – egenrevisjon og dokumentasjon', under: 'Sjekklister, avvik, kontroller med frister og dokumentarkiv', sok: 'ksl kvalitetssystem landbruk egenrevisjon hms vernerunde avvik dokumentasjon matmerk norsk mat', utfor: () => visFane('ksl') },
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'PEFC-status og avvik', sok: 'pefc skogstandard krav avvik sertifisering', utfor: () => visFane('pefc') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
     ...Object.entries(RAPPORTER).map(([k, r]) => ({ gruppe: 'Rapporter', ikon: '▦', tittel: `Rapport: ${r.navn}`, under: r.beskrivelse, sok: 'rapport pdf utskrift skriv ut', utfor: () => visRapport(k) })),
@@ -1591,6 +1596,7 @@ function kobleHendelser() {
       return lagSkifteinndeling(fig, { klipping, jordsmonn, iAar: IAAR, nyId });
     },
   });
+  kslVisning = initKsl({ hentPlan: () => S, endret, melding, nyId, iAar: IAAR, visFane });
   oppdragVisning = initOppdrag({
     hentPlan: () => S, endret, melding, okonomi: tiltakOkonomi, settUtfort,
     tiltakNavn: (k) => TILTAKSTYPER[k]?.navn || k,

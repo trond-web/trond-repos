@@ -5,9 +5,11 @@ import { startTilstand, laavesteHogstalder, rotnettoPerM3, foreslaaTiltak, samme
 const FARGE = { handling: 'var(--signal)', advarsel: 'var(--serious)', info: 'var(--accent)', god: 'var(--good)' };
 const tall = (v, d = 0) => Number(v).toLocaleString('nb-NO', { maximumFractionDigits: d });
 
-export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtransport = null, maksTerreng = 500, pefcFunn = null, skogbrand = null, motorEndringer = 0, skifteplan = null } = {}) {
+export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtransport = null, maksTerreng = 500, pefcFunn = null, skogbrand = null, motorEndringer = 0, skifteplan = null, ksl = [] } = {}) {
   const inn = S.innstillinger;
   const ut = [];
+  // KSL: egenrevisjon, avvik, kontroller og dokumentasjon
+  for (const v of ksl) ut.push({ vekt: v.nivaa === 'handling' ? 88 : 42, type: v.nivaa === 'handling' ? 'handling' : 'advarsel', tittel: v.tittel, tekst: v.tekst, handling: { tekst: 'Åpne KSL', id: 'fane:ksl' } });
   // Skifteplan for jordbruksarealet: avvik mot gjødselforskriften og plantevernjournalen
   if (skifteplan?.avvik) ut.push({ vekt: 93, type: 'handling', tittel: `${skifteplan.avvik} avvik i skifteplanen`, tekst: 'Gjødslingsplan, jordprøver, spredning eller sprøytejournal oppfyller ikke kravene.', handling: { tekst: 'Se krav', id: 'fane:skifteplan' } });
   else if (skifteplan?.varsel) ut.push({ vekt: 45, type: 'advarsel', tittel: `${skifteplan.varsel} varsel i skifteplanen`, tekst: 'F.eks. jordprøver som snart går ut, lav pH eller ensidig vekstskifte.', handling: { tekst: 'Se krav', id: 'fane:skifteplan' } });
