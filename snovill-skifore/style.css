@@ -17,6 +17,7 @@
   --series-2: #eb6834;
   --series-3: #1baf7a;
   --series-4: #eda100;
+  --series-5: #e87ba4;
   --grid: #e3e9f1;
   --lvl-1: #b9c3cf;
   --lvl-2: #8fb3dd;
@@ -43,8 +44,8 @@
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
-  --series-4: #c98500;
     --series-4: #c98500;
+    --series-5: #d55181;
     --grid: #22355a;
     --lvl-1: #3a4a63;
     --lvl-2: #35598a;
@@ -72,6 +73,7 @@
   --series-2: #d95926;
   --series-3: #199e70;
   --series-4: #c98500;
+  --series-5: #d55181;
   --grid: #22355a;
   --lvl-1: #3a4a63;
   --lvl-2: #35598a;
