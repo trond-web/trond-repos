@@ -208,12 +208,12 @@ function saveSettings() {
   storageSet("snovill.settings", JSON.stringify(state.settings));
 }
 
-async function cached(key, loader, { force = false } = {}) {
+async function cached(key, loader, { force = false, minutes = CACHE_MINUTES } = {}) {
   const ck = "snovill.cache." + key;
   if (!force) {
     try {
       const hit = JSON.parse(storageGet(ck) || "null");
-      if (hit && Date.now() - hit.t < CACHE_MINUTES * 60000) return hit.v;
+      if (hit && Date.now() - hit.t < minutes * 60000) return hit.v;
     } catch {
       /* ignorer ødelagt cache */
     }
@@ -355,6 +355,57 @@ async function fetchSporet(loc, force) {
       .map((rt) => ({ id: rt.id, name: rt.name, prepped: rt.preppedTime || null }))
       .sort((a, b) => (b.prepped ? Date.parse(b.prepped) : 0) - (a.prepped ? Date.parse(a.prepped) : 0));
   }, { force });
+}
+
+/* ------------------------ data: webkamera -------------------------- *
+ * Sporet har webkameraer som egne kartpunkter (POI-type CAM). Ett kall gir alle
+ * i Norge, og bildeadressene hentes for kameraene innenfor 20 km av et sted.
+ */
+
+const WEBCAM_RADIUS_KM = 20;
+
+function distanceKm(lat1, lon1, lat2, lon2) {
+  const rad = Math.PI / 180;
+  const a =
+    Math.sin(((lat2 - lat1) * rad) / 2) ** 2 +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(((lon2 - lon1) * rad) / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(a));
+}
+
+function stripHtml(html) {
+  return String(html || "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
+
+async function fetchWebcams(force) {
+  // Kameralisten endrer seg sjelden, så den mellomlagres et døgn
+  return cached(`webcams.${LOCATIONS.map((l) => l.id).join(",")}`, async () => {
+    const url =
+      "https://ags.sporet.no/arcgis/rest/services/Sporet_simple/MapServer/2/query" +
+      "?where=poitypeid%3D%27CAM%27&outFields=id,name&outSR=4326&f=json";
+    const data = await fetchJson(url);
+    const pois = (data.features || [])
+      .map((f) => ({ id: f.attributes.id, name: f.attributes.name, lat: f.geometry.y, lon: f.geometry.x }))
+      .filter((p) => LOCATIONS.some((l) => distanceKm(l.lat, l.lon, p.lat, p.lon) <= WEBCAM_RADIUS_KM));
+    const results = await Promise.allSettled(
+      pois.map((p) => fetchJson(`https://api.sporet.no/loypeapi/publicfree/pois/${p.id}/webcams`))
+    );
+    return pois
+      .map((p, i) => ({
+        ...p,
+        cams: (results[i].status === "fulfilled" ? results[i].value : [])
+          // Bare https (siden kjører på https) og ikke lagrede kopier fra søkemotorer
+          .filter((c) => /^https:\/\//i.test(c.url || "") && !/bing\.com|google\./i.test(c.url))
+          .map((c) => ({ url: c.url, text: stripHtml(c.description) })),
+      }))
+      .filter((p) => p.cams.length);
+  }, { force, minutes: 24 * 60 });
+}
+
+function webcamsNear(loc) {
+  return (state.webcams || [])
+    .map((p) => ({ ...p, km: distanceKm(loc.lat, loc.lon, p.lat, p.lon) }))
+    .filter((p) => p.km <= WEBCAM_RADIUS_KM)
+    .sort((a, b) => a.km - b.km);
 }
 
 /* ------------------------- data: Netatmo -------------------------- */
@@ -706,10 +757,45 @@ function renderResorts() {
           <div class="stat"><span class="stat-label">📡 Akkurat nå</span><span class="stat-value">${nowHtml}</span></div>
         </div>
         <ol class="days">${tiles}</ol>
+        ${renderWebcams(loc)}
         ${renderSporetList(sporet)}
       </article>`;
   }).join("");
   $("resorts").innerHTML = html;
+}
+
+function camUrl(url) {
+  // Tidsstempel så nettleseren henter nytt bilde ved oppdatering
+  return `${url}${url.includes("?") ? "&" : "?"}snovill=${state.camBust}`;
+}
+
+function camTile(p, c, big) {
+  const title = c.text && c.text !== p.name ? c.text : "";
+  return `
+    <figure class="cam${big ? " cam-big" : ""}">
+      <a href="${escapeHtml(c.url)}" target="_blank" rel="noopener">
+        <img src="${escapeHtml(camUrl(c.url))}" alt="Webkamera ${escapeHtml(p.name)}" loading="lazy"
+          referrerpolicy="no-referrer" onerror="this.closest('.cam').classList.add('cam-broken')">
+        <span class="cam-error">📷 Bildet er ikke tilgjengelig nå</span>
+      </a>
+      <figcaption><strong>${escapeHtml(p.name)}</strong> · ${fmt1(p.km)} km${title ? `<br><small>${escapeHtml(title)}</small>` : ""}</figcaption>
+    </figure>`;
+}
+
+function renderWebcams(loc) {
+  if (!state.webcams) return "";
+  const near = webcamsNear(loc);
+  const all = near.flatMap((p) => p.cams.map((c) => ({ p, c })));
+  if (!all.length) {
+    return `<p class="webcams-empty muted">📷 Ingen fungerende webkamera i Sporet innenfor ${WEBCAM_RADIUS_KM} km.</p>`;
+  }
+  const [first, ...rest] = all;
+  return `
+    <section class="webcams" aria-label="Webkamera ved ${escapeHtml(loc.name)}">
+      <h3>📷 Webkamera <small class="muted">${all.length} innenfor ${WEBCAM_RADIUS_KM} km</small></h3>
+      ${camTile(first.p, first.c, true)}
+      ${rest.length ? `<details class="webcam-more"><summary>Vis ${rest.length} kamera${rest.length === 1 ? "" : "er"} til</summary><div class="cam-grid">${rest.map((x) => camTile(x.p, x.c, false)).join("")}</div></details>` : ""}
+    </section>`;
 }
 
 function renderSporetList(routes) {
@@ -1218,6 +1304,14 @@ async function loadAll(force = false) {
   const counts = { yr: 0, storm: 0, sporet: 0, netatmo: 0 };
   const errors = { yr: [], storm: [], sporet: [], netatmo: [] };
 
+  state.camBust = Math.floor(Date.now() / 60000);
+  const webcamsPromise = fetchWebcams(force)
+    .then((w) => (state.webcams = w))
+    .catch((err) => {
+      console.warn("Webkamera ble ikke hentet:", err);
+      state.webcams = state.webcams || [];
+    });
+
   await Promise.all(
     LOCATIONS.map(async (loc) => {
       const [yr, storm, sporet, netatmo] = await Promise.allSettled([
@@ -1268,6 +1362,7 @@ async function loadAll(force = false) {
     setSource("netatmo", counts.netatmo ? "ok" : "error", errors.netatmo.join("\n") || "OK");
   }
 
+  await webcamsPromise;
   renderResorts();
   renderHero();
   renderChart();

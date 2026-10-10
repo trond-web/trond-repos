@@ -14,6 +14,7 @@ Ren statisk HTML/CSS/JS, uten byggesteg. Alt hentes direkte fra nettleseren.
 | **Yr / MET Norge** | Time-for-time-prognose (~10 dager) for temperatur og nedbør, høydejustert | `api.met.no/weatherapi/locationforecast/2.0/compact` |
 | **Storm (StormGeo)** | Storm.no viderekobler i dag til TV 2 Vær, som viser StormGeo-prognoser (15 dager). Hentes fra TV 2s GraphQL-API med sted-ID = base64(`#` + geohash) | `www.tv2.no/vaer/backend-api` |
 | **Sporet.no** | Siste preparering per løype innenfor 3–4 km av hvert sted | `api.sporet.no/loypeapi/publicfree/skiroutes/detailsbybbox` (UTM33) |
+| **Webkamera (Sporet.no)** | Alle Sporet-kameraer (POI-type `CAM`) innenfor 20 km av hvert sted. Nærmeste kamera vises stort i kortet, resten under «Vis flere». Bildeadressene hentes fra `pois/{id}/webcams`; bare https-bilder vises, og lagrede kopier fra søkemotorer filtreres bort. Listen mellomlagres i et døgn | `ags.sporet.no/.../Sporet_simple/MapServer/2` + `api.sporet.no/loypeapi/publicfree/pois/{id}/webcams` |
 | **Netatmo** | Live-temperatur og nedbør fra private værstasjoner rundt hyttefeltene. **Krever eget access token**, som du limer inn under ⚙️ Innstillinger (lages på [dev.netatmo.com](https://dev.netatmo.com/apps) med scope `read_station`, varer ca. 3 timer) | `api.netatmo.com/api/getpublicdata` |
 
 Alle fire tillater kall fra nettleseren (CORS). Svarene mellomlagres i 20 minutter i
