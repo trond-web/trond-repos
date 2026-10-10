@@ -452,6 +452,25 @@ h2 { font-size: 1.35rem; font-weight: 700; }
   border-bottom: 1px solid var(--grid);
 }
 
+/* ---------- webkamera ---------- */
+
+.webcams { margin-top: 14px; }
+.webcams h3 { font-family: "Baloo 2", "Inter", sans-serif; font-size: 1.1rem; margin: 0 0 8px; }
+.webcams h3 small { font-family: "Inter", sans-serif; font-size: 0.8rem; font-weight: 500; }
+.webcams-empty { margin: 12px 0 0; font-size: 0.88rem; }
+.cam { margin: 0; }
+.cam a { position: relative; display: block; border-radius: 12px; overflow: hidden; background: var(--surface-2); aspect-ratio: 16 / 9; }
+.cam img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s ease; }
+.cam a:hover img { transform: scale(1.03); }
+.cam figcaption { font-size: 0.82rem; color: var(--text-2); padding: 6px 2px 0; }
+.cam-big a { aspect-ratio: 21 / 9; }
+.cam-error { display: none; position: absolute; inset: 0; place-items: center; color: var(--muted); font-size: 0.85rem; }
+.cam-broken img { display: none; }
+.cam-broken .cam-error { display: grid; }
+.webcam-more { margin-top: 10px; font-size: 0.88rem; }
+.webcam-more summary { cursor: pointer; color: var(--text-2); font-weight: 600; }
+.cam-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 10px; }
+
 /* ---------- chart ---------- */
 
 .chart-head { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 10px; }
