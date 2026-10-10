@@ -1,6 +1,6 @@
 # ⛷️ Snøvill Skiføre
 
-En morsom skiføre-radar for **Sjusjøen**, **Øyerfjellet**, **Nordseter**, **Oppsjøen** (Nordre Land) og **Nordåsen** (Nannestad). Appen
+En morsom skiføre-radar for **Sjusjøen**, **Øyerfjellet**, **Nordseter**, **Oppsjøen** (Nordre Land), **Nordåsen** og **Bjertnessjøen** (begge Nannestad). Appen
 henter vær og løypedata, kjører en liten snømodell og viser **sannsynlighet for
 skiføre de neste 10 dagene**, med smøretips, «Snøvill-indeks» og en
 «Ta fri»-generator for den beste dagen.

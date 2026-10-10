@@ -1,7 +1,7 @@
 "use strict";
 
 /* ------------------------------------------------------------------ *
- *  Snøvill Skiføre – skiføre-radar for Sjusjøen, Øyerfjellet, Nordseter, Oppsjøen og Nordåsen
+ *  Snøvill Skiføre – skiføre-radar for Sjusjøen, Øyerfjellet, Nordseter, Oppsjøen, Nordåsen og Bjertnessjøen
  * ------------------------------------------------------------------ */
 
 const DAYS = 10;
@@ -64,9 +64,30 @@ const LOCATIONS = [
     sporetRadius: 4000,
     emoji: "🏟️",
   },
+  {
+    id: "bjertnessjoen",
+    name: "Bjertnessjøen",
+    lat: 60.195,
+    lon: 10.8811,
+    altitude: 338,
+    sporetId: 10822,
+    utm: [271708, 6680251],
+    sporetRadius: 4000,
+    emoji: "🦆",
+  },
 ];
 
-const SERIES_COLORS = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)", "var(--series-5)"];
+// Steder som er byttet ut: lagrede innstillinger flyttes til det nye stedet
+const RENAMED_LOCATIONS = { synnfjell: "oppsjoen" };
+
+const SERIES_COLORS = [
+  "var(--series-1)",
+  "var(--series-2)",
+  "var(--series-3)",
+  "var(--series-4)",
+  "var(--series-5)",
+  "var(--series-6)",
+];
 
 const state = {
   settings: loadSettings(),
@@ -198,7 +219,14 @@ function storageSet(key, value) {
 function loadSettings() {
   const defaults = { threshold: 25, selfThreshold: 2, netatmoToken: "", baseDepth: {} };
   try {
-    return { ...defaults, ...JSON.parse(storageGet("snovill.settings") || "{}") };
+    const saved = { ...defaults, ...JSON.parse(storageGet("snovill.settings") || "{}") };
+    for (const [oldId, newId] of Object.entries(RENAMED_LOCATIONS)) {
+      if (saved.baseDepth?.[oldId] != null) {
+        if (saved.baseDepth[newId] == null) saved.baseDepth[newId] = saved.baseDepth[oldId];
+        delete saved.baseDepth[oldId];
+      }
+    }
+    return saved;
   } catch {
     return defaults;
   }
@@ -1251,6 +1279,10 @@ async function initWatch() {
   }
   try {
     watch.config = (await SporetWatch.kvGet("config")) || null;
+    if (watch.config && RENAMED_LOCATIONS[watch.config.place]) {
+      watch.config.place = RENAMED_LOCATIONS[watch.config.place];
+      await SporetWatch.kvSet("config", watch.config);
+    }
   } catch {
     watch.config = null;
   }
