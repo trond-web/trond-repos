@@ -8,6 +8,7 @@ on:
       - "snovill-skifore/**"
       - "therese-helge/**"
       - "skogbruksplan/**"
+      - "sefrak-eiendom/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
@@ -33,13 +34,14 @@ jobs:
       # tretetthet-flyfoto ligger fortsatt på rot-URL-en, øvrige apper under egne stier
       - name: Assemble site
         run: |
-          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan
+          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom
           cp -r tretetthet-flyfoto/. _site/
           cp -r snovill-skifore/. _site/snovill-skifore/
           cp -r therese-helge/. _site/therese-helge/
           cp -r skogbruksplan/. _site/skogbruksplan/
+          cp -r sefrak-eiendom/. _site/sefrak-eiendom/
           # Tester, verktøy og serverfiler (Railway) publiseres ikke på GitHub Pages
-          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json
+          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
