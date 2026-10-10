@@ -1,0 +1,14 @@
+{
+  "name": "SEFRAK-oppslag",
+  "short_name": "SEFRAK",
+  "description": "Slå opp en eiendom og se SEFRAK-registreringer, vernestatus og hva som gjelder for vedlikehold og oppussing.",
+  "lang": "no",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f1ea",
+  "theme_color": "#7a3b1d",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

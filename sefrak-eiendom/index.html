@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SEFRAK-oppslag</title>
+<meta name="description" content="Slå opp en eiendom og se SEFRAK-registreringer, vernestatus, planbestemmelser og hva som gjelder for vedlikehold og oppussing.">
+<meta name="theme-color" content="#7a3b1d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topp">
+  <a class="merke" href="./" aria-label="SEFRAK-oppslag – start">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 15 16 5l12 10v12H4z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M16 12l5 9H11z" fill="currentColor"/></svg>
+    <span>SEFRAK-oppslag</span>
+  </a>
+  <form id="sok" class="sok" role="search" autocomplete="off">
+    <label class="skjult" for="sokefelt">Adresse eller gårds- og bruksnummer</label>
+    <input id="sokefelt" type="search" placeholder="Adresse, eller «Nannestad 32/16»" enterkeyhint="search">
+    <button type="submit">Slå opp</button>
+    <ul id="forslag" class="forslag" role="listbox" hidden></ul>
+  </form>
+  <button id="skriv" class="knapp-lys" type="button" hidden>Skriv ut / PDF</button>
+</header>
+
+<main class="flate">
+  <section class="kartkolonne">
+    <div id="kart" aria-label="Kart"></div>
+    <div class="tegnforklaring" aria-label="Tegnforklaring">
+      <span><i class="prikk n5"></i>Fredet</span>
+      <span><i class="prikk n4"></i>Før 1850</span>
+      <span><i class="prikk n3"></i>Regulert bevaring</span>
+      <span><i class="prikk n2"></i>Verneverdig</span>
+      <span><i class="prikk n1"></i>SEFRAK 1850–1900</span>
+      <span><i class="prikk n0"></i>Ikke registrert</span>
+    </div>
+    <p class="karttips">Tips: klikk i kartet for å slå opp eiendommen der.</p>
+  </section>
+
+  <section id="rapport" class="rapport" aria-live="polite">
+    <div id="velkommen" class="velkommen">
+      <h1>Hva gjelder for de gamle husene på eiendommen?</h1>
+      <p>Søk opp en adresse eller et gårds- og bruksnummer. Du får SEFRAK-registreringene for bygningene, vernestatus fra Riksantikvaren, gjeldende arealplan og hva det betyr for vedlikehold og oppussing.</p>
+      <ul class="eksempler">
+        <li><button type="button" data-eksempel="3238-32-16">Granberg, Nannestad 32/16</button> – stabbur og våningshus fra før 1850</li>
+        <li><button type="button" data-eksempel="0301-13-1">Bogstad gård, Oslo 13/1</button> – fredet gårdsanlegg</li>
+        <li><button type="button" data-eksempel="3203-76-7">Mariero, Asker 76/7</button> – fredet og regulert til bevaring</li>
+      </ul>
+      <p class="liten">Data hentes direkte fra Kartverket, Riksantikvaren (SEFRAK og Askeladden) og Nasjonal arealplanbase. Ingenting lagres på noen server.</p>
+    </div>
+    <div id="framdrift" class="framdrift" hidden></div>
+    <div id="innhold" hidden></div>
+  </section>
+</main>
+
+<template id="mal-framdrift-linje"><div class="linje"><span class="status"></span><span class="tekst"></span></div></template>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
