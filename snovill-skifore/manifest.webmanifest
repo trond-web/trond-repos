@@ -1,7 +1,7 @@
 {
   "name": "Snøvill Skiføre",
   "short_name": "Snøvill",
-  "description": "Skiføre-radar og løypevarsler for Sjusjøen, Øyerfjellet, Nordseter, Oppsjøen, Nordåsen og Bjertnessjøen.",
+  "description": "Skiføre-radar og løypevarsler for Sjusjøen, Øyerfjellet, Nordseter, Oppsjøen, Nordåsen og Råsjøen.",
   "lang": "no",
   "start_url": "./",
   "scope": "./",
