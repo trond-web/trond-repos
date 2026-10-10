@@ -1,7 +1,7 @@
 "use strict";
 
 /* ------------------------------------------------------------------ *
- *  Snøvill Skiføre – skiføre-radar for Sjusjøen, Øyerfjellet, Nordseter, Synnfjell og Nordåsen
+ *  Snøvill Skiføre – skiføre-radar for Sjusjøen, Øyerfjellet, Nordseter, Oppsjøen og Nordåsen
  * ------------------------------------------------------------------ */
 
 const DAYS = 10;
@@ -43,15 +43,15 @@ const LOCATIONS = [
     emoji: "🫎",
   },
   {
-    id: "synnfjell",
-    name: "Synnfjell",
-    lat: 61.0815,
-    lon: 9.884,
-    altitude: 880,
+    id: "oppsjoen",
+    name: "Oppsjøen",
+    lat: 61.1624,
+    lon: 9.819,
+    altitude: 886,
     sporetId: 10142,
-    utm: [224200, 6782650],
-    sporetRadius: 6000,
-    emoji: "⛰️",
+    utm: [221417, 6791915],
+    sporetRadius: 5000,
+    emoji: "🏞️",
   },
   {
     id: "nordasen",
