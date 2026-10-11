@@ -72,6 +72,19 @@ export async function hentKurser(symbol, periode = "10y") {
   return serie;
 }
 
+/**
+ * Kopi av serien der kursbruddene er "skjøtet" (kursene før bruddet justeres som ved en spleis).
+ * Brukes bare for dagens analyse, slik at aksjer med en nylig spleis/utdeling ikke faller ut.
+ */
+export function skjotBrudd(serie) {
+  const kurs = [...serie.kurs], just = [...serie.just];
+  for (const b of serie.brudd || []) {
+    const rk = serie.kurs[b] / serie.kurs[b - 1], rj = serie.just[b] / serie.just[b - 1];
+    for (let k = 0; k < b; k++) { kurs[k] *= rk; just[k] *= rj; }
+  }
+  return { ...serie, kurs, just, brudd: [], skjotet: true };
+}
+
 /** Om serien har et kursbrudd i (fra, til]. */
 export function harBrudd(serie, fra, til) {
   return (serie.brudd || []).some((b) => b > fra && b <= til);

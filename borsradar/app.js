@@ -75,6 +75,7 @@ async function start() {
   visPortefolje();
   visTest();
   visMetode();
+  importerFraLenke();
 }
 
 // ---------- Signaler ----------
@@ -375,91 +376,223 @@ function visMarked() {
 
 // ---------- Portefølje ----------
 
-function handlingFor(a, p) {
+const kr = (x) => `${tall(x, 0)} kr`;
+
+/** Tall i norsk format: "29 244,60", "−2 453,05", "-1230" */
+function lesTall(t) {
+  if (t == null) return null;
+  const s = String(t).replace(/[\s ]/g, "").replace(/[−–]/g, "-").replace(/kr$/i, "").replace(",", ".");
+  const x = parseFloat(s);
+  return Number.isFinite(x) ? x : null;
+}
+
+/**
+ * Importerer linjer som "KOG 29 244,60 −2 453,05" (ticker, markedsverdi, urealisert gevinst/tap),
+ * slik nettbanken viser beholdningen. Antall og kjøpskurs regnes ut fra dagens kurs.
+ */
+function importerLinjer(tekst) {
+  const ut = [], feil = [];
+  for (const linje of tekst.split(/\n|;/).map((l) => l.trim()).filter(Boolean)) {
+    const m = linje.match(/^([A-Za-z0-9]{1,8})(?:\.OL)?[\s:,]+(.+)$/);
+    const t = m?.[1].toUpperCase();
+    const a = t && finn(t);
+    // Tall med eller uten tusenskille: "29 244,60", "29244.6", "−2 453,05"
+    const tall = m ? (m[2].match(/[−–-]?\d{1,3}(?:[ \u00a0]\d{3})+(?:[.,]\d+)?(?!\d)|[−–-]?\d+(?:[.,]\d+)?/g) || []).map(lesTall) : [];
+    if (!a || tall.length < 1) { feil.push(linje); continue; }
+    const verdi = tall[0], gevinst = tall[1] ?? null;
+    // Antall aksjer er som regel et heltall; avrund når det er innenfor 1 % (kursen i analysen er avrundet)
+    let antall = verdi / a.kurs;
+    if (Math.round(antall) > 0 && Math.abs(Math.round(antall) - antall) / antall < 0.01) antall = Math.round(antall);
+    ut.push({ t, antall, kurs: gevinst != null ? (verdi - gevinst) / antall : null });
+  }
+  return { ut, feil };
+}
+
+function lagreOgVis() {
+  lagrePortefolje(portefolje);
+  visPortefolje();
+  visListe();
+}
+
+// Portefølje kan også sendes i lenken: #portefolje=KOG:29244.6:-2453.05,MPCC:36175:9182
+function importerFraLenke() {
+  const m = location.hash.match(/portefolje=([^&]+)/);
+  if (!m) return;
+  const linjer = decodeURIComponent(m[1]).split(",").map((x) => x.split(":").join("  "));
+  const { ut } = importerLinjer(linjer.join("\n"));
+  if (ut.length) {
+    const nye = new Set(ut.map((x) => x.t));
+    portefolje = [...portefolje.filter((p) => !nye.has(p.t)), ...ut];
+    lagreOgVis();
+  }
+  history.replaceState(null, "", location.pathname + location.search);
+  document.querySelector('[data-fane="portefolje"]').click();
+}
+
+/** Vurdering av én beholdning: handling, farge og begrunnelse. */
+function vurder(a, p, vekt, sektorvekt = 0) {
   const k = a.kort.signal, l = a.lang.signal;
   const gevinst = p.kurs ? a.kurs / p.kurs - 1 : null;
-  if (k === "SELG" && l === "SELG") return { tekst: "Selg: svak både på kort og lang sikt", klasse: "ned" };
-  if (l === "SELG") return { tekst: "Vurder å selge: svak langsiktig trend", klasse: "ned" };
-  if (k === "SELG") return { tekst: "Behold, men følg med: svak på kort sikt", klasse: "" };
-  if (k === "KJØP" && l === "KJØP") return { tekst: gevinst != null && gevinst > 0.5 ? "Behold, vurder å ta ut litt gevinst" : "Behold, eller kjøp mer", klasse: "opp" };
-  return { tekst: "Behold", klasse: "" };
+  const notater = [];
+  let handling, klasse, rang;
+  if (k === "SELG" && l === "SELG") { handling = "Selg"; klasse = "SELG"; rang = 0; }
+  else if (l === "SELG") { handling = "Vurder å selge"; klasse = "SELG"; rang = 1; }
+  else if (vekt > 0.3) { handling = "Reduser"; klasse = "HOLD"; rang = 2; }
+  else if (k === "SELG") { handling = "Behold, følg med"; klasse = "HOLD"; rang = 3; }
+  else if (k === "KJØP" && l === "KJØP") { handling = vekt < 0.15 && sektorvekt < 0.4 ? "Behold / kjøp mer" : "Behold"; klasse = "KJØP"; rang = 5; }
+  else { handling = "Behold"; klasse = "HOLD"; rang = 4; }
+
+  if (vekt > 0.3) notater.push(`Utgjør ${pst(vekt, 0, false)} av porteføljen. Mer enn 20–25 % i én aksje gir høy risiko.`);
+  if (klasse === "SELG" && gevinst != null && gevinst < -0.2) {
+    notater.push(`Aksjen er ${pst(-gevinst, 0, false)} under kjøpskursen. Kjøpskursen påvirker ikke hvor aksjen går videre. Spørsmålet er om pengene gjør mer nytte i en annen aksje. Aksjer med svak trend har i snitt fortsatt å gjøre det svakt.`);
+    notater.push("Utenfor aksjesparekonto gir realisert tap fradrag i skatten.");
+  }
+  if (klasse === "KJØP" && gevinst != null && gevinst > 0.3) notater.push("God gevinst og fortsatt sterk trend. Historisk har det lønt seg å la vinnere løpe så lenge trenden holder.");
+  if (a.nokkel.omsetningMNOK < 5) notater.push(`Lite omsatt (${tall(a.nokkel.omsetningMNOK, 1)} MNOK per dag). Selg gjerne med limit, og fordel salget over flere dager.`);
+  if (a.kursbrudd) notater.push("Kurshistorikken har et brudd (trolig spleis eller utdeling) som er justert for. Signalet er mer usikkert enn vanlig.");
+  const nr = a.analytikere?.nesteRapport;
+  if (nr && nr >= data.handelsdag && nr <= leggTilDager(data.handelsdag, 30)) {
+    notater.push(`Kvartalsrapport ${nr.split("-").reverse().join(".")}. Kursen kan svinge mye begge veier rundt rapporten.`);
+  }
+  return { handling, klasse, rang, gevinst, notater };
 }
 
 function visPortefolje() {
   if (!data) return;
-  let verdi = 0, kost = 0, verdiMedKost = 0;
-  const rader = portefolje.map((p) => {
-    const a = finn(p.t);
-    if (!a) {
-      return `<div class="beholdning-rad"><div><b>${esc(p.t)}</b><div class="handling">Finnes ikke i analysen</div></div><div></div><button class="slett" data-slett="${esc(p.t)}" aria-label="Fjern">×</button></div>`;
-    }
-    const h = handlingFor(a, p);
-    let tallTekst = "";
-    if (p.antall) {
-      const v = p.antall * a.kurs;
-      verdi += v;
-      tallTekst = `${tall(v, 0)} kr`;
-      if (p.kurs) {
-        kost += p.antall * p.kurs;
-        verdiMedKost += v;
-        const g = a.kurs / p.kurs - 1;
-        tallTekst += `<br><small class="${fargeKlasse(g)}">${pst(g)}</small>`;
+  const hold = portefolje
+    .map((p) => ({ p, a: finn(p.t) }))
+    .map((x) => ({ ...x, verdi: x.a && x.p.antall ? x.p.antall * x.a.kurs : null }));
+  const totalt = hold.reduce((s, x) => s + (x.verdi || 0), 0);
+  const kost = hold.reduce((s, x) => s + (x.verdi && x.p.kurs ? x.p.antall * x.p.kurs : 0), 0);
+  const verdiMedKost = hold.reduce((s, x) => s + (x.verdi && x.p.kurs ? x.verdi : 0), 0);
+  const sektorsum = {};
+  for (const x of hold) if (x.a && x.verdi) sektorsum[x.a.sektor] = (sektorsum[x.a.sektor] || 0) + x.verdi;
+  for (const x of hold) x.v = x.a ? vurder(x.a, x.p, totalt > 0 && x.verdi ? x.verdi / totalt : 0, totalt > 0 ? (sektorsum[x.a.sektor] || 0) / totalt : 0) : null;
+  hold.sort((x, y) => (x.v?.rang ?? 9) - (y.v?.rang ?? 9) || (y.verdi || 0) - (x.verdi || 0));
+
+  // ----- Oppsummering -----
+  let html = "";
+  if (hold.length) {
+    const sektorVerdi = {};
+    for (const x of hold) if (x.a && x.verdi) sektorVerdi[x.a.sektor] = (sektorVerdi[x.a.sektor] || 0) + x.verdi;
+    const sektorer = Object.entries(sektorVerdi).sort((a, b) => b[1] - a[1]);
+    const selgVerdi = hold.filter((x) => x.v?.klasse === "SELG").reduce((s, x) => s + (x.verdi || 0), 0);
+    const snittScore = totalt > 0 ? hold.reduce((s, x) => s + (x.verdi && x.a ? x.a.samlet.score * x.verdi : 0), 0) / totalt : null;
+    html += `<div class="oppsummering portefolje-tall">
+      <div class="teller"><div class="l">Verdi</div><div class="n tall">${totalt > 0 ? kr(totalt) : "–"}</div>
+        <div class="l">${kost > 0 ? `Gevinst/tap <span class="${fargeKlasse(verdiMedKost - kost)}">${kr(verdiMedKost - kost)} (${pst(verdiMedKost / kost - 1)})</span>` : "Legg inn verdi for å se mer"}</div></div>
+      <div class="teller"><div class="l">Snittscore (vektet)</div><div class="n tall">${snittScore != null ? tall(snittScore, 0) : "–"}</div>
+        <div class="l">50 er snittet på børsen</div></div>
+      <div class="teller SELG"><div class="l">Med salgssignal</div><div class="n tall">${totalt > 0 ? pst(selgVerdi / totalt, 0, false) : hold.filter((x) => x.v?.klasse === "SELG").length}</div>
+        <div class="l">${totalt > 0 ? kr(selgVerdi) : "aksjer"}</div></div>
+    </div>`;
+    if (totalt > 0) {
+      html += `<div class="sektorfordeling">${sektorer
+        .map(([s, v]) => `<div class="sektorrad"><span>${esc(s)}</span><div class="bar"><i style="width:${(v / totalt) * 100}%"></i></div><span class="tall">${pst(v / totalt, 0, false)}</span><small class="dempet">${kr(v)}</small></div>`)
+        .join("")}</div>`;
+      const [tyngst, tv] = sektorer[0] || [];
+      if (tv / totalt > 0.4) {
+        html += `<p class="advarsel-boks">⚠️ ${pst(tv / totalt, 0, false)} av porteføljen er i <b>${esc(tyngst)}</b>. Aksjer i samme sektor faller ofte samtidig. Vurder å spre på flere sektorer, selv om sektoren går godt nå.</p>`;
       }
     }
-    const nr = a.analytikere?.nesteRapport;
-    const rapport = nr && nr >= data.handelsdag && nr <= leggTilDager(data.handelsdag, 21) ? ` · 📅 rapport ${esc(nr.split("-").reverse().join("."))}` : "";
-    return `<div class="beholdning-rad">
-      <div class="rad-klikk" data-t="${esc(a.t)}">
-        <b>${esc(a.navn)}</b> <span class="mono dempet">${esc(a.t)}</span>
-        <div class="handling ${h.klasse}">${esc(h.tekst)}${rapport}</div>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <div class="tall" style="text-align:right;font-size:13px">${tallTekst}</div>
-        <div class="merker">${merke(a.kort.signal, a.kort.score, "Kort")}${merke(a.lang.signal, a.lang.score, "Lang")}</div>
-      </div>
-      <button class="slett" data-slett="${esc(a.t)}" aria-label="Fjern">×</button>
-    </div>`;
-  });
-  let html = rader.length ? rader.join("") : `<p class="tom">Du har ikke lagt til noen aksjer ennå.</p>`;
-  if (verdi > 0) {
-    html += `<div class="sum">Verdi <b class="tall">${tall(verdi, 0)} kr</b>${kost > 0 ? ` · avkastning <span class="${fargeKlasse(verdiMedKost / kost - 1)}">${pst(verdiMedKost / kost - 1)}</span> (for aksjer med kjøpskurs)` : ""}</div>`;
   }
-  const sektorer = portefolje.map((p) => finn(p.t)?.sektor).filter(Boolean);
-  const telling = sektorer.reduce((m, s) => ((m[s] = (m[s] || 0) + 1), m), {});
-  const tung = Object.entries(telling).find(([, n]) => sektorer.length >= 3 && n / sektorer.length > 0.5);
-  if (tung) html += `<p class="hjelp" style="margin-top:10px">⚠️ Over halvparten av aksjene dine er i <b>${esc(tung[0])}</b>. Vurder å spre risikoen.</p>`;
+
+  // ----- Hver aksje -----
+  html += hold.length
+    ? hold
+        .map(({ p, a, verdi, v }) => {
+          if (!a) {
+            return `<div class="beholdning"><div class="beholdning-topp"><div><b>${esc(p.t)}</b><div class="hjelp">Aksjen er ikke med i analysen.</div></div>
+              <button class="slett" data-slett="${esc(p.t)}" aria-label="Fjern">×</button></div></div>`;
+          }
+          const grunner = [...a.begrunnelse.minus.slice(0, v.klasse === "SELG" ? 4 : 2).map((x) => `<li class="ned">${esc(x)}</li>`), ...a.begrunnelse.pluss.slice(0, v.klasse === "SELG" ? 2 : 4).map((x) => `<li class="opp">${esc(x)}</li>`)];
+          const siste = a.nyheter.find((n) => ["innsidekjøp", "innsidesalg", "rapport"].includes(n.type));
+          return `<div class="beholdning ${v.klasse}">
+            <div class="beholdning-topp">
+              <div class="rad-klikk" data-t="${esc(a.t)}">
+                <span class="handlingsmerke ${v.klasse}">${esc(v.handling)}</span>
+                <b>${esc(a.navn)}</b> <span class="mono dempet">${esc(a.t)}</span>
+                <div class="hjelp" style="margin:2px 0 0">${esc(a.sektor)}${verdi ? ` · ${kr(verdi)} (${pst(verdi / totalt, 0, false)})` : ""}${v.gevinst != null ? ` · <span class="${fargeKlasse(v.gevinst)}">${pst(v.gevinst)}</span> siden kjøp` : ""}</div>
+              </div>
+              <div style="display:flex;gap:6px;align-items:flex-start">
+                <div class="merker">${merke(a.kort.signal, a.kort.score, "Kort")}${merke(a.lang.signal, a.lang.score, "Lang")}</div>
+                <button class="slett" data-slett="${esc(a.t)}" aria-label="Fjern">×</button>
+              </div>
+            </div>
+            <ul class="grunnliste">${grunner.join("")}</ul>
+            ${v.notater.map((n) => `<p class="notat">${esc(n)}</p>`).join("")}
+            ${siste ? `<p class="hjelp" style="margin:6px 0 0">Siste: ${esc(siste.dato.split("-").reverse().join("."))} <span class="type ${TYPEFARGE[siste.type] || ""}">${esc(TYPENAVN[siste.type])}</span> <a href="${NEWSWEB(siste.id)}" target="_blank" rel="noopener">${esc(siste.tittel)}</a></p>` : ""}
+          </div>`;
+        })
+        .join("")
+    : `<p class="tom">Du har ikke lagt inn noen aksjer ennå.</p>`;
   $("#beholdning").innerHTML = html;
 
-  // Høyst to forslag per sektor, så porteføljen ikke blir ensidig
-  const perSektor = { ...telling };
-  const forslag = data.aksjer
-    .filter((a) => a.samlet.signal === "KJØP" && !eier(a.t))
-    .filter((a) => (perSektor[a.sektor] = (perSektor[a.sektor] || 0) + 1) <= 2)
-    .slice(0, 8);
-  $("#forslag").innerHTML = forslag.length ? forslag.map(radHtml).join("") : `<p class="tom">Ingen kjøpssignaler akkurat nå.</p>`;
+  // ----- Omplassering -----
+  const selg = hold.filter((x) => x.v?.klasse === "SELG" && x.verdi);
+  const reduser = hold.filter((x) => x.v?.handling === "Reduser" && x.verdi);
+  const frigjort = selg.reduce((s, x) => s + x.verdi, 0) + reduser.reduce((s, x) => s + (x.verdi - totalt * 0.2), 0);
+  const sektorAndel = {};
+  for (const x of hold) if (x.a && x.verdi && x.v.klasse !== "SELG") sektorAndel[x.a.sektor] = (sektorAndel[x.a.sektor] || 0) + x.verdi / (totalt || 1);
+  const perSektor = {};
+  const kandidater = data.aksjer
+    .filter((a) => a.samlet.signal === "KJØP" && a.kort.signal !== "SELG" && a.lang.signal === "KJØP" && !eier(a.t) && a.nokkel.omsetningMNOK >= 5 && !a.kursbrudd)
+    .filter((a) => (sektorAndel[a.sektor] || 0) < 0.3) // ikke mer i sektorer porteføljen allerede er tung i
+    .filter((a) => (perSektor[a.sektor] = (perSektor[a.sektor] || 0) + 1) <= 1)
+    .slice(0, 5);
+  let fhtml = "";
+  if (frigjort > 0 && kandidater.length) {
+    const n = Math.min(kandidater.length, Math.max(2, Math.min(5, Math.round(frigjort / 15000))));
+    const belop = frigjort / n;
+    fhtml += `<p>Selger du ${selg.length ? selg.map((x) => esc(x.a.t)).join(", ") : ""}${reduser.length ? `${selg.length ? " og reduserer " : "Reduserer du "}${reduser.map((x) => esc(x.a.t)).join(", ")}` : ""}, frigjøres ca. <b>${kr(frigjort)}</b>.
+      Et forslag er å fordele beløpet på ${n} aksjer med kjøpssignal i sektorer du har lite av, ca. <b>${kr(belop)}</b> i hver:</p>`;
+    fhtml += `<div class="liste">${kandidater.slice(0, n).map(radHtml).join("")}</div>`;
+  } else {
+    const ideer = data.aksjer.filter((a) => a.samlet.signal === "KJØP" && !eier(a.t) && (sektorAndel[a.sektor] || 0) < 0.3).filter((a) => (perSektor[a.sektor] = (perSektor[a.sektor] || 0) + 1) <= 2).slice(0, 6);
+    fhtml += `<p class="hjelp">${hold.length ? "Ingen salgssignaler i porteføljen din nå. " : ""}Aksjer med kjøpssignal i sektorer du har lite av:</p>`;
+    fhtml += ideer.length ? `<div class="liste">${ideer.map(radHtml).join("")}</div>` : `<p class="tom">Ingen kjøpssignaler i andre sektorer akkurat nå.</p>`;
+  }
+  fhtml += `<p class="hjelp" style="margin-top:10px">Kurtasje og spread koster typisk 0,2–0,5 % per handel. Å bytte aksje lønner seg bare når signalforskjellen er tydelig. Sjekk igjen om en måned.</p>`;
+  $("#forslag").innerHTML = fhtml;
 }
 
 $("#beholdning").addEventListener("click", (e) => {
   const s = e.target.closest("[data-slett]");
   if (!s) return;
   portefolje = portefolje.filter((p) => p.t !== s.dataset.slett);
-  lagrePortefolje(portefolje);
-  visPortefolje();
-  visListe();
+  lagreOgVis();
 });
 
 $("#leggTil").addEventListener("submit", (e) => {
   e.preventDefault();
   const t = $("#ltTicker").value.trim().toUpperCase().replace(/\.OL$/, "");
   if (!t) return;
-  const antall = parseFloat($("#ltAntall").value) || null;
-  const kurs = parseFloat($("#ltKurs").value) || null;
+  const a = finn(t);
+  let antall = lesTall($("#ltAntall").value), kurs = lesTall($("#ltKurs").value);
+  const verdi = lesTall($("#ltVerdi").value), gevinst = lesTall($("#ltGevinst").value);
+  if (!antall && verdi && a) {
+    antall = verdi / a.kurs;
+    if (gevinst != null) kurs = (verdi - gevinst) / antall;
+  }
   portefolje = portefolje.filter((p) => p.t !== t);
-  portefolje.push({ t, antall, kurs });
-  lagrePortefolje(portefolje);
+  portefolje.push({ t, antall: antall || null, kurs: kurs || null });
   e.target.reset();
-  visPortefolje();
-  visListe();
+  lagreOgVis();
+});
+
+$("#importer").addEventListener("click", () => {
+  const { ut, feil } = importerLinjer($("#importTekst").value);
+  const nye = new Set(ut.map((x) => x.t));
+  portefolje = [...portefolje.filter((p) => !nye.has(p.t)), ...ut];
+  $("#importStatus").textContent = `${ut.length} aksjer lagt inn.${feil.length ? ` Forstod ikke: ${feil.join(" | ")}` : ""}`;
+  if (ut.length) $("#importTekst").value = "";
+  lagreOgVis();
+});
+
+$("#tomPortefolje").addEventListener("click", () => {
+  if (!confirm("Fjerne alle aksjene fra porteføljen?")) return;
+  portefolje = [];
+  lagreOgVis();
 });
 
 // ---------- Historisk test ----------
