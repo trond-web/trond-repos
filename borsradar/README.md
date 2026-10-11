@@ -1,52 +1,67 @@
 # 📡 Børsradar
 
-Kjøp-, hold- og selgsignaler for ca. 75 av de største og mest omsatte aksjene på **Oslo Børs**.
+Kjøp-, hold- og selgsignaler for ca. 90 av de mest omsatte aksjene på **Oslo Børs**, på **kort sikt (1–3 mnd)** og **lang sikt (6–12 mnd)**.
+Bygger på kurser, trender, børsmeldinger, innsidehandel og analytikerdata.
 
 > Dette er et regnestykke, ikke investeringsrådgivning. Historisk avkastning er ingen garanti for fremtidig avkastning.
 
-## Slik er det bygget
+## Datakilder
 
-| Del | Hva |
+| Kilde | Hva |
 |---|---|
-| `analyse/analyser.mjs` | Henter 10 års kurser (utbyttejustert) og nøkkeltall fra Yahoo Finance, regner ut score og signal for hver aksje, og kjører en historisk test. Ren Node 18+, ingen avhengigheter. |
-| `analyse/tickere.json` | Aksjene som analyseres (ticker, navn, sektor). Legg til eller fjern linjer her. |
-| `data/analyse.json` | Resultatet som nettsiden viser. |
-| `index.html`, `app.js`, `style.css` | Statisk nettside: signalliste, detaljer med kursgraf, egen portefølje (lagres i nettleseren), historisk test og metode. |
+| Yahoo Finance | 10 års daglige kurser (justert for utbytte), Brent-olje og USD/NOK; nøkkeltall (P/E, P/B, resultat, egenkapital); analytikere (anbefalinger, kursmål, estimatendringer, resultat mot estimat, neste rapportdato) |
+| Oslo Børs Newsweb (`api3.oslo.oslobors.no/v1/newsreader`) | Alle børsmeldinger siden 2016: kvartalsrapporter, kontrakter, emisjoner, varsler, oppkjøp og tilbakekjøp. Meldinger om innsidehandel leses og tolkes som kjøp eller salg (`analyse/innside.mjs`) |
+
+## Filer
+
+| Fil | Hva |
+|---|---|
+| `analyse/analyser.mjs` | Hovedskript: henter data, bygger historisk panel, tester modellene og skriver `data/analyse.json` |
+| `analyse/kilder.mjs` | Henting fra Yahoo og Newsweb |
+| `analyse/faktorer.mjs` | Ca. 30 faktorer per aksje og dato (bare data kjent på datoen) |
+| `analyse/modell.mjs` | Modellene (vekter), IC-beregning og selvlærende kontrollmodell |
+| `analyse/innside.mjs` | Tolker innsidemeldinger: kjøp, salg, tilbakekjøp eller annet (aksjeprogram, opsjoner, emisjon …) |
+| `analyse/tickere.json` | Aksjene som analyseres |
+| `data/innsidehandel.json` | Lager over tolkede innsidemeldinger, så de ikke må leses på nytt hver dag |
+| `index.html`, `app.js`, `style.css` | Nettsiden |
 
 GitHub Actions (`deploy-pages.yml`) kjører analysen hver handelsdag kl. 16:45 UTC og publiserer på GitHub Pages under `/borsradar/`.
 Feiler hentingen, publiseres siste `data/analyse.json` fra repoet.
 
-Kjør lokalt:
-
 ```bash
-node borsradar/analyse/analyser.mjs      # oppdaterer borsradar/data/analyse.json
+node borsradar/analyse/analyser.mjs      # ca. 20 sek (2 min første gang)
 python3 -m http.server -d borsradar 8000  # åpne http://localhost:8000
 ```
 
-## Modellen
+## Modellene
 
-**Score (0–100)** = 70 % teknisk + 30 % fundamental. Hver delscore er aksjens plassering (prosentil) mot de andre aksjene.
+Ca. 30 faktorer er testet måned for måned på Oslo Børs fra 2017. Hver faktor fikk en informasjonskoeffisient (IC) for 1 og 12 måneder frem i tid, og hendelser ble testet med hendelsesstudier.
+En modell som lærte alle vektene selv (walk-forward) ga bare ca. 16 % i året, under «alle aksjer likt vektet». Med ca. 70 aksjer er det for mye støy til å lære mange vekter.
+Derfor bygger modellene på faktorer som er godt dokumentert i forskning, og som har virket i **begge halvdeler** av perioden:
 
-- **Teknisk:** momentum 12 mnd uten siste måned (35 %), momentum 6 mnd (25 %), trend mot 200- og 50-dagers snitt (25 %), momentum 3 mnd (15 %).
-- **Fundamental:** inntjening 1/(P/E) (35 %), utbytte (25 %), bokverdi 1/(P/B) (20 %), egenkapitalavkastning (20 %).
+**Kort sikt:** momentum 12 mnd (30), momentum 6 mnd (20), trend (20), sektortrend (20), momentum 3 mnd (10), utbytte (10), innsidekjøp (10), store dagshopp/«lotteri» (−10), kontraktsmeldinger (5), nyhetsreaksjon (5), reaksjon på kvartalsrapport (5), negative varsler (−5).
+Analytikerdata teller 15 %: estimatendringer, endring i anbefalinger og siste resultat mot estimat.
 
-**Signal**
-- **KJØP:** score ≥ 70 og kurs over 200-dagers snitt
-- **SELG:** score ≤ 30, eller fallende trend (kurs og 50-d snitt under 200-d snitt, og negativt 12-mnd momentum)
-- **HOLD:** resten
+**Lang sikt:** trend (40), sektortrend (20), momentum 12 mnd (20), momentum 6 mnd (20), utbytte (10), innsidekjøp (10).
+Analytikerdata og nøkkeltall teller 25 %: P/E, P/B, egenkapitalavkastning, estimatendringer og kursmål.
 
-## Historisk test (2017–2026)
+**Signal:** KJØP ved score ≥ 75 og kurs over 200-dagers snitt. SELG ved score ≤ 25 eller tydelig fallende trend. HOLD ellers.
 
-Hver måned kjøpes de 10 KJØP-aksjene med høyest teknisk score, likt vektet, med 0,1 % kurtasje per handel.
+Testet uten effekt (derfor utelatt): lave kurssvingninger, RSI, 1-mnd reversering, sesong, tilbakekjøp, oljefølsomhet og markedsfilter (kontanter når OSEBX er under 200-dagers snitt).
+
+## Historisk test (2017–2026, 10 aksjer, 0,4 % kostnad per bytte)
 
 | | Per år | Største fall |
 |---|---|---|
-| Modellportefølje | ca. 25 % | ca. −23 % |
+| Kort sikt (bytter månedlig) | ca. 29 % | ca. −22 % |
+| Lang sikt (12-mnd pakker) | ca. 25 % | ca. −21 % |
+| Selvlærende kontrollmodell (fra 2019) | ca. 16 % | ca. −20 % |
 | OSEBX | ca. 11 % | ca. −25 % |
-| Alle aksjene likt vektet | ca. 18 % | ca. −32 % |
+| Alle aksjene likt vektet | ca. 17 % | ca. −34 % |
 
-Måneden etter et signal har KJØP-aksjene i snitt steget 1,9 %, mot 1,4 % for HOLD og SELG.
+Tallene er trolig for gode:
+- **Overlevelsesskjevhet:** dagens aksjeliste er brukt, så selskaper som forsvant underveis er ikke med.
+- **Valgt i ettertid:** modellvektene er valgt etter å ha sett dataene.
+- **Ikke testet:** analytikerdata og nøkkeltall finnes bare for i dag.
 
-Vektene ble valgt etter en faktoranalyse på de samme dataene. Momentum og trend virket. Lav volatilitet, nærhet til 52-ukers topp, RSI og 1-måneds reversering virket ikke på Oslo Børs, og er derfor tatt ut av scoren.
-Testen bruker dagens aksjeliste (overlevelsesskjevhet), og vektene er valgt i ettertid. Tallene er derfor trolig for gode.
-Nøkkeltallene finnes ikke historisk og er ikke testet.
+Kursbrudd i Yahoo-dataene (uregistrerte spleiser o.l.) holdes utenfor beregningene.

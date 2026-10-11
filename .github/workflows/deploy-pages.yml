@@ -56,7 +56,7 @@ jobs:
           cp -r sefrak-eiendom/. _site/sefrak-eiendom/
           cp -r borsradar/. _site/borsradar/
           # Tester, verktøy og serverfiler (Railway) publiseres ikke på GitHub Pages
-          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/borsradar/analyse
+          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/borsradar/analyse _site/borsradar/data/innsidehandel.json
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

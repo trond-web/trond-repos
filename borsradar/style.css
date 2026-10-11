@@ -189,3 +189,55 @@ footer { margin-top: 24px; font-size: 12px; color: var(--dempet); text-align: ce
   .delscore { grid-template-columns: 110px 1fr 30px; }
   .oppsummering .teller .n { font-size: 20px; }
 }
+
+/* ---- Kort/lang sikt, drivere, nyheter ---- */
+.dempet { color: var(--dempet); }
+.merker { display: flex; gap: 4px; }
+.merke.liten { min-width: 52px; padding: 3px 6px; font-size: 12px; }
+.merke em { font-style: normal; font-weight: 500; font-size: 10px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
+.rad .info span { white-space: nowrap; }
+.rad-klikk { cursor: pointer; }
+
+.modeller { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modellboks { background: var(--flate2); border-radius: 12px; padding: 10px 12px; }
+.modelltopp { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.driver { display: grid; grid-template-columns: minmax(0, 1.3fr) 1fr; gap: 8px; align-items: center; font-size: 12.5px; margin: 5px 0; }
+.driver span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tobar { position: relative; height: 8px; background: var(--flate); border-radius: 4px; }
+.kort .tobar { background: var(--flate2); }
+.tobar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--dempet); opacity: 0.5; }
+.tobar i { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.tobar i.pos { left: 50%; background: var(--kjop); }
+.tobar i.neg { right: 50%; background: var(--selg); }
+
+.nyheter { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+.nyheter li { display: grid; grid-template-columns: 44px auto 1fr; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--linje); }
+.nyheter li:last-child { border-bottom: 0; }
+.nyheter a { color: var(--tekst); text-decoration: none; }
+.nyheter a:hover { text-decoration: underline; }
+.nyheter .dato { color: var(--dempet); font-size: 12px; }
+.type { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 6px; background: var(--flate2); color: var(--dempet); white-space: nowrap; }
+.type.KJØP { background: var(--kjop-bg); color: var(--kjop); }
+.type.SELG { background: var(--selg-bg); color: var(--selg); }
+.lenke { cursor: pointer; text-decoration: underline; text-decoration-color: var(--linje); }
+
+.sektorrad { display: grid; grid-template-columns: 150px 1fr 56px 110px; gap: 10px; align-items: center; font-size: 14px; padding: 6px 0; border-bottom: 1px solid var(--linje); }
+.sektorrad:last-child { border-bottom: 0; }
+.sektorrad .tall { text-align: right; }
+
+.faktortabell td small { color: var(--dempet); font-size: 11px; }
+.faktortabell td.svak { opacity: 0.55; }
+.faktortabell td.sterk { font-weight: 700; }
+a.lenkeknapp { text-decoration: none; display: inline-block; color: var(--tekst); background: var(--flate2); border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 14px; }
+.detalj-innhold { max-height: calc(100vh - 40px); overflow-y: auto; }
+
+@media (max-width: 600px) {
+  .modeller { grid-template-columns: 1fr; }
+  #marked .oppsummering { grid-template-columns: 1fr; }
+  .rad { grid-template-columns: minmax(0, 1fr) auto; }
+  .sektorrad { grid-template-columns: 1fr 1fr 50px; }
+  .sektorrad small { display: none; }
+  .nyheter li { grid-template-columns: 40px 1fr; }
+  .nyheter li .type { grid-column: 2; justify-self: start; }
+  .nyheter li > a, .nyheter li > span:last-child { grid-column: 1 / -1; }
+}

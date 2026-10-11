@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Børsradar</title>
-<meta name="description" content="Kjøp-, hold- og selgsignaler for aksjer på Oslo Børs basert på momentum, trend og nøkkeltall.">
+<meta name="description" content="Kjøp-, hold- og selgsignaler for aksjer på Oslo Børs på kort og lang sikt: trend, momentum, nyheter, innsidehandel og analytikere.">
 <meta name="theme-color" content="#0f1720">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,6 +29,7 @@
 
   <nav class="faner" role="tablist">
     <button role="tab" data-fane="signaler" class="aktiv">Signaler</button>
+    <button role="tab" data-fane="marked">Marked og nyheter</button>
     <button role="tab" data-fane="portefolje">Min portefølje</button>
     <button role="tab" data-fane="test">Historisk test</button>
     <button role="tab" data-fane="metode">Slik virker det</button>
@@ -38,6 +39,11 @@
     <section id="fane-signaler" class="fane">
       <div class="oppsummering" id="oppsummering"></div>
       <div class="filtre">
+        <div class="chips" id="horisont" aria-label="Horisont">
+          <button data-h="samlet" class="aktiv">Samlet</button>
+          <button data-h="kort">Kort sikt</button>
+          <button data-h="lang">Lang sikt</button>
+        </div>
         <div class="chips" id="signalfilter">
           <button data-s="alle" class="aktiv">Alle</button>
           <button data-s="KJØP">Kjøp</button>
@@ -48,6 +54,10 @@
         <input id="sok" type="search" placeholder="Søk aksje …" aria-label="Søk">
       </div>
       <div class="liste" id="liste"></div>
+    </section>
+
+    <section id="fane-marked" class="fane" hidden>
+      <div id="marked"></div>
     </section>
 
     <section id="fane-portefolje" class="fane" hidden>
@@ -65,7 +75,7 @@
       </div>
       <div class="kort">
         <h2>Forslag til nye kjøp</h2>
-        <p class="hjelp">KJØP-aksjene med høyest score som du ikke eier i dag. Det vises høyst to per sektor (aksjene du eier er talt med), så risikoen blir spredt.</p>
+        <p class="hjelp">Aksjene med høyest samlet score og kjøpssignal som du ikke eier i dag. Det vises høyst to per sektor (aksjene du eier er talt med), så risikoen blir spredt.</p>
         <div id="forslag" class="liste"></div>
       </div>
     </section>
@@ -80,7 +90,7 @@
   </main>
 
   <footer>
-    Data fra Yahoo Finance (kan være forsinket eller mangelfull). Analysen kjøres automatisk hver handelsdag etter børsslutt.
+    Data fra Yahoo Finance og Oslo Børs Newsweb (kan være forsinket eller mangelfull). Analysen kjøres automatisk hver handelsdag etter børsslutt.
   </footer>
 </div>
 
