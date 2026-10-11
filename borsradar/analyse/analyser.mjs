@@ -10,7 +10,7 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { hentKurser, harBrudd, hentNokkeltall, hentAnalytikere, hentMeldinger, hentMeldingstekst, iParallell, KATEGORI } from "./kilder.mjs";
+import { hentKurser, harBrudd, skjotBrudd, hentNokkeltall, hentAnalytikere, hentMeldinger, hentMeldingstekst, iParallell, KATEGORI } from "./kilder.mjs";
 import { raaFaktorer, forberedHendelser, tverrsnittFaktorer, finnIndeks, forskyvDato, rangering, snitt, FAKTORER } from "./faktorer.mjs";
 import { icHistorikk, beregnVekter, scor, MODELLER, MIN_MND, signalFor, KJOP_GRENSE, SELG_GRENSE } from "./modell.mjs";
 import { tolkInnsidemelding } from "./innside.mjs";
@@ -303,9 +303,6 @@ function begrunnelse(a, f, am) {
   if (am.inntjening != null && am.inntjening > 0.1) pluss.push("Lav prising i forhold til inntjeningen (P/E under 10)");
   if (am.inntjening != null && am.inntjening < 0) minus.push("Selskapet gikk med underskudd siste år");
   if (f.omsetningMNOK < MIN_OMSETNING_MNOK) minus.push(`Lite omsatt (${f.omsetningMNOK.toFixed(1).replace(".", ",")} MNOK per dag) – kan være vanskelig å handle`);
-  if (an?.nesteRapport && an.nesteRapport >= idag() && an.nesteRapport <= forskyvDato(idag(), 21)) {
-    pluss.push(`Obs: kvartalsrapport kommer ${an.nesteRapport} – kursen kan svinge mye`);
-  }
   return { pluss, minus };
 }
 
@@ -348,9 +345,13 @@ async function main() {
   for (const a of aksjer) {
     const s = a.serie, i = s.datoer.length - 1;
     if (s.datoer[i] < forskyvDato(sisteDag, -10)) continue;
-    const f = raaFaktorer(s, i, a.h, ctx);
+    let f = raaFaktorer(s, i, a.h, ctx);
+    if (!f && harBrudd(s, i - 260, i)) {
+      // Nylig spleis eller utdeling som Yahoo ikke har justert for: skjøt serien og prøv igjen
+      a.serie = skjotBrudd(s);
+      f = raaFaktorer(a.serie, i, a.h, ctx);
+    }
     if (f) rader.push({ t: a.t, sektor: a.sektor, f, a });
-    else if (harBrudd(s, i - 260, i)) feilet.push(`${a.t} (kursbrudd i data siste år)`);
   }
   tverrsnittFaktorer(rader);
   const am = rader.map((r) => analytikerMaal(r.a, r.a.serie.kurs.at(-1)));
@@ -391,9 +392,10 @@ async function main() {
       navn: a.navn,
       sektor: a.sektor,
       valuta: s.valuta,
-      kurs: rund(s.kurs[n], 2),
+      kurs: rund(s.kurs[n], s.kurs[n] < 20 ? 3 : 2),
       dato: s.datoer[n],
       endringDag: rund(s.kurs[n] / s.kurs[n - 1] - 1, 4),
+      kursbrudd: Boolean(s.skjotet), // kursene før en nylig spleis/utdeling er justert
       samlet: { score: rund(samletRang[i], 1), signal: signalFor(samletRang[i], f) },
       kort: modellScore.kort[i],
       lang: modellScore.lang[i],

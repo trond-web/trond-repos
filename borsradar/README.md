@@ -5,6 +5,16 @@ Bygger på kurser, trender, børsmeldinger, innsidehandel og analytikerdata.
 
 > Dette er et regnestykke, ikke investeringsrådgivning. Historisk avkastning er ingen garanti for fremtidig avkastning.
 
+## Min portefølje
+
+Under «Min portefølje» limer du inn beholdningen fra nettbanken: én linje per aksje med ticker, markedsverdi og urealisert gevinst/tap,
+f.eks. `KOG 29 244,60 −2 453,05`. Antall og kjøpskurs regnes ut fra dagens kurs. Porteføljen kan også sendes inn i lenken:
+`…/borsradar/#portefolje=KOG:29244.6:-2453.05,MPCC:36175:9182`. Lenkedelen etter `#` sendes ikke til serveren, og alt lagres bare i nettleseren.
+
+Hver aksje får en handling (Selg, Vurder å selge, Reduser, Behold, Behold/kjøp mer) ut fra signalene på kort og lang sikt, vekten i porteføljen og sektorvekten.
+Siden viser også varsler om store tap (kjøpskursen påvirker ikke hvor aksjen går videre), lav likviditet og kommende rapporter.
+Til slutt foreslår den hvor pengene fra salgene kan plasseres: aksjer med kjøpssignal i sektorer porteføljen har lite av.
+
 ## Datakilder
 
 | Kilde | Hva |

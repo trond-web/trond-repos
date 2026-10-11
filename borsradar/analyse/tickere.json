@@ -92,5 +92,8 @@
   {"t": "NAPA", "navn": "Napatech", "sektor": "Teknologi"},
   {"t": "ZAP", "navn": "Zaptec", "sektor": "Industri"},
   {"t": "NRC", "navn": "NRC Group", "sektor": "Industri"},
-  {"t": "CLOUD", "navn": "Cloudberry Clean Energy", "sektor": "Fornybar"}
+  {"t": "CLOUD", "navn": "Cloudberry Clean Energy", "sektor": "Fornybar"},
+  {"t": "ONCIN", "navn": "Oncoinvent", "sektor": "Helse"},
+  {"t": "PLSV", "navn": "Paratus Energy Services", "sektor": "Energi"},
+  {"t": "SALME", "navn": "Salmon Evolution", "sektor": "Sjømat"}
 ]

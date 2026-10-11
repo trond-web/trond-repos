@@ -62,21 +62,36 @@
 
     <section id="fane-portefolje" class="fane" hidden>
       <div class="kort">
-        <h2>Aksjene du eier</h2>
-        <p class="hjelp">Legg til aksjer du eier (med antall og kjøpskurs om du vil). Oppføringene lagres bare i denne nettleseren.</p>
-        <form id="leggTil" class="leggtil">
-          <input id="ltTicker" list="tickerliste" placeholder="Ticker, f.eks. EQNR" required autocomplete="off">
-          <datalist id="tickerliste"></datalist>
-          <input id="ltAntall" type="number" min="0" step="any" placeholder="Antall">
-          <input id="ltKurs" type="number" min="0" step="any" placeholder="Kjøpskurs">
-          <button type="submit">Legg til</button>
-        </form>
+        <h2>Legg inn aksjene dine</h2>
+        <p class="hjelp">Lim inn beholdningen fra nettbanken: én aksje per linje med ticker, markedsverdi og urealisert gevinst/tap.
+          Antall og kjøpskurs regnes ut fra dagens kurs. Alt lagres bare i denne nettleseren og sendes ikke noe sted.</p>
+        <textarea id="importTekst" rows="5" placeholder="KOG 29 244,60 −2 453,05&#10;MPCC 36 175,00 9 182,00&#10;SALME 14 506,80 −18 390,60"></textarea>
+        <div class="knapperad">
+          <button class="knapp" id="importer" type="button">Importer</button>
+          <button class="knapp sekundar" id="tomPortefolje" type="button">Tøm porteføljen</button>
+          <span class="hjelp" id="importStatus" style="margin:0"></span>
+        </div>
+        <details class="manuelt">
+          <summary>Legg til én aksje manuelt</summary>
+          <form id="leggTil" class="leggtil">
+            <input id="ltTicker" list="tickerliste" placeholder="Ticker, f.eks. EQNR" required autocomplete="off">
+            <datalist id="tickerliste"></datalist>
+            <input id="ltAntall" inputmode="decimal" placeholder="Antall">
+            <input id="ltKurs" inputmode="decimal" placeholder="Kjøpskurs">
+            <input id="ltVerdi" inputmode="decimal" placeholder="… eller markedsverdi">
+            <input id="ltGevinst" inputmode="decimal" placeholder="og gevinst/tap">
+            <button type="submit">Legg til</button>
+          </form>
+        </details>
+      </div>
+      <div class="kort">
+        <h2>Vurdering av porteføljen</h2>
+        <p class="hjelp">Aksjene står sortert etter hvor viktig det er å gjøre noe. Trykk på en aksje for hele analysen.</p>
         <div id="beholdning"></div>
       </div>
       <div class="kort">
-        <h2>Forslag til nye kjøp</h2>
-        <p class="hjelp">Aksjene med høyest samlet score og kjøpssignal som du ikke eier i dag. Det vises høyst to per sektor (aksjene du eier er talt med), så risikoen blir spredt.</p>
-        <div id="forslag" class="liste"></div>
+        <h2>Forslag til omplassering</h2>
+        <div id="forslag"></div>
       </div>
     </section>
 

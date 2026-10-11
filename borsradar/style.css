@@ -241,3 +241,35 @@ a.lenkeknapp { text-decoration: none; display: inline-block; color: var(--tekst)
   .nyheter li .type { grid-column: 2; justify-self: start; }
   .nyheter li > a, .nyheter li > span:last-child { grid-column: 1 / -1; }
 }
+
+/* ---- Portefølje ---- */
+textarea { width: 100%; font: 14px/1.5 "JetBrains Mono", monospace; padding: 10px; border-radius: 10px; border: 1px solid var(--linje); background: var(--flate); color: var(--tekst); resize: vertical; }
+.knapperad { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.manuelt summary { cursor: pointer; font-size: 14px; color: var(--dempet); margin: 6px 0; }
+.manuelt .leggtil { grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto; margin-top: 8px; }
+.portefolje-tall .n { font-size: 20px; }
+.sektorfordeling { margin: 4px 0 10px; }
+.sektorfordeling .bar { height: 8px; background: var(--flate2); border-radius: 4px; overflow: hidden; }
+.sektorfordeling .bar i { display: block; height: 100%; background: var(--aksent); }
+.advarsel-boks { background: var(--hold-bg); color: var(--tekst); border-radius: 10px; padding: 8px 12px; font-size: 13.5px; margin: 8px 0 14px; }
+.beholdning { border: 1px solid var(--linje); border-left: 4px solid var(--linje); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
+.beholdning.KJØP { border-left-color: var(--kjop); }
+.beholdning.HOLD { border-left-color: var(--hold); }
+.beholdning.SELG { border-left-color: var(--selg); }
+.beholdning-topp { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.handlingsmerke { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-right: 6px; }
+.handlingsmerke.KJØP { background: var(--kjop-bg); color: var(--kjop); }
+.handlingsmerke.HOLD { background: var(--hold-bg); color: var(--hold); }
+.handlingsmerke.SELG { background: var(--selg-bg); color: var(--selg); }
+.grunnliste { margin: 8px 0 4px; padding-left: 18px; font-size: 13.5px; }
+.grunnliste li.opp, .grunnliste li.ned { color: var(--tekst); }
+.grunnliste li.opp::marker { color: var(--kjop); }
+.grunnliste li.ned::marker { color: var(--selg); }
+.notat { font-size: 13px; background: var(--flate2); border-radius: 8px; padding: 6px 10px; margin: 6px 0 0; }
+.beholdning a { color: var(--tekst); }
+@media (max-width: 600px) {
+  .manuelt .leggtil { grid-template-columns: 1fr 1fr; }
+  .beholdning-topp { flex-direction: column; }
+  .portefolje-tall { grid-template-columns: 1fr; }
+  .sektorfordeling .sektorrad { grid-template-columns: 110px 1fr 44px; }
+}
