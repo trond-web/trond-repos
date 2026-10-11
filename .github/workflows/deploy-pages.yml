@@ -9,7 +9,11 @@ on:
       - "therese-helge/**"
       - "skogbruksplan/**"
       - "sefrak-eiendom/**"
+      - "borsradar/**"
       - ".github/workflows/deploy-pages.yml"
+  schedule:
+    # Børsradar: ny analyse hver handelsdag etter børsslutt (18:45 norsk sommertid / 17:45 vintertid)
+    - cron: "45 16 * * 1-5"
   workflow_dispatch:
 
 permissions:
@@ -31,17 +35,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Henter ferske kurser og regner ut signaler. Feiler det, publiseres siste analyse fra repoet.
+      - name: Børsradar-analyse
+        continue-on-error: true
+        timeout-minutes: 10
+        run: node borsradar/analyse/analyser.mjs
+
       # tretetthet-flyfoto ligger fortsatt på rot-URL-en, øvrige apper under egne stier
       - name: Assemble site
         run: |
-          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom
+          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom _site/borsradar
           cp -r tretetthet-flyfoto/. _site/
           cp -r snovill-skifore/. _site/snovill-skifore/
           cp -r therese-helge/. _site/therese-helge/
           cp -r skogbruksplan/. _site/skogbruksplan/
           cp -r sefrak-eiendom/. _site/sefrak-eiendom/
+          cp -r borsradar/. _site/borsradar/
           # Tester, verktøy og serverfiler (Railway) publiseres ikke på GitHub Pages
-          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests
+          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/borsradar/analyse
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
