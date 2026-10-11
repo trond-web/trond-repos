@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Børsradar</title>
+<meta name="description" content="Kjøp-, hold- og selgsignaler for aksjer på Oslo Børs på kort og lang sikt: trend, momentum, nyheter, innsidehandel og analytikere.">
+<meta name="theme-color" content="#0f1720">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="topp">
+    <div>
+      <h1>📡 Børsradar</h1>
+      <p class="under">Oslo Børs · signaler oppdatert <span id="oppdatert">…</span></p>
+    </div>
+    <div class="indeks" id="indeks"></div>
+  </header>
+
+  <p class="advarsel">
+    Dette er et regnestykke, ikke investeringsrådgivning. Signalene bygger på historiske kurser og nøkkeltall.
+    Historisk avkastning er ingen garanti for fremtidig avkastning. Spre risikoen, og ta egne beslutninger.
+  </p>
+
+  <nav class="faner" role="tablist">
+    <button role="tab" data-fane="signaler" class="aktiv">Signaler</button>
+    <button role="tab" data-fane="marked">Marked og nyheter</button>
+    <button role="tab" data-fane="portefolje">Min portefølje</button>
+    <button role="tab" data-fane="test">Historisk test</button>
+    <button role="tab" data-fane="metode">Slik virker det</button>
+  </nav>
+
+  <main>
+    <section id="fane-signaler" class="fane">
+      <div class="oppsummering" id="oppsummering"></div>
+      <div class="filtre">
+        <div class="chips" id="horisont" aria-label="Horisont">
+          <button data-h="samlet" class="aktiv">Samlet</button>
+          <button data-h="kort">Kort sikt</button>
+          <button data-h="lang">Lang sikt</button>
+        </div>
+        <div class="chips" id="signalfilter">
+          <button data-s="alle" class="aktiv">Alle</button>
+          <button data-s="KJØP">Kjøp</button>
+          <button data-s="HOLD">Hold</button>
+          <button data-s="SELG">Selg</button>
+        </div>
+        <select id="sektor" aria-label="Sektor"><option value="">Alle sektorer</option></select>
+        <input id="sok" type="search" placeholder="Søk aksje …" aria-label="Søk">
+      </div>
+      <div class="liste" id="liste"></div>
+    </section>
+
+    <section id="fane-marked" class="fane" hidden>
+      <div id="marked"></div>
+    </section>
+
+    <section id="fane-portefolje" class="fane" hidden>
+      <div class="kort">
+        <h2>Aksjene du eier</h2>
+        <p class="hjelp">Legg til aksjer du eier (med antall og kjøpskurs om du vil). Oppføringene lagres bare i denne nettleseren.</p>
+        <form id="leggTil" class="leggtil">
+          <input id="ltTicker" list="tickerliste" placeholder="Ticker, f.eks. EQNR" required autocomplete="off">
+          <datalist id="tickerliste"></datalist>
+          <input id="ltAntall" type="number" min="0" step="any" placeholder="Antall">
+          <input id="ltKurs" type="number" min="0" step="any" placeholder="Kjøpskurs">
+          <button type="submit">Legg til</button>
+        </form>
+        <div id="beholdning"></div>
+      </div>
+      <div class="kort">
+        <h2>Forslag til nye kjøp</h2>
+        <p class="hjelp">Aksjene med høyest samlet score og kjøpssignal som du ikke eier i dag. Det vises høyst to per sektor (aksjene du eier er talt med), så risikoen blir spredt.</p>
+        <div id="forslag" class="liste"></div>
+      </div>
+    </section>
+
+    <section id="fane-test" class="fane" hidden>
+      <div class="kort" id="test"></div>
+    </section>
+
+    <section id="fane-metode" class="fane" hidden>
+      <div class="kort tekst" id="metode"></div>
+    </section>
+  </main>
+
+  <footer>
+    Data fra Yahoo Finance og Oslo Børs Newsweb (kan være forsinket eller mangelfull). Analysen kjøres automatisk hver handelsdag etter børsslutt.
+  </footer>
+</div>
+
+<dialog id="detalj">
+  <div class="detalj-innhold" id="detaljInnhold"></div>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>

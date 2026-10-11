@@ -1,0 +1,243 @@
+:root {
+  --bg: #f4f6f8;
+  --flate: #ffffff;
+  --flate2: #eef1f4;
+  --tekst: #14202b;
+  --dempet: #5b6b79;
+  --linje: #dde3e9;
+  --kjop: #0f8a5f;
+  --kjop-bg: #dcf3e9;
+  --hold: #9a6b00;
+  --hold-bg: #fbf0d4;
+  --selg: #c43d3d;
+  --selg-bg: #fbe3e3;
+  --aksent: #2563eb;
+  --kurs: #14202b;
+  --sma50: #2563eb;
+  --sma200: #d97706;
+  --skygge: 0 1px 2px rgba(15, 23, 32, 0.06), 0 2px 8px rgba(15, 23, 32, 0.05);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1720;
+    --flate: #17212c;
+    --flate2: #1f2b37;
+    --tekst: #e6edf3;
+    --dempet: #93a3b2;
+    --linje: #2a3744;
+    --kjop: #34d399;
+    --kjop-bg: #0f3a2b;
+    --hold: #fbbf24;
+    --hold-bg: #3b2f0e;
+    --selg: #f87171;
+    --selg-bg: #401b1b;
+    --aksent: #60a5fa;
+    --kurs: #e6edf3;
+    --sma50: #60a5fa;
+    --sma200: #f59e0b;
+    --skygge: none;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--tekst);
+  font: 15px/1.5 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app { max-width: 980px; margin: 0 auto; padding: 16px 16px 40px; }
+
+.tall, .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+.topp { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+h1 { font-size: 26px; margin: 0; letter-spacing: -0.02em; }
+h2 { font-size: 18px; margin: 0 0 6px; }
+h3 { font-size: 15px; margin: 18px 0 6px; }
+.under { margin: 2px 0 0; color: var(--dempet); font-size: 13px; }
+.indeks { text-align: right; font-size: 13px; color: var(--dempet); }
+.indeks b { color: var(--tekst); font-size: 16px; }
+
+.advarsel {
+  font-size: 12.5px; color: var(--dempet); background: var(--flate2);
+  border-radius: 10px; padding: 8px 12px; margin: 14px 0;
+}
+
+.faner { display: flex; gap: 4px; border-bottom: 1px solid var(--linje); margin-bottom: 14px; overflow-x: auto; }
+.faner button {
+  background: none; border: 0; padding: 10px 12px; font: inherit; font-weight: 600; color: var(--dempet);
+  border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap;
+}
+.faner button.aktiv { color: var(--tekst); border-bottom-color: var(--aksent); }
+
+.oppsummering { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.teller { background: var(--flate); border-radius: 12px; padding: 10px 12px; box-shadow: var(--skygge); border: 1px solid var(--linje); }
+.teller .n { font-size: 24px; font-weight: 700; }
+.teller.KJØP .n { color: var(--kjop); }
+.teller.HOLD .n { color: var(--hold); }
+.teller.SELG .n { color: var(--selg); }
+.teller .l { font-size: 12px; color: var(--dempet); }
+
+.filtre { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+.chips { display: flex; gap: 4px; background: var(--flate2); padding: 3px; border-radius: 10px; }
+.chips button { border: 0; background: none; font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 8px; cursor: pointer; color: var(--dempet); }
+.chips button.aktiv { background: var(--flate); color: var(--tekst); font-weight: 600; box-shadow: var(--skygge); }
+select, input {
+  font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--linje);
+  background: var(--flate); color: var(--tekst); min-width: 0;
+}
+#sok { flex: 1; min-width: 140px; }
+
+.liste { display: flex; flex-direction: column; gap: 6px; }
+.rad {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center;
+  background: var(--flate); border: 1px solid var(--linje); border-radius: 12px; padding: 10px 12px;
+  cursor: pointer; text-align: left; font: inherit; color: inherit; width: 100%; box-shadow: var(--skygge);
+}
+.rad:hover { border-color: var(--aksent); }
+.rad .navn { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rad .info { font-size: 12.5px; color: var(--dempet); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rad .kurs { text-align: right; font-size: 14px; }
+.rad .kurs small { display: block; font-size: 12px; }
+.opp { color: var(--kjop); }
+.ned { color: var(--selg); }
+
+.merke {
+  display: inline-flex; flex-direction: column; align-items: center; min-width: 64px;
+  border-radius: 10px; padding: 4px 8px; font-weight: 700; font-size: 13px;
+}
+.merke small { font-weight: 500; font-size: 11px; opacity: 0.85; }
+.merke.KJØP { background: var(--kjop-bg); color: var(--kjop); }
+.merke.HOLD { background: var(--hold-bg); color: var(--hold); }
+.merke.SELG { background: var(--selg-bg); color: var(--selg); }
+
+.scorebar { height: 4px; background: var(--flate2); border-radius: 2px; margin-top: 5px; overflow: hidden; max-width: 180px; }
+.scorebar i { display: block; height: 100%; background: var(--aksent); }
+
+.kort { background: var(--flate); border: 1px solid var(--linje); border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: var(--skygge); }
+.hjelp { color: var(--dempet); font-size: 13px; margin: 0 0 12px; }
+.tom { color: var(--dempet); font-size: 14px; padding: 12px 0; }
+
+.leggtil { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 6px; margin-bottom: 12px; }
+button.knapp, .leggtil button {
+  font: inherit; font-weight: 600; font-size: 14px; border: 0; border-radius: 10px; padding: 8px 14px;
+  background: var(--aksent); color: #fff; cursor: pointer;
+}
+button.sekundar { background: var(--flate2); color: var(--tekst); }
+
+.beholdning-rad { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--linje); }
+.beholdning-rad:first-child { border-top: 0; }
+.handling { font-size: 13px; margin-top: 2px; }
+.slett { background: none; border: 0; color: var(--dempet); cursor: pointer; font-size: 18px; padding: 4px 8px; }
+.sum { text-align: right; font-size: 14px; padding-top: 10px; border-top: 1px solid var(--linje); }
+
+.nokkel { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin: 12px 0; }
+.nokkel div { background: var(--flate2); border-radius: 10px; padding: 8px 10px; }
+.nokkel span { display: block; font-size: 11.5px; color: var(--dempet); }
+.nokkel b { font-family: "JetBrains Mono", monospace; font-size: 14px; }
+
+.grunner { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grunner ul { margin: 0; padding-left: 18px; font-size: 13.5px; }
+.grunner h3 { margin-top: 6px; }
+
+.delscore { display: grid; grid-template-columns: 150px 1fr 34px; gap: 8px; align-items: center; font-size: 13px; margin: 4px 0; }
+.delscore .bar { height: 8px; background: var(--flate2); border-radius: 4px; overflow: hidden; }
+.delscore .bar i { display: block; height: 100%; background: var(--aksent); }
+
+svg.graf { width: 100%; height: auto; display: block; }
+svg.graf text { fill: var(--dempet); font-size: 11px; font-family: Inter, sans-serif; }
+svg.graf .rutenett { stroke: var(--linje); stroke-width: 1; }
+.forklaring { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--dempet); margin-top: 4px; }
+.forklaring i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0; }
+th, td { text-align: right; padding: 7px 6px; border-bottom: 1px solid var(--linje); }
+td { white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: 12px; color: var(--dempet); font-weight: 600; }
+.tabell-wrap { overflow-x: auto; }
+
+.tekst p, .tekst li { font-size: 14.5px; }
+.tekst ul { padding-left: 20px; }
+
+dialog {
+  border: 0; padding: 0; border-radius: 16px; width: min(760px, calc(100vw - 24px)); max-height: calc(100vh - 32px);
+  background: var(--flate); color: var(--tekst); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+dialog::backdrop { background: rgba(10, 15, 20, 0.55); }
+.detalj-innhold { padding: 18px; }
+.detalj-topp { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.detalj-topp .lukk { background: var(--flate2); border: 0; border-radius: 50%; width: 34px; height: 34px; font-size: 18px; cursor: pointer; color: var(--tekst); flex: none; }
+.detalj-knapper { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+footer { margin-top: 24px; font-size: 12px; color: var(--dempet); text-align: center; }
+
+@media (max-width: 600px) {
+  .app { padding: 12px 16px 32px; }
+  h1 { font-size: 22px; }
+  .indeks { text-align: left; }
+  .rad { grid-template-columns: minmax(0, 1fr) auto; }
+  .rad .kurs { display: none; }
+  .leggtil { grid-template-columns: 1fr 1fr; }
+  .leggtil #ltTicker { grid-column: 1 / -1; }
+  .grunner { grid-template-columns: 1fr; }
+  .delscore { grid-template-columns: 110px 1fr 30px; }
+  .oppsummering .teller .n { font-size: 20px; }
+}
+
+/* ---- Kort/lang sikt, drivere, nyheter ---- */
+.dempet { color: var(--dempet); }
+.merker { display: flex; gap: 4px; }
+.merke.liten { min-width: 52px; padding: 3px 6px; font-size: 12px; }
+.merke em { font-style: normal; font-weight: 500; font-size: 10px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
+.rad .info span { white-space: nowrap; }
+.rad-klikk { cursor: pointer; }
+
+.modeller { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modellboks { background: var(--flate2); border-radius: 12px; padding: 10px 12px; }
+.modelltopp { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.driver { display: grid; grid-template-columns: minmax(0, 1.3fr) 1fr; gap: 8px; align-items: center; font-size: 12.5px; margin: 5px 0; }
+.driver span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tobar { position: relative; height: 8px; background: var(--flate); border-radius: 4px; }
+.kort .tobar { background: var(--flate2); }
+.tobar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--dempet); opacity: 0.5; }
+.tobar i { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.tobar i.pos { left: 50%; background: var(--kjop); }
+.tobar i.neg { right: 50%; background: var(--selg); }
+
+.nyheter { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+.nyheter li { display: grid; grid-template-columns: 44px auto 1fr; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--linje); }
+.nyheter li:last-child { border-bottom: 0; }
+.nyheter a { color: var(--tekst); text-decoration: none; }
+.nyheter a:hover { text-decoration: underline; }
+.nyheter .dato { color: var(--dempet); font-size: 12px; }
+.type { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 6px; background: var(--flate2); color: var(--dempet); white-space: nowrap; }
+.type.KJØP { background: var(--kjop-bg); color: var(--kjop); }
+.type.SELG { background: var(--selg-bg); color: var(--selg); }
+.lenke { cursor: pointer; text-decoration: underline; text-decoration-color: var(--linje); }
+
+.sektorrad { display: grid; grid-template-columns: 150px 1fr 56px 110px; gap: 10px; align-items: center; font-size: 14px; padding: 6px 0; border-bottom: 1px solid var(--linje); }
+.sektorrad:last-child { border-bottom: 0; }
+.sektorrad .tall { text-align: right; }
+
+.faktortabell td small { color: var(--dempet); font-size: 11px; }
+.faktortabell td.svak { opacity: 0.55; }
+.faktortabell td.sterk { font-weight: 700; }
+a.lenkeknapp { text-decoration: none; display: inline-block; color: var(--tekst); background: var(--flate2); border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 14px; }
+.detalj-innhold { max-height: calc(100vh - 40px); overflow-y: auto; }
+
+@media (max-width: 600px) {
+  .modeller { grid-template-columns: 1fr; }
+  #marked .oppsummering { grid-template-columns: 1fr; }
+  .rad { grid-template-columns: minmax(0, 1fr) auto; }
+  .sektorrad { grid-template-columns: 1fr 1fr 50px; }
+  .sektorrad small { display: none; }
+  .nyheter li { grid-template-columns: 40px 1fr; }
+  .nyheter li .type { grid-column: 2; justify-self: start; }
+  .nyheter li > a, .nyheter li > span:last-child { grid-column: 1 / -1; }
+}

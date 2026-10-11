@@ -1,0 +1,642 @@
+"use strict";
+
+// Børsradar – viser analysen fra data/analyse.json (lages av analyse/analyser.mjs)
+
+const LAGRING = "borsradar.portefolje.v1";
+const $ = (sel) => document.querySelector(sel);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+const tall = (x, des = 2) => (x == null || !Number.isFinite(x) ? "–" : x.toLocaleString("nb-NO", { minimumFractionDigits: des, maximumFractionDigits: des }));
+const pst = (x, des = 1, fortegn = true) => (x == null || !Number.isFinite(x) ? "–" : `${fortegn && x > 0 ? "+" : ""}${tall(x * 100, des)} %`);
+const fargeKlasse = (x) => (x > 0 ? "opp" : x < 0 ? "ned" : "");
+
+const SIGNALTEKST = { KJØP: "Kjøp", HOLD: "Hold", SELG: "Selg" };
+const HORISONTNAVN = { samlet: "Samlet", kort: "Kort sikt", lang: "Lang sikt" };
+const TYPENAVN = {
+  innsidekjøp: "Innsidekjøp", innsidesalg: "Innsidesalg", tilbakekjøp: "Tilbakekjøp", innside: "Innsidemelding",
+  rapport: "Rapport", innsideinformasjon: "Børsmelding", flagging: "Eierskifte", melding: "Melding",
+  kontrakt: "Kontrakt", emisjon: "Emisjon", varsel: "Varsel", oppkjøp: "Oppkjøp",
+};
+const TYPEFARGE = { innsidekjøp: "KJØP", kontrakt: "KJØP", oppkjøp: "KJØP", tilbakekjøp: "KJØP", innsidesalg: "SELG", emisjon: "SELG", varsel: "SELG" };
+const NEWSWEB = (id) => `https://newsweb.oslobors.no/message/${encodeURIComponent(id)}`;
+
+let data = null;
+let filter = { horisont: "samlet", signal: "alle", sektor: "", sok: "" };
+let testValg = "kort";
+
+// ---------- Portefølje (localStorage) ----------
+
+function lesPortefolje() {
+  try {
+    const p = JSON.parse(localStorage.getItem(LAGRING) || "[]");
+    return Array.isArray(p) ? p : [];
+  } catch {
+    return [];
+  }
+}
+
+function lagrePortefolje(p) {
+  try {
+    localStorage.setItem(LAGRING, JSON.stringify(p));
+  } catch {
+    /* privat modus o.l. – porteføljen lever bare til siden lukkes */
+  }
+}
+
+let portefolje = lesPortefolje();
+const eier = (t) => portefolje.some((p) => p.t === t);
+const finn = (t) => data.aksjer.find((a) => a.t === t);
+
+// ---------- Oppstart ----------
+
+async function start() {
+  try {
+    const svar = await fetch("data/analyse.json", { cache: "no-cache" });
+    if (!svar.ok) throw new Error(`HTTP ${svar.status}`);
+    data = await svar.json();
+  } catch (feil) {
+    $("#liste").innerHTML = `<p class="tom">Klarte ikke å laste analysen (${esc(feil.message)}).</p>`;
+    return;
+  }
+
+  const d = new Date(data.generert);
+  $("#oppdatert").textContent = `${d.toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" })} (kurser fra ${data.handelsdag})`;
+  const ix = data.indeks;
+  $("#indeks").innerHTML = `OSEBX <b class="tall">${tall(ix.verdi)}</b> <span class="${fargeKlasse(ix.endringDag)}">${pst(ix.endringDag, 2)}</span><br>
+    12 mnd ${pst(ix.mom12)} · ${ix.overSma200 ? "markedet i stigende trend" : "markedet i fallende trend"}`;
+
+  const sektorer = [...new Set(data.aksjer.map((a) => a.sektor))].sort((a, b) => a.localeCompare(b, "nb"));
+  $("#sektor").insertAdjacentHTML("beforeend", sektorer.map((s) => `<option>${esc(s)}</option>`).join(""));
+  $("#tickerliste").innerHTML = data.aksjer.map((a) => `<option value="${esc(a.t)}">${esc(a.navn)}</option>`).join("");
+
+  visOppsummering();
+  visListe();
+  visMarked();
+  visPortefolje();
+  visTest();
+  visMetode();
+}
+
+// ---------- Signaler ----------
+
+function visOppsummering() {
+  const h = filter.horisont;
+  const n = (s) => data.aksjer.filter((a) => a[h].signal === s).length;
+  $("#oppsummering").innerHTML = ["KJØP", "HOLD", "SELG"]
+    .map((s) => `<div class="teller ${s}"><div class="n">${n(s)}</div><div class="l">${SIGNALTEKST[s]} · ${HORISONTNAVN[h].toLowerCase()}</div></div>`)
+    .join("");
+}
+
+const merke = (s, score, liten = "") => `<span class="merke ${s}${liten ? " liten" : ""}">${liten ? `<em>${liten}</em>` : ""}${SIGNALTEKST[s]}<small>${tall(score, 0)}</small></span>`;
+
+function ikoner(a) {
+  const n = a.nokkel, ut = [];
+  if (n.innsideKjop90 > 0) ut.push(`<span title="Innsidekjøp siste 90 dager">🟢 innsidekjøp</span>`);
+  if (n.innsideSalg90 >= 2) ut.push(`<span title="Innsidesalg siste 90 dager">🔴 innsidesalg</span>`);
+  const nr = a.analytikere?.nesteRapport;
+  if (nr && nr >= data.handelsdag && nr <= leggTilDager(data.handelsdag, 21)) ut.push(`<span title="Kvartalsrapport snart">📅 rapport ${esc(nr.slice(5).split("-").reverse().join("."))}</span>`);
+  return ut.join(" ");
+}
+
+function leggTilDager(dato, n) {
+  return new Date(new Date(dato).getTime() + n * 86400e3).toISOString().slice(0, 10);
+}
+
+function radHtml(a) {
+  const ik = ikoner(a);
+  return `<button class="rad" data-t="${esc(a.t)}">
+    <div>
+      <div class="navn">${eier(a.t) ? "★ " : ""}${esc(a.navn)} <span class="mono dempet">${esc(a.t)}</span></div>
+      <div class="info">${esc(a.sektor)} · 12 mnd ${pst(a.nokkel.mom12_1, 0)}${ik ? ` · ${ik}` : ""}</div>
+      <div class="scorebar"><i style="width:${a[filter.horisont].score}%"></i></div>
+    </div>
+    <div class="kurs tall">${tall(a.kurs)}<small class="${fargeKlasse(a.endringDag)}">${pst(a.endringDag, 2)}</small></div>
+    <div class="merker">${merke(a.kort.signal, a.kort.score, "Kort")}${merke(a.lang.signal, a.lang.score, "Lang")}</div>
+  </button>`;
+}
+
+function visListe() {
+  const sok = filter.sok.trim().toLowerCase();
+  const h = filter.horisont;
+  const rader = data.aksjer
+    .filter(
+      (a) =>
+        (filter.signal === "alle" || a[h].signal === filter.signal) &&
+        (!filter.sektor || a.sektor === filter.sektor) &&
+        (!sok || a.t.toLowerCase().includes(sok) || a.navn.toLowerCase().includes(sok)),
+    )
+    .sort((x, y) => y[h].score - x[h].score);
+  $("#liste").innerHTML = rader.length ? rader.map(radHtml).join("") : `<p class="tom">Ingen aksjer passer filteret.</p>`;
+}
+
+function velgChip(gruppe, knapp) {
+  document.querySelectorAll(`${gruppe} button`).forEach((x) => x.classList.toggle("aktiv", x === knapp));
+}
+
+$("#horisont").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  filter.horisont = b.dataset.h;
+  velgChip("#horisont", b);
+  visOppsummering();
+  visListe();
+});
+$("#signalfilter").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  filter.signal = b.dataset.s;
+  velgChip("#signalfilter", b);
+  visListe();
+});
+$("#sektor").addEventListener("change", (e) => { filter.sektor = e.target.value; visListe(); });
+$("#sok").addEventListener("input", (e) => { filter.sok = e.target.value; visListe(); });
+
+document.addEventListener("click", (e) => {
+  const rad = e.target.closest("[data-t]");
+  if (rad && !e.target.closest("[data-slett]")) visDetalj(rad.dataset.t);
+});
+
+// ---------- Faner ----------
+
+document.querySelector(".faner").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-fane]");
+  if (!b) return;
+  document.querySelectorAll(".faner button").forEach((x) => x.classList.toggle("aktiv", x === b));
+  document.querySelectorAll(".fane").forEach((f) => (f.hidden = f.id !== `fane-${b.dataset.fane}`));
+});
+
+// ---------- Graf ----------
+
+function linjegraf(serier, datoer, { hoyde = 220, prosent = false, logaritmisk = false } = {}) {
+  const B = 700, H = hoyde, ml = 8, mr = 56, mt = 10, mb = 22;
+  const tf = (v) => (logaritmisk ? Math.log(v) : v);
+  const alle = serier.flatMap((s) => s.verdier).filter((v) => v != null && (!logaritmisk || v > 0)).map(tf);
+  let min = Math.min(...alle), max = Math.max(...alle);
+  const pad = (max - min) * 0.06 || 1;
+  min -= pad; max += pad;
+  const x = (i) => ml + (i / (datoer.length - 1)) * (B - ml - mr);
+  const y = (v) => mt + (1 - (tf(v) - min) / (max - min)) * (H - mt - mb);
+  const linjer = serier
+    .map((s) => {
+      let d = "", ny = true;
+      s.verdier.forEach((v, i) => {
+        if (v == null) { ny = true; return; }
+        d += `${ny ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
+        ny = false;
+      });
+      return `<path d="${d}" fill="none" stroke="${s.farge}" stroke-width="${s.bredde || 1.6}" stroke-linejoin="round"${s.stiplet ? ' stroke-dasharray="4 3"' : ""}/>`;
+    })
+    .join("");
+  let rutenett = "";
+  for (let k = 0; k <= 4; k++) {
+    const tv = min + ((max - min) * k) / 4;
+    const v = logaritmisk ? Math.exp(tv) : tv;
+    const yy = mt + (1 - k / 4) * (H - mt - mb);
+    const etikett = prosent ? `${tall((v - 1) * 100, 0)} %` : tall(v, v > 100 ? 0 : 1);
+    rutenett += `<line class="rutenett" x1="${ml}" x2="${B - mr}" y1="${yy}" y2="${yy}"/><text x="${B - mr + 6}" y="${yy + 4}">${etikett}</text>`;
+  }
+  const etiketter = [0, Math.floor(datoer.length / 2), datoer.length - 1]
+    .map((i, k) => `<text x="${x(i)}" y="${H - 5}" text-anchor="${["start", "middle", "end"][k]}">${esc(datoer[i])}</text>`)
+    .join("");
+  return `<svg class="graf" viewBox="0 0 ${B} ${H}" role="img">${rutenett}${linjer}${etiketter}</svg>`;
+}
+
+const cssFarge = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+// ---------- Detaljvisning ----------
+
+function driverHtml(drivere) {
+  const maks = Math.max(...drivere.map((d) => Math.abs(d.bidrag)), 1);
+  return drivere
+    .filter((d) => Math.abs(d.bidrag) >= 0.5)
+    .slice(0, 7)
+    .map(
+      (d) => `<div class="driver">
+        <span>${esc(d.navn)} <small class="dempet">${esc(d.verdi)}</small></span>
+        <div class="tobar"><i class="${d.bidrag >= 0 ? "pos" : "neg"}" style="width:${(Math.abs(d.bidrag) / maks) * 50}%"></i></div>
+      </div>`,
+    )
+    .join("");
+}
+
+function modellboks(a, k) {
+  const m = a[k];
+  const mod = data.modeller[k];
+  return `<div class="modellboks">
+    <div class="modelltopp"><div><b>${esc(mod.navn)}</b><br><small class="dempet">${esc(mod.horisont)}</small></div>${merke(m.signal, m.score)}</div>
+    <p class="hjelp" style="margin:6px 0">Kurs og nyheter ${tall(m.testetScore, 0)}${m.analytikerScore != null ? ` · analytikere og nøkkeltall ${tall(m.analytikerScore, 0)}` : ""}</p>
+    ${driverHtml(m.drivere)}
+  </div>`;
+}
+
+function nyhetsliste(nyheter) {
+  if (!nyheter?.length) return `<p class="tom">Ingen børsmeldinger funnet.</p>`;
+  return `<ul class="nyheter">${nyheter
+    .map(
+      (n) => `<li><span class="dato mono">${esc(n.dato.slice(5).split("-").reverse().join("."))}</span>
+        <span class="type ${TYPEFARGE[n.type] || ""}">${esc(TYPENAVN[n.type] || n.type)}</span>
+        <a href="${NEWSWEB(n.id)}" target="_blank" rel="noopener">${esc(n.tittel)}</a></li>`,
+    )
+    .join("")}</ul>`;
+}
+
+function analytikerHtml(an, kurs) {
+  if (!an || (!an.antall && an.revisjon90 == null)) return `<p class="tom">Ingen analytikerdekning funnet.</p>`;
+  const anb = an.anbefaling;
+  const fordeling = anb ? `${anb.kjop} kjøp · ${anb.hold} hold · ${anb.selg} selg` : "–";
+  const n = (l, v) => `<div><span>${l}</span><b>${v}</b></div>`;
+  return `<div class="nokkel">
+    ${n("Anbefalinger", fordeling)}
+    ${n("Kursmål (snitt)", an.kursmal ? `${tall(an.kursmal, 0)} (${pst(an.oppside, 0)})` : "–")}
+    ${n("Estimatendring 90 d", pst(an.revisjon90))}
+    ${n("Estimatendring 30 d", pst(an.revisjon30))}
+    ${n("Siste resultat mot estimat", pst(an.sisteOverraskelse, 0))}
+    ${n("Neste rapport", an.nesteRapport ? esc(an.nesteRapport.split("-").reverse().join(".")) : "–")}
+  </div>`;
+}
+
+function visDetalj(ticker) {
+  const a = finn(ticker);
+  if (!a) return;
+  const graf = linjegraf(
+    [
+      { verdier: a.graf.sma200, farge: cssFarge("--sma200"), bredde: 1.4 },
+      { verdier: a.graf.sma50, farge: cssFarge("--sma50"), bredde: 1.4 },
+      { verdier: a.graf.kurs, farge: cssFarge("--kurs"), bredde: 1.8 },
+    ],
+    a.graf.datoer,
+  );
+  const n = (label, verdi) => `<div><span>${label}</span><b>${verdi}</b></div>`;
+  const liste = (l) => (l.length ? `<ul>${l.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="tom">Ingen</p>`);
+  const k = a.nokkel;
+
+  $("#detaljInnhold").innerHTML = `
+    <div class="detalj-topp">
+      <div>
+        <h2>${esc(a.navn)} <span class="mono dempet" style="font-weight:400">${esc(a.t)}</span></h2>
+        <div class="tall" style="font-size:20px">${tall(a.kurs)} ${esc(a.valuta)} <span class="${fargeKlasse(a.endringDag)}" style="font-size:14px">${pst(a.endringDag, 2)}</span></div>
+        <small class="dempet">${esc(a.sektor)}</small>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        ${merke(a.samlet.signal, a.samlet.score, "Samlet")}
+        <button class="lukk" aria-label="Lukk">×</button>
+      </div>
+    </div>
+    ${graf}
+    <div class="forklaring"><span><i style="background:var(--kurs)"></i>Kurs</span><span><i style="background:var(--sma50)"></i>50-dagers snitt</span><span><i style="background:var(--sma200)"></i>200-dagers snitt</span></div>
+    <div class="grunner">
+      <div><h3 class="opp">Taler for</h3>${liste(a.begrunnelse.pluss)}</div>
+      <div><h3 class="ned">Taler mot</h3>${liste(a.begrunnelse.minus)}</div>
+    </div>
+    <h3>Hva driver scoren</h3>
+    <p class="hjelp">Grønt trekker opp, rødt trekker ned. Tallet etter navnet er aksjens verdi.</p>
+    <div class="modeller">${modellboks(a, "kort")}${modellboks(a, "lang")}</div>
+    <h3>Siste børsmeldinger</h3>
+    ${nyhetsliste(a.nyheter)}
+    <h3>Analytikere</h3>
+    ${analytikerHtml(a.analytikere, a.kurs)}
+    <h3>Nøkkeltall</h3>
+    <div class="nokkel">
+      ${n("1 mnd", pst(k.mom1))}${n("3 mnd", pst(k.mom3))}${n("6 mnd", pst(k.mom6))}${n("12 mnd (uten siste mnd)", pst(k.mom12_1))}
+      ${n("Mot OSEBX 6 mnd", pst(k.relStyrke6m))}${n("Sektoren 6 mnd", pst(k.sektorMom))}${n("Fra 52-ukers topp", pst(k.fraTopp))}${n("RSI (14 d)", tall(k.rsi14, 0))}
+      ${n("Svingninger (år)", pst(k.vol60, 0, false))}${n("Følsomhet olje", tall(k.betaOlje, 2))}${n("Følsomhet USD", tall(k.betaUsd, 2))}${n("Omsetning/dag", `${tall(k.omsetningMNOK, 1)} MNOK`)}
+      ${n("P/E", tall(a.fund.pe, 1))}${n("P/B", tall(a.fund.pb, 2))}${n("Direkteavkastning", pst(a.fund.utbytte, 1, false))}${n("Egenkapitalavk.", pst(a.fund.roe, 0, false))}
+      ${n("Markedsverdi", a.fund.markedsverdiMrd == null ? "–" : `${tall(a.fund.markedsverdiMrd, 1)} mrd`)}${n("Innsidekjøp / salg 90 d", `${k.innsideKjop90} / ${k.innsideSalg90}`)}
+    </div>
+    <div class="detalj-knapper">
+      <button class="knapp ${eier(a.t) ? "sekundar" : ""}" id="eierKnapp">${eier(a.t) ? "Fjern fra porteføljen" : "★ Jeg eier denne"}</button>
+      <a class="knapp sekundar lenkeknapp" href="https://newsweb.oslobors.no/search?issuer=${encodeURIComponent(a.t)}" target="_blank" rel="noopener">Alle børsmeldinger ↗</a>
+      <a class="knapp sekundar lenkeknapp" href="https://finance.yahoo.com/quote/${encodeURIComponent(a.t)}.OL" target="_blank" rel="noopener">Yahoo Finance ↗</a>
+    </div>`;
+
+  const dlg = $("#detalj");
+  dlg.querySelector(".lukk").onclick = () => dlg.close();
+  $("#eierKnapp").onclick = () => {
+    if (eier(a.t)) portefolje = portefolje.filter((p) => p.t !== a.t);
+    else portefolje.push({ t: a.t });
+    lagrePortefolje(portefolje);
+    visPortefolje();
+    visListe();
+    visDetalj(a.t);
+  };
+  if (!dlg.open) dlg.showModal();
+  dlg.querySelector(".detalj-innhold").scrollTop = 0;
+}
+
+$("#detalj").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.close(); // klikk utenfor lukker
+});
+
+// ---------- Marked og nyheter ----------
+
+function visMarked() {
+  const m = data.marked, ix = data.indeks;
+  const kort = (navn, verdi, rader, tekst) => `<div class="teller"><div class="l">${navn}</div><div class="n tall" style="font-size:20px">${verdi}</div>
+    <div class="l">${rader}</div>${tekst ? `<div class="l" style="margin-top:4px">${tekst}</div>` : ""}</div>`;
+  const oljeTekst = m.olje.mom3 > 0.1 ? "Stigende oljepris gir medvind for olje- og oljeserviceaksjer." : m.olje.mom3 < -0.1 ? "Fallende oljepris gir motvind for oljeaksjer." : "";
+  const usdTekst = m.usd.mom3 > 0.03 ? "Sterkere dollar hjelper eksportører og shipping." : m.usd.mom3 < -0.03 ? "Svakere dollar gir motvind for eksportører." : "";
+  const maksSektor = Math.max(...m.sektorer.map((s) => Math.abs(s.mom6)), 0.01);
+  $("#marked").innerHTML = `
+    <div class="oppsummering">
+      ${kort("Oslo Børs (OSEBX)", tall(ix.verdi, 0), `1 mnd ${pst(ix.mom1)} · 12 mnd ${pst(ix.mom12)}`, ix.overSma200 ? "Markedet er i stigende trend." : "Markedet er i fallende trend. Vær ekstra forsiktig.")}
+      ${kort("Brent-olje", `${tall(m.olje.verdi, 1)} $`, `3 mnd ${pst(m.olje.mom3)} · 12 mnd ${pst(m.olje.mom12)}`, oljeTekst)}
+      ${kort("USD/NOK", tall(m.usd.verdi, 2), `3 mnd ${pst(m.usd.mom3)} · 12 mnd ${pst(m.usd.mom12)}`, usdTekst)}
+    </div>
+    <div class="kort">
+      <h2>Sektortrender</h2>
+      <p class="hjelp">Snittlig kursutvikling siste 6 måneder. Sektortrend er en av faktorene som har virket best på Oslo Børs: sektorer som har gått bra, fortsetter ofte en stund.</p>
+      ${m.sektorer
+        .map(
+          (s) => `<div class="sektorrad">
+            <span>${esc(s.sektor)} <small class="dempet">(${s.antall})</small></span>
+            <div class="tobar"><i class="${s.mom6 >= 0 ? "pos" : "neg"}" style="width:${(Math.abs(s.mom6) / maksSektor) * 50}%"></i></div>
+            <span class="tall ${fargeKlasse(s.mom6)}">${pst(s.mom6, 0)}</span>
+            <small class="dempet">${s.kjop} kjøp · ${s.selg} selg</small>
+          </div>`,
+        )
+        .join("")}
+    </div>
+    <div class="kort">
+      <h2>Viktige hendelser siste 14 dager</h2>
+      <p class="hjelp">Innsidehandel, kontrakter, emisjoner, varsler, oppkjøp og rapporter fra Oslo Børs Newsweb. Trykk på et selskap for å se analysen.</p>
+      ${
+        m.hendelser.length
+          ? `<ul class="nyheter">${m.hendelser
+              .map(
+                (h) => `<li><span class="dato mono">${esc(h.dato.slice(5).split("-").reverse().join("."))}</span>
+                <span class="type ${TYPEFARGE[h.type] || ""}">${esc(TYPENAVN[h.type] || h.type)}</span>
+                <span><b class="lenke" data-t="${esc(h.t)}">${esc(h.navn)}</b>: <a href="${NEWSWEB(h.id)}" target="_blank" rel="noopener">${esc(h.tittel)}</a></span></li>`,
+              )
+              .join("")}</ul>`
+          : `<p class="tom">Ingen hendelser.</p>`
+      }
+    </div>`;
+}
+
+// ---------- Portefølje ----------
+
+function handlingFor(a, p) {
+  const k = a.kort.signal, l = a.lang.signal;
+  const gevinst = p.kurs ? a.kurs / p.kurs - 1 : null;
+  if (k === "SELG" && l === "SELG") return { tekst: "Selg: svak både på kort og lang sikt", klasse: "ned" };
+  if (l === "SELG") return { tekst: "Vurder å selge: svak langsiktig trend", klasse: "ned" };
+  if (k === "SELG") return { tekst: "Behold, men følg med: svak på kort sikt", klasse: "" };
+  if (k === "KJØP" && l === "KJØP") return { tekst: gevinst != null && gevinst > 0.5 ? "Behold, vurder å ta ut litt gevinst" : "Behold, eller kjøp mer", klasse: "opp" };
+  return { tekst: "Behold", klasse: "" };
+}
+
+function visPortefolje() {
+  if (!data) return;
+  let verdi = 0, kost = 0, verdiMedKost = 0;
+  const rader = portefolje.map((p) => {
+    const a = finn(p.t);
+    if (!a) {
+      return `<div class="beholdning-rad"><div><b>${esc(p.t)}</b><div class="handling">Finnes ikke i analysen</div></div><div></div><button class="slett" data-slett="${esc(p.t)}" aria-label="Fjern">×</button></div>`;
+    }
+    const h = handlingFor(a, p);
+    let tallTekst = "";
+    if (p.antall) {
+      const v = p.antall * a.kurs;
+      verdi += v;
+      tallTekst = `${tall(v, 0)} kr`;
+      if (p.kurs) {
+        kost += p.antall * p.kurs;
+        verdiMedKost += v;
+        const g = a.kurs / p.kurs - 1;
+        tallTekst += `<br><small class="${fargeKlasse(g)}">${pst(g)}</small>`;
+      }
+    }
+    const nr = a.analytikere?.nesteRapport;
+    const rapport = nr && nr >= data.handelsdag && nr <= leggTilDager(data.handelsdag, 21) ? ` · 📅 rapport ${esc(nr.split("-").reverse().join("."))}` : "";
+    return `<div class="beholdning-rad">
+      <div class="rad-klikk" data-t="${esc(a.t)}">
+        <b>${esc(a.navn)}</b> <span class="mono dempet">${esc(a.t)}</span>
+        <div class="handling ${h.klasse}">${esc(h.tekst)}${rapport}</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <div class="tall" style="text-align:right;font-size:13px">${tallTekst}</div>
+        <div class="merker">${merke(a.kort.signal, a.kort.score, "Kort")}${merke(a.lang.signal, a.lang.score, "Lang")}</div>
+      </div>
+      <button class="slett" data-slett="${esc(a.t)}" aria-label="Fjern">×</button>
+    </div>`;
+  });
+  let html = rader.length ? rader.join("") : `<p class="tom">Du har ikke lagt til noen aksjer ennå.</p>`;
+  if (verdi > 0) {
+    html += `<div class="sum">Verdi <b class="tall">${tall(verdi, 0)} kr</b>${kost > 0 ? ` · avkastning <span class="${fargeKlasse(verdiMedKost / kost - 1)}">${pst(verdiMedKost / kost - 1)}</span> (for aksjer med kjøpskurs)` : ""}</div>`;
+  }
+  const sektorer = portefolje.map((p) => finn(p.t)?.sektor).filter(Boolean);
+  const telling = sektorer.reduce((m, s) => ((m[s] = (m[s] || 0) + 1), m), {});
+  const tung = Object.entries(telling).find(([, n]) => sektorer.length >= 3 && n / sektorer.length > 0.5);
+  if (tung) html += `<p class="hjelp" style="margin-top:10px">⚠️ Over halvparten av aksjene dine er i <b>${esc(tung[0])}</b>. Vurder å spre risikoen.</p>`;
+  $("#beholdning").innerHTML = html;
+
+  // Høyst to forslag per sektor, så porteføljen ikke blir ensidig
+  const perSektor = { ...telling };
+  const forslag = data.aksjer
+    .filter((a) => a.samlet.signal === "KJØP" && !eier(a.t))
+    .filter((a) => (perSektor[a.sektor] = (perSektor[a.sektor] || 0) + 1) <= 2)
+    .slice(0, 8);
+  $("#forslag").innerHTML = forslag.length ? forslag.map(radHtml).join("") : `<p class="tom">Ingen kjøpssignaler akkurat nå.</p>`;
+}
+
+$("#beholdning").addEventListener("click", (e) => {
+  const s = e.target.closest("[data-slett]");
+  if (!s) return;
+  portefolje = portefolje.filter((p) => p.t !== s.dataset.slett);
+  lagrePortefolje(portefolje);
+  visPortefolje();
+  visListe();
+});
+
+$("#leggTil").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const t = $("#ltTicker").value.trim().toUpperCase().replace(/\.OL$/, "");
+  if (!t) return;
+  const antall = parseFloat($("#ltAntall").value) || null;
+  const kurs = parseFloat($("#ltKurs").value) || null;
+  portefolje = portefolje.filter((p) => p.t !== t);
+  portefolje.push({ t, antall, kurs });
+  lagrePortefolje(portefolje);
+  e.target.reset();
+  visPortefolje();
+  visListe();
+});
+
+// ---------- Historisk test ----------
+
+function visTest() {
+  const h = data.historiskTest[testValg];
+  const mod = data.modeller[testValg];
+  const graf = linjegraf(
+    [
+      { verdier: h.kurve.map((p) => p.likevekt), farge: "#94a3b8", bredde: 1.3, stiplet: true },
+      { verdier: h.kurve.map((p) => p.osebx), farge: cssFarge("--sma200") },
+      { verdier: h.kurve.map((p) => p.modell), farge: cssFarge("--aksent"), bredde: 2.2 },
+    ],
+    h.kurve.map((p) => p.dato.slice(0, 7)),
+    { hoyde: 260, prosent: true, logaritmisk: true },
+  );
+  const rad = (navn, s) => `<tr><td>${navn}</td><td class="tall">${pst(s.aarlig)}</td><td class="tall">${pst(s.totalt, 0)}</td><td class="tall ned">${pst(s.maksFall)}</td></tr>`;
+  const g = h.signalgrupper;
+  const grad = (s) => `<tr><td>${merke(s, null).replace(/<small>.*<\/small>/, "")}</td><td class="tall">${pst(g[s].snitt, testValg === "kort" ? 2 : 1)}</td><td class="tall">${pst(g[s].andelPositiv, 0, false)}</td><td class="tall">${g[s].antall}</td></tr>`;
+  const k = data.kontrolltest;
+  const fs = data.faktorstudie;
+  const iModell = (f) => {
+    const v = [data.modeller.kort.vekter[f], data.modeller.lang.vekter[f]];
+    return v.some(Boolean) ? v.map((x) => (x ? `${x > 0 ? "+" : "−"}${Math.round(Math.abs(x) * 100)}` : "0")).join(" / ") : "–";
+  };
+  const faktorrader = Object.entries(fs.faktorer)
+    .sort((a, b) => Math.abs(b[1].t1) - Math.abs(a[1].t1))
+    .map(([f, v]) => {
+      const st = (t) => (Math.abs(t) >= 2 ? "sterk" : Math.abs(t) >= 1.3 ? "middels" : "svak");
+      return `<tr><td>${esc(data.faktorinfo[f]?.navn || f)}<br><small class="dempet">${esc(data.faktorinfo[f]?.gruppe || "")}</small></td>
+        <td class="tall ${fargeKlasse(v.ic1)} ${st(v.t1)}">${tall(v.ic1 * 100, 1)}<small> (t ${tall(v.t1, 1)})</small></td>
+        <td class="tall ${fargeKlasse(v.ic12)} ${st(v.t12)}">${tall(v.ic12 * 100, 1)}<small> (t ${tall(v.t12, 1)})</small></td>
+        <td class="tall">${iModell(f)}</td></tr>`;
+    })
+    .join("");
+  const HENDELSE = {
+    innsideKjop: "Innsidekjøp (minst 1 siste 90 d)", innsideKjop3: "Mange innsidekjøp (3+ siste 90 d)", innsideSalg: "Innsidesalg (2+ siste 90 d)",
+    tilbakekjop: "Tilbakekjøp av aksjer", kontrakter: "Mange kontraktsmeldinger (3+ siste 60 d)", emisjon: "Emisjon siste 60 d",
+    varsel: "Negativt varsel siste 60 d", oppkjop: "Oppkjøpsbud / strategisk gjennomgang", nyhetPositiv: "Kursen steg kraftig på nyheter",
+    nyhetNegativ: "Kursen falt kraftig på nyheter", rapportPositiv: "Kursen steg 5 %+ på kvartalsrapport", rapportNegativ: "Kursen falt 5 %+ på kvartalsrapport",
+  };
+  const hendelsesrader = Object.entries(fs.hendelser)
+    .map(([n, v]) => `<tr><td>${esc(HENDELSE[n] || n)}</td><td class="tall">${v.antall}</td>
+      <td class="tall ${fargeKlasse(v.mer1)}">${pst(v.mer1, 2)}<small> (t ${tall(v.t1, 1)})</small></td>
+      <td class="tall ${fargeKlasse(v.mer3)}">${pst(v.mer3, 2)}<small> (t ${tall(v.t3, 1)})</small></td></tr>`)
+    .join("");
+
+  $("#test").innerHTML = `
+    <h2>Har modellene virket før?</h2>
+    <div class="chips" id="testvalg" style="display:inline-flex;margin:6px 0 10px">
+      <button data-m="kort" class="${testValg === "kort" ? "aktiv" : ""}">Kort sikt</button>
+      <button data-m="lang" class="${testValg === "lang" ? "aktiv" : ""}">Lang sikt</button>
+    </div>
+    <p class="hjelp">${esc(mod.navn)} (${esc(mod.horisont)}) er kjørt måned for måned fra ${esc(h.fra)} til ${esc(h.til)} (${tall(h.aar, 1)} år).
+      Hver måned brukes bare kurser og børsmeldinger som var kjent på det tidspunktet.
+      ${testValg === "kort"
+        ? `Hver måned kjøpes de ${data.grenser.antall} aksjene med høyest score.`
+        : `Hver måned kjøpes en pakke med de ${data.grenser.antall} beste aksjene, som holdes i 12 måneder. Porteføljen består av de 12 siste pakkene.`}
+      Kurtasje og spread er trukket fra (${tall(data.grenser.kostnad * 100, 1)} % per bytte). Grafen har logaritmisk skala.</p>
+    ${graf}
+    <div class="forklaring"><span><i style="background:var(--aksent)"></i>Modellportefølje</span><span><i style="background:var(--sma200)"></i>OSEBX</span><span><i style="background:#94a3b8"></i>Alle aksjene likt vektet</span></div>
+    <div class="tabell-wrap"><table>
+      <tr><th></th><th>Per år</th><th>Totalt</th><th>Største fall</th></tr>
+      ${rad("<b>Modellportefølje</b>", h.modell)}${rad("OSEBX", h.osebx)}${rad("Alle likt vektet", h.likevekt)}
+    </table></div>
+    <p class="hjelp">Modellporteføljen slo OSEBX i ${pst(h.andelMndSlaarIndeks, 0, false)} av månedene.</p>
+
+    <h3>Hvordan gikk aksjene etter hvert signal?</h3>
+    <p class="hjelp">Snitt for alle aksjer med signalet (${esc(h.gruppeMaal)}).</p>
+    <div class="tabell-wrap"><table>
+      <tr><th>Signal</th><th>Snitt</th><th>Andel positive</th><th>Antall</th></tr>
+      ${grad("KJØP")}${grad("HOLD")}${grad("SELG")}
+    </table></div>
+
+    <h3>Kontroll uten etterpåklokskap</h3>
+    <p class="hjelp">Vektene i modellene over er valgt etter å ha sett dataene. For å vise hvor mye det kan pynte på tallene, er det også testet en modell
+      som lærer vektene for alle ${Object.keys(data.faktorinfo).length} faktorene selv, måned for måned, bare fra det den visste da (fra ${esc(k.fra)}):</p>
+    <div class="tabell-wrap"><table>
+      <tr><th></th><th>Per år</th><th>Største fall</th><th>Slo OSEBX</th></tr>
+      <tr><td>Selvlærende modell</td><td class="tall">${pst(k.laerende.aarlig)}</td><td class="tall ned">${pst(k.laerende.maksFall)}</td><td class="tall">${pst(k.laerende.slaarIndeks, 0, false)}</td></tr>
+      <tr><td>Kortsiktsmodellen</td><td class="tall">${pst(k.kort.aarlig)}</td><td class="tall ned">${pst(k.kort.maksFall)}</td><td class="tall">${pst(k.kort.slaarIndeks, 0, false)}</td></tr>
+      <tr><td>OSEBX</td><td class="tall">${pst(k.osebx.aarlig)}</td><td class="tall ned">${pst(k.osebx.maksFall)}</td><td></td></tr>
+      <tr><td>Alle likt vektet</td><td class="tall">${pst(k.likevekt.aarlig)}</td><td class="tall ned">${pst(k.likevekt.maksFall)}</td><td></td></tr>
+    </table></div>
+    <p class="hjelp">Realistisk forventning ligger et sted mellom disse. Den selvlærende modellen sliter fordi det er få aksjer og mye støy. Den legger for mye vekt på tilfeldigheter.
+      Derfor bygger modellene på faktorer som er godt dokumentert i forskning, og som har virket i begge halvdeler av perioden.</p>
+
+    <h3>Hva har virket på Oslo Børs?</h3>
+    <p class="hjelp">Informasjonskoeffisient (IC, i prosent): hvor godt faktoren rangerte aksjene mot avkastningen etterpå. Over 0 betyr at høy verdi ga høyere avkastning.
+      t-verdien viser hvor sikkert det er: over 2 er ganske sikkert, under 1 kan være tilfeldig. Siste kolonne viser vekten i kort- og langsiktsmodellen.</p>
+    <div class="tabell-wrap"><table class="faktortabell">
+      <tr><th>Faktor</th><th>1 mnd</th><th>12 mnd</th><th>Vekt K / L</th></tr>
+      ${faktorrader}
+    </table></div>
+
+    <h3>Nyheter og innsidehandel</h3>
+    <p class="hjelp">Hvor mye bedre (eller dårligere) aksjer med hendelsen gjorde det enn snittet av alle aksjene, 1 og 3 måneder etterpå.</p>
+    <div class="tabell-wrap"><table>
+      <tr><th>Hendelse</th><th>Antall</th><th>1 mnd</th><th>3 mnd</th></tr>
+      ${hendelsesrader}
+    </table></div>
+
+    <h3>Les dette før du stoler på tallene</h3>
+    <ul class="hjelp" style="padding-left:18px">
+      <li><b>Overlevelsesskjevhet:</b> Testen bruker dagens aksjeliste. Selskaper som gikk konkurs eller ble kjøpt opp underveis er ikke med. Det gjør alle tallene, også «alle likt vektet», bedre enn virkeligheten.</li>
+      <li><b>Konsentrasjon:</b> Modellene ender ofte med mange aksjer fra samme sektor (nå shipping). De kan falle kraftig når trenden snur.</li>
+      <li><b>Ikke testet:</b> Analytikerdata og nøkkeltall (P/E, P/B, egenkapitalavkastning) finnes bare for i dag, og utgjør ${Math.round(data.modeller.kort.andelAnalytikere * 100)} % (kort) og ${Math.round(data.modeller.lang.andelAnalytikere * 100)} % (lang) av scoren.</li>
+      <li>Utbytte er regnet med. Skatt er ikke regnet med.</li>
+    </ul>`;
+  $("#testvalg").onclick = (e) => {
+    const b = e.target.closest("button[data-m]");
+    if (!b) return;
+    testValg = b.dataset.m;
+    visTest();
+  };
+}
+
+// ---------- Metode ----------
+
+function visMetode() {
+  const vekter = (o) =>
+    Object.entries(o)
+      .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+      .map(([f, w]) => `<li><b>${esc(data.faktorinfo[f]?.navn || f)}</b> (${w > 0 ? "+" : "−"}${Math.round(Math.abs(w) * 100)}): ${esc(data.faktorinfo[f]?.forklaring || "")}</li>`)
+      .join("");
+  const ANALYTIKER = {
+    revisjon: "Endring i analytikernes inntjeningsestimat siste 90 dager", anbefalingEndring: "Om analytikerne er blitt mer positive siste 3 mnd",
+    overraskelse: "Siste resultat mot analytikernes estimat", kursmalOppside: "Analytikernes kursmål mot dagens kurs",
+    inntjening: "Inntjening i forhold til pris (1/P/E)", bok: "Bokført verdi i forhold til pris (1/P/B)", roe: "Egenkapitalavkastning (lønnsomhet)",
+  };
+  const av = (o) => Object.entries(o).map(([f, w]) => `${esc(ANALYTIKER[f] || f)} (${Math.round(w * 100)} %)`).join(", ");
+  const m = data.modeller, g = data.grenser;
+  $("#metode").innerHTML = `
+    <h2>Slik regnes signalene ut</h2>
+    <p>Hver handelsdag etter børsslutt henter Børsradar data for ${data.aksjer.length} av de mest omsatte aksjene på Oslo Børs:</p>
+    <ul>
+      <li><b>Kurser</b> for ti år, justert for utbytte, samt oljepris og dollarkurs (Yahoo Finance).</li>
+      <li><b>Alle børsmeldinger</b> siden 2016 fra Oslo Børs Newsweb: kvartalsrapporter, kontrakter, emisjoner, varsler og oppkjøp.</li>
+      <li><b>Innsidehandel:</b> Hver melding om meldepliktig handel leses og tolkes som kjøp eller salg i markedet. Aksjeprogrammer, opsjoner og tildelinger telles ikke med.</li>
+      <li><b>Analytikere og nøkkeltall:</b> anbefalinger, kursmål, endringer i estimater, neste rapportdato, P/E, P/B og lønnsomhet.</li>
+    </ul>
+    <p>Hver aksje får en score fra 0 til 100 for to horisonter. Scoren viser plasseringen mot de andre aksjene: 100 er best.</p>
+
+    <h3>${esc(m.kort.navn)} (${esc(m.kort.horisont)})</h3>
+    <ul>${vekter(m.kort.vekter)}</ul>
+    <p class="hjelp">I tillegg teller analytikerdata ${Math.round(m.kort.andelAnalytikere * 100)} %: ${av(m.kort.analytikerVekter)}.</p>
+
+    <h3>${esc(m.lang.navn)} (${esc(m.lang.horisont)})</h3>
+    <ul>${vekter(m.lang.vekter)}</ul>
+    <p class="hjelp">I tillegg teller analytikerdata og nøkkeltall ${Math.round(m.lang.andelAnalytikere * 100)} %: ${av(m.lang.analytikerVekter)}.</p>
+
+    <h3>Hvorfor disse faktorene?</h3>
+    <p>Rundt 30 faktorer er testet på Oslo Børs fra 2017 (se «Historisk test»). Bare de som både er dokumentert i forskning og har virket i begge halvdeler av perioden er med:</p>
+    <ul>
+      <li><b>Momentum og trend</b> er de klart sterkeste. Aksjer som har gått godt siste 6–12 måneder, fortsetter ofte en stund.</li>
+      <li><b>Sektortrend:</b> Når en hel sektor går godt (for eksempel shipping når fraktratene stiger), fortsetter det ofte. Dette fanger opp trender i oljepris, fraktrater, laksepris og renter.</li>
+      <li><b>Lotteriaksjer</b> med store enkeltdagshopp har gjort det dårligere enn snittet.</li>
+      <li><b>Nyheter:</b> Mange kontraktsmeldinger har gitt meravkastning. Aksjer som har falt kraftig på nyheter, har i snitt fortsatt litt nedover.</li>
+      <li><b>Innsidekjøp</b> har gitt litt meravkastning på lengre sikt, men effekten er usikker.</li>
+      <li>Ikke med fordi de <i>ikke</i> har virket her: lave kurssvingninger, RSI/overkjøpt, sesongmønster, tilbakekjøp, oljefølsomhet og et markedsfilter som går i kontanter når børsen faller.</li>
+    </ul>
+
+    <h3>Signal</h3>
+    <ul>
+      <li><b class="opp">Kjøp:</b> score minst ${g.kjop}, og kursen er over 200-dagers snitt.</li>
+      <li><b class="ned">Selg:</b> score høyst ${g.selg}, <i>eller</i> tydelig fallende trend: kursen er under 200-dagers snitt, 50-dagers snitt er under 200-dagers, og 12-måneders utviklingen er negativ.</li>
+      <li><b>Hold:</b> alt annet. <b>Samlet</b> bygger på snittet av kort og lang score.</li>
+    </ul>
+
+    <h3>Hvordan bruke det</h3>
+    <ul>
+      <li>Sjekk omtrent én gang i måneden. Signalene er ikke laget for dagshandel.</li>
+      <li>Fordel pengene på 8–10 aksjer fra ulike sektorer. Én aksje kan gjøre det dårlig selv med et sterkt signal.</li>
+      <li>Kort sikt bytter aksjer oftere. Lang sikt gir færre handler og lavere kostnader.</li>
+      <li>Les børsmeldingene selv, spesielt rett før og etter kvartalsrapporter.</li>
+    </ul>
+    ${data.mangler?.length ? `<p class="hjelp">Ikke med i dagens analyse: ${esc(data.mangler.join(", "))}.</p>` : ""}`;
+}
+
+start();
