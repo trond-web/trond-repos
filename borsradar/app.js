@@ -72,6 +72,7 @@ async function start() {
   visOppsummering();
   visListe();
   visMarked();
+  visUke();
   visPortefolje();
   visTest();
   visMetode();
@@ -292,6 +293,10 @@ function visDetalj(ticker) {
     <h3>Hva driver scoren</h3>
     <p class="hjelp">Grønt trekker opp, rødt trekker ned. Tallet etter navnet er aksjens verdi.</p>
     <div class="modeller">${modellboks(a, "kort")}${modellboks(a, "lang")}</div>
+    ${a.uke ? `<div class="modellboks" style="margin-top:10px">
+      <div class="modelltopp"><div><b>Ukesvalg</b><br><small class="dempet">1 uke · plass ${a.uke.plass} av ${data.aksjer.filter((x) => x.uke).length}</small></div>
+      ${a.uke.valgt ? `<span class="merke KJØP">Valgt<small>${tall(a.uke.score, 0)}</small></span>` : `<span class="merke HOLD">Ikke valgt<small>${tall(a.uke.score, 0)}</small></span>`}</div>
+      ${driverHtml(a.uke.drivere)}</div>` : ""}
     <h3>Siste børsmeldinger</h3>
     ${nyhetsliste(a.nyheter)}
     <h3>Analytikere</h3>
@@ -327,6 +332,79 @@ function visDetalj(ticker) {
 $("#detalj").addEventListener("click", (e) => {
   if (e.target === e.currentTarget) e.currentTarget.close(); // klikk utenfor lukker
 });
+
+// ---------- Ukesvalg ----------
+
+function visUke() {
+  const u = data.ukesvalg;
+  if (!u) return;
+  const t = u.test, m = u.modell;
+  const kort = (a) => {
+    const ny = u.nye.includes(a.t);
+    const nr = a.analytikere?.nesteRapport;
+    const rapport = nr && nr >= data.handelsdag && nr <= leggTilDager(data.handelsdag, 8);
+    return `<div class="beholdning KJØP">
+      <div class="beholdning-topp">
+        <div class="rad-klikk" data-t="${esc(a.t)}">
+          <span class="handlingsmerke ${ny ? "KJØP" : "HOLD"}">${ny ? "Ny denne uka" : "Beholdes"}</span>
+          <b>${esc(a.navn)}</b> <span class="mono dempet">${esc(a.t)}</span>
+          <div class="hjelp" style="margin:2px 0 0">${esc(a.sektor)} · ${tall(a.kurs)} ${esc(a.valuta)} <span class="${fargeKlasse(a.endringDag)}">${pst(a.endringDag, 1)}</span> · 12 mnd ${pst(a.nokkel.mom12_1, 0)}</div>
+        </div>
+        <span class="merke KJØP">Plass ${a.uke.plass}<small>${tall(a.uke.score, 0)}</small></span>
+      </div>
+      ${driverHtml(a.uke.drivere)}
+      ${a.begrunnelse.pluss.length ? `<ul class="grunnliste">${a.begrunnelse.pluss.slice(0, 3).map((x) => `<li class="opp">${esc(x)}</li>`).join("")}${a.begrunnelse.minus.slice(0, 2).map((x) => `<li class="ned">${esc(x)}</li>`).join("")}</ul>` : ""}
+      ${rapport ? `<p class="notat">📅 Kvartalsrapport ${esc(nr.split("-").reverse().join("."))}: kursen kan svinge mye denne uka.</p>` : ""}
+    </div>`;
+  };
+  const valgt = u.valgt.map(finn).filter(Boolean);
+  const ut = u.ut.map(finn).filter(Boolean);
+  const neste = data.aksjer.filter((a) => a.uke && !a.uke.valgt).sort((a, b) => a.uke.plass - b.uke.plass).slice(0, 6);
+  const graf = linjegraf(
+    [
+      { verdier: t.kurve.map((p) => p.osebx), farge: cssFarge("--sma200") },
+      { verdier: t.kurve.map((p) => p.modell), farge: cssFarge("--aksent"), bredde: 2.2 },
+    ],
+    t.kurve.map((p) => p.dato.slice(0, 7)),
+    { hoyde: 240, prosent: true, logaritmisk: true },
+  );
+  $("#uke").innerHTML = `
+    <div class="kort">
+      <h2>Ukens ${m.antall} aksjer</h2>
+      <p class="hjelp">Aksjene med best utsikter neste uke, basert på kurser og børsmeldinger t.o.m. ${esc(data.handelsdag.split("-").reverse().join("."))}.
+        Høyst ${m.maksPerSektor} fra samme sektor. Fordel pengene likt, og sjekk listen hver fredag etter børsslutt.
+        En aksje beholdes så lenge den er blant de ${m.antall + m.buffer} beste, så du trenger sjelden å bytte.</p>
+      ${valgt.map(kort).join("")}
+      ${ut.length ? `<p class="notat"><b>Selg denne uka:</b> ${ut.map((a) => `<span class="lenke" data-t="${esc(a.t)}">${esc(a.navn)}</span>`).join(", ")} (falt ut av topp ${m.antall + m.buffer}).</p>` : `<p class="hjelp" style="margin-top:8px">Ingen aksjer ut denne uka.</p>`}
+      <h3>Neste i køen</h3>
+      <p class="hjelp">Aksjer i en sektor som allerede har ${m.maksPerSektor} plasser, hoppes over.</p>
+      <div class="liste">${neste.map(radHtml).join("")}</div>
+    </div>
+    <div class="kort">
+      <h2>Hvor godt har det virket?</h2>
+      <p class="hjelp">Testet fredag til fredag fra ${esc(t.fra)} til ${esc(t.til)} (${t.uker} uker). Bare data som var kjent hver fredag er brukt, og ${tall(m.kostnad * 100, 1)} % i kurtasje og spread er trukket fra for hvert bytte.</p>
+      ${graf}
+      <div class="forklaring"><span><i style="background:var(--aksent)"></i>Ukesvalg</span><span><i style="background:var(--sma200)"></i>OSEBX</span></div>
+      <div class="nokkel">
+        <div><span>Avkastning per år</span><b>${pst(t.modell.aarlig)}</b></div>
+        <div><span>OSEBX per år</span><b>${pst(t.osebx.aarlig)}</b></div>
+        <div><span>Største fall</span><b class="ned">${pst(t.modell.maksFall)}</b></div>
+        <div><span>Uker porteføljen slo OSEBX</span><b>${pst(t.andelUkerSlaarIndeks, 0, false)}</b></div>
+        <div><span>Enkeltaksjer som slo OSEBX</span><b>${pst(t.andelValgtSlaarIndeks, 0, false)}</b></div>
+        <div><span>Snitt per aksje mot OSEBX</span><b>${pst(t.snittValgtMotIndeks, 2)} /uke</b></div>
+        <div><span>Bytter per uke</span><b>${tall(t.bytterPerUke, 1)}</b></div>
+      </div>
+      <h3>Hva modellen ser på</h3>
+      <ul class="hjelp" style="padding-left:18px">${Object.entries(m.vekter).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([f, w]) => `<li><b>${esc(u.faktorer[f].navn)}</b> (${w > 0 ? "+" : "−"}${Math.round(Math.abs(w) * 100)}): ${esc(u.faktorer[f].forklaring)}</li>`).join("")}</ul>
+      <h3>Les dette først</h3>
+      <ul class="hjelp" style="padding-left:18px">
+        <li><b>Én uke er nesten bare støy.</b> Hver enkelt aksje slo børsen bare ${pst(t.andelValgtSlaarIndeks, 0, false)} av ukene, så det er nesten myntkast. Fordelen kommer av at vinnerne i snitt stiger mer enn taperne faller. Den viser seg først over mange uker.</li>
+        <li><b>Rene korttidsstrategier virket ikke på Oslo Børs:</b> «kjøp etter fall», RSI-oversolgt og å handle på nyheter hver uke tapte penger etter kurtasje. Ukesvalg er derfor i praksis en trendstrategi som sjekkes ukentlig, med litt ekstra vekt på innsidekjøp og kontraktsnyheter.</li>
+        <li><b>Høy risiko:</b> Bare ${m.antall} aksjer, og porteføljen har falt opptil ${pst(-t.modell.maksFall, 0, false)}. Bruk bare penger du tåler å tape.</li>
+        <li>Testen bruker dagens aksjeliste og vekter valgt i ettertid, så tallene er trolig for gode. Skatt er ikke regnet med. Bruk gjerne aksjesparekonto, så du ikke skattes for hvert bytte.</li>
+      </ul>
+    </div>`;
+}
 
 // ---------- Marked og nyheter ----------
 

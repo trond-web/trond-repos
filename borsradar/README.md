@@ -5,6 +5,16 @@ Bygger på kurser, trender, børsmeldinger, innsidehandel og analytikerdata.
 
 > Dette er et regnestykke, ikke investeringsrådgivning. Historisk avkastning er ingen garanti for fremtidig avkastning.
 
+## Ukesvalg (1 uke)
+
+`analyse/uke.mjs` velger 5 aksjer for neste uke (høyst 2 per sektor). Faktorstudie fredag til fredag 2017–2026:
+12-mnd momentum, sektortrend, innsidekjøp siste 10 dager og kontraktsmeldinger siste uke har virket. Uvanlig høyt volum siste uke har virket negativt.
+«Kjøp etter fall», RSI-oversolgt og 1-ukes reversering har ikke virket.
+Forskjellene er ca. 0,3 % per uke, omtrent det et bytte koster. En aksje beholdes derfor så lenge den er blant de 15 beste.
+
+Test med 0,3 % kostnad per bytte: ca. 38 % per år mot 12 % for OSEBX, største fall −31 %. Porteføljen slo OSEBX i 57 % av ukene, mens hver enkelt aksje gjorde det bare i 51 % av ukene.
+Tallene er trolig for gode (overlevelsesskjevhet, vekter valgt i ettertid).
+
 ## Min portefølje
 
 Under «Min portefølje» limer du inn beholdningen fra nettbanken: én linje per aksje med ticker, markedsverdi og urealisert gevinst/tap,
