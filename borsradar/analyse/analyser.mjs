@@ -14,6 +14,7 @@ import { hentKurser, harBrudd, skjotBrudd, hentNokkeltall, hentAnalytikere, hent
 import { raaFaktorer, forberedHendelser, tverrsnittFaktorer, finnIndeks, forskyvDato, rangering, snitt, FAKTORER } from "./faktorer.mjs";
 import { icHistorikk, beregnVekter, scor, MODELLER, MIN_MND, signalFor, KJOP_GRENSE, SELG_GRENSE } from "./modell.mjs";
 import { tolkInnsidemelding } from "./innside.mjs";
+import { ukesvalg, UKEMODELL, UKEFAKTORER } from "./uke.mjs";
 
 const HER = dirname(fileURLToPath(import.meta.url));
 const DATA = join(HER, "..", "data");
@@ -315,6 +316,21 @@ function meldingstype(m, innsideType) {
   return "melding";
 }
 
+function ukeInfo(t, uke) {
+  const u = uke.perAksje[t];
+  if (!u) return null;
+  const vis = (f, v) =>
+    v == null ? "–" : ["innside10", "kontrakt7"].includes(f) ? `${v}` : f === "volSjokk" ? `${v.toFixed(1).replace(".", ",")}×` : pst(v, 0);
+  return {
+    score: u.score,
+    plass: u.plass,
+    valgt: uke.valgt.includes(t),
+    drivere: Object.entries(u.bidrag)
+      .map(([f, b]) => ({ f, navn: UKEFAKTORER[f].navn, bidrag: rund(b * 100, 1), verdi: vis(f, u.f[f]) }))
+      .sort((x, y) => Math.abs(y.bidrag) - Math.abs(x.bidrag)),
+  };
+}
+
 // ---------- Hovedløp ----------
 
 async function main() {
@@ -338,6 +354,8 @@ async function main() {
     likevekt: laerende.likevekt,
   };
   const studie = faktorstudie(panel);
+  console.log("Tester ukesvalg …");
+  const uke = ukesvalg(aksjer, ctx.indeks);
 
   // ----- Dagens tverrsnitt -----
   const sisteDag = ctx.indeks.datoer.at(-1);
@@ -399,6 +417,7 @@ async function main() {
       samlet: { score: rund(samletRang[i], 1), signal: signalFor(samletRang[i], f) },
       kort: modellScore.kort[i],
       lang: modellScore.lang[i],
+      uke: ukeInfo(a.t, uke),
       nokkel: {
         mom1: rund(f.mom1, 4), mom3: rund(f.mom3, 4), mom6: rund(f.mom6, 4), mom12_1: rund(f.mom12_1, 4),
         relStyrke6m: rund(f.mom6 - (ctx.indeks.just[ixI] / ctx.indeks.just[ixI - 126] - 1), 4),
@@ -495,6 +514,14 @@ async function main() {
     mangler: feilet,
     aksjer: resultat,
     historiskTest: tester,
+    ukesvalg: {
+      modell: { navn: UKEMODELL.navn, horisont: UKEMODELL.horisont, antall: UKEMODELL.antall, buffer: UKEMODELL.buffer, maksPerSektor: UKEMODELL.maksPerSektor, kostnad: UKEMODELL.kostnad, vekter: UKEMODELL.vekter },
+      faktorer: UKEFAKTORER,
+      valgt: uke.valgt,
+      nye: uke.valgt.filter((t) => !uke.forrige.includes(t)),
+      ut: uke.forrige.filter((t) => !uke.valgt.includes(t)),
+      test: { ...uke.test, kurve: uke.test.kurve.filter((_, k, l) => k % 2 === 0 || k === l.length - 1) },
+    },
     kontrolltest: kontroll,
     faktorstudie: studie,
   };
@@ -504,6 +531,8 @@ async function main() {
   console.log(`Ferdig: ${resultat.length} aksjer → ${UTFIL}`);
   for (const k of ["samlet", "kort", "lang"]) console.log(`  ${k}: KJØP ${tell(k, "KJØP")}, HOLD ${tell(k, "HOLD")}, SELG ${tell(k, "SELG")}`);
   console.log(`  Kontroll fra ${kontroll.fra}: selvlærende ${pst(kontroll.laerende.aarlig)}/år, kortmodell ${pst(kontroll.kort.aarlig)}/år, OSEBX ${pst(kontroll.osebx.aarlig)}/år, alle likt ${pst(kontroll.likevekt.aarlig)}/år`);
+  const ut2 = uke.test;
+  console.log(`  Ukesvalg ${ut2.fra}–${ut2.til}: ${pst(ut2.modell.aarlig)}/år (OSEBX ${pst(ut2.osebx.aarlig)}), maks fall ${pst(ut2.modell.maksFall)}, slår OSEBX ${Math.round(ut2.andelUkerSlaarIndeks * 100)} % av ukene. Nå: ${uke.valgt.join(", ")}`);
   for (const [k, t] of Object.entries(tester)) {
     console.log(`  Test ${k} ${t.fra}–${t.til}: ${pst(t.modell.aarlig)}/år (OSEBX ${pst(t.osebx.aarlig)}), maks fall ${pst(t.modell.maksFall)}`);
   }
