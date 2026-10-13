@@ -6,7 +6,7 @@ import { hkGrenser, beregnetHogstklasse, hogstklasseAvvik, framskrivTilAar, star
 import { STANDARD_INNSTILLINGER, normaliserBestand, framskriv, foreslaaForEiendom, treslagFraSR16, foreslaaTiltak, laavesteHogstalder, sammendrag, tolkHogstklasse, tolkTreslag } from '../js/model.js';
 import { lesGeojson, lesCsv, lesSosi, slaaSammen } from '../js/importers.js';
 import { lagDemo } from '../js/demo.js';
-import { finnKommune } from '../js/generator.js';
+import { finnKommune, ryddKanterOgHull } from '../js/generator.js';
 import { klassifiser, parseHtmlAlle, pakkUtKmz, parseKml } from '../js/kommuneanalyse.js';
 import zlib from 'node:zlib';
 import { pefcAlder, avstand, kontroller, kravStatus, klareringStatus, tomPefc, KRAVPUNKTER, ROVFUGLER, arealDaa } from '../js/pefc.js';
@@ -976,6 +976,43 @@ test('KSL: sjekklister, svar og avvik, kontroller med frister, dokumentasjon fra
   const o = KSL.oppsummering(S, 2026, '2026-10-09');
   assert.ok(o.ferdig && !o.revisjonForfalt); assert.equal(o.nesteRevisjon, '2027-10-09');
   assert.equal(KSL.kontrollStatus(ksl, '2026-10-09').find((k) => k.type === 'egenrevisjon').status, 'ok');
+});
+
+test('Kantsoner og hull: smale SR16-rester slås sammen eller blir kantsone, hull fylles og store hull blir bestand', async () => {
+  let T = null; let pc = null;
+  try { T = await import('@turf/turf'); pc = (await import('polygon-clipping')).default; } catch { return; /* valgfritt i testmiljøet */ }
+  const g = (x, y) => utmTilGeo(300000 + x, 6700000 + y, 33);
+  const rekt = (x0, x1, y0, y1) => ({ type: 'Polygon', coordinates: [[g(x0, y0), g(x1, y0), g(x1, y1), g(x0, y1), g(x0, y0)]] });
+  const feat = (geometry) => ({ type: 'Feature', geometry, properties: {} });
+  const fraPC = (mp) => (mp && mp.length ? feat(mp.length === 1 ? { type: 'Polygon', coordinates: mp[0] } : { type: 'MultiPolygon', coordinates: mp }) : null);
+  const forening = (l) => fraPC(pc.union(...l.map((f) => f.geometry.coordinates)));
+  const snitt = (a, b) => fraPC(pc.intersection(a.geometry.coordinates, b.geometry.coordinates));
+  const trygg = (fn) => { try { return fn(); } catch { return null; } };
+  // Eiendom 300 × 200 m. Plan: 1-1 (0–200 × 0–200). SR16-stripe S1 8 m bred langs 1-1 (200–208).
+  // Stripe S2 (10 m bred) mot åkeren 208–290 × 0–90. Hullet 208–300 × 90–200 (ca. 10 daa, 110 m bredt) blir nytt bestand.
+  const bestand = [
+    { nr: '1-1', areal: 40, geometri: rekt(0, 200, 0, 200), merknad: '' },
+    { nr: 'S1', areal: 1.6, geometri: rekt(200, 208, 0, 200), merknad: '' },
+    { nr: 'S2', areal: 0.9, geometri: rekt(290, 300, 0, 90), merknad: '' },
+  ];
+  const markslag = [{ nr: 'U1', kategori: 'jordbruk', areal: 7.4, geometri: rekt(208, 290, 0, 90) }];
+  const eiendom = feat(rekt(0, 300, 0, 200));
+  let nye = 0;
+  const r = ryddKanterOgHull({ bestand, markslag, eiendom, T, PC: pc, feat, arealM2: (x) => (x ? T.area(x) : 0), forening, snitt, trygg, nyId: (p) => `${p}1`, nyttBestand: (geo) => { nye++; return { nr: 'S', areal: T.area(geo) / 1000, geometri: geo, merknad: 'ny' }; } });
+  assert.equal(r.kantsoner, 2, 'S1 slås sammen med 1-1, S2 med det nye bestandet');
+  const b11 = bestand.find((b) => b.nr === '1-1');
+  assert.ok(Math.abs(b11.areal - 41.6) < 0.5, `${b11.areal}`); assert.match(b11.merknad, /Kantsone/);
+  assert.equal(nye, 1, 'stort hull blir nytt bestand');
+  assert.equal(r.tilMarkslag, 0, 'S2 grenser mot det nye bestandet og slås sammen med det');
+  assert.ok(!bestand.some((b) => b.nr === 'S2' && b.areal < 1), 'ingen smal stripe igjen som eget bestand');
+  // Alt er dekket: bestand + markslag = eiendom
+  const sum = bestand.reduce((s, b) => s + b.areal, 0) + markslag.reduce((s, m) => s + m.areal, 0);
+  assert.ok(Math.abs(sum - 60) < 0.8, `dekning ${sum}`);
+  // Isolert stripe mot åker uten nabobestand blir markslagsfigur «Kantsone»
+  const b2 = [{ nr: 'S1', areal: 0.9, geometri: rekt(290, 300, 0, 90), merknad: '' }];
+  const m2 = [{ nr: 'U1', kategori: 'jordbruk', areal: 26.1, geometri: rekt(0, 290, 0, 90) }];
+  const r2 = ryddKanterOgHull({ bestand: b2, markslag: m2, eiendom: feat(rekt(0, 300, 0, 90)), T, PC: pc, feat, arealM2: (x) => (x ? T.area(x) : 0), forening, snitt, trygg, nyId: (p) => `${p}2` });
+  assert.equal(r2.tilMarkslag, 1); assert.equal(b2.length, 0); assert.equal(m2.at(-1).kategori, 'kantsone'); assert.equal(m2.at(-1).nr, 'U2');
 });
 
 await Promise.all(venter);

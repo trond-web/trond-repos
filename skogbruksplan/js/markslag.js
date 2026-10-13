@@ -18,6 +18,7 @@ export const MARKSLAG = {
   samferdsel: { navn: 'Samferdsel (vei, jernbane)', kort: 'Samferdsel', farge: '#a9a39c', symbol: 'samferdsel' },
   vann: { navn: 'Ferskvann og hav', kort: 'Vann', farge: '#8fc3ea', symbol: 'vann' },
   sno: { navn: 'Snø og isbre', kort: 'Snø/is', farge: '#eef4f8', symbol: 'sno' },
+  kantsone: { navn: 'Kantsone (smal skogstripe mot åker, vei eller grense)', kort: 'Kantsone', farge: '#b9d7a8', symbol: 'kantsone' },
   ukjent: { navn: 'Ikke kartlagt', kort: 'Ikke kartlagt', farge: '#e5e5e5', symbol: 'ukjent' },
 };
 // Kategorier der AR5 kan overstyres av nyere data som viser produktiv skog (se generator.js).
@@ -161,6 +162,7 @@ export function monsterDefs(prefiks = 'ms') {
     ${p('samferdsel', 8, 8, '<path d="M0 4h8" stroke="#77716a" stroke-width="1.4"/>', '#d6d2cd')}
     ${p('vann', 16, 8, '<path d="M0 5q2-3 4 0t4 0t4 0t4 0" fill="none" stroke="#2a78d6" stroke-width="1"/>', '#bfdcf5')}
     ${p('sno', 10, 10, '<path d="M5 2v6M2 5h6" stroke="#9fb6c6" stroke-width="0.8"/>', '#f8fbfd')}
+    ${p('kantsone', 12, 12, '<path d="M6 2l-2.6 4.4h5.2z" fill="#4f8a3c"/><path d="M6 6.4v2" stroke="#4f8a3c" stroke-width="0.8"/>', '#dcebd0')}
     ${p('ukjent', 8, 8, '<circle cx="4" cy="4" r="0.7" fill="#999"/>', '#efefef')}
   </defs>`;
 }
