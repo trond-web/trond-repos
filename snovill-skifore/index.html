@@ -117,6 +117,21 @@
     </details>
   </section>
 
+  <section class="card wax-guide" id="waxGuide">
+    <div class="watch-head">
+      <div>
+        <h2>🧴 Smøreguide</h2>
+        <p class="hint">Feste og gli fra Swix, Rode, Start, Vauhti, Holmenkol, Toko, Rex og Skigo – valgt ut fra temperatur, snøtype og luftfuktighet i varselet.</p>
+      </div>
+    </div>
+    <div class="watch-controls">
+      <label class="field-inline"><span>Sted</span><select id="waxLoc"></select></label>
+      <label class="field-inline"><span>Dag</span><select id="waxDay"></select></label>
+    </div>
+    <div id="waxGuideBody" aria-live="polite"><p class="muted">Henter vær …</p></div>
+    <p class="hint wax-disclaimer">Temperaturområdene er leverandørenes egne, eller slik forhandlere oppgir dem. Sjekk alltid boksen – og test i sporet. «≈ nærmeste» betyr at ingen av leverandørens produkter vi har data for dekker akkurat disse forholdene.</p>
+  </section>
+
   <section id="resorts" class="resorts" aria-live="polite">
     <div class="loading card"><span class="spinner"></span> Henter snødrømmer fra Yr, Storm, Netatmo og Sporet …</div>
   </section>
@@ -158,6 +173,7 @@
 </div>
 
 <script src="sporet-watch.js"></script>
+<script src="smoring.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

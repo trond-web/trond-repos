@@ -455,6 +455,31 @@ h2 { font-size: 1.35rem; font-weight: 700; }
   border-bottom: 1px solid var(--grid);
 }
 
+/* ---------- smøreguide ---------- */
+
+.wax-conditions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.cond { background: var(--surface-2); border-radius: 999px; padding: 6px 12px; font-size: 0.88rem; }
+.cond small { color: var(--muted); }
+.wax-none-msg { font-size: 1rem; }
+.wax-snovill {
+  border: 2px solid var(--accent);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background: linear-gradient(120deg, var(--surface) 0%, var(--surface-2) 100%);
+}
+.wax-snovill-head { font-family: "Baloo 2", "Inter", sans-serif; font-size: 1.15rem; margin-bottom: 6px; }
+.wax-snovill-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.wax-snovill .wax { font-size: 0.78rem; margin-right: 4px; }
+.wax-examples { margin: 8px 0 0; font-size: 0.85rem; color: var(--text-2); }
+.wax-tips { margin: 8px 0 0; padding-left: 18px; font-size: 0.9rem; color: var(--text-2); }
+.wax-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.wax-table th, .wax-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+.wax-table thead th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+.wax-table td small a { color: var(--muted); }
+.wax-near { font-size: 0.72rem; font-weight: 600; color: var(--hot); white-space: nowrap; }
+.wax-disclaimer { margin: 10px 0 0; }
+
 /* ---------- webkamera ---------- */
 
 .webcams { margin-top: 14px; }

@@ -37,6 +37,27 @@ Alle fire tillater kall fra nettleseren (CORS). Svarene mellomlagres i 20 minutt
 6. **Startdybde**: «Auto» anslår ut fra Sporet (kjørt siste 2 døgn → 35 cm, siste uke →
    25 cm, siste 3 uker → 10 cm, ellers 0). Kan overstyres per sted i innstillingene.
 
+## 🧴 Smøreguide
+
+Seksjonen «Smøreguide» foreslår feste og gli fra **Swix, Rode, Start, Vauhti, Holmenkol, Toko, Rex og Skigo**
+for valgt sted og dag, pluss **Snøvills egen anbefaling** (fargefamilie, glidertype og tips). Logikk og
+produktdata ligger i [`smoring.js`](smoring.js).
+
+1. **Forhold per dag** fra Yr/Storm: temperatur og luftfuktighet på dagtid (kl. 9–16), min/maks,
+   nysnø i dag og i går, regn, og om det har vært plussgrader de siste tre dagene.
+2. **Snøtype:** ingen snø · nysnø · våt nysnø · finkornet eldre snø · omdannet/grovkornet (etter mildvær) ·
+   isete (etter mildvær og kald natt) · våt gammel snø.
+3. **Fuktighet:** tørr (RF < 70 % eller ≤ −10 °C), normal, fuktig/våt (RF ≥ 90 % nær null, våt snø).
+   Fuktig luft flytter valget én grad varmere, tørr luft én grad kaldere.
+4. **Festetype:** hardvoks på nysnø og finkornet snø, klister på omdannet, isete og våt snø.
+5. **Valg per leverandør:** produktet med snøtype som passer og temperaturområde som dekker forholdene
+   (glider vektes også på fuktighet, f.eks. Swix PF/PC Dry/Mid/Wet). Treffer ingenting, vises nærmeste
+   produkt merket «≈ nærmeste».
+
+Temperaturområdene er hentet fra leverandørenes egne sider (Swix, Vauhti) eller fra forhandlere der
+produsenten ikke publiserer tabell. Kilden står ved hvert produkt. Sortimentet er ikke komplett, og
+fluorholdige produkter er utelatt.
+
 ## 🔔 Løypevarsler – når maskinen starter
 
 Varslene dekker **alle 850+ skiområder i Sporet.no**, ikke bare de faste stedene:
