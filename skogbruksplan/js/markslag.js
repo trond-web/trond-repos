@@ -1,7 +1,7 @@
 // Markslag fra NIBIOs arealressurskart AR5 (WMS «ar5», lag «Arealtype»): skiller produktiv skog fra uproduktiv
 // skog (impediment), myr, åpen fastmark, jordbruk, bebyggelse, samferdsel og vann. Uproduktiv mark får ikke volum.
 // Ingen DOM; geometrioperasjoner sendes inn.
-import { geoTilUtm, utmTilGeo, arealM2 } from './proj.js';
+import { geoTilUtm, utmTilGeo, arealM2, punktIGeometri } from './proj.js';
 import { placemarkGeometri } from './kml.js';
 
 const NIBIO = 'https://wms.nibio.no/cgi-bin/ar5';
@@ -67,6 +67,39 @@ const bbox = (g) => { let a = Infinity; let b = Infinity; let c = -Infinity; let
 const overlapp = (p, q) => p[0] <= q[2] && q[0] <= p[2] && p[1] <= q[3] && q[1] <= p[3];
 
 // Henter AR5-flater (geometri + attributter) som overlapper grensen. klipp(geometri) → klippet geometri eller null.
+// UTM33-boks → [minLon, minLat, maxLon, maxLat].
+function utmBoksTilGeo(b) {
+  const h = [[b[0], b[1]], [b[0], b[3]], [b[2], b[1]], [b[2], b[3]]].map(([x, y]) => utmTilGeo(x, y, 33));
+  return [Math.min(...h.map((p) => p[0])), Math.min(...h.map((p) => p[1])), Math.max(...h.map((p) => p[0])), Math.max(...h.map((p) => p[1]))];
+}
+
+// Geometri fra MapServers SVG-utskrift (cairo): stier med M/L/Z i piksler for boksen b (UTM33) med bredde w og høyde h.
+// Ringer inne i en annen ring blir hull (fill-rule evenodd). Gir Polygon/MultiPolygon i lon/lat, eller null.
+export function svgTilGeometri(svg, b, w, h) {
+  const ringer = [];
+  for (const [, d] of svg.matchAll(/<path[^>]*\sd="([^"]+)"/g)) {
+    for (const del of d.split(/(?=M)/)) {
+      const tall = (del.match(/-?\d+(?:\.\d+)?(?:e-?\d+)?/gi) || []).map(Number);
+      const r = [];
+      for (let i = 0; i + 1 < tall.length; i += 2) {
+        const x = b[0] + (tall[i] / w) * (b[2] - b[0]); const y = b[3] - (tall[i + 1] / h) * (b[3] - b[1]);
+        const p = utmTilGeo(x, y, 33).map((v) => Math.round(v * 1e7) / 1e7);
+        if (!r.length || p[0] !== r.at(-1)[0] || p[1] !== r.at(-1)[1]) r.push(p);
+      }
+      if (r.length >= 3) { if (r[0][0] !== r.at(-1)[0] || r[0][1] !== r.at(-1)[1]) r.push([...r[0]]); if (r.length >= 4) ringer.push(r); }
+    }
+  }
+  if (!ringer.length) return null;
+  const areal = (r) => Math.abs(arealM2({ type: 'Polygon', coordinates: [r] }));
+  ringer.sort((x, y) => areal(y) - areal(x));
+  const poly = [];
+  for (const r of ringer) {
+    const ytre = poly.find((p) => punktIGeometri(r[0], { type: 'Polygon', coordinates: [p[0]] }));
+    if (ytre) ytre.push(r); else poly.push([r]);
+  }
+  return poly.length === 1 ? { type: 'Polygon', coordinates: poly[0] } : { type: 'MultiPolygon', coordinates: poly };
+}
+
 export async function hentAr5(grense, { hent = fetch, klipp, logg = () => {}, boksTreff = null } = {}) {
   const [x0, y0, x1, y1] = bbox(grense);
   const h = [[x0, y0], [x0, y1], [x1, y0], [x1, y1]].map(([x, y]) => geoTilUtm(x, y, 33));
@@ -74,12 +107,13 @@ export async function hentAr5(grense, { hent = fetch, klipp, logg = () => {}, bo
   const treff = boksTreff || ((bb) => overlapp(bb, [x0, y0, x1, y1]));
   const ruter = [];
   const kmlUrl = (b) => `${NIBIO}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=Arealtype&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&WIDTH=2000&HEIGHT=${Math.max(200, Math.round((2000 * (b[3] - b[1])) / (b[2] - b[0])))}&FORMAT=kml`;
-  let feil = 0;
+  let feil = 0; const vanskelige = [];
   const hentRute = async (b, dybde = 0) => {
     let fl;
     // Tjenesten svarer 500 på ruter med svært mange flater – da deles ruten, som ved 1000-taket.
     let delOpp = false;
-    try { fl = parseKml(await hentTekst(hent, kmlUrl(b))); } catch (e) { if (dybde >= 4) { feil++; return []; } delOpp = true; }
+    // Ruter som fortsatt feiler ved ca. 250 m, tas med i redningen etterpå (flate for flate med filter).
+    try { fl = parseKml(await hentTekst(hent, kmlUrl(b))); } catch (e) { if (dybde >= 4) { vanskelige.push(b); return []; } delOpp = true; }
     if (!delOpp && (fl.length < KML_MAKS || dybde >= 5)) { ruter.push(b); return fl; }
     const mx = (b[0] + b[2]) / 2; const my = (b[1] + b[3]) / 2;
     const sett = new Map();
@@ -100,11 +134,46 @@ export async function hentAr5(grense, { hent = fetch, klipp, logg = () => {}, bo
   }
   const sett = new Map();
   for (const d of start) for (const f of await hentRute(d)) if (!sett.has(f.id)) sett.set(f.id, f);
+  // Redning: enkelte AR5-flater har geometri som NIBIOs KML-utskrift ikke klarer (svar 500), og da feiler hver rute
+  // som inneholder dem – også alle de andre flatene i ruten. For slike ruter hentes flatene enkeltvis med FILTER på
+  // id: først KML (gir hele flaten), og for de «ødelagte» flatene geometrien fra SVG-utskriften.
+  const ekstraAttr = new Map();
+  if (vanskelige.length) {
+    logg(`AR5: ${vanskelige.length} rute(r) feilet – henter flatene der enkeltvis …`);
+    const kandidater = new Map();
+    for (const b of vanskelige) {
+      let tekst;
+      try { tekst = await hentTekst(hent, `${NIBIO}?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&STYLES=&REQUEST=GetFeatureInfo&LAYERS=Arealtype&QUERY_LAYERS=Arealtype&WIDTH=100&HEIGHT=100&X=50&Y=50&RADIUS=bbox&FEATURE_COUNT=1000&INFO_FORMAT=application/vnd.ogc.gml`); } catch { feil++; continue; }
+      for (const del of tekst.split('<Arealtype_feature>').slice(1)) {
+        const f = del.split('</Arealtype_feature>')[0]; const a = {};
+        for (const [, k, v] of f.matchAll(/<(\w+)>([^<]*)<\/\1>/g)) a[k] = v;
+        const bb = (f.match(/<gml:coordinates>([^<]*)</) || [])[1]?.split(/[\s,]+/).map(Number);
+        if (!a.sl_sdeid || !bb || bb.length < 4) continue;
+        ekstraAttr.set(String(a.sl_sdeid), a);
+        if (!sett.has(String(a.sl_sdeid))) kandidater.set(String(a.sl_sdeid), bb);
+      }
+    }
+    let svg = 0;
+    for (const [id, bb] of kandidater) {
+      const gb = utmBoksTilGeo(bb); if (!treff(gb)) continue;
+      const b = [bb[0] - 5, bb[1] - 5, bb[2] + 5, bb[3] + 5];
+      const filter = encodeURIComponent(`<Filter><PropertyIsEqualTo><PropertyName>sl_sdeid</PropertyName><Literal>${id}</Literal></PropertyIsEqualTo></Filter>`);
+      const sk = 4000 / Math.max(b[2] - b[0], b[3] - b[1]); const w = Math.max(1, Math.round((b[2] - b[0]) * sk)); const h = Math.max(1, Math.round((b[3] - b[1]) * sk));
+      const kart = (format) => `${NIBIO}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=Arealtype&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(2)).join(',')}&WIDTH=${w}&HEIGHT=${h}&FORMAT=${format}&FILTER=${filter}`;
+      try { const fl = parseKml(await hentTekst(hent, kart('kml'))).find((f) => f.id === id); if (fl) { sett.set(id, fl); continue; } } catch { /* prøv SVG */ }
+      try {
+        const geometri = svgTilGeometri(await hentTekst(hent, kart('image%2Fsvg%2Bxml')), b, w, h);
+        if (geometri) { sett.set(id, { id, geometri }); svg++; continue; }
+      } catch { /* teller som feil */ }
+      feil++;
+    }
+    if (svg) logg(`AR5: ${svg} flate(r) med ugyldig geometri hos NIBIO er hentet fra SVG-utskriften`);
+  }
   if (feil && !sett.size) throw new Error('NIBIO svarte ikke på forespørslene om markslag');
   if (feil) logg(`${feil} rute(r) i AR5 svarte ikke – markslag kan mangle for deler av eiendommen`);
   const flater = [...sett.values()].filter((f) => treff(bbox(f.geometri)));
   // Attributter samlet per rute.
-  const attr = new Map();
+  const attr = new Map(ekstraAttr);
   for (const b of ruter) {
     const url = `${NIBIO}?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&STYLES=&REQUEST=GetFeatureInfo&LAYERS=Arealtype&QUERY_LAYERS=Arealtype&WIDTH=1000&HEIGHT=1000&X=500&Y=500&RADIUS=bbox&FEATURE_COUNT=100000&INFO_FORMAT=application/vnd.ogc.gml`;
     let tekst = '';

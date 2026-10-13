@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.5.1** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.5.2** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -161,6 +161,10 @@ Når planen lages, hentes markslag fra NIBIOs arealressurskart AR5 (`js/markslag
 - **Oversikt** viser arealfordelingen per markslag. For planer laget tidligere kan markslag hentes og trekkes ut av bestandene derfra.
 - **Rapportene:** hovedtall har arealfordeling og kart med symboler. Bestandslisten har en liste over uproduktive arealer med summer per markslag. Begge finnes også i CSV.
 - **Henting:** AR5-tjenesten tegner bare flater i stor målestokk og svarer 500 på ruter med mange flater. Hentingen bruker derfor ruter på maks 4 km og deler dem videre ved behov.
+- **Flater med ugyldig geometri hos NIBIO:** Enkelte AR5-flater, oftest myrer, kan ikke skrives ut som KML. Da svarer tjenesten 500 for hver rute som inneholder dem, uansett størrelse, og alle de andre flatene i ruten forsvinner også. Dette skjedde blant annet for Flå 22/1. Ruter som fortsatt feiler ved 250 m, reddes slik:
+  1. Egenskapsoppslaget (GetFeatureInfo) gir flatene i ruten med utstrekning.
+  2. Hver flate som mangler, hentes med KML filtrert på `sl_sdeid` (`FILTER`), som gir hele flaten.
+  3. Gir heller ikke det noe, hentes geometrien fra SVG-utskriften med samme filter (`svgTilGeometri`). Oppløsningen er opptil 4000 px over flatens utstrekning.
 
 ## Rapporter (fanen «Rapporter»)
 

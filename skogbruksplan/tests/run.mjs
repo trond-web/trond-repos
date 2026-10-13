@@ -18,7 +18,7 @@ import { lagKontekst } from '../js/ai-kontekst.js';
 import { markdownTilHtml } from '../js/assistent.js';
 import { brannnivaa, retningslinjerFor, risikoPerBestand, forebyggendeTiltak, nySkade, beregnSkade, forsikringsvurdering, oppgaverFor, brannkostnader, skademeldingTekst, naboer, iBrannsesong } from '../js/skade.js';
 import { RAPPORTER, lagRapport, lagRapportCsv, hogstprognose } from '../js/rapporter.js';
-import { klassifiser as klassifiserMarkslag, lagFigurer, arealfordeling } from '../js/markslag.js';
+import { klassifiser as klassifiserMarkslag, lagFigurer, arealfordeling, svgTilGeometri } from '../js/markslag.js';
 import { genererTiltak, anvend as anvendMotor, endringer as motorEndringer, plantetall, maalTetthet, oppdaterBestand } from '../js/tiltaksmotor.js';
 import * as SP from '../js/skifteplan.js';
 import * as DF from '../js/driftsforhold.js';
@@ -1013,6 +1013,19 @@ test('Kantsoner og hull: smale SR16-rester slås sammen eller blir kantsone, hul
   const m2 = [{ nr: 'U1', kategori: 'jordbruk', areal: 26.1, geometri: rekt(0, 290, 0, 90) }];
   const r2 = ryddKanterOgHull({ bestand: b2, markslag: m2, eiendom: feat(rekt(0, 300, 0, 90)), T, PC: pc, feat, arealM2: (x) => (x ? T.area(x) : 0), forening, snitt, trygg, nyId: (p) => `${p}2` });
   assert.equal(r2.tilMarkslag, 1); assert.equal(b2.length, 0); assert.equal(m2.at(-1).kategori, 'kantsone'); assert.equal(m2.at(-1).nr, 'U2');
+});
+
+test('AR5: geometri fra SVG-utskriften (flater med ugyldig geometri i KML)', () => {
+  // Boks 100 × 100 m tegnet i 1000 × 1000 px: ytre ring 10–90 m med hull 40–60 m, og en egen flate 92–98 m.
+  const b = [300000, 6700000, 300100, 6700100];
+  const svg = `<svg><g><path style="fill:red" d="M 100 100 L 900 100 L 900 900 L 100 900 Z M 400 400 L 600 400 L 600 600 L 400 600 Z M 400 400 "/><path d="M 920 920 L 980 920 L 980 980 L 920 980 Z"/></g></svg>`;
+  const g = svgTilGeometri(svg, b, 1000, 1000);
+  assert.equal(g.type, 'MultiPolygon'); assert.equal(g.coordinates.length, 2);
+  assert.equal(g.coordinates[0].length, 2, 'hullet hører til den store flaten');
+  assert.ok(Math.abs(arealM2(g) - (6400 - 400 + 36)) < 60, `${arealM2(g)}`); // kuleflate mot UTM: under 1 %
+  const [x, y] = geoTilUtm(...g.coordinates[0][0][0], 33);
+  assert.ok(Math.abs(x - 300010) < 0.5 && Math.abs(y - 6700090) < 0.5, `${x} ${y}`);
+  assert.equal(svgTilGeometri('<svg></svg>', b, 1000, 1000), null);
 });
 
 await Promise.all(venter);
