@@ -259,11 +259,11 @@ async function fetchJson(url, opts = {}) {
 
 /* --------------------------- data: Yr ----------------------------- *
  * MET Norge Locationforecast – samme data som Yr viser.
- * Returnerer blokker: { start: ISO, hours, precip (mm), temp (°C) }
+ * Returnerer blokker: { start: ISO, hours, precip (mm), temp (°C), rh (%) }
  */
 
 async function fetchYr(loc, force) {
-  return cached(`yr.${loc.id}`, async () => {
+  return cached(`yr2.${loc.id}`, async () => {
     const url = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${loc.lat}&lon=${loc.lon}&altitude=${loc.altitude}`;
     const data = await fetchJson(url);
     const ts = data.properties.timeseries;
@@ -291,7 +291,10 @@ async function fetchYr(loc, force) {
       // Snitt av temperaturen ved start og slutt på blokken
       const endIdx = ts.findIndex((x, j) => j > i && Date.parse(x.time) >= t + hours * 3600000);
       const temp1 = endIdx > -1 ? ts[endIdx].data.instant.details.air_temperature : temp0;
-      blocks.push({ start: ts[i].time, hours, precip, temp: (temp0 + temp1) / 2 });
+      const rh0 = ts[i].data.instant.details.relative_humidity;
+      const rh1 = endIdx > -1 ? ts[endIdx].data.instant.details.relative_humidity : rh0;
+      const rh = rh0 != null && rh1 != null ? (rh0 + rh1) / 2 : rh0 ?? null;
+      blocks.push({ start: ts[i].time, hours, precip, temp: (temp0 + temp1) / 2, rh });
       coveredUntil = t + hours * 3600000;
     }
     return { blocks, now: ts[0]?.data.instant.details.air_temperature ?? null };
@@ -308,16 +311,16 @@ const STORM_QUERY = `query($placeId: String!, $from: Date!, $to: Date!, $geoHash
     current { temperature symbol time }
     days {
       date
-      dayForecast { minTemperature maxTemperature precipitation symbol }
-      weatherOneHourSteps { startTime endTime precipitation temperature symbol }
-      weatherThreeHourSteps { startTime endTime precipitation temperature symbol }
-      weatherSixHourSteps { startTime endTime precipitation temperature symbol }
+      dayForecast { minTemperature maxTemperature precipitation symbol humidity }
+      weatherOneHourSteps { startTime endTime precipitation temperature symbol humidity }
+      weatherThreeHourSteps { startTime endTime precipitation temperature symbol humidity }
+      weatherSixHourSteps { startTime endTime precipitation temperature symbol humidity }
     }
   }
 }`;
 
 async function fetchStorm(loc, force) {
-  return cached(`storm.${loc.id}`, async () => {
+  return cached(`storm2.${loc.id}`, async () => {
     const placeId = btoa("#" + geohash(loc.lat, loc.lon));
     const days = nextDays(16);
     const body = {
@@ -342,7 +345,7 @@ async function fetchStorm(loc, force) {
         for (const s of steps) {
           const hours = (Date.parse(s.endTime) - Date.parse(s.startTime)) / 3600000;
           if (!(hours > 0) || s.temperature == null) continue;
-          blocks.push({ start: s.startTime, hours, precip: s.precipitation ?? 0, temp: s.temperature });
+          blocks.push({ start: s.startTime, hours, precip: s.precipitation ?? 0, temp: s.temperature, rh: s.humidity ?? null });
         }
       } else if (day.dayForecast) {
         const df = day.dayForecast;
@@ -353,6 +356,7 @@ async function fetchStorm(loc, force) {
           temp: (df.minTemperature + df.maxTemperature) / 2,
           tmin: df.minTemperature,
           tmax: df.maxTemperature,
+          rh: df.humidity ?? null,
         });
       }
     }
@@ -674,13 +678,50 @@ const EXCUSES = [
   "Hei! Jeg tar en avspaseringsdag {dag}. Grunn: Snøvill-indeks {pct} på {sted}. Håper du forstår. ❄️",
 ];
 
+/* --------------------------- smøring ------------------------------ */
+
+const osloHourFmt = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", hour12: false });
+
+function blockHour(b) {
+  return Number(osloHourFmt.format(new Date(Date.parse(b.start) + (b.hours * 3600000) / 2))) % 24;
+}
+
+// Forholdene én dag: temperatur og fuktighet på dagtid (kl. 9–16), snø og smelting
+function dayConditions(r, i) {
+  const d = r.days[i];
+  const blocks = r.sourceDays.yr?.[d.key]?.length ? r.sourceDays.yr[d.key] : r.sourceDays.storm?.[d.key] || [];
+  const daytime = blocks.filter((b) => b.hours >= 24 || (blockHour(b) >= 9 && blockHour(b) <= 16));
+  const use = daytime.length ? daytime : blocks;
+  const avg = (arr) => (arr.length ? arr.reduce((a, v) => a + v, 0) / arr.length : null);
+  const temp = avg(use.map((b) => b.temp)) ?? (d.tmin + d.tmax) / 2;
+  const rh = avg(use.map((b) => b.rh).filter((v) => typeof v === "number"));
+  const rain = blocks.reduce((a, b) => a + b.precip * (1 - snowFraction(b.temp)), 0) >= 1;
+  const thawRecent = r.days.slice(Math.max(0, i - 3), i).some((p) => p.tmax > 0.5);
+  return {
+    temp,
+    tmin: d.tmin,
+    tmax: d.tmax,
+    rh,
+    rain,
+    thawRecent,
+    newSnow: d.newSnow,
+    newSnowPrev: i > 0 ? r.days[i - 1].newSnow : 0,
+    depth: d.depth,
+    selfThreshold: state.settings.selfThreshold,
+  };
+}
+
+function attachWax(r) {
+  if (!r?.days) return;
+  r.days.forEach((d, i) => {
+    d.wax = Smoring.recommend(dayConditions(r, i));
+  });
+}
+
 function waxTip(day) {
-  if (day.depth < state.settings.selfThreshold || day.tmax == null) return { name: "Ingen snø", cls: "wax-none", short: "–" };
-  if (day.tmax <= -10) return { name: "Grønn voks", cls: "wax-green", short: "Grønn" };
-  if (day.tmax <= -3) return { name: "Blå voks", cls: "wax-blue", short: "Blå" };
-  if (day.tmax <= 0) return { name: "Fiolett voks", cls: "wax-violet", short: "Fiolett" };
-  if (day.newSnow >= 2 && day.tmax <= 2) return { name: "Rød voks", cls: "wax-red", short: "Rød" };
-  return { name: "Klister (lykke til!)", cls: "wax-klister", short: "Klister" };
+  const s = day.wax?.snovill;
+  if (!s) return { name: "Ingen snø", cls: "wax-none", short: "–" };
+  return { name: s.kick.color, cls: s.kick.cls, short: s.kick.short };
 }
 
 /* --------------------------- rendering ---------------------------- */
@@ -907,6 +948,90 @@ function dayPhrase(day) {
   if (day.key === today) return "i dag";
   if (day.key === tomorrow) return "i morgen";
   return weekdayLongFmt.format(day.date);
+}
+
+/* -------------------------- smøreguide ----------------------------- */
+
+const waxSel = { loc: null, day: null };
+
+function rangeText(p) {
+  const f = (v) => (v > 0 ? `+${v}` : `${v}`).replace("-", "−");
+  return `${f(p.tmin)}…${f(p.tmax)} °C`;
+}
+
+function productCell(pick) {
+  if (!pick) return `<span class="muted">Ingen passende i sortimentet vi har data for</span>`;
+  const p = pick.product;
+  const near = pick.fallback
+    ? ` <span class="wax-near">(${escapeHtml(pick.fallback)})</span>`
+    : pick.inRange
+      ? ""
+      : ` <span class="wax-near" title="Utenfor oppgitt område – nærmeste produkt">≈ nærmeste</span>`;
+  return `<strong>${escapeHtml(p.name)}</strong>${near}<br><small class="muted">${rangeText(p)} · <a href="${escapeHtml(p.src.url)}" target="_blank" rel="noopener">${escapeHtml(p.src.type)}</a></small>`;
+}
+
+function renderWaxGuide() {
+  const box = $("waxGuideBody");
+  if (!box) return;
+  const ready = LOCATIONS.filter((l) => state.results[l.id]?.days);
+  if (!ready.length) return;
+
+  // Standard: beste dag fra Snøvill-indeksen, ellers første sted i dag
+  if (!waxSel.loc || !state.results[waxSel.loc]?.days) {
+    let best = { loc: ready[0].id, day: 0, prob: -1 };
+    for (const l of ready) state.results[l.id].days.forEach((d, i) => d.prob > best.prob && (best = { loc: l.id, day: i, prob: d.prob }));
+    waxSel.loc = best.loc;
+    waxSel.day = best.day;
+  }
+  const locSel = $("waxLoc");
+  const daySel = $("waxDay");
+  locSel.innerHTML = ready.map((l) => `<option value="${l.id}">${escapeHtml(l.name)}</option>`).join("");
+  locSel.value = waxSel.loc;
+  const r = state.results[waxSel.loc];
+  daySel.innerHTML = r.days
+    .map((d, i) => `<option value="${i}">${i === 0 ? "I dag" : i === 1 ? "I morgen" : escapeHtml(cap(weekdayLongFmt.format(d.date)))}</option>`)
+    .join("");
+  daySel.value = String(waxSel.day);
+
+  const day = r.days[waxSel.day];
+  const w = day.wax;
+  const c = w.cond;
+  const chips = `
+    <div class="wax-conditions">
+      <span class="cond">🌡️ <strong>${fmt1(c.temp)} °C</strong> på dagtid <small>(${fmt0(c.tmin)}° / ${fmt0(c.tmax)}°)</small></span>
+      <span class="cond">💧 <strong>${c.rh != null ? fmt0(c.rh) + " %" : "–"}</strong> <small>${escapeHtml(Smoring.HUMIDITY_LABELS[c.humidity] || "")}</small></span>
+      <span class="cond">❄️ <strong>${escapeHtml(Smoring.SNOW_LABELS[c.snow])}</strong></span>
+      <span class="cond">📏 <strong>${fmt0(c.depth)} cm</strong> snø${c.newSnow >= 1 ? ` · ${fmt0(c.newSnow)} cm nysnø` : ""}</span>
+    </div>`;
+
+  if (c.snow === "none") {
+    box.innerHTML = `${chips}<p class="wax-none-msg">🛼 Ingen snø å smøre for denne dagen. Snøvill anbefaler rulleski og tålmodighet.</p>`;
+    return;
+  }
+
+  const s = w.snovill;
+  const snovill = `
+    <div class="wax-snovill">
+      <div class="wax-snovill-head">⛷️ <strong>Snøvill anbefaler</strong></div>
+      <div class="wax-snovill-grid">
+        <div><span class="stat-label">Feste</span><br><span class="wax ${s.kick.cls}">${escapeHtml(s.kick.short)}</span> <strong>${escapeHtml(s.kick.color)}</strong></div>
+        <div><span class="stat-label">Gli</span><br><strong>${escapeHtml(s.glide)}</strong></div>
+      </div>
+      ${s.examples.length ? `<p class="wax-examples">Treffer: ${s.examples.map(escapeHtml).join(" · ")}</p>` : ""}
+      <ul class="wax-tips">${s.tips.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>
+    </div>`;
+
+  const rows = w.brands
+    .map((b) => `<tr><th scope="row">${escapeHtml(b.brand)}</th><td>${productCell(b.kick)}</td><td>${productCell(b.glide)}</td></tr>`)
+    .join("");
+  const table = `
+    <div class="table-scroll">
+      <table class="wax-table">
+        <thead><tr><th>Leverandør</th><th>Feste (${w.kickKind === "klister" ? "klister" : "hardvoks"})</th><th>Gli</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  box.innerHTML = chips + snovill + table;
 }
 
 /* ----------------------------- chart ------------------------------ */
@@ -1384,6 +1509,7 @@ async function loadAll(force = false) {
         startWhy,
         sourceDays,
       };
+      attachWax(state.results[loc.id]);
     })
   );
 
@@ -1398,6 +1524,7 @@ async function loadAll(force = false) {
   renderResorts();
   renderHero();
   renderChart();
+  renderWaxGuide();
   $("refreshBtn").disabled = false;
 }
 
@@ -1417,10 +1544,12 @@ function recompute() {
     r.startDepth = manual != null ? manual : auto.depth;
     r.startWhy = manual != null ? "satt manuelt" : auto.why;
     r.days = runEnsemble(r.sourceDays, state.days, r.startDepth, thresholds());
+    attachWax(r);
   }
   renderResorts();
   renderHero();
   renderChart();
+  renderWaxGuide();
 }
 
 function init() {
@@ -1429,6 +1558,15 @@ function init() {
   startSnow();
 
   $("refreshBtn").addEventListener("click", () => loadAll(true));
+  $("waxLoc").addEventListener("change", (e) => {
+    waxSel.loc = e.target.value;
+    waxSel.day = 0;
+    renderWaxGuide();
+  });
+  $("waxDay").addEventListener("change", (e) => {
+    waxSel.day = Number(e.target.value);
+    renderWaxGuide();
+  });
   $("settingsBtn").addEventListener("click", () => {
     const el = $("settings");
     el.hidden = !el.hidden;
