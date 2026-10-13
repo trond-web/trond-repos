@@ -17,6 +17,9 @@ export const KILDER = {
   lukketDef: { navn: 'Lukka hogst: mer enn 15 trær/daa står igjen, eller åpninger under 2 daa (Store norske leksikon)', url: 'https://snl.no/lukka_hogst' },
   pefc: { navn: 'Norsk PEFC Skogstandard (PEFC N 02:2022): laveste hogstalder, livsløpstrær, kantsoner og hogstformer', url: 'https://www.pefcnorge.org/' },
   storm: { navn: 'Skogbrand: Forebygging av stormskader – ungskogpleie ved ca. 4 m, tynning før 14 m, maks 40 % uttak', url: 'https://www.skogbrand.no/forebygging/stormskader/' },
+  karbonOmlop: { navn: 'Verra VM0045 (IFM): kreditter for økt karbonlager mot en referanse – utsatt hogst, redusert hogst, avsetning, gjødsling og bedre foryngelse', url: 'https://verra.org/documents/vm0045-improved-forest-management-using-dynamic-matched-baselines-from-national-forest-inventories-v1-2' },
+  klimatiltak: { navn: 'Statsforvalteren: tilskudd til klimatiltak i skog 2026 – gjødsling 40 %, tettere planting 30 %, suppleringsplanting 30 %', url: 'https://www.statsforvalteren.no/innlandet/landbruk-og-mat/skogbruk/skogkultur/tilskudd-til-klimatiltak-i-skog-2026/' },
+  torv: { navn: 'NIBIO: Hogst og grøfting på torvmark gir utslipp av CO₂ fra nedbrytning av torv', url: 'https://www.nibio.no/tema/klima/klimagassutslipp-fra-jordbruk-og-arealbruk' },
   okonomi: { navn: 'Faustmann – forventningsverdi og optimalt hogsttidspunkt (SkogIQ verdiberegning med dine priser og rente)', url: null },
 };
 
@@ -25,7 +28,17 @@ export const PRINSIPPER = {
   balansert: { navn: 'Balansert', beskrivelse: 'Økonomisk optimalt hogsttidspunkt, lukket hogst der det passer biologisk, jevn avvirkning rundt tilveksten.', hogstFaktor: 1.25, lukket: 0, forlengelse: 0 },
   okonomi: { navn: 'Økonomi først', beskrivelse: 'Hogst ved økonomisk optimum, flatehogst med planting på god bonitet, større rom for å ta ut hogstmoden skog tidlig.', hogstFaktor: 1.6, lukket: -1, forlengelse: 0 },
   biologi: { navn: 'Biologi og miljø først', beskrivelse: 'Mer lukket hogst, 10 år lengre omløp, avvirkning under tilveksten og mer naturlig foryngelse.', hogstFaktor: 0.9, lukket: 2, forlengelse: 10 },
+  karbon: { navn: 'Karbon og klima', beskrivelse: 'For skog som skal gi karbonkreditter: 20 år lengre omløp, avvirkning godt under tilveksten, ingen flatehogst på torv, tett foryngelse med foredlede planter og gjødsling før hogst. Stormutsatt skog hogges før den blåser ned.', hogstFaktor: 0.6, lukket: 1, forlengelse: 20, karbon: true },
 };
+
+// Bestand i et aktivt karbonprosjekt får alltid karbonreglene, uansett prinsipp for resten av planen.
+const PROSJEKT_AKTIV = ['forberedelse', 'validering', 'registrert', 'overvaking'];
+export function iKarbonprosjekt(S, b) {
+  const p = S.karbon?.prosjekt;
+  return !!(p && PROSJEKT_AKTIV.includes(p.status) && (p.bestand || []).includes(b.id));
+}
+// Sumpskog/organisk jord (vegetasjonstype 8b–8d): flatehogst og grøfting frigjør karbon fra torva.
+export const organiskJord = (b) => /^8[bcd]/.test(b.vegetasjon?.kode || '');
 
 // ---------- faglige tabeller ----------
 // Tilrådd plantetall (forskriften § 7) – midt i intervallet.
@@ -84,6 +97,8 @@ function velgHogstform(S, b, risiko, prinsipp) {
   const forL = []; const motL = []; let poeng = PRINSIPPER[prinsipp].lukket;
   if (prinsipp === 'biologi') forL.push('prinsippet «biologi og miljø først»');
   if (prinsipp === 'okonomi') motL.push('prinsippet «økonomi først»');
+  if (prinsipp === 'karbon') forL.push(iKarbonprosjekt(S, b) ? 'bestandet er med i karbonprosjektet' : 'prinsippet «karbon og klima»');
+  if (prinsipp === 'karbon' && organiskJord(b)) { poeng += 3; forL.push(`organisk jord (${b.vegetasjon.kode}) – flatehogst frigjør karbon fra torva`); }
   if (ts === 'G' && bo <= 14) { poeng += 2; forL.push(`granskog på middels/lav bonitet (G${bo})`); }
   if (ts === 'F' && bo <= 11) { poeng += 1; forL.push(`furu på lav bonitet (F${bo})`); }
   if (bo >= 20) { poeng -= 2; motL.push(`høy bonitet (${ts}${bo}) gir best produksjon og økonomi med flatehogst og planting`); }
@@ -111,6 +126,7 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
   // Stormrisiko (naboer, høyde) beregnes for hele planen; ved små oppdateringer av enkeltbestand hoppes den over for fart.
   if (!bestandIder || bestandIder.length > 20) { try { risiko = risikoPerBestand(S, { iAar }); } catch { risiko = null; } }
   const ut = [];
+  const prinsippFor = (b) => (iKarbonprosjekt(S, b) ? 'karbon' : prinsipp);
   const legg = (b, type, aar, prioritet, kommentar, begrunnelse, kilder, ekstra = {}) => {
     if (aar > slutt) return;
     ut.push({ b, type, aar: Math.max(iAar, Math.round(aar)), prioritet, kommentar, begrunnelse, kilder, periode: aar < iAar + 10 ? 'kort' : 'lang', regel: ekstra.regel || type, ...ekstra });
@@ -121,6 +137,7 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
   // Foryngelseskjede etter hogst (flate) eller for hogstflater uten foryngelse.
   const foryngelse = (b, hogstAar, form, kilde = 'etter hogst') => {
     const s = startTilstand(b); const ts = b.treslag || 'G'; const bo = s.h40;
+    const karbon = PRINSIPPER[prinsippFor(b)].karbon;
     if (form === 'lukket') return;
     if (form === 'flate-naturlig' || (ts === 'L' && bo < 17)) {
       legg(b, 'ungskogpleie', hogstAar + aarTilHoyde(3, bo), 2, `Ungskogpleie av naturlig foryngelse, ned til ${maalTetthet('L', bo)} trær/daa`, 'Lauv foryngres naturlig. Ungskogpleie ved 2–4 m høyde gir færre og bedre trær.', ['ungskogpleie'], { regel: 'ungskogpleie-naturlig' });
@@ -133,10 +150,22 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
       return;
     }
     const pt = plantetall(ts === 'L' ? 'G' : ts, bo);
+    // Karbon: øvre del av tilrådd intervall (tettere planting) og foredlede planter gir raskere oppbygging av karbonlageret.
+    const antall = karbon ? Number(String(pt.intervall).split('–')[1]) || pt.anbefalt : pt.anbefalt;
     if (bo >= 11) legg(b, 'markberedning', hogstAar, 2, 'Markberedning før planting', 'Markberedning gir høyere overlevelse og mindre gnag av snutebiller, og bedre etablering. Flekkene bør være minst 20 × 20 cm.', ['snutebille'], { regel: 'markberedning' });
-    legg(b, 'planting', hogstAar + 1, 1, `Planting av ${ts === 'F' ? 'furu' : 'gran'}, ca. ${pt.anbefalt} planter/daa (tilrådd ${pt.intervall}, minst ${pt.min})`, `Foryngelsesplikt etter hogst (forskriften § 6). Plantetall etter forskriften § 7 for bonitet ${bo}. Plant våren etter hogst og markberedning; bruk behandlede eller skjermede planter mot snutebiller.`, ['forskrift', 'snutebille'], { regel: 'planting', plantetall: pt.anbefalt });
+    legg(b, 'planting', hogstAar + 1, 1, `Planting av ${ts === 'F' ? 'furu' : 'gran'}, ca. ${antall} planter/daa (tilrådd ${pt.intervall}, minst ${pt.min})${karbon ? ' – tett planting med foredlede planter' : ''}`, `Foryngelsesplikt etter hogst (forskriften § 6). Plantetall etter forskriften § 7 for bonitet ${bo}. Plant våren etter hogst og markberedning; bruk behandlede eller skjermede planter mot snutebiller.${karbon ? ' Karbon: rask foryngelse, plantetall i øvre del av intervallet og foredlet plantemateriale gir høyere tilvekst og raskere binding. Tettere planting får 30 % statlig klimatilskudd – det kan gjøre tiltaket ikke-addisjonelt for karbonkreditter (se fanen Karbon).' : ''}`, karbon ? ['forskrift', 'snutebille', 'klimatiltak'] : ['forskrift', 'snutebille'], { regel: karbon ? 'planting-karbon' : 'planting', plantetall: antall });
     legg(b, 'ungskogpleie', hogstAar + 1 + aarTilHoyde(3, bo), 2, `Ungskogpleie ned til ${maalTetthet(ts === 'L' ? 'G' : ts, bo)} trær/daa`, 'Ungskogpleie ved 1–5 m høyde. Fjern konkurrerende lauv, men la ca. 10 % lauv stå (forskriften/PEFC).', ['ungskogpleie', 'forskrift'], { regel: 'ungskogpleie-etter-hogst' });
     if ((ts === 'G' && bo >= 14) || (ts === 'F' && bo >= 11)) legg(b, 'tynning', hogstAar + 1 + aarTilHoyde(13, bo), 3, 'Førstegangstynning ved 12–14 m overhøyde', 'Tynning gir grovere trær og høyere rotnetto ved sluttavvirkning.', ['tynning'], { regel: 'tynning-lang' });
+  };
+
+  // Karbon: gjødsling (ca. 15 kg N/daa) av eldre gran- og furuskog ca. 10 år før hogst gir 1–2 m³/daa ekstra tilvekst.
+  // Ikke på organisk jord, i lauvskog eller på svært høy/lav bonitet. Gjelder bare karbonprinsippet.
+  const gjodsling = (b, aar) => {
+    const s = startTilstand(b); const ts = b.treslag || 'G'; const bo = s.h40;
+    if (!PRINSIPPER[prinsippFor(b)].karbon || ts === 'L' || bo < 8 || bo > 20 || organiskJord(b)) return;
+    if (planlagt(b, ['gjodsling']) || utfort(b, 'gjodsling').some((t) => t.aar >= iAar - 10)) return;
+    if (s.alder < Math.max(30, (pefcAlder(bo)?.nedre ?? 60) - 25)) return;
+    legg(b, 'gjodsling', Math.max(iAar + 1, aar), 3, 'Gjødsling ca. 15 kg N/daa (klimatiltak)', 'Gjødsling av hogstmoden eller eldre produksjonsskog 10 år før hogst gir 1–2 m³/daa ekstra tilvekst og binding. Ikke nærmere vann enn 25 m og ikke i nøkkelbiotoper (PEFC). Gjødsling får 40 % statlig klimatilskudd – tar du tilskudd, kan bindingen normalt ikke selges som kreditter. Avklar med kjøper/standard om det kan gi kreditter.', ['klimatiltak', 'karbonOmlop', 'pefc'], { regel: 'gjodsling-karbon' });
   };
 
   for (const b of utvalg) {
@@ -149,6 +178,7 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
     const r = risiko?.get(b.id);
     const storm = r?.storm?.nivaa?.id === 'hoy';
     const tynnet = utfort(b, 'tynning');
+    const Pb = PRINSIPPER[prinsippFor(b)];
     const hogd = utfort(b, 'sluttavvirkning')[0];
 
     // 1. Hogstflate / skogfornyelse uten foryngelse
@@ -178,7 +208,8 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
 
     // 3. Tynning (først 12–14 m, furu ev. andre gang 16–18 m)
     if (!planlagt(b, ['tynning', 'sluttavvirkning', 'lukkethogst']) && hk >= 2 && hk <= 4 && ts !== 'L') {
-      const egnet = (ts === 'G' && bo >= 14) || (ts === 'F' && bo >= 11);
+      // Karbon: tynning tar ut en fjerdedel av lageret og gir lite merproduksjon – bare på god bonitet.
+      const egnet = Pb.karbon ? (ts === 'G' && bo >= 17) || (ts === 'F' && bo >= 14) : (ts === 'G' && bo >= 14) || (ts === 'F' && bo >= 11);
       const forste = !tynnet.length;
       const andre = ts === 'F' && tynnet.length === 1 && iAar - tynnet[0].aar >= 8;
       const fra = forste ? 12 : 16; const til = forste ? 14 : 18;
@@ -203,9 +234,10 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
       let opt;
       try { opt = bestandsverdi(b, inn, vInn, { iAar }); } catch { opt = null; }
       const nedreAar = iAar + Math.max(0, Math.ceil((pefcAlder(bo)?.nedre ?? min) - s.alder));
-      let maalAar = Math.max(opt?.hogstAar ?? iAar + Math.max(0, min - s.alder), nedreAar) + P.forlengelse;
+      let maalAar = Math.max(opt?.hogstAar ?? iAar + Math.max(0, min - s.alder), nedreAar) + Pb.forlengelse;
       if (storm && s.alder >= (pefcAlder(bo)?.nedre ?? min)) maalAar = Math.min(maalAar, iAar + 2);
       if (maalAar <= slutt) hogstKandidater.push({ b, maalAar, s, opt, risiko: r });
+      else if (Pb.karbon) gjodsling(b, iAar + 1);
     }
   }
 
@@ -217,7 +249,7 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
   hogstKandidater.sort((a, c) => a.maalAar - c.maalAar || c.s.alder - a.s.alder);
   for (const k of hogstKandidater) {
     const { b, s, opt } = k; const ts = b.treslag || 'G'; const bo = s.h40;
-    const valg = velgHogstform(S, b, k.risiko, prinsipp);
+    const valg = velgHogstform(S, b, k.risiko, prinsippFor(b));
     const andel = valg.form === 'lukket' ? hogstAndel('lukkethogst', inn) : 1;
     let aar = k.maalAar;
     const vol = (a) => s.volumDaa * (1 + 0.015 * Math.max(0, a - iAar)) * (b.areal || 0) * andel;
@@ -227,16 +259,19 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
       periodeVolum.set(periode(aar), (periodeVolum.get(periode(aar)) || 0) + vol(aar));
     }
     const m3 = vol(aar);
+    if (aar - iAar >= 8) gjodsling(b, aar - 10);
     const utsatt = aar > k.maalAar ? ` Utsatt fra ${k.maalAar} for jevn avvirkning innenfor tilveksten.` : '';
     const okonomi = opt ? ` Økonomisk optimalt hogstår er ${opt.hogstAar} (alder ${opt.alderVedHogst}) med ${vInn.rente} % rente.` : '';
+    const Pk = PRINSIPPER[prinsippFor(b)];
+    const karbonTekst = Pk.karbon && aar > k.maalAar - Pk.forlengelse ? ` Karbon: hogsten er lagt minst ${Pk.forlengelse} år etter økonomisk optimum for å bygge karbonlager${k.risiko?.storm?.nivaa?.id === 'hoy' ? ', men framskyndet fordi stormrisikoen er høy (tap må dekkes fra bufferen)' : ''}.` : '';
     if (valg.form === 'lukket') {
       const netto = m3 * hogstNettoPerM3('lukkethogst', ts, inn);
-      legg(b, 'lukkethogst', aar, aar <= iAar + 2 ? 1 : 2, `Lukket hogst (plukk-/gruppehogst), uttak ca. ${Math.round(andel * 100)} % – ca. ${Math.round(m3)} m³`, `${valg.tekst} Mer enn 15 trær/daa står igjen, åpninger under 2 daa, og ny generasjon kommer naturlig. Anslått netto ${kr(netto)} (inkl. ${inn.lukketTillegg ?? 40} kr/m³ høyere driftskostnad).${okonomi}${utsatt}`, ['lukket', 'lukketDef', 'pefc', 'okonomi'], { regel: 'lukket', hogstform: 'selektiv', uttak: andel });
+      legg(b, 'lukkethogst', aar, aar <= iAar + 2 ? 1 : 2, `Lukket hogst (plukk-/gruppehogst), uttak ca. ${Math.round(andel * 100)} % – ca. ${Math.round(m3)} m³`, `${valg.tekst} Mer enn 15 trær/daa står igjen, åpninger under 2 daa, og ny generasjon kommer naturlig. Anslått netto ${kr(netto)} (inkl. ${inn.lukketTillegg ?? 40} kr/m³ høyere driftskostnad).${okonomi}${karbonTekst}${utsatt}`, Pk.karbon ? ['lukket', 'lukketDef', 'pefc', 'okonomi', 'karbonOmlop'] : ['lukket', 'lukketDef', 'pefc', 'okonomi'], { regel: 'lukket', hogstform: 'selektiv', uttak: andel });
       for (let n = aar + 15; n <= slutt; n += 15) legg(b, 'lukkethogst', n, 3, `Nytt lukket hogstinngrep (ca. ${Math.round(andel * 100)} %)`, 'Lukket hogst gjentas med 15–20 års mellomrom mens skogen holdes kontinuerlig dekket.', ['lukket', 'lukketDef'], { regel: 'lukket-gjentak', hogstform: 'selektiv', uttak: andel });
     } else {
       const netto = m3 * hogstNettoPerM3('sluttavvirkning', ts, inn);
       const formTekst = valg.form === 'frotre' ? 'frøtrestilling (5–10 frøtrær/daa)' : 'flatehogst';
-      legg(b, 'sluttavvirkning', aar, aar <= iAar + 2 ? 1 : 2, `Sluttavvirkning – ${formTekst}, ca. ${Math.round(m3)} m³`, `${valg.tekst} Alder ${Math.round(s.alder)} år, laveste hogstalder etter PEFC er ${pefcAlder(bo)?.nedre ?? '–'} år. Anslått netto ${kr(netto)}. Behold minst 10 livsløpstrær/daa og kantsoner mot vann (PEFC).${okonomi}${utsatt}`, ['okonomi', 'pefc'], { regel: 'sluttavvirkning', hogstform: valg.form === 'frotre' ? 'frotre' : 'flatehogst' });
+      legg(b, 'sluttavvirkning', aar, aar <= iAar + 2 ? 1 : 2, `Sluttavvirkning – ${formTekst}, ca. ${Math.round(m3)} m³`, `${valg.tekst} Alder ${Math.round(s.alder)} år, laveste hogstalder etter PEFC er ${pefcAlder(bo)?.nedre ?? '–'} år. Anslått netto ${kr(netto)}. Behold minst 10 livsløpstrær/daa og kantsoner mot vann (PEFC).${okonomi}${karbonTekst}${utsatt}`, Pk.karbon ? ['okonomi', 'pefc', 'karbonOmlop'] : ['okonomi', 'pefc'], { regel: 'sluttavvirkning', hogstform: valg.form === 'frotre' ? 'frotre' : 'flatehogst' });
       foryngelse(b, aar, valg.form);
     }
   }

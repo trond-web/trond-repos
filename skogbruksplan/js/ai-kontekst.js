@@ -28,6 +28,8 @@ export function lagKontekst(S, { iAar = new Date().getFullYear(), pefcFunn = [],
   d.push(`Produktivt areal ${r1(s.areal)} daa i ${s.antall} bestand. Stående volum ${r0(s.volum)} m³ (${r1(s.areal ? s.volum / s.areal : 0)} m³/daa). Tilvekst ca. ${r0(s.tilvekst)} m³/år. CO₂-binding ca. ${r0(s.co2)} t/år. Rotnetto i hogstklasse V ca. ${r0(s.verdiHogstmoden)} kr.`);
   d.push(`Volum per treslag: ${Object.entries(s.perTreslag).map(([k, v]) => `${TRESLAG[k]} ${r0(v)} m³`).join(', ')}.`);
   d.push(`Areal per hogstklasse (daa): ${Object.entries(s.perHk).map(([h, v]) => `${HK_NAVN[h]} ${r1(v.G + v.F + v.L)}`).join(', ')}.`);
+  const kp = S.karbon?.prosjekt;
+  if (kp) d.push(`Karbonprosjekt «${kp.navn}»: status ${kp.status}, standard ${kp.standard}, partner ${kp.partner || '–'}, startår ${kp.startAar}, ${kp.bestand?.length || 0} bestand. Bestand i prosjektet får tiltaksmotorens karbonregler (forlenget omløp +20 år, hogst under tilveksten, lukket hogst på torv, tett foryngelse). Verifiseringer: ${(S.karbon.verifikasjoner || []).length}, hendelser: ${(S.karbon.hendelser || []).length}. Detaljer i fanen Karbon.`);
   if ((S.markslag || []).length) {
     const af = arealfordeling(S);
     d.push(`Arealfordeling (AR5): ${Object.entries(af.rader).filter(([, r]) => r.areal > 0).map(([k, r]) => `${MARKSLAG[k].navn} ${r1(r.areal)} daa`).join(', ')}; eiendom totalt ${r1(af.total)} daa. Uproduktiv mark er trukket ut av bestandene og har ikke volum.`);

@@ -32,13 +32,14 @@ import { VEIKLASSER, VEDLIKEHOLDSTYPER, VEISTIL } from './veier.js';
 import { synligPadding } from './kartutsnitt.js';
 import { initOppdrag } from './oppdrag-ui.js';
 import { initKsl } from './ksl-ui.js';
+import { initKarbon } from './karbon-ui.js';
 import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, typeFor as oppdragstype } from './oppdrag.js';
 import { KRAVPUNKTER } from './pefc.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
 const VEIKLASSER_NAVN = (k) => (VEIKLASSER[k] || VEIKLASSER[0]).navn;
 // Oppdrag: valg av tiltak i tiltakslisten og bestand som er uthevet i kartet for oppdraget som er åpent.
-let kslVisning = null;
+let kslVisning = null; let karbonVisning = null;
 let valgModus = false; let valgteTiltak = new Set(); let maalOppdrag = null; let uthevet = new Set(); let oppdragVisning = null;
 const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
 import { stabletSoyle, linje, fmt } from './charts.js';
@@ -464,7 +465,7 @@ let verdiVisning = null;
 let aiVisning = null;
 let skogbrandVisning = null;
 let skifteplanVisning = null;
-const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', skifteplan: 'Skifteplan', ksl: 'KSL', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
+const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', skifteplan: 'Skifteplan', ksl: 'KSL', karbon: 'Karbon', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 function visFane(navn) {
@@ -478,9 +479,10 @@ function visFane(navn) {
   $('.kartverktoy').hidden = navn === 'kommune';
   $$('.faner button').forEach((b) => b.classList.toggle('aktiv', b.dataset.fane === navn));
   $$('.fane').forEach((f) => { f.hidden = f.id !== `fane-${navn}`; });
-  if (navn !== 'tiltak' && uthevet.size) { uthevet = new Set(); oppdaterStiler(); }
+  if (navn !== 'tiltak' && navn !== 'karbon' && uthevet.size) { uthevet = new Set(); oppdaterStiler(); }
   if (navn === 'tiltak' && !$('#oppdragPanel').hidden) oppdragVisning?.tegn();
   if (navn === 'ksl') kslVisning?.vis();
+  if (navn === 'karbon') karbonVisning?.vis();
   if (navn === 'framskriving') tegnFramskriving();
   if (navn === 'verdi') verdiVisning?.tegn();
   if (navn === 'ai') aiVisning?.vis();
@@ -495,7 +497,7 @@ function visFane(navn) {
 
 // ---------------------------------------------------------------- oversikt
 function tegnInnsikt() {
-  const liste = lagInnsikt(S, { iAar: IAAR, pefcFunn: pefcVisning?.funn(), motorEndringer: S.motor ? aktuelleEndringer().filter((e) => e.leggTil.length || e.fjern.length).length : 0, skogbrand: { ...skadeOppsummering(S), brann: S.skogbrand?.data?.brann?.dager?.[0]?.nivaa || null }, skifteplan: skifteplanVisning?.oppsummering() || null, ksl: kslVisning?.varsler() || [], terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
+  const liste = lagInnsikt(S, { iAar: IAAR, pefcFunn: pefcVisning?.funn(), motorEndringer: S.motor ? aktuelleEndringer().filter((e) => e.leggTil.length || e.fjern.length).length : 0, skogbrand: { ...skadeOppsummering(S), brann: S.skogbrand?.data?.brann?.dager?.[0]?.nivaa || null }, skifteplan: skifteplanVisning?.oppsummering() || null, ksl: kslVisning?.varsler() || [], karbon: karbonVisning?.varsler() || [], terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
   $('#innsikt').hidden = !liste.length;
   $('#innsiktListe').innerHTML = liste.slice(0, 4).map((i) => `<div class="innsikt-kort" style="--farge:${i.farge}"><span class="prikk"></span><div><b>${esc(i.tittel)}</b><span>${esc(i.tekst)}</span></div>${i.handling ? `<button type="button" class="knapp liten" data-innsikt="${esc(i.handling.id)}">${esc(i.handling.tekst)}</button>` : ''}</div>`).join('');
 }
@@ -1290,6 +1292,7 @@ function endret({ kart: kartEndret = false, zoom = false } = {}) {
   tegnTiltak();
   if (!$('#oppdragPanel').hidden && !document.activeElement?.closest?.('#oppdragPanel')) oppdragVisning?.tegn();
   kslVisning?.oppdater();
+  karbonVisning?.oppdater();
   if (!$('#fane-framskriving').hidden) tegnFramskriving();
   if (!$('#fane-verdi').hidden && !document.activeElement?.closest?.('#fane-verdi')) verdiVisning?.tegn();
   if (valgtId && !finnBestand(valgtId)) { valgtId = null; visDetalj(); }
@@ -1488,7 +1491,7 @@ async function startGenerering(e) {
 }
 
 // ---------------------------------------------------------------- kommandopalett
-const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', rapporter: '▦', skogbrand: '🔥', skifteplan: '🌾', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
+const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', rapporter: '▦', skogbrand: '🔥', skifteplan: '🌾', karbon: '♲', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
 let planlisteCache = [];
 function kommandoValg(q) {
   listPlaner().then((l) => { planlisteCache = l; });
@@ -1513,6 +1516,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Gjødslingsplan', under: 'Gjødselbehov per skifte, forslag og utskrift (gjødselforskriften § 26)', sok: 'skifteplan gjødsel gjødsling jordprøve nitrogen fosfor kalium husdyrgjødsel jordbruk', utfor: () => { visFane('skifteplan'); skifteplanVisning?.underfane('gjodsling'); } },
     { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Sprøytejournal / plantevernjournal', under: 'Registrer sprøyting og skriv ut journalen', sok: 'skifteplan sprøyting plantevern plantevernmidler ugras journal ipv', utfor: () => { visFane('skifteplan'); skifteplanVisning?.underfane('sproyting'); } },
     { gruppe: 'Handlinger', ikon: '¤', tittel: 'Verdiberegning', under: 'Eiendomsverdi, slaktverdi, jordverdi og nåverdi', sok: 'verdi nåverdi slaktverdi takst lev faustmann', utfor: () => visFane('verdi') },
+    { gruppe: 'Handlinger', ikon: '♲', tittel: 'Karbonkreditter – potensial og prosjekt', under: 'Merlager mot referanse, egnethet, kreditter og verifisering', sok: 'karbon co2 klima kreditter karbonkreditt klimakvote binding vm0045 crcf verra noora', utfor: () => visFane('karbon') },
     { gruppe: 'Handlinger', ikon: '✓', tittel: 'KSL – egenrevisjon og dokumentasjon', under: 'Sjekklister, avvik, kontroller med frister og dokumentarkiv', sok: 'ksl kvalitetssystem landbruk egenrevisjon hms vernerunde avvik dokumentasjon matmerk norsk mat', utfor: () => visFane('ksl') },
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'PEFC-status og avvik', sok: 'pefc skogstandard krav avvik sertifisering', utfor: () => visFane('pefc') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
@@ -1597,6 +1601,15 @@ function kobleHendelser() {
     },
   });
   kslVisning = initKsl({ hentPlan: () => S, endret, melding, nyId, iAar: IAAR, visFane });
+  karbonVisning = initKarbon({
+    hentPlan: () => S, endret, melding, iAar: IAAR, visFane,
+    uthev: (ider) => { uthevet = new Set(ider); oppdaterStiler(); },
+    visBestander: (ider) => {
+      const lag = ider.map((id) => lagPerBestand.get(id)).filter(Boolean); if (!lag.length) return;
+      kart.fitBounds(L.featureGroup(lag).getBounds(), { maxZoom: 16, ...synligPadding(kart, 40) });
+      if (erMobil()) settArk('halv');
+    },
+  });
   oppdragVisning = initOppdrag({
     hentPlan: () => S, endret, melding, okonomi: tiltakOkonomi, settUtfort,
     tiltakNavn: (k) => TILTAKSTYPER[k]?.navn || k,
