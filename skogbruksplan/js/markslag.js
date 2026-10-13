@@ -40,6 +40,16 @@ export function klassifiser(a) {
 }
 
 // ---------- henting ----------
+// Begrenser antall samtidige kall. Rutehentingen kan da starte alle ruter (også rekursivt) med Promise.all,
+// mens NIBIO aldri får mer enn n forespørsler samtidig.
+export const begrens = (n) => {
+  let aktive = 0; const ko = [];
+  return async (fn) => {
+    while (aktive >= n) await new Promise((r) => ko.push(r));
+    aktive++;
+    try { return await fn(); } finally { aktive--; ko.shift()?.(); }
+  };
+};
 async function hentTekst(hent, url, ms = 60000) {
   for (let forsok = 0; ; forsok++) {
     const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), ms);
@@ -108,20 +118,22 @@ export async function hentAr5(grense, { hent = fetch, klipp, logg = () => {}, bo
   const ruter = [];
   const kmlUrl = (b) => `${NIBIO}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=Arealtype&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&WIDTH=2000&HEIGHT=${Math.max(200, Math.round((2000 * (b[3] - b[1])) / (b[2] - b[0])))}&FORMAT=kml`;
   let feil = 0; const vanskelige = [];
+  // Ca. 6 samtidige kall: for store eiendommer (hundrevis av ruter) er det mange ganger raskere enn ett og ett.
+  const ko = begrens(6); const hentT = (url, ms) => ko(() => hentTekst(hent, url, ms));
   const hentRute = async (b, dybde = 0) => {
     let fl;
     // Tjenesten svarer 500 på ruter med svært mange flater – da deles ruten, som ved 1000-taket.
     let delOpp = false;
     // Ruter som fortsatt feiler ved ca. 250 m, tas med i redningen etterpå (flate for flate med filter).
-    try { fl = parseKml(await hentTekst(hent, kmlUrl(b))); } catch (e) { if (dybde >= 4) { vanskelige.push(b); return []; } delOpp = true; }
+    try { fl = parseKml(await hentT(kmlUrl(b))); } catch (e) { if (dybde >= 4) { vanskelige.push(b); return []; } delOpp = true; }
     if (!delOpp && (fl.length < KML_MAKS || dybde >= 5)) { ruter.push(b); return fl; }
     const mx = (b[0] + b[2]) / 2; const my = (b[1] + b[3]) / 2;
-    const sett = new Map();
-    for (const d of [[b[0], b[1], mx, my], [mx, b[1], b[2], my], [b[0], my, mx, b[3]], [mx, my, b[2], b[3]]]) {
+    const deler = [[b[0], b[1], mx, my], [mx, b[1], b[2], my], [b[0], my, mx, b[3]], [mx, my, b[2], b[3]]].filter((d) => {
       const hh = [[d[0], d[1]], [d[0], d[3]], [d[2], d[1]], [d[2], d[3]]].map(([x, y]) => utmTilGeo(x, y, 33));
-      if (!treff([Math.min(...hh.map((p) => p[0])), Math.min(...hh.map((p) => p[1])), Math.max(...hh.map((p) => p[0])), Math.max(...hh.map((p) => p[1]))])) continue;
-      for (const f of await hentRute(d, dybde + 1)) if (!sett.has(f.id)) sett.set(f.id, f);
-    }
+      return treff([Math.min(...hh.map((p) => p[0])), Math.min(...hh.map((p) => p[1])), Math.max(...hh.map((p) => p[0])), Math.max(...hh.map((p) => p[1]))]);
+    });
+    const sett = new Map();
+    for (const fl2 of await Promise.all(deler.map((d) => hentRute(d, dybde + 1)))) for (const f of fl2) if (!sett.has(f.id)) sett.set(f.id, f);
     return [...sett.values()];
   };
   logg('Henter markslag (AR5) …');
@@ -133,7 +145,7 @@ export async function hentAr5(grense, { hent = fetch, klipp, logg = () => {}, bo
     if (treff([Math.min(...hh.map((p) => p[0])), Math.min(...hh.map((p) => p[1])), Math.max(...hh.map((p) => p[0])), Math.max(...hh.map((p) => p[1]))])) start.push(d);
   }
   const sett = new Map();
-  for (const d of start) for (const f of await hentRute(d)) if (!sett.has(f.id)) sett.set(f.id, f);
+  for (const fl of await Promise.all(start.map((d) => hentRute(d)))) for (const f of fl) if (!sett.has(f.id)) sett.set(f.id, f);
   // Redning: enkelte AR5-flater har geometri som NIBIOs KML-utskrift ikke klarer (svar 500), og da feiler hver rute
   // som inneholder dem – også alle de andre flatene i ruten. For slike ruter hentes flatene enkeltvis med FILTER på
   // id: først KML (gir hele flaten), og for de «ødelagte» flatene geometrien fra SVG-utskriften.
@@ -141,9 +153,9 @@ export async function hentAr5(grense, { hent = fetch, klipp, logg = () => {}, bo
   if (vanskelige.length) {
     logg(`AR5: ${vanskelige.length} rute(r) feilet – henter flatene der enkeltvis …`);
     const kandidater = new Map();
-    for (const b of vanskelige) {
-      let tekst;
-      try { tekst = await hentTekst(hent, `${NIBIO}?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&STYLES=&REQUEST=GetFeatureInfo&LAYERS=Arealtype&QUERY_LAYERS=Arealtype&WIDTH=100&HEIGHT=100&X=50&Y=50&RADIUS=bbox&FEATURE_COUNT=1000&INFO_FORMAT=application/vnd.ogc.gml`); } catch { feil++; continue; }
+    const svar = await Promise.all(vanskelige.map((b) => hentT(`${NIBIO}?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&STYLES=&REQUEST=GetFeatureInfo&LAYERS=Arealtype&QUERY_LAYERS=Arealtype&WIDTH=100&HEIGHT=100&X=50&Y=50&RADIUS=bbox&FEATURE_COUNT=1000&INFO_FORMAT=application/vnd.ogc.gml`).catch(() => null)));
+    for (const tekst of svar) {
+      if (tekst === null) { feil++; continue; }
       for (const del of tekst.split('<Arealtype_feature>').slice(1)) {
         const f = del.split('</Arealtype_feature>')[0]; const a = {};
         for (const [, k, v] of f.matchAll(/<(\w+)>([^<]*)<\/\1>/g)) a[k] = v;
@@ -154,19 +166,20 @@ export async function hentAr5(grense, { hent = fetch, klipp, logg = () => {}, bo
       }
     }
     let svg = 0;
-    for (const [id, bb] of kandidater) {
-      const gb = utmBoksTilGeo(bb); if (!treff(gb)) continue;
+    const funnet = await Promise.all([...kandidater].map(async ([id, bb]) => {
+      const gb = utmBoksTilGeo(bb); if (!treff(gb)) return null;
       const b = [bb[0] - 5, bb[1] - 5, bb[2] + 5, bb[3] + 5];
       const filter = encodeURIComponent(`<Filter><PropertyIsEqualTo><PropertyName>sl_sdeid</PropertyName><Literal>${id}</Literal></PropertyIsEqualTo></Filter>`);
       const sk = 4000 / Math.max(b[2] - b[0], b[3] - b[1]); const w = Math.max(1, Math.round((b[2] - b[0]) * sk)); const h = Math.max(1, Math.round((b[3] - b[1]) * sk));
       const kart = (format) => `${NIBIO}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=Arealtype&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(2)).join(',')}&WIDTH=${w}&HEIGHT=${h}&FORMAT=${format}&FILTER=${filter}`;
-      try { const fl = parseKml(await hentTekst(hent, kart('kml'))).find((f) => f.id === id); if (fl) { sett.set(id, fl); continue; } } catch { /* prøv SVG */ }
+      try { const fl = parseKml(await hentT(kart('kml'))).find((f) => f.id === id); if (fl) return fl; } catch { /* prøv SVG */ }
       try {
-        const geometri = svgTilGeometri(await hentTekst(hent, kart('image%2Fsvg%2Bxml')), b, w, h);
-        if (geometri) { sett.set(id, { id, geometri }); svg++; continue; }
+        const geometri = svgTilGeometri(await hentT(kart('image%2Fsvg%2Bxml')), b, w, h);
+        if (geometri) { svg++; return { id, geometri }; }
       } catch { /* teller som feil */ }
-      feil++;
-    }
+      feil++; return null;
+    }));
+    for (const fl of funnet) if (fl) sett.set(fl.id, fl);
     if (svg) logg(`AR5: ${svg} flate(r) med ugyldig geometri hos NIBIO er hentet fra SVG-utskriften`);
   }
   if (feil && !sett.size) throw new Error('NIBIO svarte ikke på forespørslene om markslag');
@@ -174,10 +187,11 @@ export async function hentAr5(grense, { hent = fetch, klipp, logg = () => {}, bo
   const flater = [...sett.values()].filter((f) => treff(bbox(f.geometri)));
   // Attributter samlet per rute.
   const attr = new Map(ekstraAttr);
-  for (const b of ruter) {
+  const attrSvar = await Promise.all(ruter.map((b) => {
     const url = `${NIBIO}?SERVICE=WMS&VERSION=1.1.1&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&STYLES=&REQUEST=GetFeatureInfo&LAYERS=Arealtype&QUERY_LAYERS=Arealtype&WIDTH=1000&HEIGHT=1000&X=500&Y=500&RADIUS=bbox&FEATURE_COUNT=100000&INFO_FORMAT=application/vnd.ogc.gml`;
-    let tekst = '';
-    try { tekst = await hentTekst(hent, url, 90000); } catch { continue; }
+    return hentT(url, 90000).catch(() => '');
+  }));
+  for (const tekst of attrSvar) {
     for (const del of tekst.split('<Arealtype_feature>').slice(1)) {
       const a = {};
       for (const [, k, v] of del.split('</Arealtype_feature>')[0].matchAll(/<(\w+)>([^<]*)<\/\1>/g)) a[k] = v;
