@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.5.3** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.6.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -84,10 +84,38 @@ Store eiendommer støttes:
 | Tynning | Første tynning ved 12–14 m overhøyde (gran G14+, furu F11+), andre i furu ved 16–18 m. Bare når uttaket er minst 3 m³/daa. | NIBIO: Tynning og skogproduksjon |
 
 - **Bærekraft:** sluttavvirkning og lukket hogst fordeles slik at hver femårsperiode holder seg nær tilveksten. Miljøfigurer, nøkkelbiotoper og verneområder får ingen tiltak.
-- **Prinsipper:** «balansert», «økonomi først» (mer flatehogst, større rom for tidlig hogst) og «biologi og miljø først» (mer lukket hogst, 10 år lengre omløp, avvirkning under tilveksten).
+- **Prinsipper:** «balansert», «økonomi først» (mer flatehogst, større rom for tidlig hogst), «biologi og miljø først» (mer lukket hogst, 10 år lengre omløp, avvirkning under tilveksten) og «karbon og klima» (se Karbon under). Bestand i et aktivt karbonprosjekt får alltid karbonreglene.
 - **Begrunnelse:** hvert tiltak har en begrunnelse og kilder («Hvorfor?») og er merket som automatisk. Manuelle tiltak endres aldri.
 - **Endringer:** når et bestand endres (alder, volum, høyde, treantall, treslag, bonitet, areal eller utførte tiltak), varsler appen i bestandsdetaljen, i Tiltak-fanen og under Innsikt. Du kan oppdatere tiltakene med ett klikk eller beholde dem som de er.
 - **Lukket hogst** er en egen tiltakstype. Den er med i framskriving, økonomi, hogstprognose, verdiberegning og PEFC-klarering.
+
+## Karbon – karbonkreditter fra skogen (fanen «Karbon»)
+
+`js/karbon.js` og `js/karbon-ui.js` viser hva skogen kan gi av karbonkreditter, hva som må til, og følger opp et prosjekt. Alle standarder for forbedret skogforvaltning (IFM) gir kreditter bare for karbon som lagres **utover en referansebane**, etter fradrag for lekkasje og usikkerhet, og med en bufferandel mot tap.
+
+- **Scenario:** tiltaksmotoren lager to baner for de samme bestandene. Referansen er vanlig drift (prinsippet «balansert», kan endres), og prosjektbanen er karbonforvaltning eller tiltaksplanen slik den er. Begge simuleres med framskrivingen, og lageret regnes ved inngangen av hvert år.
+- **Lager:** levende biomasse over og under bakken. Gran 1,17, furu 1,15 og lauv 1,40 t CO₂ per m³ stammevolum (basisdensitet fra IPCC 2006 × 0,5 karbon × 44/12 × ekspansjon 1,5–1,6 til hele treet). Dødt trevirke, jord og treprodukter er holdt utenfor, som er konservativt.
+- **Kreditter:** økning i merlageret × (1 − lekkasje) × (1 − usikkerhet), minus bufferandelen.
+  - Lekkasje følger VM0045: 10, 20, 40 eller 70 %.
+  - Usikkerhetsfradraget er halvbredden av 95 %-intervallet fra antall prøveflater minus 15 prosentpoeng (VM0045), men minst 10 % (CRCF).
+  - Faller merlageret senere i perioden, vises det som reversering.
+- **Økonomi:** nåverdi av tapt tømmerinntekt mot karboninntekt. Appen viser også karbonprisen der karbonforvaltning lønner seg. Den regner både med gruppeprosjekt (80 % til skogeier) og med eget prosjekt (kostnader til validering og verifisering).
+- **Egnethet:** en sjekkliste for areal, datagrunnlag, eldre skog, vernede bestand, PEFC, torv, stormrisiko, tilskudd og prøveflater. Juridiske punkter, avtalepartner, statlige tilskudd og dobbelttelling bekrefter skogeier selv.
+- **Karbon og klima (tiltaksmotoren):**
+  - 20 år lengre omløp, med avvirkning under 60 % av tilveksten.
+  - Lukket hogst på organisk jord (vegetasjonstype 8b–8d).
+  - Plantetall i øvre del av tilrådd intervall med foredlede planter.
+  - Tynning bare på god bonitet.
+  - Gjødsling ca. 10 år før hogst. Teksten advarer om at klimatilskudd gjør tiltaket ikke-addisjonelt.
+  - Stormutsatt skog hogges fortsatt i tide for å unngå tap.
+- **Prosjekt:** status (vurdering → forberedelse → validering → registrert → overvåking → avsluttet), standard, partner, bestand (uthevet i kartet) og «Legg karbontiltakene inn i planen». Appen varsler om hogst i prosjektbestand som ikke er med i karbonbanen, tiltak med tilskudd og forfalt verifisering. Varslene vises i fanen og under Innsikt.
+- **Oppfølging:** verifiseringer (verifisert, buffer, utstedt, solgt, pris) og hendelser med tap, med kryss for om de er meldt. Prosjektbeskrivelsen kan skrives ut som utkast til partner eller validering.
+- **Status i oktober 2026** (kildene ligger i appen):
+  - **EU CRCF:** Metoder er vedtatt for nyplanting, torvmark og landbruk, men ikke for forlenget omløp. Ordningen er ikke tatt inn i EØS-avtalen.
+  - **Verra VM0045:** Versjon 1.2 har bare vedlegg for USA. Versjon 1.3 for nasjonale skogtakster (også Norge) var på høring i 2026.
+  - **Nordiske gruppeprosjekter:** Aktører som Noora og Arbonics bruker utsatt hogst, ca. 40 års avtaler og 80/20-deling.
+  - **Landbruksdirektoratet (2025):** PEFC omfatter ikke kreditter. Avtaler kan kreve delingssamtykke, konsesjon eller være en servitutt. Karboninntekt kan ikke settes på skogfond.
+  - **Dobbelttelling:** Uten tilsvarende justering fra staten er kreditten et bidrag, ikke kompensasjon.
 
 ## KSL – Kvalitetssystem i landbruket (fanen «KSL»)
 

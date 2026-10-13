@@ -846,3 +846,27 @@ progress { accent-color: var(--accent); height: 8px; }
 .ksl-avvik.forfalt { border-color: var(--critical); }
 .ksl-avvik.lukket { opacity: .65; }
 .ksl-dok-rad { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+
+/* Karbon */
+.karbon-liste { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.karbon-std { border-top: 1px solid var(--border); padding: 8px 0; }
+.karbon-std summary { cursor: pointer; }
+.karbon-std p { margin: 6px 0; }
+.karbon-sjekk { display: grid; gap: 8px; }
+.karbon-punkt { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); border-left: 4px solid var(--border); }
+.karbon-punkt.ok { border-left-color: #0ca30c; }
+.karbon-punkt.delvis { border-left-color: var(--warning); }
+.karbon-punkt.mangler { border-left-color: var(--critical); }
+.karbon-punkt .avkrysning { margin-top: 6px; }
+.karbon-ikon { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; background: var(--surface); }
+.karbon-punkt.ok .karbon-ikon { color: #0ca30c; }
+.karbon-punkt.mangler .karbon-ikon { color: var(--critical); }
+.karbon-steg { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
+.karbon-steg span { font-size: 11.5px; padding: 3px 8px; border-radius: 99px; background: var(--surface-2); color: var(--muted); }
+.karbon-steg span.ferdig { color: var(--accent); }
+.karbon-steg span.aktiv { background: var(--accent); color: #fff; font-weight: 600; }
+.karbon-bestand { max-height: 360px; overflow: auto; }
+.karbon-bestand tr.dempet { opacity: .5; }
+.farge-prikk { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 6px; vertical-align: 0; }
+.kort-under { margin-top: 10px; }
+.kort-under summary { cursor: pointer; font-weight: 600; margin-bottom: 8px; }

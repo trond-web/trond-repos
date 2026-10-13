@@ -32,6 +32,7 @@ import { readFileSync } from 'node:fs';
 import * as VEG from '../js/vegetasjon.js';
 import * as OPP from '../js/oppdrag.js';
 import * as KSL from '../js/ksl.js';
+import * as KB from '../js/karbon.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER, kjedeSammen, hentTraktorveierOgStier, slaaInnFkb, tomtVeiregister } from '../js/veier.js';
 
@@ -1026,6 +1027,67 @@ test('AR5: geometri fra SVG-utskriften (flater med ugyldig geometri i KML)', () 
   const [x, y] = geoTilUtm(...g.coordinates[0][0][0], 33);
   assert.ok(Math.abs(x - 300010) < 0.5 && Math.abs(y - 6700090) < 0.5, `${x} ${y}`);
   assert.equal(svgTilGeometri('<svg></svg>', b, 1000, 1000), null);
+});
+
+test('Karbon: faktorer, scenarioer mot referanse, usikkerhet, egnethet, prosjekt og varsler', () => {
+  // Faktorer: stamme (IPCC-densitet) × ekspansjon til hele treet – innenfor 1,1–1,5 t CO₂/m³.
+  for (const v of Object.values(KB.KARBON_FAKTOR)) assert.ok(v > 1.05 && v < 1.5, `${v}`);
+  const S = lagDemo(2026);
+  const sc = KB.scenarioer(S, { iAar: 2026 });
+  assert.equal(sc.rader.length, 31);
+  assert.ok(sc.hogstProsjekt < sc.hogstRef, 'karbonbanen hogger mindre enn referansen');
+  assert.ok(sc.merSlutt > 0 && sc.kreditter > 0 && sc.kreditter < sc.merSlutt, 'kreditter etter fradrag er mindre enn merlageret');
+  // Kreditter: aldri mer enn merlageret × fradragsfaktor, og bufferen er avsatt.
+  const f = (1 - sc.k.lekkasje / 100) * (1 - sc.u.fradrag / 100);
+  const maks = Math.max(...sc.rader.map((r) => r.mer)) * f;
+  assert.ok(Math.abs(sc.kreditter + sc.buffer - maks) < 1, `${sc.kreditter + sc.buffer} vs ${maks}`);
+  // Usikkerhet: VM0045 halvbredde − 15, minst 10 % (CRCF); uten prøveflater høyt fradrag.
+  assert.equal(KB.usikkerhet({ proveflater: 0, cv: 45 }).fradrag, 30);
+  const u = KB.usikkerhet({ proveflater: 20, cv: 45 }); assert.ok(Math.abs(u.halvbredde - 19.72) < 0.05); assert.equal(u.fradrag, 10);
+  assert.ok(KB.usikkerhet({ proveflater: 4, cv: 45 }).fradrag > 25);
+  assert.equal(KB.proveflaterFor({ cv: 45 }, 10), 13);
+  // Vernede bestand er utenfor.
+  const vern = S.bestand.find((b) => b.miljo);
+  if (vern) assert.ok(!sc.bestandIder.includes(vern.id));
+  // Egnethet med manuelle punkter.
+  const e = KB.egnethet(S, { iAar: 2026 });
+  assert.ok(e.punkter.some((x) => x.id === 'proveflater') && e.punkter.some((x) => x.id === 'juridisk' && x.manuell));
+  KB.sikreKarbon(S).sjekk.juridisk = true;
+  assert.equal(KB.egnethet(S, { iAar: 2026 }).punkter.find((x) => x.id === 'juridisk').status, 'ok');
+  // Prosjekt: karbontiltak i planen, karbonreglene i motoren og varsel ved hogst utenfor karbonbanen.
+  const p = KB.nyttProsjekt(S, { iAar: 2026 });
+  assert.ok(p.bestand.length > 0 && p.status === 'vurdering');
+  KB.settStatus(S, 'forberedelse');
+  const n = KB.brukKarbontiltak(S, { iAar: 2026 });
+  assert.ok(n > 0);
+  assert.ok(S.bestand.some((b) => (b.tiltak || []).some((t) => t.karbon && t.type === 'gjodsling')), 'gjødsling før hogst i karbonbanen');
+  assert.equal(KB.karbonVarsler(S, { iAar: 2026 }).length, 0);
+  const b = S.bestand.find((x) => p.bestand.includes(x.id));
+  b.tiltak.push({ id: 'x', type: 'sluttavvirkning', aar: 2028, status: 'planlagt' });
+  assert.ok(KB.karbonVarsler(S, { iAar: 2026 }).some((v) => v.nivaa === 'hoy' && v.bestand === b.id));
+  // Verifisering og kredittstatus.
+  KB.settStatus(S, 'registrert'); KB.sikreKarbon(S).prosjekt.startAar = 2020;
+  assert.ok(KB.karbonVarsler(S, { iAar: 2026 }).some((v) => v.tittel === 'Verifisering forfaller'));
+  KB.nyVerifikasjon(S, { aar: 2026, verifisertT: 1000, bufferT: 150, utstedtT: 850, solgtT: 500, prisNok: 290 });
+  const st = KB.kredittstatus(S); assert.equal(st.beholdning, 350); assert.equal(st.inntekt, 145000);
+});
+
+test('Tiltaksmotor: prinsippet «karbon og klima» og bestand i karbonprosjekt', () => {
+  const S = lagDemo(2026);
+  const bal = genererTiltak(S, { iAar: 2026, prinsipp: 'balansert' }); const kar = genererTiltak(S, { iAar: 2026, prinsipp: 'karbon' });
+  const hogst = (l) => l.filter((f) => f.type === 'sluttavvirkning').length;
+  assert.ok(hogst(kar) < hogst(bal), `${hogst(kar)} < ${hogst(bal)}`);
+  const pl = kar.find((f) => f.type === 'planting');
+  if (pl) assert.match(pl.kommentar, /foredlede planter/);
+  // Organisk jord: lukket hogst i stedet for flatehogst.
+  const b = S.bestand.find((x) => x.treslag === 'G' && (x.alder || 0) > 70 && !x.miljo);
+  b.vegetasjon = { kode: '8c', navn: 'Fuktskog' };
+  const f = genererTiltak(S, { iAar: 2026, prinsipp: 'karbon' }).filter((x) => x.b === b && ['sluttavvirkning', 'lukkethogst'].includes(x.type));
+  assert.ok(f.length && f.every((x) => x.type === 'lukkethogst'), f.map((x) => x.type).join());
+  // Bestand i aktivt karbonprosjekt får karbonreglene selv om planen ellers er «økonomi først».
+  S.karbon = { prosjekt: { status: 'registrert', bestand: [b.id] } };
+  const oko = genererTiltak(S, { iAar: 2026, prinsipp: 'okonomi' }).filter((x) => x.b === b && ['sluttavvirkning', 'lukkethogst'].includes(x.type));
+  assert.ok(oko.every((x) => x.type === 'lukkethogst'));
 });
 
 await Promise.all(venter);

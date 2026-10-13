@@ -358,6 +358,7 @@ export function framskriv(bestandListe, aarFrem, inn = STANDARD_INNSTILLINGER, {
       const { b } = s;
       const areal = b.areal || 0;
       staaende += s.volumDaa * areal; // stående volum ved inngangen av året, før årets hogst
+      const volumFor = s.volumDaa;
       if (folgPlan) {
         for (const tk of b.tiltak || []) {
           if (tk.status === 'utfort' || tk.aar !== aar) continue;
@@ -384,7 +385,7 @@ export function framskriv(bestandListe, aarFrem, inn = STANDARD_INNSTILLINGER, {
         }
       }
       const minAlder = laavesteHogstalder({ ...b, bonitet: s.h40 }, inn);
-      perBestand.get(b.id).push({ aar, alder: Math.round(s.alder), volumDaa: s.volumDaa, hk: beregnetHogstklasse(s.alder, minAlder, s.volumDaa, hkGrenser({ ...b, bonitet: s.h40 }, inn)) });
+      perBestand.get(b.id).push({ aar, alder: Math.round(s.alder), volumDaa: s.volumDaa, volumFor, hk: beregnetHogstklasse(s.alder, minAlder, s.volumDaa, hkGrenser({ ...b, bonitet: s.h40 }, inn)) });
       const neste = vekst(s.volumDaa, s.alder, s.h40, b.treslag, 1);
       tilvekst += (neste - s.volumDaa) * areal;
       s.volumDaa = neste;
