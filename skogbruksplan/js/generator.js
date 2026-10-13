@@ -3,7 +3,7 @@
 //   NIBIO SR16 vektor (volum, høyde, treantall, treslag, alder) og NIBIO MiS (nøkkelbiotoper).
 // Geometrioperasjoner gjøres med Turf (sendes inn, slik at modulen også kan kjøres i Node).
 import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST, nyId } from './model.js';
-import { hentAr5, lagFigurer, MARKSLAG, OVERSTYRBAR } from './markslag.js';
+import { hentAr5, lagFigurer, MARKSLAG, OVERSTYRBAR, begrens } from './markslag.js';
 import { tomSkifteplan, lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
 import { geoTilUtm, utmTilGeo, punktIGeometri, etikettPunkt } from './proj.js';
 import { placemarkGeometri } from './kml.js';
@@ -111,16 +111,36 @@ export function ryddKanterOgHull({ bestand, markslag = [], eiendom, T, PC, feat,
   const koord = (g) => g.coordinates;
   const fyllHull = () => {
     const figurer = [...bestand, ...markslag].filter((x) => x.geometri && /Polygon/.test(x.geometri.type));
-    // Figurene trekkes fra én og én (en stor union kan sprenge stakken i polygon-clipping). Koordinatene rundes til
-    // ca. 1 cm for å unngå nesten-sammenfallende kanter. Feiler én figur, hoppes den over.
+    // Hullene beregnes rute for rute (ca. 400 m): eiendommen deles i kvadranter til rutene er små nok (så hver
+    // klipping bare ser sin del av grensen), og bare figurene som overlapper ruten trekkes fra – i én operasjon.
+    // Det er mange ganger raskere enn å trekke alle figurene fra hele eiendommen. Bitene slås sammen igjen til
+    // slutt, så et hull over en rutegrense blir én flate. Koordinatene rundes til ca. 1 cm.
     const rund = (c) => (typeof c[0] === 'number' ? [Math.round(c[0] * 1e7) / 1e7, Math.round(c[1] * 1e7) / 1e7] : c.map(rund));
-    let rest = PC ? rund(eiendom.geometry.type === 'Polygon' ? [eiendom.geometry.coordinates] : eiendom.geometry.coordinates) : [];
-    for (const x of figurer) {
-      if (!rest.length) break;
-      const g = x.geometri; const bb = bbox(g);
-      const rb = T.bbox({ type: 'MultiPolygon', coordinates: rest });
-      if (!overlapper(bb, rb)) continue;
-      try { rest = PC.difference(rest, rund(g.type === 'Polygon' ? [g.coordinates] : g.coordinates)); } catch { /* hopp over figuren */ }
+    const mp = (g) => rund(g.type === 'Polygon' ? [g.coordinates] : g.coordinates);
+    let rest = [];
+    if (PC) {
+      const eb = bbox(eiendom.geometry); const dLat = 0.0036; const dLon = dLat / Math.cos((((eb[1] + eb[3]) / 2) * Math.PI) / 180);
+      const fb = figurer.map((x) => ({ x, bb: bbox(x.geometri) }));
+      const biter = [];
+      const boks = (b) => [[[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]], [b[0], b[1]]]];
+      const rute = (cb, del) => {
+        if (cb[2] - cb[0] > dLon || cb[3] - cb[1] > dLat) {
+          const mx = (cb[0] + cb[2]) / 2; const my = (cb[1] + cb[3]) / 2;
+          for (const sb of [[cb[0], cb[1], mx, my], [mx, cb[1], cb[2], my], [cb[0], my, mx, cb[3]], [mx, my, cb[2], cb[3]]]) {
+            let d;
+            try { d = PC.intersection(del, boks(sb)); } catch { continue; }
+            if (d.length) rute(sb, d);
+          }
+          return;
+        }
+        const her = fb.filter((f) => overlapper(cb, f.bb)).map((f) => mp(f.x.geometri));
+        try { del = her.length ? PC.difference(del, ...her) : del; } catch {
+          for (const h of her) { try { del = PC.difference(del, h); } catch { /* hopp over figuren */ } if (!del.length) break; }
+        }
+        for (const p of del) biter.push(p);
+      };
+      rute(eb, mp(eiendom.geometry));
+      try { rest = biter.length ? PC.union(...biter.map((p) => [p])) : []; } catch { rest = biter; }
     }
     const flekker = rest.map((p) => ({ type: 'Polygon', coordinates: p })).filter((p) => arealM2(p) / 1000 >= KANT.minHull).sort((x, y) => arealM2(y) - arealM2(x));
     for (const p of flekker) {
@@ -196,6 +216,11 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   const medReserve = (pc, tf) => { if (PC) { try { return pc(); } catch { /* prøv Turf */ } } return trygg(tf); };
   const snitt = (a, b) => medReserve(() => fraPC(PC.intersection(koord(a), koord(b))), () => T.intersect(T.featureCollection([a, b])));
   const minus = (a, b) => medReserve(() => fraPC(PC.difference(koord(a), koord(b))), () => T.difference(T.featureCollection([a, b])));
+  // a minus alle i lista i én polygon-clipping-operasjon (mye raskere enn én og én); faller tilbake til én og én.
+  const minusAlle = (a, liste) => {
+    if (PC) { try { return fraPC(PC.difference(koord(a), ...liste.map(koord))); } catch { /* én og én */ } }
+    let r = a; for (const b of liste) { if (!r) break; r = minus(r, b); } return r;
+  };
   const forening = (liste) => (liste.length === 1 ? liste[0] : medReserve(() => fraPC(PC.union(...liste.map(koord))), () => T.union(T.featureCollection(liste))) || liste[0]);
 
   // 1. Eiendom
@@ -253,8 +278,9 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   };
   const iEiendom = (o) => { if (!boksTreff(T.bbox(o.geometry))) return false; o.klipp = klipp(o.geometry); return o.klipp && arealM2(o.klipp) > 20; };
   // Henter alle flater i et område, med oppdeling når svaret er kuttet ved KML_MAKS. Ruter utenfor eiendommen hoppes over.
+  const kmlKo = begrens(6);
   const hentKml = async (tjeneste, lag, b = ub, dybde = 0, ruter = []) => {
-    const flater = parseKml(await hentTekst(hent, kmlUrl(tjeneste, lag, b)));
+    const flater = parseKml(await kmlKo(() => hentTekst(hent, kmlUrl(tjeneste, lag, b))));
     if (flater.length < KML_MAKS || dybde >= 5) { ruter.push(b); return flater; }
     const mx = (b[0] + b[2]) / 2; const my = (b[1] + b[3]) / 2;
     const deler = [[b[0], b[1], mx, my], [mx, b[1], b[2], my], [b[0], my, mx, b[3]], [mx, my, b[2], b[3]]].filter((d) => {
@@ -263,7 +289,7 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
       return boksTreff(gb) && trygg(() => T.booleanIntersects(T.bboxPolygon(gb), eiendom)) !== false;
     });
     const sett = new Map();
-    for (const d of deler) for (const f of await hentKml(tjeneste, lag, d, dybde + 1, ruter)) if (!sett.has(f.id)) sett.set(f.id, f);
+    for (const fl of await Promise.all(deler.map((d) => hentKml(tjeneste, lag, d, dybde + 1, ruter)))) for (const f of fl) if (!sett.has(f.id)) sett.set(f.id, f);
     return [...sett.values()];
   };
   // Punkter godt inne i polygonet (lengst fra kanten først), slik at punktspørringen ikke treffer naboflaten.
@@ -426,8 +452,9 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   const planKand = [...kandidater];
   for (const s of sr16Data) {
     let rest = s.klipp;
-    // Trekk fra bare planbestand som kan overlappe (ikke hele planen samlet).
-    for (const p of planKand) { if (!rest) break; if (overlapper(s.bbox, p.bb)) rest = minus(rest, p.g); }
+    // Trekk fra bare planbestand som kan overlappe – i én operasjon, med én og én som reserve.
+    const her = planKand.filter((p) => overlapper(s.bbox, p.bb));
+    if (rest && her.length) rest = minusAlle(rest, her.map((p) => p.g));
     if (rest && arealM2(rest) / 1000 >= minDaa) kandidater.push({ kilde: 'sr16', g: rest, attr: {} });
   }
 
@@ -440,10 +467,13 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   };
   for (const k of kandidater) {
     const bb = T.bbox(k.g); let naa = arealM2(k.g); const trukket = {};
-    for (const u of uproduktiv) {
-      if (!k.g || !overlapper(bb, u.bb)) continue;
-      const etter = minus(k.g, u.f); const ny = etter ? arealM2(etter) : 0;
-      if (naa - ny > 1) trukket[u.kategori] = (trukket[u.kategori] || 0) + (naa - ny);
+    // Én operasjon per markslagkategori, så arealet som trekkes ut fortsatt kan fordeles på kategori.
+    const perKat = new Map();
+    for (const u of uproduktiv) if (overlapper(bb, u.bb)) perKat.set(u.kategori, [...(perKat.get(u.kategori) || []), u.f]);
+    for (const [kat, fl] of perKat) {
+      if (!k.g) break;
+      const etter = minusAlle(k.g, fl); const ny = etter ? arealM2(etter) : 0;
+      if (naa - ny > 1) trukket[kat] = (trukket[kat] || 0) + (naa - ny);
       k.g = etter; naa = ny;
     }
     k.g = utenSmaa(k.g);

@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.5.2** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.5.3** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -165,6 +165,7 @@ Når planen lages, hentes markslag fra NIBIOs arealressurskart AR5 (`js/markslag
   1. Egenskapsoppslaget (GetFeatureInfo) gir flatene i ruten med utstrekning.
   2. Hver flate som mangler, hentes med KML filtrert på `sl_sdeid` (`FILTER`), som gir hele flaten.
   3. Gir heller ikke det noe, hentes geometrien fra SVG-utskriften med samme filter (`svgTilGeometri`). Oppløsningen er opptil 4000 px over flatens utstrekning.
+- **Fart for store eiendommer:** Rutene hos NIBIO (AR5, skogbruksplan, SR16 og MiS) hentes med opptil 6 samtidige kall (`begrens` i `js/markslag.js`), og resultatene settes sammen i fast rekkefølge. Hull i dekningen regnes rute for rute: eiendommen deles i kvadranter ned til ca. 400 m, og bare figurene som overlapper ruten trekkes fra, i én operasjon. Uproduktiv mark og planbestand trekkes også fra i én operasjon (`minusAlle`). For Flå 22/1 (11 455 daa, 12 teiger) gikk dette fra ca. 5,5 til under 2 minutter, med samme resultat.
 
 ## Rapporter (fanen «Rapporter»)
 
