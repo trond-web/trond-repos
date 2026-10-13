@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Team Sjusjøen Kaffebryggeriet</title>
+<meta name="description" content="Team Sjusjøen Kaffebryggeriet – norsk Pro Team i Ski Classics med base i Sjusjøen og Lillehammer. Løpere, terminliste og kontakt for sesongen 2026/27.">
+<meta property="og:title" content="Team Sjusjøen Kaffebryggeriet">
+<meta property="og:description" content="Langløp fra fjellet. Brygget på Sjusjøen. 12 løpere klare for Ski Classics 2026/27.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#1C1712">
+<link rel="icon" href="bilder/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: a race bib for the web – dark espresso bands (start, partnere, bunn) alternate with snow-white bands, gold as the one signal colour. Single deliberate look in both OS themes. */
+:root{
+  --espresso:#1C1712; --espresso-2:#2C241D; --line-dark:#4A4038;
+  --snow:#F6F3EE; --paper:#FFFFFF; --rule:#DCD4C8;
+  --gold:#E0A458; --gold-ink:#8A4A17;
+  --ink:#1C1712; --muted:#5E554B; --muted-dark:#C2B8AA;
+  --display:'Barlow Condensed','Arial Narrow','Helvetica Neue',Arial,sans-serif;
+  --body:'Source Sans 3','Segoe UI',Helvetica,Arial,sans-serif;
+  --wrap:1200px; --gut:clamp(16px,4vw,48px);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{background:var(--snow);color:var(--ink);font-family:var(--body);font-size:18px;line-height:1.6}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.wrap{max-width:var(--wrap);margin-inline:auto;padding-inline:var(--gut)}
+.band{padding-block:clamp(64px,9vw,120px)}
+.dark{background:var(--espresso);color:var(--snow)}
+.white{background:var(--paper)}
+.eyebrow{font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-ink);margin:0 0 12px}
+.dark .eyebrow{color:var(--gold)}
+h1,h2,h3{font-family:var(--display);font-weight:800;text-transform:uppercase;text-wrap:balance;margin:0;line-height:.92;letter-spacing:-.005em}
+h2{font-size:clamp(42px,6vw,72px);margin-bottom:28px}
+h3{font-size:26px;font-weight:700;line-height:1.1}
+p{margin:0}
+.prose{max-width:62ch;display:grid;gap:16px}
+.btn{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 24px;border-radius:3px;font-weight:700;font-size:17px;text-decoration:none;border:2px solid transparent;cursor:pointer;font-family:var(--body)}
+.btn-gold{background:var(--gold);color:var(--espresso)}
+.btn-gold:hover{background:#ECB673}
+.btn-line{border-color:var(--snow);color:var(--snow);background:transparent}
+.btn-line:hover{background:var(--snow);color:var(--espresso)}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--espresso);color:var(--snow);border-bottom:1px solid var(--line-dark)}
+.top .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 28px;padding-block:12px}
+.logo{display:block;color:var(--snow)}
+.logo svg{display:block;height:52px;width:auto;fill:currentColor}
+.nav{display:flex;flex-wrap:wrap;gap:2px 22px;font-weight:600;font-size:16px}
+.nav a{text-decoration:none;padding-block:10px;color:var(--snow);border-bottom:2px solid transparent}
+.nav a:hover{border-bottom-color:var(--gold)}
+
+/* hero */
+.hero{position:relative;overflow:hidden;background:var(--espresso);color:var(--snow)}
+.hero .wrap{position:relative;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-end;padding-block:clamp(56px,8vw,104px) clamp(110px,14vw,170px)}
+.hero-main{flex:999 1 560px;min-width:0}
+.hero h1{font-size:clamp(58px,10vw,138px);line-height:.86}
+.hero h1 span{color:var(--gold);display:block}
+.hero .lead{margin-top:26px;max-width:36ch;font-size:21px;color:var(--muted-dark)}
+.hero .cta{margin-top:34px;display:flex;flex-wrap:wrap;gap:14px}
+.ridge{position:absolute;left:0;right:0;bottom:-1px;width:100%;height:clamp(90px,14vw,190px);display:block}
+.next{flex:1 1 300px;min-width:0;background:var(--espresso-2);border:1px solid var(--line-dark);border-radius:4px;padding:24px}
+.next .k{font-family:var(--display);font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-dark)}
+.next .n{font-family:var(--display);font-weight:700;font-size:36px;line-height:1.02;margin-top:6px;text-transform:uppercase}
+.next .m{color:var(--muted-dark);margin-top:6px}
+.next .days{display:flex;align-items:baseline;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line-dark)}
+.next .days b{font-family:var(--display);font-weight:800;font-size:56px;line-height:1;color:var(--gold);font-variant-numeric:tabular-nums}
+
+/* stats */
+.stats{background:var(--gold);color:var(--espresso)}
+.stats .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:20px 32px;padding-block:30px}
+.stat b{display:block;font-family:var(--display);font-weight:800;font-size:52px;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-weight:600;font-size:16px;line-height:1.35;display:block;margin-top:6px}
+
+/* about */
+.split{display:flex;flex-wrap:wrap;gap:48px 64px}
+.split > *{flex:1 1 420px;min-width:0}
+.timeline{list-style:none;margin:0;padding:0;border-left:2px solid var(--espresso)}
+.timeline li{position:relative;padding:0 0 26px 26px}
+.timeline li:last-child{padding-bottom:0}
+.timeline li::before{content:"";position:absolute;left:-8px;top:8px;width:14px;height:14px;border-radius:50%;background:var(--snow);border:2px solid var(--espresso)}
+.timeline li.now::before{background:var(--gold);border-color:var(--gold-ink)}
+.timeline .y{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-ink)}
+.timeline .t{font-weight:600}
+.timeline .d{color:var(--muted);font-size:16px}
+.note{margin-top:28px;padding:22px 24px;background:var(--paper);border-radius:4px}
+.note p{font-size:17px}
+.note .who{margin-top:10px;font-weight:700;font-size:16px}
+
+/* home ground */
+.ground{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:2px;background:var(--rule);border:2px solid var(--rule);border-radius:4px;overflow:hidden;margin-top:12px}
+.ground div{background:var(--paper);padding:26px 24px}
+.ground b{display:block;font-family:var(--display);font-weight:800;font-size:56px;line-height:1;font-variant-numeric:tabular-nums}
+.ground b small{font-size:26px;font-weight:700;margin-left:4px}
+.ground span{display:block;margin-top:8px;color:var(--muted);font-size:16px}
+
+/* athletes */
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
+.tab{min-height:44px;padding:0 20px;border-radius:999px;border:2px solid var(--espresso);background:transparent;color:var(--espresso);font:600 16px var(--body);cursor:pointer}
+.tab[aria-pressed="true"]{background:var(--espresso);color:var(--snow)}
+.grid-ath{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px}
+.ath{background:var(--snow);border-radius:4px;overflow:hidden;display:flex;flex-direction:column}
+.ath .face{aspect-ratio:5/4;max-width:100%;background:var(--espresso);color:var(--gold);display:flex;align-items:flex-end;justify-content:space-between;padding:14px 16px}
+.ath .ini{font-family:var(--display);font-weight:800;font-size:68px;line-height:.85}
+.ath .nat{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.14em;color:var(--muted-dark)}
+.ath .body{padding:14px 16px 18px;display:grid;gap:4px}
+.ath .nm{font-weight:700;font-size:19px;line-height:1.25}
+.ath .st{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--muted)}
+.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:13px;font-weight:700;letter-spacing:.02em}
+.chip.new{background:var(--gold);color:var(--espresso)}
+.chip.ret{background:var(--rule);color:var(--ink)}
+
+/* races */
+.races{list-style:none;margin:0;padding:0;border-top:2px solid var(--espresso)}
+.race{display:grid;grid-template-columns:110px minmax(0,1fr) auto;gap:4px 20px;align-items:baseline;padding:16px 0;border-bottom:1px solid var(--rule)}
+.race .dt{font-family:var(--display);font-weight:700;font-size:21px;text-transform:uppercase;color:var(--gold-ink);font-variant-numeric:tabular-nums}
+.race .nm{font-weight:700;font-size:19px}
+.race .pl{color:var(--muted);font-size:16px}
+.race .km{font-family:var(--display);font-weight:700;font-size:22px;text-align:right;font-variant-numeric:tabular-nums}
+.race .home{margin-left:8px}
+.race.is-next{background:var(--espresso);color:var(--snow);padding-inline:16px;margin-inline:-16px;border-radius:3px}
+.race.is-next .dt{color:var(--gold)}
+.race.is-next .pl{color:var(--muted-dark)}
+.race.past{opacity:.5}
+.flag{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--gold);color:var(--espresso);vertical-align:2px}
+@media (max-width:560px){.race{grid-template-columns:minmax(0,1fr) auto}.race .dt{grid-column:1/-1}}
+
+/* partners */
+.title-sponsor{display:flex;flex-wrap:wrap;gap:16px 40px;align-items:center;justify-content:space-between;border:2px solid var(--gold);border-radius:4px;padding:28px 30px}
+.title-sponsor .k{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-dark)}
+.title-sponsor > div{min-width:0}
+.title-sponsor .n{overflow-wrap:anywhere;font-family:var(--display);font-weight:800;font-size:clamp(30px,7.5vw,64px);line-height:1;text-transform:uppercase}
+.title-sponsor p{max-width:46ch;color:var(--muted-dark)}
+.offer{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:28px;margin-top:44px}
+.offer h3{color:var(--gold);font-size:24px;margin-bottom:8px}
+.offer p{color:var(--muted-dark);font-size:17px}
+
+/* contact */
+.card{background:var(--paper);border-radius:4px;padding:28px;display:grid;gap:18px}
+.row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding-top:16px;border-top:1px solid var(--rule)}
+.row .lbl{font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.row .val{font-weight:700;font-size:19px;user-select:all;word-break:break-all}
+.copy{min-height:40px;padding:0 14px;border:2px solid var(--espresso);border-radius:3px;background:transparent;font:600 15px var(--body);cursor:pointer;color:var(--espresso)}
+.copy:hover{background:var(--espresso);color:var(--snow)}
+
+/* footer */
+.foot{background:var(--espresso);color:var(--muted-dark);font-size:15px}
+.foot .wrap{display:flex;flex-wrap:wrap;gap:24px 40px;justify-content:space-between;align-items:flex-end;padding-block:48px 36px}
+.foot svg{height:76px;width:auto;fill:var(--snow);display:block}
+.foot nav{display:flex;flex-wrap:wrap;gap:6px 22px}
+.foot a{color:var(--snow);text-decoration:none}
+.foot a:hover{color:var(--gold)}
+.hero-bg{position:absolute;inset:0;width:100%;height:100%;max-width:none;object-fit:cover;opacity:.32}
+.ath .face{position:relative}
+.ath .face img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ath .face.has-photo .ini{visibility:hidden}
+.ath .face.has-photo .nat{position:relative;background:rgba(28,23,18,.75);padding:2px 8px;border-radius:2px}
+.row a.val{text-decoration:none}
+.row a.val:hover{color:var(--gold-ink)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="logo" viewBox="239.27 187.47 592.98 154.93"><path d="M256.84 192.81V220.49H249.93V192.81H239.26V187.46H267.53V192.81Z M278.14 220.95Q272.42 220.95 269.35 217.57Q266.28 214.18 266.28 207.69Q266.28 201.41 269.40 198.03Q272.51 194.66 278.23 194.66Q283.69 194.66 286.58 198.28Q289.46 201.90 289.46 208.88V209.07H273.19Q273.19 212.77 274.56 214.66Q275.94 216.55 278.47 216.55Q281.96 216.55 282.87 213.52L289.08 214.06Q286.39 220.95 278.14 220.95ZM278.14 198.81Q275.82 198.81 274.56 200.42Q273.31 202.04 273.24 204.95H283.08Q282.90 201.88 281.61 200.34Q280.32 198.81 278.14 198.81Z M300.30 220.95Q296.62 220.95 294.56 218.95Q292.50 216.95 292.50 213.31Q292.50 209.38 295.07 207.31Q297.63 205.25 302.51 205.20L307.97 205.11V203.82Q307.97 201.34 307.10 200.13Q306.23 198.92 304.26 198.92Q302.44 198.92 301.58 199.75Q300.73 200.59 300.51 202.51L293.65 202.18Q294.28 198.48 297.03 196.57Q299.79 194.66 304.55 194.66Q309.35 194.66 311.950 197.02Q314.55 199.39 314.55 203.75V212.99Q314.55 215.12 315.03 215.93Q315.51 216.74 316.64 216.74Q317.39 216.74 318.09 216.59V220.16Q317.51 220.30 317.04 220.41Q316.57 220.53 316.10 220.60Q315.63 220.67 315.10 220.72Q314.58 220.77 313.87 220.77Q311.39 220.77 310.21 219.55Q309.02 218.33 308.79 215.96H308.65Q305.88 220.95 300.30 220.95ZM307.97 208.74 304.59 208.79Q302.30 208.88 301.33 209.29Q300.37 209.70 299.87 210.55Q299.37 211.39 299.37 212.80Q299.37 214.60 300.20 215.48Q301.03 216.36 302.41 216.36Q303.96 216.36 305.24 215.52Q306.51 214.67 307.24 213.18Q307.97 211.70 307.97 210.03Z M336.06 220.49V206.26Q336.06 199.58 332.22 199.58Q330.23 199.58 328.97 201.62Q327.72 203.66 327.72 206.89V220.49H321.13V200.80Q321.13 198.76 321.07 197.46Q321.01 196.16 320.94 195.13H327.23Q327.30 195.57 327.41 197.50Q327.53 199.44 327.53 200.16H327.62Q328.84 197.26 330.66 195.95Q332.48 194.63 335.01 194.63Q340.82 194.63 342.06 200.16H342.20Q343.49 197.21 345.30 195.92Q347.10 194.63 349.89 194.63Q353.59 194.63 355.54 197.15Q357.48 199.67 357.48 204.38V220.49H350.94V206.26Q350.94 199.58 347.10 199.58Q345.18 199.58 343.95 201.44Q342.72 203.31 342.60 206.59V220.49Z M276.42 270.03Q276.42 276.09 271.92 279.30Q267.42 282.51 258.71 282.51Q250.77 282.51 246.26 279.70Q241.74 276.88 240.45 271.17L248.81 269.79Q249.66 273.07 252.12 274.55Q254.58 276.03 258.95 276.03Q268.00 276.03 268.00 270.52Q268.00 268.77 266.96 267.62Q265.92 266.48 264.03 265.72Q262.14 264.96 256.78 263.87Q252.15 262.79 250.33 262.13Q248.51 261.47 247.05 260.57Q245.58 259.68 244.56 258.42Q243.53 257.16 242.96 255.46Q242.39 253.76 242.39 251.56Q242.39 245.96 246.59 242.99Q250.80 240.01 258.83 240.01Q266.51 240.01 270.36 242.42Q274.22 244.82 275.33 250.36L266.95 251.50Q266.30 248.84 264.33 247.49Q262.35 246.14 258.65 246.14Q250.80 246.14 250.80 251.06Q250.80 252.68 251.64 253.70Q252.47 254.73 254.11 255.44Q255.75 256.16 260.77 257.25Q266.71 258.51 269.28 259.58Q271.84 260.65 273.34 262.07Q274.83 263.49 275.62 265.47Q276.42 267.45 276.42 270.03Z M294.12 282.51Q287.70 282.51 284.26 279.73Q280.81 276.94 279.67 270.73L288.26 269.47Q288.79 272.66 290.22 274.20Q291.66 275.74 294.18 275.74Q296.76 275.74 298.09 274.01Q299.42 272.28 299.42 269.06V247.40H291.19V240.63H308.04V268.85Q308.04 275.30 304.38 278.91Q300.71 282.51 294.12 282.51Z M333.32 282.51Q324.80 282.51 320.27 278.35Q315.74 274.19 315.74 266.45V240.63H324.39V265.78Q324.39 270.67 326.72 273.21Q329.05 275.74 333.56 275.74Q338.19 275.74 340.68 273.09Q343.17 270.44 343.17 265.48V240.63H351.82V266.01Q351.82 273.87 346.97 278.19Q342.12 282.51 333.32 282.51Z M393.16 270.03Q393.16 276.09 388.66 279.30Q384.17 282.51 375.46 282.51Q367.52 282.51 363.00 279.70Q358.49 276.88 357.20 271.17L365.55 269.79Q366.40 273.07 368.87 274.55Q371.33 276.03 375.70 276.03Q384.75 276.03 384.75 270.52Q384.75 268.77 383.71 267.62Q382.67 266.48 380.78 265.72Q378.89 264.96 373.53 263.87Q368.90 262.79 367.08 262.13Q365.26 261.47 363.80 260.57Q362.33 259.68 361.30 258.42Q360.28 257.16 359.71 255.46Q359.14 253.76 359.14 251.56Q359.14 245.96 363.34 242.99Q367.55 240.01 375.58 240.01Q383.26 240.01 387.11 242.42Q390.96 244.82 392.08 250.36L383.70 251.50Q383.05 248.84 381.07 247.49Q379.09 246.14 375.40 246.14Q367.55 246.14 367.55 251.06Q367.55 252.68 368.38 253.70Q369.22 254.73 370.86 255.44Q372.50 256.16 377.51 257.25Q383.46 258.51 386.03 259.58Q388.59 260.65 390.09 262.07Q391.58 263.49 392.37 265.47Q393.16 267.45 393.16 270.03Z M410.69 282.51Q404.27 282.51 400.82 279.73Q397.38 276.94 396.24 270.73L404.82 269.47Q405.35 272.66 406.79 274.20Q408.22 275.74 410.74 275.74Q413.32 275.74 414.66 274.01Q415.99 272.28 415.99 269.06V247.40H407.76V240.63H424.61V268.85Q424.61 275.30 420.94 278.91Q417.28 282.51 410.69 282.51Z M433.01 284.06 437.52 277.68Q431.16 271.90 431.16 261.09Q431.16 251.15 436.67 245.58Q442.18 240.01 452.00 240.01Q457.81 240.01 462.38 242.18L464.78 238.75H470.44L466.28 244.70Q469.56 247.46 471.23 251.63Q472.90 255.81 472.90 261.09Q472.90 267.53 470.35 272.43Q467.80 277.32 463.07 279.92Q458.33 282.51 451.94 282.51Q445.73 282.51 441.39 280.25L438.73 284.04ZM464.08 261.09Q464.08 255.14 461.56 251.50L445.70 274.13Q448.37 275.74 451.94 275.74Q457.78 275.74 460.93 271.92Q464.08 268.09 464.08 261.09ZM439.87 261.09Q439.87 267.09 442.33 270.82L458.13 248.31Q455.43 246.81 452.00 246.81Q446.20 246.81 443.03 250.58Q439.87 254.35 439.87 261.09Z M479.42 281.93V240.63H511.89V247.31H488.06V257.69H510.10V264.37H488.06V275.24H513.09V281.93Z M544.60 281.93 526.60 250.13Q527.13 254.76 527.13 257.57V281.93H519.45V240.63H529.33L547.59 272.69Q547.06 268.27 547.06 264.63V240.63H554.74V281.93Z M271.32 341.81 256.49 322.84 251.39 326.74V341.81H242.74V300.51H251.39V319.24L270.00 300.51H280.08L262.44 317.98L281.52 341.81Z M315.27 341.81 311.61 331.25H295.87L292.20 341.81H283.56L298.62 300.51H308.82L323.83 341.81ZM303.72 306.87 303.55 307.51Q303.25 308.57 302.84 309.92Q302.43 311.27 297.80 324.75H309.67L305.60 312.88L304.34 308.89Z M338.06 307.19V319.97H359.19V326.65H338.06V341.81H329.41V300.51H359.87V307.19Z M374.74 307.19V319.97H395.87V326.65H374.74V341.81H366.09V300.51H396.54V307.19Z M402.58 341.81V300.51H435.06V307.19H411.23V317.57H433.27V324.25H411.23V335.12H436.26V341.81Z M479.23 330.02Q479.23 335.65 475.01 338.73Q470.79 341.81 463.28 341.81H442.62V300.51H461.52Q469.09 300.51 472.97 303.13Q476.85 305.76 476.85 310.88Q476.85 314.40 474.90 316.82Q472.95 319.24 468.97 320.09Q473.98 320.67 476.60 323.24Q479.23 325.80 479.23 330.02ZM468.15 312.06Q468.15 309.27 466.37 308.10Q464.60 306.93 461.11 306.93H451.27V317.16H461.17Q464.84 317.16 466.49 315.88Q468.15 314.61 468.15 312.06ZM470.55 329.35Q470.55 323.55 462.23 323.55H451.27V335.39H462.55Q466.71 335.39 468.63 333.88Q470.55 332.37 470.55 329.35Z M514.33 341.81 504.74 326.12H494.60V341.81H485.96V300.51H506.59Q513.98 300.51 517.99 303.69Q522.01 306.87 522.01 312.82Q522.01 317.16 519.54 320.31Q517.08 323.46 512.89 324.45L524.06 341.81ZM513.30 313.17Q513.30 307.22 505.68 307.22H494.60V319.41H505.92Q509.55 319.41 511.43 317.77Q513.30 316.13 513.30 313.17Z M547.23 324.86V341.81H538.62V324.86L523.90 300.51H532.96L542.87 317.98L552.89 300.51H561.95Z M586.54 335.62Q589.91 335.62 593.07 334.64Q596.24 333.66 597.97 332.13V326.42H587.89V320.03H605.88V335.21Q602.60 338.58 597.34 340.49Q592.08 342.39 586.30 342.39Q576.22 342.39 570.80 336.81Q565.38 331.22 565.38 320.97Q565.38 310.77 570.83 305.33Q576.28 299.89 586.51 299.89Q601.04 299.89 605.00 310.65L597.03 313.05Q595.74 309.92 592.99 308.31Q590.23 306.69 586.51 306.69Q580.41 306.69 577.25 310.39Q574.08 314.08 574.08 320.97Q574.08 327.97 577.35 331.80Q580.62 335.62 586.54 335.62Z M633.24 335.62Q636.61 335.62 639.77 334.64Q642.94 333.66 644.67 332.13V326.42H634.58V320.03H652.58V335.21Q649.30 338.58 644.04 340.49Q638.78 342.39 633.00 342.39Q622.92 342.39 617.50 336.81Q612.08 331.22 612.08 320.97Q612.08 310.77 617.53 305.33Q622.98 299.89 633.21 299.89Q647.74 299.89 651.70 310.65L643.73 313.05Q642.44 309.92 639.68 308.31Q636.93 306.69 633.21 306.69Q627.11 306.69 623.95 310.39Q620.78 314.08 620.78 320.97Q620.78 327.97 624.05 331.80Q627.32 335.62 633.24 335.62Z M660.33 341.81V300.51H692.80V307.19H668.97V317.57H691.01V324.25H668.97V335.12H694.00V341.81Z M728.55 341.81 718.97 326.12H708.83V341.81H700.18V300.51H720.82Q728.20 300.51 732.22 303.69Q736.23 306.87 736.23 312.82Q736.23 317.16 733.77 320.31Q731.31 323.46 727.12 324.45L738.28 341.81ZM727.53 313.17Q727.53 307.22 719.91 307.22H708.83V319.41H720.14Q723.78 319.41 725.65 317.77Q727.53 316.13 727.53 313.17Z M743.52 341.81V300.51H752.17V341.81Z M760.21 341.81V300.51H792.68V307.19H768.85V317.57H790.89V324.25H768.85V335.12H793.88V341.81Z M818.88 307.19V341.81H810.24V307.19H796.90V300.51H832.25V307.19Z"/></symbol></svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#start" aria-label="Team Sjusjøen Kaffebryggeriet, til toppen"><svg viewBox="0 0 592.98 154.93" role="img" aria-label="Team Sjusjøen Kaffebryggeriet"><use href="#logo"/></svg></a>
+    <nav class="nav" aria-label="Hovedmeny">
+      <a href="#laget">Laget</a>
+      <a href="#lopere">Løpere</a>
+      <a href="#terminliste">Terminliste</a>
+      <a href="#partnere">Partnere</a>
+      <a href="#kontakt">Kontakt</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero" id="start">
+  <img class="hero-bg" src="bilder/hero.jpg" alt="" onerror="this.remove()">
+  <div class="wrap">
+    <div class="hero-main">
+      <p class="eyebrow">Ski Classics · Sesong XVIII · 2026/27</p>
+      <h1>Langløp fra fjellet. <span>Brygget på Sjusjøen.</span></h1>
+      <p class="lead">Team Sjusjøen Langløp heter nå Team Sjusjøen Kaffebryggeriet. Samme lag og samme hjemmebane, med 12 løpere klare for vinteren.</p>
+      <div class="cta">
+        <a class="btn btn-gold" href="#lopere">Møt løperne</a>
+        <a class="btn btn-line" href="#terminliste">Se terminlisten</a>
+      </div>
+    </div>
+    <aside class="next" aria-labelledby="next-k">
+      <div class="k" id="next-k">Neste renn</div>
+      <div class="n" id="next-name">Bad Gastein Prologue</div>
+      <div class="m" id="next-meta">11. desember 2026 · Østerrike · 1 km</div>
+      <div class="days"><b id="next-days">–</b><span id="next-unit">dager igjen</span></div>
+    </aside>
+  </div>
+  <svg class="ridge" viewBox="0 0 1440 190" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 190V118L120 84L210 108L330 40L420 86L520 58L640 120L760 30L860 92L980 66L1090 112L1210 46L1320 96L1440 72V190Z" fill="#2C241D"/>
+    <path d="M330 40L356 56L345 58L362 66L330 60Z M760 30L790 50L776 50L796 60L760 52Z M1210 46L1236 62L1224 63L1240 72L1210 66Z" fill="#F6F3EE" opacity=".85"/>
+    <path d="M0 190V150L160 128L300 148L470 116L620 150L790 120L960 152L1130 124L1300 150L1440 132V190Z" fill="#F6F3EE"/>
+  </svg>
+</section>
+
+<section class="stats" aria-label="Laget i tall">
+  <div class="wrap">
+    <div class="stat"><b>2015</b><span>Grunnlagt, et av de eldste lagene i Ski Classics</span></div>
+    <div class="stat"><b>12</b><span>Løpere: 5 kvinner og 7 menn</span></div>
+    <div class="stat"><b>Topp 10</b><span>Rundt der laget har ligget i Pro Team-konkurransen</span></div>
+    <div class="stat"><b>15</b><span>Renn på Ski Classics-touren denne vinteren</span></div>
+  </div>
+</section>
+
+<section class="band" id="laget">
+  <div class="wrap split">
+    <div>
+      <p class="eyebrow">Om laget</p>
+      <h2>Et utviklingslag med store ambisjoner</h2>
+      <div class="prose">
+        <p>Vi er et norsk Pro Team i Ski Classics med base i Sjusjøen og Lillehammer. Her har vi noen av verdens beste løypeforhold om vinteren og asfalterte rulleskitraseer om sommeren, rett utenfor døra.</p>
+        <p>Laget har vært med i Ski Classics siden 2015 og har over flere år ligget rundt topp 10 i Pro Team-konkurransen. Vi satser på unge, lovende løpere og gir dem et miljø der de kan utvikle seg. For mange har laget vært et springbrett videre.</p>
+        <p>Fra sesongen 2026/27 er Kaffebryggeriet navnesponsor, og vi stiller med den største troppen i lagets historie.</p>
+      </div>
+      <div class="note">
+        <p>For laglederen er det like viktig at unge løpere trives og utvikler seg i et godt miljø som å hente de største navnene.</p>
+        <p class="who">Arnt Nyborg, Pro Team Director</p>
+      </div>
+    </div>
+    <div>
+      <p class="eyebrow">Lagets historie</p>
+      <ol class="timeline">
+        <li><div class="y">2015</div><div class="t">Laget starter i Ski Classics</div><div class="d">Ett av de lengstlevende Pro Teamene på touren.</div></li>
+        <li><div class="y">Sesong XV</div><div class="t">Arnt Nyborg kåret til beste Pro Team Director</div><div class="d">Laget het da Team Næringsbanken Stora Enso.</div></li>
+        <li><div class="y">Sesong XVI</div><div class="t">11. plass i Pro Team-konkurransen</div></li>
+        <li><div class="y">2025/26</div><div class="t">Nytt navn: Team Sjusjøen Langløp</div><div class="d">Åtte løpere, blant dem franske Bastien Laurent.</div></li>
+        <li class="now"><div class="y">2026/27</div><div class="t">Team Sjusjøen Kaffebryggeriet</div><div class="d">Kaffebryggeriet blir navnesponsor. Troppen vokser til 12 løpere.</div></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="band white" aria-labelledby="h-ground">
+  <div class="wrap">
+    <p class="eyebrow">Hjemmebane</p>
+    <h2 id="h-ground">Sjusjøen</h2>
+    <p class="prose">Sjusjøen regnes som en av Europas beste langrennsdestinasjoner. Det er her vi trener, både på snø og på rulleski.</p>
+    <div class="ground" style="margin-top:32px">
+      <div><b>350<small>km</small></b><span>Preparerte skiløyper</span></div>
+      <div><b>300<small>km</small></b><span>Av løypene er også preparert for skøyting</span></div>
+      <div><b>10<small>km</small></b><span>Rulleskiløype ved Natrudstilen for sommertrening</span></div>
+      <div><b>2</b><span>Skistadioner med internasjonale mål</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="lopere">
+  <div class="wrap">
+    <p class="eyebrow">Troppen 2026/27</p>
+    <h2>Løperne</h2>
+    <div class="tabs" role="group" aria-label="Vis løpere">
+      <button class="tab" type="button" id="tab-alle" data-f="alle" aria-pressed="true">Alle (12)</button>
+      <button class="tab" type="button" id="tab-k" data-f="k" aria-pressed="false">Kvinner (5)</button>
+      <button class="tab" type="button" id="tab-m" data-f="m" aria-pressed="false">Menn (7)</button>
+    </div>
+    <div class="grid-ath" id="athletes"></div>
+  </div>
+</section>
+
+<section class="band white" id="terminliste">
+  <div class="wrap">
+    <p class="eyebrow">Ski Classics sesong XVIII</p>
+    <h2>Terminliste</h2>
+    <ol class="races" id="races"></ol>
+  </div>
+</section>
+
+<section class="band dark" id="partnere">
+  <div class="wrap">
+    <p class="eyebrow">Partnere</p>
+    <h2>De som gjør det mulig</h2>
+    <div class="title-sponsor">
+      <div><div class="k">Navnesponsor</div><div class="n">Kaffebryggeriet</div></div>
+      <p>Kaffebryggeriet har i mange år støttet langløp i Ski Classics. Fra denne sesongen bærer laget fra Sjusjøen navnet deres.</p>
+    </div>
+    <div class="offer">
+      <div><h3>Synlighet på drakta</h3><p>Logoen din følger laget gjennom 15 renn i Østerrike, Sveits, Italia, Tsjekkia, Sverige og Norge.</p></div>
+      <div><h3>Med i sendingene</h3><p>Ski Classics-rennene vises direkte, og et lag med 12 løpere er med i feltet i alle renn.</p></div>
+      <div><h3>Lokal forankring</h3><p>Støtt et lag som bygger unge utøvere i Sjusjøen og Lillehammer-regionen.</p></div>
+    </div>
+    <p style="margin-top:36px"><a class="btn btn-gold" href="#kontakt">Bli partner</a></p>
+  </div>
+</section>
+
+<section class="band" id="kontakt">
+  <div class="wrap split">
+    <div>
+      <p class="eyebrow">Kontakt</p>
+      <h2>Ta en kaffe med oss</h2>
+      <p class="prose">Spørsmål om laget, samarbeid eller presse? Ta kontakt med laglederen, så finner vi en tid.</p>
+    </div>
+    <div class="card">
+      <div><div style="font-weight:700;font-size:22px">Arnt Nyborg</div><div style="color:var(--muted)">Pro Team Director</div></div>
+      <div class="row"><div><div class="lbl">E-post</div><a class="val" id="v-mail" href="mailto:arnt_nyborg@hotmail.com">arnt_nyborg@hotmail.com</a></div><button class="copy" type="button" id="c-mail" data-t="v-mail">Kopier</button></div>
+      <div class="row"><div><div class="lbl">Telefon</div><a class="val" id="v-tel" href="tel:+4795841495">+47 958 41 495</a></div><button class="copy" type="button" id="c-tel" data-t="v-tel">Kopier</button></div>
+      <div class="row"><div><div class="lbl">Instagram</div><div class="val">@teamsjusjoenlanglop</div></div><a class="copy" style="display:inline-flex;align-items:center;text-decoration:none" href="https://www.instagram.com/teamsjusjoenlanglop/" target="_blank" rel="noopener">Åpne</a></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div style="display:grid;gap:18px">
+      <svg viewBox="0 0 592.98 154.93" role="img" aria-label="Team Sjusjøen Kaffebryggeriet"><use href="#logo"/></svg>
+      <span>Pro Team i Ski Classics siden 2015 · Sjusjøen / Lillehammer</span>
+    </div>
+    <nav aria-label="Bunnmeny">
+      <a href="#laget">Laget</a><a href="#lopere">Løpere</a><a href="#terminliste">Terminliste</a><a href="#partnere">Partnere</a><a href="#kontakt">Kontakt</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var athletes = [
+    {n:'Ingrid Elise Kullerud', g:'k', c:'NOR', s:'new'},
+    {n:'Lisa Vinsa', g:'k', c:'SWE', s:'new'},
+    {n:'Julie Jeistad', g:'k', c:'NOR', s:'new'},
+    {n:'Mie Stangeland Sørensen', g:'k', c:'NOR', s:'new'},
+    {n:'Dyvéke Aakervik', g:'k', c:'NOR', s:'new'},
+    {n:'Jonas Bergli', g:'m', c:'NOR', s:'ret'},
+    {n:'Bastien Laurent', g:'m', c:'FRA', s:'ret'},
+    {n:'Anders Grini', g:'m', c:'NOR', s:'ret'},
+    {n:'Grunde Myhrer', g:'m', c:'NOR', s:'ret'},
+    {n:'Morten Eide Pedersen', g:'m', c:'NOR', s:'new'},
+    {n:'Ole Eirik Fuglehaug Ekrem', g:'m', c:'NOR', s:'new'},
+    {n:'Jørgen Hvatum', g:'m', c:'NOR', s:'new'}
+  ];
+  var races = [
+    ['2026-12-11','Bad Gastein Prologue','Østerrike',1],
+    ['2026-12-13','Sportgastein Criterium','Østerrike',30],
+    ['2026-12-19','Bad Gastein ITT','Østerrike',7],
+    ['2026-12-20','Bad Gastein Criterium','Østerrike',36],
+    ['2027-01-16','Engadin La Diagonela','Sveits',55],
+    ['2027-01-17','Zuoz–St. Moritz Sprint','Sveits',30],
+    ['2027-01-31','Marcialonga','Italia',70],
+    ['2027-02-12','Bedřichov Heat Sprint','Tsjekkia',1.5],
+    ['2027-02-14','Jizerská50','Tsjekkia',50],
+    ['2027-02-27','Oxberg–Mora Sprint, kvinner','Sverige',30],
+    ['2027-02-28','Oxberg–Mora Sprint, menn','Sverige',30],
+    ['2027-03-07','Vasaloppet','Sverige',90],
+    ['2027-03-20','Birkebeinerrennet','Norge',53],
+    ['2027-04-03','Reistadløpet','Norge',35],
+    ['2027-04-04','Grand Finale Summit 2 Senja','Norge',60]
+  ];
+  var months = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+  var monthsLong = ['januar','februar','mars','april','mai','juni','juli','august','september','oktober','november','desember'];
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function initials(n){var p=n.split(' ').filter(Boolean);return p[0][0]+p[p.length-1][0];}
+  function km(v){return String(v).replace('.',',')+' km';}
+
+  // athletes
+  var grid = document.getElementById('athletes');
+  function renderAth(f){
+    grid.innerHTML = athletes.filter(function(a){return f==='alle'||a.g===f;}).map(function(a){
+      var slug = a.n.toLowerCase().replace(/ø/g,'o').replace(/æ/g,'ae').replace(/å/g,'a').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+      return '<article class="ath"><div class="face"><img src="bilder/lopere/'+slug+'.jpg" alt="'+esc(a.n)+'" loading="lazy" onload="this.parentNode.classList.add(\'has-photo\')" onerror="this.remove()"><span class="ini" aria-hidden="true">'+esc(initials(a.n))+'</span><span class="nat">'+a.c+'</span></div>'+
+        '<div class="body"><div class="nm">'+esc(a.n)+'</div><div class="st"><span class="chip '+a.s+'">'+(a.s==='new'?'Ny i år':'Fortsetter')+'</span>'+(a.g==='k'?'Kvinner':'Menn')+'</div></div></article>';
+    }).join('');
+  }
+  var tabs = document.querySelectorAll('.tab');
+  tabs.forEach(function(t){t.addEventListener('click',function(){
+    tabs.forEach(function(x){x.setAttribute('aria-pressed', x===t?'true':'false');});
+    renderAth(t.dataset.f);
+  });});
+  renderAth('alle');
+
+  // races
+  var today = new Date(); today.setHours(0,0,0,0);
+  var nextIdx = races.findIndex(function(r){return new Date(r[0]+'T00:00:00')>=today;});
+  document.getElementById('races').innerHTML = races.map(function(r,i){
+    var d = new Date(r[0]+'T00:00:00');
+    var cls = 'race'+(i===nextIdx?' is-next':'')+(nextIdx!==-1&&i<nextIdx||nextIdx===-1?' past':'');
+    var home = r[2]==='Norge'?'<span class="flag home">Hjemme</span>':'';
+    return '<li class="'+cls+'"><span class="dt">'+d.getDate()+'. '+months[d.getMonth()]+'</span>'+
+      '<span><span class="nm">'+esc(r[1])+'</span>'+home+'<br><span class="pl">'+esc(r[2])+(i===nextIdx?' · neste renn':'')+'</span></span>'+
+      '<span class="km">'+km(r[3])+'</span></li>';
+  }).join('');
+
+  if(nextIdx!==-1){
+    var r = races[nextIdx], d = new Date(r[0]+'T00:00:00');
+    var days = Math.round((d - today)/86400000);
+    document.getElementById('next-name').textContent = r[1];
+    document.getElementById('next-meta').textContent = d.getDate()+'. '+monthsLong[d.getMonth()]+' '+d.getFullYear()+' · '+r[2]+' · '+km(r[3]);
+    document.getElementById('next-days').textContent = days===0?'I dag':days;
+    document.getElementById('next-unit').textContent = days===0?'':(days===1?'dag igjen':'dager igjen');
+  } else {
+    document.getElementById('next-k').textContent = 'Sesongen er ferdig';
+    document.querySelector('.next .days').hidden = true;
+  }
+
+  // copy
+  document.querySelectorAll('button.copy').forEach(function(b){b.addEventListener('click',function(){
+    var el = document.getElementById(b.dataset.t), txt = el.textContent.trim();
+    function done(){b.textContent='Kopiert';setTimeout(function(){b.textContent='Kopier';},1800);}
+    function fallback(){var s=window.getSelection(),rg=document.createRange();rg.selectNodeContents(el);s.removeAllRanges();s.addRange(rg);b.textContent='Markert';setTimeout(function(){b.textContent='Kopier';},1800);}
+    try{navigator.clipboard.writeText(txt).then(done,fallback);}catch(e){fallback();}
+  });});
+})();
+</script>
+</body>
+</html>
