@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.5.0** (2026-10-09) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.5.1** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -152,6 +152,10 @@ Når planen lages, hentes markslag fra NIBIOs arealressurskart AR5 (`js/markslag
   - åpen fastmark, jordbruk, bebyggelse, samferdsel, vann og snø/is
 - **Ingen volum på uproduktiv mark:** alt som ikke er produktiv skog, trekkes ut av bestandene før volum beregnes. Merknaden på bestandet sier hvor mye som er trukket ut.
 - **Utdatert AR5 overstyres:** Mye av AR5 er feltkartlagt rundt 1990. Grøftet og tilplantet myr eller gjengrodd mark kan derfor fortsatt stå som impediment, myr eller åpen fastmark. En slik figur regnes som produktiv skog når nyere data viser skog på minst halvparten av den, og trekkes da ikke ut av bestandene. Nyere data betyr enten SR16 med minst 5 m³/daa og bonitet 8 eller høyere, eller en skogbruksplan registrert etter AR5-kartleggingen. Bestandet får en merknad om hvorfor, og loggen viser antall figurer og areal.
+- **Kantsoner og hull ved grensene:** SR16-flatene følger ikke grensene i den gamle planen og eiendommen nøyaktig. Det gir smale striper og flekker uten data. Etter at bestandene er satt sammen, ryddes dette opp (`ryddKanterOgHull` i `js/generator.js`):
+  - **Smale SR16-rester (kantsoner):** Har resten middelbredde under 15 m, eller er den under 2 daa og under 20 m bred, slås den sammen med nabobestandet den deler lengst grense med. Bestand fra den gamle planen foretrekkes. Grenser stripa bare mot åker, vei eller eiendomsgrensen, blir den markslagsfiguren *Kantsone* i stedet for et eget bestand.
+  - **Hull i dekningen:** Dette er arealer innenfor eiendommen som verken er bestand eller markslag. Små eller smale flekker legges til naboen med lengst felles grense. Store og brede flater (minst 2 daa og 20 m middelbredde) blir et eget bestand. Treslag og bonitet hentes da fra AR5, og bestandet får en merknad om registrering i felt.
+  - Loggen viser hvor mange kantsoner og hull som er behandlet. Eiendommen er da dekket av bestand og markslag.
 - **Uproduktive figurer** lagres som U1, U2 … med AR5-treslag, grunnforhold og kartleggingsdato.
 - **Kartsymboler:** myr (strek med tuster på blå bunn), impediment (prikker og små trær), åpen fastmark (prikker), jordbruk (skravur), bebygd (kryss), samferdsel (strek) og vann (bølger). Symbolene er med i tegnforklaringen og kan slås av i kartlagsmenyen.
 - **Oversikt** viser arealfordelingen per markslag. For planer laget tidligere kan markslag hentes og trekkes ut av bestandene derfra.

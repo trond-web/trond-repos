@@ -77,6 +77,95 @@ function parseGml(tekst, lag) {
   return attr;
 }
 
+// Grenser for kantsoner og hull (meter og dekar).
+export const KANT = { maksBredde: 15, smalBredde: 20, smalDaa: 2, minHull: 0.02, minFelles: 3 };
+
+// Middelbredde (m) for en flate: 2 × areal / omkrets – en smal stripe har lav middelbredde.
+function middelbreddeM(T, g, arealM2) {
+  const ringer = g.type === 'Polygon' ? g.coordinates : g.coordinates.flat();
+  const omkrets = ringer.reduce((s, r) => s + T.length(T.lineString(r), { units: 'meters' }), 0);
+  return omkrets ? (2 * arealM2(g)) / omkrets : 0;
+}
+
+// Slår smale SR16-bestand (S-nummer) sammen med naboen og fyller hull i dekningen av eiendommen.
+// Endrer bestand og markslag på stedet. Returnerer { kantsoner, hull, hullDaa }.
+export function ryddKanterOgHull({ bestand, markslag = [], eiendom, T, PC, feat, arealM2, forening, snitt, trygg, nyId = null, nyttBestand = null }) {
+  const bbox = (g) => T.bbox(g);
+  const overlapper = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
+  // Felles grense (m) ≈ areal av naboen innenfor 2 m buffer rundt flaten / 2.
+  const fellesGrense = (g, naboer) => {
+    const buf = trygg(() => T.buffer(feat(g), 2, { units: 'meters' })); if (!buf) return [];
+    const bb = bbox(buf);
+    return naboer.filter((n) => n.geometri && overlapper(bb, bbox(n.geometri)))
+      .map((n) => ({ n, m: arealM2(snitt(buf, feat(n.geometri))?.geometry) / 2 }))
+      .filter((x) => x.m >= KANT.minFelles).sort((a, b) => b.m - a.m);
+  };
+  const slaaSammen = (mal, g) => {
+    const u = forening([feat(mal.geometri), feat(g)]);
+    if (!u) return false;
+    mal.geometri = u.geometry; mal.areal = Math.round((arealM2(u.geometry) / 1000) * 100) / 100;
+    return true;
+  };
+  // Hull i dekningen: eiendom minus bestand og markslag. Hver flekk legges til naboen med lengst felles grense.
+  let hull = 0; let hullDaa = 0; let nyeBestand = 0; const detaljer = [];
+  const koord = (g) => g.coordinates;
+  const fyllHull = () => {
+    const figurer = [...bestand, ...markslag].filter((x) => x.geometri && /Polygon/.test(x.geometri.type));
+    // Figurene trekkes fra én og én (en stor union kan sprenge stakken i polygon-clipping). Koordinatene rundes til
+    // ca. 1 cm for å unngå nesten-sammenfallende kanter. Feiler én figur, hoppes den over.
+    const rund = (c) => (typeof c[0] === 'number' ? [Math.round(c[0] * 1e7) / 1e7, Math.round(c[1] * 1e7) / 1e7] : c.map(rund));
+    let rest = PC ? rund(eiendom.geometry.type === 'Polygon' ? [eiendom.geometry.coordinates] : eiendom.geometry.coordinates) : [];
+    for (const x of figurer) {
+      if (!rest.length) break;
+      const g = x.geometri; const bb = bbox(g);
+      const rb = T.bbox({ type: 'MultiPolygon', coordinates: rest });
+      if (!overlapper(bb, rb)) continue;
+      try { rest = PC.difference(rest, rund(g.type === 'Polygon' ? [g.coordinates] : g.coordinates)); } catch { /* hopp over figuren */ }
+    }
+    const flekker = rest.map((p) => ({ type: 'Polygon', coordinates: p })).filter((p) => arealM2(p) / 1000 >= KANT.minHull).sort((x, y) => arealM2(y) - arealM2(x));
+    for (const p of flekker) {
+      const daa0 = arealM2(p) / 1000;
+      // Store og brede flater uten data blir eget bestand (oftest produktiv skog etter AR5 uten SR16 eller plan).
+      if (nyttBestand && daa0 >= KANT.smalDaa && middelbreddeM(T, p, arealM2) >= KANT.smalBredde) {
+        const nb = nyttBestand(p); if (nb) { bestand.push(nb); nyeBestand++; hull++; hullDaa += daa0; detaljer.push({ daa: Math.round(daa0 * 100) / 100, til: 'nytt bestand' }); continue; }
+      }
+      const naboer = fellesGrense(p, figurer);
+      if (!naboer.length) continue;
+      const mal = naboer[0].n;
+      if (!slaaSammen(mal, p)) continue;
+      const daa = arealM2(p) / 1000;
+      if (bestand.includes(mal) && daa >= KANT.smalDaa && middelbreddeM(T, p, arealM2) >= KANT.smalBredde) mal.merknad = [mal.merknad, `${komma(daa)} daa uten kartdata ved grensen er lagt til – kontroller i felt`].filter(Boolean).join('; ');
+      hull++; hullDaa += daa; detaljer.push({ daa: Math.round(daa * 100) / 100, bredde: Math.round(middelbreddeM(T, p, arealM2)), til: mal.nr || mal.kategori });
+    }
+  };
+  fyllHull();
+
+  // Smale SR16-rester (kantsoner): middelbredde under 15 m, eller små (under 2 daa) og under 20 m brede.
+  // Slås sammen med nabobestandet (helst fra den gamle planen). Grenser stripa bare mot åker, vei eller
+  // eiendomsgrensen, blir den en markslagsfigur «Kantsone» i stedet for et eget bestand.
+  let kantsoner = 0; let tilMarkslag = 0;
+  const smale = bestand.filter((x) => /^S/.test(x.nr) && x.geometri).map((x) => ({ b: x, w: middelbreddeM(T, x.geometri, arealM2) }))
+    .filter((x) => x.w < KANT.maksBredde || (x.b.areal < KANT.smalDaa && x.w < KANT.smalBredde)).sort((x, y) => x.b.areal - y.b.areal);
+  const fjernet = new Set();
+  let uNr = markslag.reduce((m, f) => Math.max(m, parseInt(String(f.nr).replace(/^U/, ''), 10) || 0), 0);
+  for (const { b } of smale) {
+    const naboer = fellesGrense(b.geometri, bestand.filter((x) => x !== b && !fjernet.has(x)));
+    const best = naboer.find((x) => !/^S/.test(x.n.nr)) || naboer[0];
+    if (best && slaaSammen(best.n, b.geometri)) {
+      best.n.merknad = [best.n.merknad, `Kantsone på ${komma(b.areal)} daa (${b.nr}) er slått sammen med bestandet`].filter(Boolean).join('; ');
+      fjernet.add(b); kantsoner++; continue;
+    }
+    markslag.push({ id: nyId ? nyId('m') : `m${Date.now()}${uNr}`, nr: `U${++uNr}`, kategori: 'kantsone', areal: b.areal, geometri: b.geometri,
+      ar5: { artype: 'Kantsone (SR16-skog)', treslag: b.treslag === 'F' ? 'Furu' : b.treslag === 'L' ? 'Lauv' : 'Gran', bonitet: b.bonitet ? `H40 ${b.bonitet}` : '', grunnforhold: b.volumDaa != null ? `ca. ${komma(b.volumDaa)} m³/daa` : '' } });
+    fjernet.add(b); tilMarkslag++;
+  }
+  for (let i = bestand.length - 1; i >= 0; i--) if (fjernet.has(bestand[i])) bestand.splice(i, 1);
+  if (kantsoner || tilMarkslag) fyllHull();
+  // SR16-bestand og nye bestand nummereres på nytt (S1, S2 …).
+  let sNr = 0; for (const x of bestand) if (/^S\d*$/.test(x.nr)) x.nr = `S${++sNr}`;
+  return { kantsoner, tilMarkslag, hull, hullDaa, nyeBestand, detaljer };
+}
+
 const tall = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
 const komma = (v) => v.toFixed(1).replace('.', ',');
 
@@ -475,12 +564,32 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     b.bonitet = best.bonitet;
     b.merknad = [b.merknad, `Bonitet anslått fra nabobestand ${best.nr} (${Math.round(bd)} m unna) – kontroller i felt`].filter(Boolean).join('; ');
   }
+  let kantInfo = { kantsoner: 0, tilMarkslag: 0, hull: 0, hullDaa: 0, nyeBestand: 0 };
+  // 5c. Kantsoner og hull. SR16-flater følger ikke grensene i den gamle planen eller eiendommen nøyaktig. Det gir
+  // smale «kantsoner» som ellers ville blitt egne bestand, og flekker innenfor eiendommen som ingen figur dekker.
+  // Smale SR16-rester slås sammen med nabobestandet de deler lengst grense med, og hull fylles inn i naboen
+  // (bestand eller markslagsfigur) med lengst felles grense.
+  // Nytt bestand for en flate uten data: treslag og bonitet fra AR5 der det finnes.
+  const nyttBestand = (g) => {
+    const pt = etikettPunkt(g);
+    const f = pt && ar5.find((x) => x.kategori === 'produktiv' && punktIGeometri(pt, x.geometri));
+    const h40 = f ? AR5_BONITET_H40[String(f.ar5?.bonitet || '').toLowerCase()] : null;
+    const ts = /lauv/i.test(f?.ar5?.treslag || '') ? 'L' : 'G';
+    const daa = arealM2(g) / 1000;
+    const b = normaliserBestand({ BESTANDNR: 'S', AREAL_DAA: Math.round(daa * 10) / 10, TRESLAG: ts, BONITET: h40, KILDE: f ? 'AR5' : 'Eiendomsgrense',
+      MERKNAD: `Areal uten data i tidligere plan og SR16${f ? ` – AR5: ${String(f.ar5.treslag || 'skog').toLowerCase()}, ${String(f.ar5.bonitet || '').toLowerCase()} bonitet` : ''}. Registrer alder, volum og treslag i felt` }, g, daa, iAar);
+    b.hogstklasse = null;
+    return b;
+  };
+  const kant = ryddKanterOgHull({ bestand, markslag, eiendom, T, PC, feat, arealM2, forening, snitt, trygg, nyId, nyttBestand });
+  kantInfo = kant;
+
   const nokkel = (b) => [b.nr.startsWith('S') ? 1 : 0, ...b.nr.replace(/^S/, '').split('-').map((x) => parseInt(x, 10) || 0)];
   bestand.sort((a, b) => { const x = nokkel(a); const y = nokkel(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0); } return 0; });
 
   const skogDaa = bestand.reduce((s, b) => s + b.areal, 0);
   const flagget = bestand.filter((b) => /hogd/.test(b.merknad)).length;
-  logg('bygg', 'ok', `${bestand.length} bestand på ${skogDaa.toFixed(0)} daa skog${flagget ? `, ${flagget} merket for kontroll` : ''}`);
+  logg('bygg', 'ok', `${bestand.length} bestand på ${skogDaa.toFixed(0)} daa skog${flagget ? `, ${flagget} merket for kontroll` : ''}${kantInfo.kantsoner + kantInfo.tilMarkslag ? ` · ${kantInfo.kantsoner + kantInfo.tilMarkslag} kantsoner slått sammen eller skilt ut` : ''}${kantInfo.hull ? ` · ${kantInfo.hull} hull ved grensene (${komma(kantInfo.hullDaa)} daa) fylt inn${kantInfo.nyeBestand ? `, ${kantInfo.nyeBestand} som nye bestand` : ''}` : ''}`);
   if (!bestand.length) throw new Error('Fant ingen skogdata innenfor eiendommen. Er eiendommen skogkledd?');
 
   // 6. Vegetasjonstype per bestand: NIBIOs vegetasjonskart der det finnes, ellers anslag fra treslag, bonitet og
