@@ -1,0 +1,15 @@
+{
+  "name": "Nordfjella villrein – jaktkart",
+  "short_name": "Villrein",
+  "description": "Jaktkart for villreinjakt i Nordfjella: grensa for villreinområdet, eiendomsgrenser, GPS og kart uten nett.",
+  "lang": "no",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#24352b",
+  "theme_color": "#24352b",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

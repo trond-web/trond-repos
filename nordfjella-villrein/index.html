@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Nordfjella villrein</title>
+<meta name="description" content="Jaktkart for villreinjakt i Nordfjella: grensa for villreinområdet, eiendomsgrenser, GPS-posisjon, merkede punkter og kart som virker uten nett.">
+<meta name="theme-color" content="#24352b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Villrein">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="kart" aria-label="Kart over Nordfjella villreinområde"></div>
+
+<header class="topp">
+  <div class="merke">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 4c0 4 2 6 5 7m5-7c0 4-2 6-5 7m-7-5c-2 3-1 5 1 6m15-6c2 3 1 5-1 6M16 11c-4 0-6 3-6 7 0 5 3 9 6 9s6-4 6-9c0-4-2-7-6-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>Nordfjella villrein</span>
+  </div>
+  <span id="nett" class="nett" hidden>Uten nett</span>
+</header>
+
+<div class="knapper" role="toolbar" aria-label="Kartverktøy">
+  <button id="b-lag" class="rund" type="button" aria-label="Kartlag" title="Kartlag">
+    <svg viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 10-5zM2 12l10 5 10-5M2 16l10 5 10-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+  </button>
+  <button id="b-omraade" class="rund" type="button" aria-label="Vis hele villreinområdet" title="Hele området">
+    <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
+  <button id="b-merk" class="rund" type="button" aria-label="Registrer rein eller punkt der du står" title="Registrer">
+    <svg viewBox="0 0 24 24"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v6M9 10h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
+  <button id="b-gps" class="rund gps" type="button" aria-label="Min posisjon" title="Min posisjon" data-modus="av">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor" class="gps-prikk"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<section id="status" class="status" aria-live="polite">
+  <button id="status-handtak" class="handtak" type="button" aria-label="Vis eller skjul detaljer"></button>
+  <div class="status-hoved">
+    <div id="s-omraade" class="merkelapp graa">Slå på GPS for å se hvor du er</div>
+    <button id="b-meny" class="knapp-meny" type="button" aria-label="Meny">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div id="s-detaljer" class="status-detaljer">
+    <div class="rad"><span class="ledetekst">Vald</span><span id="s-vald">–</span></div>
+    <div class="rad"><span class="ledetekst">Eiendom</span><span id="s-eiendom">–</span></div>
+    <div class="rad"><span class="ledetekst">Posisjon</span><span id="s-pos">–</span></div>
+    <div class="rad" id="s-mal-rad" hidden><span class="ledetekst">Mål</span><span id="s-mal"></span><button id="b-stopp-mal" class="lenkeknapp" type="button">Stopp</button></div>
+  </div>
+</section>
+
+<!-- Punktinfo: vises når man trykker i kartet -->
+<section id="punkt" class="ark" hidden aria-label="Informasjon om punktet">
+  <div class="ark-topp">
+    <h2 id="p-tittel">Punkt</h2>
+    <button class="lukk" type="button" data-lukk="punkt" aria-label="Lukk">×</button>
+  </div>
+  <div id="p-innhold"></div>
+</section>
+
+<!-- Kartlag -->
+<section id="lagvalg" class="ark" hidden aria-label="Kartlag">
+  <div class="ark-topp">
+    <h2>Kartlag</h2>
+    <button class="lukk" type="button" data-lukk="lagvalg" aria-label="Lukk">×</button>
+  </div>
+  <h3>Bakgrunnskart</h3>
+  <div id="bakgrunner" class="valg"></div>
+  <h3>Kartlag</h3>
+  <div id="overlegg" class="valg"></div>
+  <p class="liten">Eiendomsgrensene tegnes fra zoomnivå 14 (ca. 1:35 000). Gårds- og bruksnummer vises når du zoomer helt inn.</p>
+</section>
+
+<!-- Meny -->
+<section id="meny" class="ark stort" hidden aria-label="Meny">
+  <div class="ark-topp">
+    <h2>Meny</h2>
+    <button class="lukk" type="button" data-lukk="meny" aria-label="Lukk">×</button>
+  </div>
+  <nav class="faner" role="tablist">
+    <button type="button" role="tab" data-fane="f-grunn" aria-selected="true">Vald og jaktgrunn</button>
+    <button type="button" role="tab" data-fane="f-rein">Reinregistrering</button>
+    <button type="button" role="tab" data-fane="f-punkter">Punkter</button>
+    <button type="button" role="tab" data-fane="f-offline">Offline</button>
+    <button type="button" role="tab" data-fane="f-import">Egne grenser</button>
+    <button type="button" role="tab" data-fane="f-om">Om</button>
+  </nav>
+
+  <div id="f-grunn" class="fane">
+    <p>Et vald er eiendommene som jakter sammen. Trykk i kartet på hver eiendom i valdet ditt, velg valdnummer og
+      <b>Lagre som min jaktgrunn</b>. Da ser du hvilket vald du står i, og hvor langt det er til valdgrensa – også uten nett.</p>
+    <ul id="grunn-liste" class="liste"></ul>
+    <h3>Villreinvald i Nordfjella</h3>
+    <ul id="vald-liste" class="punktliste mono-liste"></ul>
+    <p class="liten">Fra <a href="https://hjorteviltregisteret.no/Statistikk/Villrein" target="_blank" rel="noopener">Hjorteviltregisteret</a>
+      (oppdateres når du har nett). Valdgrenser finnes ikke som åpne kartdata. Har du valdkart fra kommunen eller villreinnemnda,
+      kan du legge det inn under «Egne grenser» – har filen et felt med valdnummer, viser appen valdet automatisk.</p>
+  </div>
+
+  <div id="f-rein" class="fane" hidden>
+    <p>Oppsummering av dine registreringer, til jaktleder, valdansvarlig og villreinnemnda.</p>
+    <div class="to">
+      <label class="felt">Jaktår <select id="r-aar" class="velger"></select></label>
+      <label class="felt">Vald <select id="r-vald" class="velger"></select></label>
+    </div>
+    <div id="r-oppsummering"></div>
+    <div class="knapperad">
+      <button id="b-csv" type="button" class="knapp">Last ned CSV (Excel)</button>
+      <button id="b-del" type="button" class="knapp hoved">Del oppsummering</button>
+    </div>
+    <p class="liten">Samme flokk kan bli registrert flere ganger av ulike jegere eller på ulike tidspunkt. Tallene er derfor
+      observasjoner, ikke en telling av bestanden. Fellingsrapporten skal fortsatt leveres i Hjorteviltregisteret.</p>
+  </div>
+
+  <div id="f-punkter" class="fane" hidden>
+    <p>Alle registreringer og punkter lagres på telefonen.</p>
+    <ul id="punkt-liste" class="liste"></ul>
+    <div class="knapperad">
+      <button id="b-gpx" type="button" class="knapp">Last ned GPX</button>
+      <button id="b-slett-punkter" type="button" class="knapp fare">Slett alle</button>
+    </div>
+  </div>
+
+  <div id="f-offline" class="fane" hidden>
+    <p>Last ned kartet for hele villreinområdet før du går til fjells. Da virker kart, eiendomsgrenser, GPS og lagrede jaktgrunner
+      selv uten mobildekning. Gjør det på wifi.</p>
+    <div id="pakker" class="valg"></div>
+    <div class="knapperad">
+      <button id="b-last-ned" type="button" class="knapp hoved">Last ned</button>
+      <button id="b-avbryt" type="button" class="knapp" hidden>Avbryt</button>
+    </div>
+    <div id="framdrift" class="framdrift" hidden><div><i></i></div><span></span></div>
+    <p id="lagring" class="liten"></p>
+    <button id="b-tom-fliser" type="button" class="lenkeknapp">Slett nedlastede kart</button>
+  </div>
+
+  <div id="f-import" class="fane" hidden>
+    <p>Har du jaktfelt, soner eller valdgrenser fra villreinnemnda, fjellstyret eller grunneierlaget som fil? Legg dem inn her
+      (GeoJSON, KML eller GPX). De lagres bare på denne telefonen.</p>
+    <label class="knapp filknapp">Velg fil …<input id="fil" type="file" accept=".geojson,.json,.kml,.gpx,application/vnd.google-earth.kml+xml,application/gpx+xml,application/geo+json"></label>
+    <ul id="import-liste" class="liste"></ul>
+  </div>
+
+  <div id="f-om" class="fane" hidden>
+    <h3>Nordfjella villreinområde</h3>
+    <p id="om-omraade"></p>
+    <h3>Viktig</h3>
+    <ul class="punktliste">
+      <li>Kartet er et hjelpemiddel. Du er selv ansvarlig for å jakte bare der du har jaktrett og etter gjeldende forskrift, kvote og vilkår fra villreinnemnda og grunneier.</li>
+      <li>Eiendomsgrenser i fjellet er ofte unøyaktige (merket «lav nøyaktighet» i appen). Bruk god margin nær grensene.</li>
+      <li>Grensa for villreinområdet er Miljødirektoratets leveområde for Nordfjella. Jaktfelt og soner kan avvike – legg dem inn under «Egne grenser».</li>
+      <li>GPS-nøyaktigheten vises som ± meter. Under 20 m er normalt.</li>
+    </ul>
+    <h3>Nyttige lenker</h3>
+    <ul class="punktliste">
+      <li><a href="https://villrein.no/villreinomrader/nordfjella/" target="_blank" rel="noopener">Villrein.no – Nordfjella</a></li>
+      <li><a href="https://faktaark.naturbase.no/?id=BV00003542" target="_blank" rel="noopener">Faktaark i Naturbase</a></li>
+      <li><a href="https://www.hjorteviltregisteret.no/" target="_blank" rel="noopener">Hjorteviltregisteret (fellingsrapport)</a></li>
+      <li><a href="https://www.seeiendom.no/" target="_blank" rel="noopener">SeEiendom (Kartverket)</a></li>
+    </ul>
+    <h3>Datakilder</h3>
+    <p class="liten">Villreinområde og funksjonsområder: Miljødirektoratet. Eiendomsgrenser, eiendomsoppslag, høyder og kart: Kartverket.
+      Flyfoto: Esri. Ingen data om deg sendes noe sted – posisjon og punkter blir på telefonen. Ved oppslag av eiendom og høyde sendes
+      bare koordinatet til Kartverket.</p>
+    <p class="liten">Legg appen til på hjemskjermen (Del → «Legg til på Hjem-skjerm» i Safari, eller «Installer app» i Chrome) så starter den som en vanlig app.</p>
+  </div>
+</section>
+
+<!-- Registrering -->
+<dialog id="merk" class="dialog">
+  <form method="dialog" id="merk-skjema">
+    <h2>Registrer</h2>
+    <p id="merk-pos" class="liten"></p>
+    <div class="typer" role="radiogroup" aria-label="Type">
+      <label><input type="radio" name="type" value="obs" checked><span>👀 Observasjon</span></label>
+      <label><input type="radio" name="type" value="felt"><span>🦌 Felt dyr</span></label>
+      <label><input type="radio" name="type" value="skadet"><span>🩸 Skadeskutt</span></label>
+      <label><input type="radio" name="type" value="syk"><span>⚠️ Syk/død rein</span></label>
+      <label><input type="radio" name="type" value="bil"><span>🚙 Bil</span></label>
+      <label><input type="radio" name="type" value="leir"><span>⛺ Leir</span></label>
+      <label><input type="radio" name="type" value="annet"><span>📍 Annet</span></label>
+    </div>
+
+    <fieldset class="del" data-for="obs skadet syk" id="merk-plassering">
+      <legend>Hvor er dyret/flokken?</legend>
+      <div class="to">
+        <label class="felt">Avstand (m) <input name="avstand" type="number" inputmode="numeric" min="0" max="5000" placeholder="0 = her"></label>
+        <label class="felt">Retning <select name="peiling" class="velger"><option value="">–</option></select></label>
+      </div>
+      <p class="liten">La stå tomt hvis du registrerer der du står. Du kan også trykke i kartet der flokken er og velge «Registrer her».</p>
+    </fieldset>
+
+    <fieldset class="del" data-for="obs">
+      <legend>Flokken</legend>
+      <label class="felt">Antall dyr totalt <input name="total" type="number" inputmode="numeric" min="1" max="5000"></label>
+      <p class="liten">Struktur – fyll ut så godt du ser (gir kalv/simle- og bukk/simle-forhold):</p>
+      <div id="struktur" class="struktur"></div>
+      <p id="struktur-sum" class="liten"></p>
+      <div class="to">
+        <label class="felt">Atferd <select name="atferd" class="velger"><option value="">–</option></select></label>
+        <label class="felt">Trekker mot <select name="retning" class="velger"><option value="">–</option></select></label>
+      </div>
+      <label class="avkryss"><input type="checkbox" name="merket"> Merket dyr i flokken (GPS-halsband/øremerke)</label>
+    </fieldset>
+
+    <fieldset class="del" data-for="felt">
+      <legend>Felt dyr</legend>
+      <div class="segment" role="radiogroup" aria-label="Kjønn">
+        <label><input type="radio" name="kjonn" value="bukk"><span>Bukk</span></label>
+        <label><input type="radio" name="kjonn" value="simle"><span>Simle</span></label>
+      </div>
+      <div class="segment" role="radiogroup" aria-label="Alder">
+        <label><input type="radio" name="alder" value="kalv"><span>Kalv</span></label>
+        <label><input type="radio" name="alder" value="aaring"><span>Åring</span></label>
+        <label><input type="radio" name="alder" value="eldre"><span>Eldre</span></label>
+      </div>
+      <div class="to">
+        <label class="felt">Slaktevekt (kg) <input name="vekt" type="number" inputmode="decimal" min="0" max="200" step="0.1"></label>
+        <label class="felt">Jeger / jegernr. <input name="jeger" type="text" maxlength="60"></label>
+      </div>
+      <label class="avkryss"><input type="checkbox" name="kjeve"> Kjeve tatt</label>
+      <label class="felt" data-vis-hvis="kjeve">Kjeve-/merkelappnr. <input name="kjevenr" type="text" maxlength="40"></label>
+      <label class="avkryss"><input type="checkbox" name="cwd"> Prøve for skrantesjuke (CWD) tatt</label>
+      <label class="felt" data-vis-hvis="cwd">Prøvenr. <input name="cwdnr" type="text" maxlength="40"></label>
+      <label class="avkryss"><input type="checkbox" name="fmerket"> Merket dyr (halsband/øremerke)</label>
+      <p class="liten">Følg kravene fra villreinnemnda og Mattilsynet om kjever og prøver for skrantesjuke. Felte dyr rapporteres i Hjorteviltregisteret.</p>
+    </fieldset>
+
+    <fieldset class="del" data-for="skadet">
+      <legend>Skadeskyting</legend>
+      <label class="felt">Dyret forsvant mot <select name="sretning" class="velger"><option value="">–</option></select></label>
+      <label class="avkryss"><input type="checkbox" name="ettersok"> Ettersøk er varslet</label>
+      <p class="liten">Merk skuddsted og tegn på treff i notatet. Skadeskyting skal meldes og ettersøk settes i gang straks.</p>
+    </fieldset>
+
+    <fieldset class="del" data-for="syk">
+      <legend>Syk eller død rein</legend>
+      <div class="segment" role="radiogroup" aria-label="Tilstand">
+        <label><input type="radio" name="tilstand" value="Syk/avmagret"><span>Syk/avmagret</span></label>
+        <label><input type="radio" name="tilstand" value="Unormal atferd"><span>Unormal atferd</span></label>
+        <label><input type="radio" name="tilstand" value="Død/kadaver"><span>Død</span></label>
+      </div>
+      <label class="felt">Antall <input name="santall" type="number" inputmode="numeric" min="1" max="500" value="1"></label>
+      <p class="boks naer">Ikke rør eller flytt dyret. Meld straks til Mattilsynet (22 40 00 00) og villreinnemnda/kommunen – det kan være skrantesjuke (CWD).</p>
+    </fieldset>
+
+    <label class="felt">Navn <input name="navn" type="text" maxlength="60" placeholder="Valgfritt"></label>
+    <label class="felt">Notat <textarea name="notat" rows="2" maxlength="1000"></textarea></label>
+    <div class="knapperad">
+      <button value="avbryt" type="submit" class="knapp" formnovalidate>Avbryt</button>
+      <button value="lagre" type="submit" class="knapp hoved">Lagre</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="melding" class="melding" role="status" hidden></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
