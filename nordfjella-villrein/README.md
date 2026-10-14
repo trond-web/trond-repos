@@ -36,9 +36,25 @@ Grensa for villreinområdet hentes slik (oppdater filen hvis Miljødirektoratet 
 https://kart.miljodirektoratet.no/arcgis/rest/services/villrein/MapServer/0/query?where=OBJECTID%3D541&outFields=*&outSR=4326&f=geojson
 ```
 
+## Publisering på Railway
+
+Appen er statisk og kjøres med en liten Node-server uten avhengigheter (`server.js`), samme oppsett som SkogIQ. Serveren har
+komprimering, ETag/304, sikkerhetshoder og helsesjekk på `/healthz`. Testfiler, README og konfigurasjon publiseres ikke.
+
+1. Gå til [railway.com](https://railway.com), og åpne prosjektet `skogiq` (eller lag et nytt med **New Project**).
+   Velg **New** → **GitHub Repo** → `trond-web/trond-repos`.
+2. Under tjenestens **Settings**:
+   - **Root Directory**: `/nordfjella-villrein`
+   - **Branch**: `main`
+   - **Start Command**: `node server.js`, **Healthcheck Path**: `/healthz`, **Watch Paths**: `/nordfjella-villrein/**`
+3. **Networking** → **Generate Domain** for å få en offentlig adresse (`*.up.railway.app`), eller legg til eget domene.
+
+Railway bygger med Railpack (Node ≥ 20) og starter `node server.js` på porten i `PORT`. Ingen miljøvariabler er nødvendige.
+Appen publiseres også på GitHub Pages (`https://trond-web.github.io/trond-repos/nordfjella-villrein/`).
+
 ## Utvikling
 
-Ren statisk side (Leaflet fra unpkg, ES-moduler) uten byggesteg. Kjør `python3 -m http.server` i mappen og åpne i nettleseren.
+Ren statisk side (Leaflet fra unpkg, ES-moduler) uten byggesteg. Kjør `npm start` (port 8080) i mappen og åpne i nettleseren.
 
 ```
 node tests/run.mjs          # enhetstester
