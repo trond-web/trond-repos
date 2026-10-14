@@ -211,33 +211,3 @@ a { color: inherit; }
 .grense-etikett { background: rgba(185, 28, 28, .9); color: #fff; border: 0; font-weight: 600; box-shadow: none; }
 .grense-etikett::before { display: none; }
 
-/* ---------- Vald ---------- */
-.velger { padding: 10px; border-radius: 8px; border: 1px solid var(--linje); background: var(--papir); color: var(--tekst); font-size: 16px; width: 100%; }
-.liste li.gruppe { border-bottom: 0; padding-bottom: 2px; }
-.liste li.under { padding-left: 28px; }
-
-/* ---------- Registrering ---------- */
-.dialog { max-height: calc(100dvh - 24px); overflow-y: auto; }
-.del { border: 1px solid var(--linje); border-radius: 10px; margin: 10px 0; padding: 4px 12px 8px; }
-.del legend { font-weight: 650; font-size: 14px; padding: 0 4px; }
-.to { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.struktur { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
-.teller { display: flex; align-items: center; gap: 4px; font-size: 14px; }
-.teller span { flex: 1; line-height: 1.15; }
-.teller small { display: block; color: var(--dempet); font-size: 11.5px; }
-.teller button { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--linje); background: var(--graa-bg); font-size: 18px; cursor: pointer; flex: none; }
-.teller input { width: 44px; text-align: center; padding: 6px 2px; border-radius: 8px; border: 1px solid var(--linje); background: var(--papir); color: var(--tekst); font-size: 16px; }
-.segment { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-.segment input { position: absolute; opacity: 0; pointer-events: none; }
-.segment span { display: inline-block; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--linje); font-size: 14px; cursor: pointer; }
-.segment input:checked + span { background: var(--skog-2); color: #f3efe2; border-color: var(--skog-2); }
-.avkryss { display: flex; gap: 10px; align-items: center; padding: 6px 0; font-size: 15px; }
-.avkryss input { width: 22px; height: 22px; accent-color: var(--skog-2); }
-.nokkeltall { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; }
-.nokkeltall div { background: var(--graa-bg); border-radius: 10px; padding: 8px; text-align: center; }
-.nokkeltall b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
-.nokkeltall small { color: var(--dempet); font-size: 12px; }
-.tabell { width: 100%; border-collapse: collapse; font-size: 14px; margin: 6px 0; }
-.tabell td, .tabell th { padding: 5px 4px; border-bottom: 1px solid var(--linje); text-align: left; }
-.tabell td:last-child, .tabell th:last-child { text-align: right; font-variant-numeric: tabular-nums; }
-.wpt-markor .antall { position: absolute; right: -6px; top: -4px; background: #111; color: #fff; font: 600 11px/16px system-ui, sans-serif; min-width: 16px; padding: 0 3px; border-radius: 8px; }

@@ -33,7 +33,7 @@
   <button id="b-omraade" class="rund" type="button" aria-label="Vis hele villreinområdet" title="Hele området">
     <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
   </button>
-  <button id="b-merk" class="rund" type="button" aria-label="Registrer rein eller punkt der du står" title="Registrer">
+  <button id="b-merk" class="rund" type="button" aria-label="Merk punkt der du står" title="Merk punkt">
     <svg viewBox="0 0 24 24"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v6M9 10h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
   </button>
   <button id="b-gps" class="rund gps" type="button" aria-label="Min posisjon" title="Min posisjon" data-modus="av">
@@ -50,7 +50,6 @@
     </button>
   </div>
   <div id="s-detaljer" class="status-detaljer">
-    <div class="rad"><span class="ledetekst">Vald</span><span id="s-vald">–</span></div>
     <div class="rad"><span class="ledetekst">Eiendom</span><span id="s-eiendom">–</span></div>
     <div class="rad"><span class="ledetekst">Posisjon</span><span id="s-pos">–</span></div>
     <div class="rad" id="s-mal-rad" hidden><span class="ledetekst">Mål</span><span id="s-mal"></span><button id="b-stopp-mal" class="lenkeknapp" type="button">Stopp</button></div>
@@ -86,8 +85,7 @@
     <button class="lukk" type="button" data-lukk="meny" aria-label="Lukk">×</button>
   </div>
   <nav class="faner" role="tablist">
-    <button type="button" role="tab" data-fane="f-grunn" aria-selected="true">Vald og jaktgrunn</button>
-    <button type="button" role="tab" data-fane="f-rein">Reinregistrering</button>
+    <button type="button" role="tab" data-fane="f-grunn" aria-selected="true">Jaktgrunn</button>
     <button type="button" role="tab" data-fane="f-punkter">Punkter</button>
     <button type="button" role="tab" data-fane="f-offline">Offline</button>
     <button type="button" role="tab" data-fane="f-import">Egne grenser</button>
@@ -95,33 +93,13 @@
   </nav>
 
   <div id="f-grunn" class="fane">
-    <p>Et vald er eiendommene som jakter sammen. Trykk i kartet på hver eiendom i valdet ditt, velg valdnummer og
-      <b>Lagre som min jaktgrunn</b>. Da ser du hvilket vald du står i, og hvor langt det er til valdgrensa – også uten nett.</p>
+    <p>Lagre eiendommene du har jaktrett på. Da får du beskjed om du står innenfor eller utenfor dem, også uten nett.
+      Trykk i kartet på en eiendom og velg <b>Lagre som min jaktgrunn</b>.</p>
     <ul id="grunn-liste" class="liste"></ul>
-    <h3>Villreinvald i Nordfjella</h3>
-    <ul id="vald-liste" class="punktliste mono-liste"></ul>
-    <p class="liten">Fra <a href="https://hjorteviltregisteret.no/Statistikk/Villrein" target="_blank" rel="noopener">Hjorteviltregisteret</a>
-      (oppdateres når du har nett). Valdgrenser finnes ikke som åpne kartdata. Har du valdkart fra kommunen eller villreinnemnda,
-      kan du legge det inn under «Egne grenser» – har filen et felt med valdnummer, viser appen valdet automatisk.</p>
-  </div>
-
-  <div id="f-rein" class="fane" hidden>
-    <p>Oppsummering av dine registreringer, til jaktleder, valdansvarlig og villreinnemnda.</p>
-    <div class="to">
-      <label class="felt">Jaktår <select id="r-aar" class="velger"></select></label>
-      <label class="felt">Vald <select id="r-vald" class="velger"></select></label>
-    </div>
-    <div id="r-oppsummering"></div>
-    <div class="knapperad">
-      <button id="b-csv" type="button" class="knapp">Last ned CSV (Excel)</button>
-      <button id="b-del" type="button" class="knapp hoved">Del oppsummering</button>
-    </div>
-    <p class="liten">Samme flokk kan bli registrert flere ganger av ulike jegere eller på ulike tidspunkt. Tallene er derfor
-      observasjoner, ikke en telling av bestanden. Fellingsrapporten skal fortsatt leveres i Hjorteviltregisteret.</p>
   </div>
 
   <div id="f-punkter" class="fane" hidden>
-    <p>Alle registreringer og punkter lagres på telefonen.</p>
+    <p>Punkter du merker (bil, leir og annet) lagres på telefonen.</p>
     <ul id="punkt-liste" class="liste"></ul>
     <div class="knapperad">
       <button id="b-gpx" type="button" class="knapp">Last ned GPX</button>
@@ -143,7 +121,7 @@
   </div>
 
   <div id="f-import" class="fane" hidden>
-    <p>Har du jaktfelt, soner eller valdgrenser fra villreinnemnda, fjellstyret eller grunneierlaget som fil? Legg dem inn her
+    <p>Har du jaktfelt eller soner fra villreinnemnda, fjellstyret eller grunneierlaget som fil? Legg dem inn her
       (GeoJSON, KML eller GPX). De lagres bare på denne telefonen.</p>
     <label class="knapp filknapp">Velg fil …<input id="fil" type="file" accept=".geojson,.json,.kml,.gpx,application/vnd.google-earth.kml+xml,application/gpx+xml,application/geo+json"></label>
     <ul id="import-liste" class="liste"></ul>
@@ -174,86 +152,18 @@
   </div>
 </section>
 
-<!-- Registrering -->
+<!-- Merk punkt -->
 <dialog id="merk" class="dialog">
   <form method="dialog" id="merk-skjema">
-    <h2>Registrer</h2>
+    <h2>Merk punkt</h2>
     <p id="merk-pos" class="liten"></p>
     <div class="typer" role="radiogroup" aria-label="Type">
-      <label><input type="radio" name="type" value="obs" checked><span>👀 Observasjon</span></label>
-      <label><input type="radio" name="type" value="felt"><span>🦌 Felt dyr</span></label>
-      <label><input type="radio" name="type" value="skadet"><span>🩸 Skadeskutt</span></label>
-      <label><input type="radio" name="type" value="syk"><span>⚠️ Syk/død rein</span></label>
-      <label><input type="radio" name="type" value="bil"><span>🚙 Bil</span></label>
-      <label><input type="radio" name="type" value="leir"><span>⛺ Leir</span></label>
+      <label><input type="radio" name="type" value="bil" checked><span>🚙 Bil</span></label>
+      <label><input type="radio" name="type" value="leir"><span>⛺ Leir/hytte</span></label>
       <label><input type="radio" name="type" value="annet"><span>📍 Annet</span></label>
     </div>
-
-    <fieldset class="del" data-for="obs skadet syk" id="merk-plassering">
-      <legend>Hvor er dyret/flokken?</legend>
-      <div class="to">
-        <label class="felt">Avstand (m) <input name="avstand" type="number" inputmode="numeric" min="0" max="5000" placeholder="0 = her"></label>
-        <label class="felt">Retning <select name="peiling" class="velger"><option value="">–</option></select></label>
-      </div>
-      <p class="liten">La stå tomt hvis du registrerer der du står. Du kan også trykke i kartet der flokken er og velge «Registrer her».</p>
-    </fieldset>
-
-    <fieldset class="del" data-for="obs">
-      <legend>Flokken</legend>
-      <label class="felt">Antall dyr totalt <input name="total" type="number" inputmode="numeric" min="1" max="5000"></label>
-      <p class="liten">Struktur – fyll ut så godt du ser (gir kalv/simle- og bukk/simle-forhold):</p>
-      <div id="struktur" class="struktur"></div>
-      <p id="struktur-sum" class="liten"></p>
-      <div class="to">
-        <label class="felt">Atferd <select name="atferd" class="velger"><option value="">–</option></select></label>
-        <label class="felt">Trekker mot <select name="retning" class="velger"><option value="">–</option></select></label>
-      </div>
-      <label class="avkryss"><input type="checkbox" name="merket"> Merket dyr i flokken (GPS-halsband/øremerke)</label>
-    </fieldset>
-
-    <fieldset class="del" data-for="felt">
-      <legend>Felt dyr</legend>
-      <div class="segment" role="radiogroup" aria-label="Kjønn">
-        <label><input type="radio" name="kjonn" value="bukk"><span>Bukk</span></label>
-        <label><input type="radio" name="kjonn" value="simle"><span>Simle</span></label>
-      </div>
-      <div class="segment" role="radiogroup" aria-label="Alder">
-        <label><input type="radio" name="alder" value="kalv"><span>Kalv</span></label>
-        <label><input type="radio" name="alder" value="aaring"><span>Åring</span></label>
-        <label><input type="radio" name="alder" value="eldre"><span>Eldre</span></label>
-      </div>
-      <div class="to">
-        <label class="felt">Slaktevekt (kg) <input name="vekt" type="number" inputmode="decimal" min="0" max="200" step="0.1"></label>
-        <label class="felt">Jeger / jegernr. <input name="jeger" type="text" maxlength="60"></label>
-      </div>
-      <label class="avkryss"><input type="checkbox" name="kjeve"> Kjeve tatt</label>
-      <label class="felt" data-vis-hvis="kjeve">Kjeve-/merkelappnr. <input name="kjevenr" type="text" maxlength="40"></label>
-      <label class="avkryss"><input type="checkbox" name="cwd"> Prøve for skrantesjuke (CWD) tatt</label>
-      <label class="felt" data-vis-hvis="cwd">Prøvenr. <input name="cwdnr" type="text" maxlength="40"></label>
-      <label class="avkryss"><input type="checkbox" name="fmerket"> Merket dyr (halsband/øremerke)</label>
-      <p class="liten">Følg kravene fra villreinnemnda og Mattilsynet om kjever og prøver for skrantesjuke. Felte dyr rapporteres i Hjorteviltregisteret.</p>
-    </fieldset>
-
-    <fieldset class="del" data-for="skadet">
-      <legend>Skadeskyting</legend>
-      <label class="felt">Dyret forsvant mot <select name="sretning" class="velger"><option value="">–</option></select></label>
-      <label class="avkryss"><input type="checkbox" name="ettersok"> Ettersøk er varslet</label>
-      <p class="liten">Merk skuddsted og tegn på treff i notatet. Skadeskyting skal meldes og ettersøk settes i gang straks.</p>
-    </fieldset>
-
-    <fieldset class="del" data-for="syk">
-      <legend>Syk eller død rein</legend>
-      <div class="segment" role="radiogroup" aria-label="Tilstand">
-        <label><input type="radio" name="tilstand" value="Syk/avmagret"><span>Syk/avmagret</span></label>
-        <label><input type="radio" name="tilstand" value="Unormal atferd"><span>Unormal atferd</span></label>
-        <label><input type="radio" name="tilstand" value="Død/kadaver"><span>Død</span></label>
-      </div>
-      <label class="felt">Antall <input name="santall" type="number" inputmode="numeric" min="1" max="500" value="1"></label>
-      <p class="boks naer">Ikke rør eller flytt dyret. Meld straks til Mattilsynet (22 40 00 00) og villreinnemnda/kommunen – det kan være skrantesjuke (CWD).</p>
-    </fieldset>
-
     <label class="felt">Navn <input name="navn" type="text" maxlength="60" placeholder="Valgfritt"></label>
-    <label class="felt">Notat <textarea name="notat" rows="2" maxlength="1000"></textarea></label>
+    <label class="felt">Notat <textarea name="notat" rows="2" maxlength="500"></textarea></label>
     <div class="knapperad">
       <button value="avbryt" type="submit" class="knapp" formnovalidate>Avbryt</button>
       <button value="lagre" type="submit" class="knapp hoved">Lagre</button>

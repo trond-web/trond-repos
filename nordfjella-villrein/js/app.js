@@ -1,6 +1,5 @@
 import { punktIPolygon, avstandTilGrense, avstandM, retning, himmelretning, utmTekst, bbox, fliserFor, gpx } from './geo.js';
-import { TYPER, STRUKTUR, ALDER, KJONN, ATFERD, RETNINGER, antallDyr, flytt, jaktaar, oppsummering, oppsummeringTekst, csv } from './registrering.js';
-import { BAKGRUNNER, WMS, flisUrl, wmsUrl, teigI, teigNavn, hoydeI, kommunenavn, lesFil, VALD_NORDFJELLA, valdTekst, gyldigValdnr, hentVald, valdFraEgenskaper } from './kilder.js';
+import { BAKGRUNNER, WMS, flisUrl, wmsUrl, teigI, teigNavn, hoydeI, kommunenavn, lesFil } from './kilder.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const h = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -12,6 +11,7 @@ const avstand = (m) => (m < 1000 ? `${Math.round(m / 10) * 10 || Math.round(m)} 
 const tid = (t) => new Date(t).toLocaleString('nb-NO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const NOYAKTIG_TEKST = { god: 'god', middels: 'middels', lav: 'lav – grensa kan avvike mye i terrenget', ukjent: 'ukjent' };
 const FLISCACHE = 'nfv-fliser-v1';
+const TYPER = { bil: { ikon: '🚙', navn: 'Bil' }, leir: { ikon: '⛺', navn: 'Leir/hytte' }, annet: { ikon: '📍', navn: 'Punkt' } };
 
 let melderTimer;
 function melding(tekst, ms = 3500) {
@@ -32,8 +32,6 @@ let teigcache = lagre.hent('teigcache', []); // nylig oppslåtte teiger, for opp
 let punkter = lagre.hent('punkter', []);
 let importert = lagre.hent('import', []);
 let mal = lagre.hent('mal', null);
-let valdliste = lagre.hent('valdliste', VALD_NORDFJELLA);
-let sisteVald = lagre.hent('sisteVald', null);
 const synlig = lagre.hent('synlig', { grense: true, skygge: true, eiendom: true, teig: true, grunner: true, punkter: true, trekk: false, kalving: false });
 
 // ---------- Kart ----------
@@ -141,7 +139,6 @@ document.querySelector('.faner').addEventListener('click', (e) => {
     $(`#${f.dataset.fane}`).hidden = f !== b;
   }
   if (b.dataset.fane === 'f-offline') tegnOffline();
-  if (b.dataset.fane === 'f-rein') tegnRein();
 });
 
 function maalStatus() {
@@ -170,75 +167,9 @@ const erGrunn = (t) => !!t && grunner.some((g) => g.id === t.id);
 function tegnGrunner() {
   grunnLag.clearLayers();
   for (const g of grunner) {
-    const farge = valdFarge(g.vald?.nr);
-    L.geoJSON(g.geometri, { pane: 'grenser', style: { color: farge, weight: 3, fillColor: farge, fillOpacity: 0.12 }, interactive: false })
-      .bindTooltip(`${g.vald ? `<b>Vald ${h(valdTekst(g.vald))}</b><br>` : ''}${h(g.enheter.map((e) => e.tekst).join(', '))}`, { sticky: true }).addTo(grunnLag);
+    L.geoJSON(g.geometri, { pane: 'grenser', style: { color: '#16a34a', weight: 3, fillColor: '#22c55e', fillOpacity: 0.12 }, interactive: false })
+      .bindTooltip(h(g.enheter.map((e) => e.tekst).join(', ')), { sticky: true }).addTo(grunnLag);
   }
-}
-
-// ---------- Vald ----------
-
-const VALDFARGER = ['#16a34a', '#2563eb', '#9333ea', '#ca8a04', '#0891b2', '#db2777'];
-function valdFarge(nr) {
-  if (!nr) return '#16a34a';
-  let i = valdliste.findIndex((v) => v.nr === nr);
-  if (i < 0) i = [...nr].reduce((a, c) => a + c.charCodeAt(0), 0);
-  return VALDFARGER[i % VALDFARGER.length];
-}
-const kjentVald = (nr) => valdliste.find((v) => v.nr === nr) || { nr, navn: '' };
-
-// Valdet i punktet: fra jaktgrunnene du har knyttet til et vald, ellers fra importerte valdgrenser.
-function valdI(p) {
-  const g = grunner.find((x) => x.vald && punktIPolygon(p, x.geometri));
-  if (g) return { vald: g.vald, kilde: 'grunn' };
-  for (const i of importert) {
-    if (i.synlig === false) continue;
-    for (const f of i.fc.features) {
-      if (!/Polygon/.test(f.geometry?.type)) continue;
-      const v = valdFraEgenskaper(f.properties);
-      if (v && punktIPolygon(p, f.geometry)) return { vald: { ...kjentVald(v.nr), ...(v.navn ? { navn: v.navn } : {}) }, kilde: 'fil' };
-    }
-  }
-  return null;
-}
-const harVald = () => grunner.some((g) => g.vald) || importert.some((i) => i.fc.features.some((f) => valdFraEgenskaper(f.properties)));
-
-function valdStatusHtml(p) {
-  const v = valdI(p);
-  if (v) return `<span class="ok">✓ ${h(valdTekst(v.vald))}</span>${v.kilde === 'fil' ? ' <span class="liten">(fra fil)</span>' : ''}`;
-  if (harVald()) return '<span class="advarsel">Ikke i ditt vald</span>';
-  return '<span class="liten">Ikke satt – knytt jaktgrunnene til valdet ditt</span>';
-}
-
-function valdVelger(id, valgt) {
-  const liste = [...valdliste];
-  if (valgt && !liste.some((v) => v.nr === valgt.nr)) liste.push(valgt);
-  return `<select id="${id}" class="velger">
-    <option value="">Uten vald</option>
-    ${liste.map((v) => `<option value="${h(v.nr)}" ${valgt?.nr === v.nr ? 'selected' : ''}>${h(valdTekst(v))}</option>`).join('')}
-    <option value="annet">Annet valdnummer …</option></select>`;
-}
-// Leser valget i en valdvelger. Returnerer undefined hvis brukeren avbryter.
-function lesValdvalg(sel) {
-  if (sel.value === '') return null;
-  if (sel.value !== 'annet') return kjentVald(sel.value);
-  const svar = prompt('Valdnummer (f.eks. 2211V0009):', `${'2211V'}`);
-  if (svar == null) return undefined;
-  if (!gyldigValdnr(svar)) { melding('Valdnummer må ha formen 2211V0009.'); return undefined; }
-  const nr = svar.trim().toUpperCase();
-  const navn = prompt('Navn på valdet (valgfritt):', '') || '';
-  const v = { nr, navn: navn.trim() };
-  if (!valdliste.some((x) => x.nr === nr)) { valdliste = [...valdliste, v]; lagre.sett('valdliste', valdliste); }
-  return v;
-}
-
-async function oppdaterValdliste() {
-  try {
-    const ny = await hentVald();
-    if (!ny.length) return;
-    const egne = valdliste.filter((v) => !VALD_NORDFJELLA.some((x) => x.nr === v.nr) && !ny.some((x) => x.nr === v.nr));
-    valdliste = [...ny, ...egne]; lagre.sett('valdliste', valdliste);
-  } catch { /* uten nett – bruker lagret liste */ }
 }
 
 // ---------- Villreinområdet ----------
@@ -355,7 +286,7 @@ function oppdaterStatus(slaaOpp = true) {
   if (!posisjon) {
     el.className = 'merkelapp graa';
     el.innerHTML = gpsModus === 'venter' ? 'Søker etter GPS-posisjon …' : 'Trykk på ◎ for å se hvor du er';
-    $('#s-eiendom').textContent = '–'; $('#s-vald').textContent = '–'; $('#s-pos').textContent = '–';
+    $('#s-eiendom').textContent = '–'; $('#s-pos').textContent = '–';
     oppdaterMal();
     return;
   }
@@ -364,7 +295,6 @@ function oppdaterStatus(slaaOpp = true) {
   el.className = `merkelapp ${o.klasse}`;
   el.innerHTML = `${h(o.tittel)}<small>${h(o.under)}</small>`;
   $('#s-eiendom').innerHTML = eiendomStatusHtml(p);
-  $('#s-vald').innerHTML = valdStatusHtml(p);
   const alt = posisjon.alt != null ? ` · ${Math.round(posisjon.alt)} moh.` : '';
   $('#s-pos').innerHTML = `<span class="mono">${h(utmTekst(p, 32))}</span> <span class="liten">±${Math.round(posisjon.acc)} m${alt}</span>`;
   oppdaterMal();
@@ -411,7 +341,6 @@ async function visPunkt(p, tittel = 'Punkt i kartet', ekstraHtml = '') {
     ${ekstraHtml}
     <div class="boks ${o.klasse}"><b>${h(o.tittel)}</b><br>${h(o.under)}</div>
     <div class="fakta">
-      <div class="rad"><span class="ledetekst">Vald</span><span id="p-vald">${(() => { const v = valdI(p); return v ? `<b>${h(valdTekst(v.vald))}</b>${v.kilde === 'fil' ? ' <span class="liten">(fra fil)</span>' : ''}` : '<span class="liten">Ukjent</span>'; })()}</span></div>
       <div class="rad"><span class="ledetekst">Eiendom</span><span id="p-eiendom">Slår opp …</span></div>
       <div class="rad"><span class="ledetekst">Høyde</span><span id="p-hoyde" class="mono">…</span></div>
       <div class="rad"><span class="ledetekst">UTM 32</span><span class="mono">${h(utmTekst(p, 32))}</span></div>
@@ -422,7 +351,7 @@ async function visPunkt(p, tittel = 'Punkt i kartet', ekstraHtml = '') {
     <div id="p-eiendomsvalg"></div>
     <div class="knapperad">
       <button type="button" class="knapp" id="p-gaa">Gå hit</button>
-      <button type="button" class="knapp" id="p-merk">Registrer her</button>
+      <button type="button" class="knapp" id="p-merk">Merk punkt her</button>
     </div>`;
   visArk('punkt');
   $('#p-gaa').onclick = () => { settMal({ lat: p[1], lon: p[0], navn: tittel === 'Punkt i kartet' ? 'Valgt punkt' : tittel }); lukkArk('punkt'); if (!posisjon) startGps(); };
@@ -443,69 +372,35 @@ async function visPunkt(p, tittel = 'Punkt i kartet', ekstraHtml = '') {
   merknader.push(`Grensenøyaktighet: <b>${h(NOYAKTIG_TEKST[t.noyaktighet])}</b>`);
   if (t.enheter.length > 1) merknader.push(`Teigen tilhører flere eiendommer (${t.enheter.length}).`);
   if (t.uregistrertSameie) merknader.push('Uregistrert jordsameie – avklar jaktrett med grunneierlag/fjellstyre.');
-  const lagret = grunner.find((g) => g.id === t.id);
   $('#p-eiendomsvalg').innerHTML = `
     <p class="liten">${merknader.join('<br>')}</p>
-    <label class="felt">Vald ${valdVelger('p-valdvalg', lagret ? lagret.vald : sisteVald)}</label>
     <button type="button" class="knapp ${min ? 'fare' : 'hoved'}" id="p-grunn" style="width:100%">${min ? 'Fjern fra mine jaktgrunner' : 'Lagre som min jaktgrunn'}</button>`;
-  const ferdig = (tekst) => { lagre.sett('grunner', grunner); tegnGrunner(); gjeldendeTeig = null; oppdaterStatus(); melding(tekst); visPunkt(p, tittel, ekstraHtml); };
-  $('#p-valdvalg').onchange = (e) => {
-    const v = lesValdvalg(e.target);
-    if (v === undefined) { e.target.value = lagret?.vald?.nr || sisteVald?.nr || ''; return; }
-    sisteVald = v; lagre.sett('sisteVald', v);
-    if (lagret) { grunner = grunner.map((g) => (g.id === t.id ? { ...g, vald: v } : g)); ferdig(v ? `${teigNavn(t)} hører nå til vald ${valdTekst(v)}.` : 'Valdet er fjernet fra eiendommen.'); }
-  };
   $('#p-grunn').onclick = () => {
-    if (erGrunn(t)) { grunner = grunner.filter((g) => g.id !== t.id); ferdig('Fjernet fra mine jaktgrunner.'); return; }
-    const v = lesValdvalg($('#p-valdvalg'));
-    if (v === undefined) return;
-    sisteVald = v; lagre.sett('sisteVald', v);
-    grunner = [...grunner, { ...t, vald: v, lagret: Date.now() }];
-    ferdig(`${teigNavn(t)} er lagret som din jaktgrunn${v ? ` i vald ${valdTekst(v)}` : ''}.`);
+    if (erGrunn(t)) grunner = grunner.filter((g) => g.id !== t.id);
+    else grunner = [...grunner, { ...t, lagret: Date.now() }];
+    lagre.sett('grunner', grunner); tegnGrunner(); gjeldendeTeig = null; oppdaterStatus();
+    melding(erGrunn(t) ? `${teigNavn(t)} er lagret som din jaktgrunn.` : 'Fjernet fra mine jaktgrunner.');
+    visPunkt(p, tittel, ekstraHtml);
   };
 }
 
-// ---------- Registreringer og punkter ----------
+// ---------- Merkede punkter ----------
 
 function tegnPunkter() {
   punktLag.clearLayers();
   for (const pt of punkter) {
     const t = TYPER[pt.type] || TYPER.annet;
-    const n = pt.type === 'obs' ? antallDyr(pt.obs) : pt.type === 'syk' ? pt.annet?.antall : null;
-    L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: 'wpt-markor', html: `${t.ikon}${n ? `<b class="antall">${n}</b>` : ''}`, iconSize: [30, 30], iconAnchor: [15, 26] }), title: pt.navn })
+    L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: 'wpt-markor', html: t.ikon, iconSize: [30, 30], iconAnchor: [15, 26] }), title: pt.navn })
       .on('click', (e) => { L.DomEvent.stopPropagation(e); visMerketPunkt(pt.id); })
       .addTo(punktLag);
   }
 }
 
-function detaljerHtml(pt) {
-  const d = [];
-  if (pt.type === 'obs') {
-    const o = pt.obs || {};
-    d.push(`<b>${antallDyr(o)} dyr</b>`);
-    const s = STRUKTUR.filter((x) => Number(o[x.id]) > 0).map((x) => `${o[x.id]} ${x.navn.toLowerCase()}`);
-    if (s.length) d.push(s.join(', '));
-    if (o.atferd) d.push(`${ATFERD[o.atferd]}${o.retning ? ` mot ${o.retning}` : ''}`);
-    if (o.merket) d.push('Merket dyr i flokken');
-  }
-  if (pt.type === 'felt') {
-    const f = pt.felt || {};
-    d.push(`<b>${h([ALDER[f.alder], KJONN[f.kjonn]?.toLowerCase()].filter(Boolean).join(' ') || 'Ukjent kategori')}</b>${f.vekt ? ` · ${h(f.vekt)} kg` : ''}`);
-    d.push(`Kjeve: ${f.kjeve ? `tatt${f.kjevenr ? ` (${h(f.kjevenr)})` : ''}` : '<span class="advarsel">ikke registrert</span>'} · CWD-prøve: ${f.cwd ? `tatt${f.cwdnr ? ` (${h(f.cwdnr)})` : ''}` : '<span class="advarsel">ikke registrert</span>'}`);
-    if (f.merket) d.push('Merket dyr');
-    if (f.jeger) d.push(`Jeger: ${h(f.jeger)}`);
-  }
-  if (pt.type === 'skadet') d.push(`${pt.annet?.retning ? `Forsvant mot ${h(pt.annet.retning)} · ` : ''}Ettersøk ${pt.annet?.ettersok ? 'varslet' : '<span class="advarsel">ikke varslet</span>'}`);
-  if (pt.type === 'syk') d.push(`<b>${h(pt.annet?.tilstand || 'Syk/død')}</b>${pt.annet?.antall ? ` · ${h(pt.annet.antall)} dyr` : ''}`);
-  return d.map((x) => (x.startsWith('<b>') || x.includes('<') ? x : h(x))).join('<br>');
-}
-
 function visMerketPunkt(id) {
   const pt = punkter.find((x) => x.id === id); if (!pt) return;
   const t = TYPER[pt.type] || TYPER.annet;
-  const html = `<p><b>${t.ikon} ${h(t.navn)}</b> · ${h(tid(pt.tid))}${pt.vald ? ` · vald ${h(pt.vald)}` : ''}</p>
-    ${TYPER[pt.type]?.rein ? `<p>${detaljerHtml(pt)}</p>` : ''}${pt.notat ? `<p>${h(pt.notat)}</p>` : ''}
-    <div class="knapperad"><button type="button" class="knapp fare liten-knapp" data-slett-punkt="${h(pt.id)}">Slett registreringen</button></div>`;
+  const html = `<p><b>${t.ikon} ${h(t.navn)}</b> · ${h(tid(pt.tid))}${pt.notat ? `<br>${h(pt.notat)}` : ''}</p>
+    <div class="knapperad"><button type="button" class="knapp fare liten-knapp" data-slett-punkt="${h(pt.id)}">Slett punktet</button></div>`;
   visPunkt([pt.lon, pt.lat], pt.navn, html).catch(() => {});
 }
 $('#punkt').addEventListener('click', (e) => {
@@ -515,146 +410,34 @@ $('#punkt').addEventListener('click', (e) => {
   punkter = punkter.filter((x) => x.id !== id); lagre.sett('punkter', punkter); tegnPunkter(); lukkArk('punkt');
 });
 
-// Skjemaet bygges én gang: tellere for struktur og nedtrekkslister for retning og atferd.
 const skjema = $('#merk-skjema');
-$('#struktur').innerHTML = STRUKTUR.map((s) => `
-  <div class="teller"><span>${h(s.navn)}${s.hint ? `<small>${h(s.hint)}</small>` : ''}</span>
-    <button type="button" data-ned="${s.id}" aria-label="Færre ${h(s.navn.toLowerCase())}">−</button>
-    <input name="s-${s.id}" type="number" inputmode="numeric" min="0" max="5000" placeholder="0" aria-label="${h(s.navn)}">
-    <button type="button" data-opp="${s.id}" aria-label="Flere ${h(s.navn.toLowerCase())}">+</button></div>`).join('');
-for (const navn of ['peiling', 'retning', 'sretning']) skjema[navn].insertAdjacentHTML('beforeend', RETNINGER.map((r) => `<option>${r}</option>`).join(''));
-skjema.atferd.insertAdjacentHTML('beforeend', Object.entries(ATFERD).map(([k, v]) => `<option value="${k}">${h(v)}</option>`).join(''));
-
-function strukturSum() {
-  const sum = STRUKTUR.reduce((a, s) => a + (Number(skjema[`s-${s.id}`].value) || 0), 0);
-  const total = Number(skjema.total.value) || 0;
-  $('#struktur-sum').textContent = sum ? `Klassifisert: ${sum}${total ? ` av ${total}` : ''}${total && sum > total ? ' – flere enn totalen, totalen settes til summen' : ''}` : '';
-}
-function oppdaterSkjema() {
-  const type = skjema.type.value;
-  for (const d of skjema.querySelectorAll('[data-for]')) d.hidden = !d.dataset.for.split(' ').includes(type);
-  // Plassering med avstand/retning gir bare mening når du registrerer fra din egen posisjon.
-  $('#merk-plassering').hidden ||= !merkGps;
-  for (const el of skjema.querySelectorAll('[data-vis-hvis]')) el.hidden = !skjema[el.dataset.visHvis].checked;
-  strukturSum();
-}
-skjema.addEventListener('change', oppdaterSkjema);
-skjema.addEventListener('input', strukturSum);
-skjema.addEventListener('click', (e) => {
-  const b = e.target.closest('[data-opp],[data-ned]'); if (!b) return;
-  const felt = skjema[`s-${b.dataset.opp || b.dataset.ned}`];
-  felt.value = Math.max(0, (Number(felt.value) || 0) + (b.dataset.opp ? 1 : -1)) || '';
-  strukturSum();
-});
-
 let merkPos = null;
-let merkGps = null; // GPS-målingen registreringen gjøres fra, hvis det er din posisjon
-function aapneMerk(p, type) {
+let merkGps = null; // GPS-målingen punktet ble merket fra, hvis det er din posisjon
+function aapneMerk(p) {
   merkPos = p;
   merkGps = posisjon && p === posisjon.p ? { ...posisjon } : null;
   skjema.reset();
-  if (type) skjema.type.value = type;
-  $('#merk-pos').textContent = `${utmTekst(p, 32)}${merkGps ? ` (din posisjon, ±${Math.round(merkGps.acc)} m)` : ''}${valdI(p) ? ` · vald ${valdI(p).vald.nr}` : ''}`;
-  oppdaterSkjema();
+  $('#merk-pos').textContent = `${utmTekst(p, 32)}${merkGps ? ` (din posisjon, ±${Math.round(merkGps.acc)} m)` : ''}`;
   $('#merk').showModal();
 }
 $('#b-merk').addEventListener('click', () => {
   if (posisjon && Date.now() - posisjon.tid < 120000) { aapneMerk(posisjon.p); return; }
   const c = kart.getCenter();
-  melding(posisjon ? 'GPS-posisjonen er gammel – bruker midten av kartet.' : 'GPS er av – bruker midten av kartet. Slå på GPS for å registrere der du står.', 5000);
+  melding(posisjon ? 'GPS-posisjonen er gammel – bruker midten av kartet.' : 'GPS er av – bruker midten av kartet. Slå på GPS for å merke der du står.', 5000);
   aapneMerk([c.lng, c.lat]);
 });
 $('#merk').addEventListener('close', () => {
   if ($('#merk').returnValue !== 'lagre' || !merkPos) return;
-  const f = skjema;
-  const type = f.type.value;
-  const tall = (v) => (v === '' || v == null ? null : Number(v));
-  // Flokken/dyret kan stå et stykke unna: flytt punktet ut fra avstand og retning.
-  let pos = merkPos;
-  const avst = tall(f.avstand.value);
-  if (merkGps && TYPER[type].rein && avst > 0 && f.peiling.value) pos = flytt(merkPos, avst, RETNINGER.indexOf(f.peiling.value) * 45);
+  const type = skjema.type.value;
   const pt = {
-    id: crypto.randomUUID?.() || String(Date.now()), type, notat: f.notat.value.trim(),
-    lon: pos[0], lat: pos[1], tid: Date.now(), hoyde: pos === merkPos ? merkGps?.alt ?? null : null, acc: merkGps?.acc ?? null,
-    vald: valdI(pos)?.vald?.nr || null,
-    ...(pos !== merkPos ? { fra: { lon: merkPos[0], lat: merkPos[1], avstand: avst, retning: f.peiling.value } } : {}),
+    id: crypto.randomUUID?.() || String(Date.now()), type, notat: skjema.notat.value.trim(),
+    lon: merkPos[0], lat: merkPos[1], tid: Date.now(), hoyde: merkGps?.alt ?? null, acc: merkGps?.acc ?? null,
   };
-  if (type === 'obs') {
-    pt.obs = { total: tall(f.total.value), atferd: f.atferd.value || null, retning: f.retning.value || null, merket: f.merket.checked };
-    for (const s of STRUKTUR) pt.obs[s.id] = tall(f[`s-${s.id}`].value);
-    if (!antallDyr(pt.obs)) { melding('Oppgi antall dyr i flokken.'); $('#merk').showModal(); return; }
-  }
-  if (type === 'felt') {
-    pt.felt = { kjonn: f.kjonn.value || null, alder: f.alder.value || null, vekt: tall(f.vekt.value), kjeve: f.kjeve.checked, kjevenr: f.kjevenr.value.trim(), cwd: f.cwd.checked, cwdnr: f.cwdnr.value.trim(), merket: f.fmerket.checked, jeger: f.jeger.value.trim() };
-  }
-  if (type === 'skadet') pt.annet = { retning: f.sretning.value || null, ettersok: f.ettersok.checked };
-  if (type === 'syk') pt.annet = { tilstand: f.tilstand.value || null, antall: tall(f.santall.value) };
-  const standardnavn = {
-    obs: () => `Flokk ${antallDyr(pt.obs)} dyr`,
-    felt: () => [ALDER[pt.felt.alder]?.replace(/ \(.*\)/, ''), KJONN[pt.felt.kjonn]?.toLowerCase()].filter(Boolean).join(' ') || 'Felt dyr',
-    syk: () => pt.annet.tilstand || 'Syk/død rein',
-  };
-  pt.navn = f.navn.value.trim() || `${(standardnavn[type] || (() => TYPER[type].navn))()} ${tid(pt.tid)}`;
+  pt.navn = skjema.navn.value.trim() || `${TYPER[type].navn} ${tid(pt.tid)}`;
   punkter = [...punkter, pt]; lagre.sett('punkter', punkter);
   if (!synlig.punkter) { synlig.punkter = true; lagre.sett('synlig', synlig); brukSynlighet(); }
   tegnPunkter(); lukkArk('punkt');
   melding(`Lagret: ${pt.navn}`);
-  if (type === 'felt' && !pt.felt.cwd) melding('Lagret. Husk prøve for skrantesjuke (CWD) og kjeve etter gjeldende krav.', 6000);
-  if (type === 'syk') melding('Lagret. Meld straks til Mattilsynet (22 40 00 00).', 8000);
-});
-
-// ---------- Oppsummering for forvaltningen ----------
-
-function tegnRein() {
-  const aarene = [...new Set([jaktaar(Date.now()), ...punkter.map((p) => jaktaar(p.tid))])].sort((a, b) => b - a);
-  const valgtAar = Number($('#r-aar').value) || aarene[0];
-  $('#r-aar').innerHTML = aarene.map((a) => `<option value="${a}" ${a === valgtAar ? 'selected' : ''}>${a}</option>`).join('');
-  const valdene = [...new Set(punkter.map((p) => p.vald).filter(Boolean))].sort();
-  const valgtVald = valdene.includes($('#r-vald').value) ? $('#r-vald').value : '';
-  $('#r-vald').innerHTML = `<option value="">Alle</option>${valdene.map((v) => `<option ${v === valgtVald ? 'selected' : ''}>${h(v)}</option>`).join('')}`;
-  const o = oppsummering(punkter, { aar: valgtAar, vald: valgtVald || null });
-  const verdi = (v) => (v == null ? '–' : v);
-  const s = o.obs.struktur;
-  const kat = Object.entries(o.felt.kategorier).sort();
-  $('#r-oppsummering').innerHTML = `
-    <h3>Observasjoner</h3>
-    <div class="nokkeltall">
-      <div><b>${o.obs.dyr}</b><small>dyr sett (${o.obs.registreringer} reg.)</small></div>
-      <div><b>${verdi(o.obs.kalvPer100Simler)}</b><small>kalv per 100 simler</small></div>
-      <div><b>${verdi(o.obs.bukkerPer100Simler)}</b><small>bukk per 100 simler</small></div>
-    </div>
-    ${o.obs.klassifisert ? `<table class="tabell"><tbody>
-      ${STRUKTUR.map((x) => `<tr><td>${h(x.navn)}</td><td>${s[x.id]}</td></tr>`).join('')}
-      <tr><th>Andel store bukker av bukkene</th><th>${o.obs.andelStoreBukker == null ? '–' : `${o.obs.andelStoreBukker} %`}</th></tr>
-    </tbody></table>` : '<p class="liten">Ingen strukturdata ennå.</p>'}
-    <h3>Felte dyr</h3>
-    <div class="nokkeltall">
-      <div><b>${o.felt.antall}</b><small>felt</small></div>
-      <div><b>${o.felt.kjever}/${o.felt.antall}</b><small>kjever</small></div>
-      <div><b>${o.felt.cwd}/${o.felt.antall}</b><small>CWD-prøver</small></div>
-    </div>
-    ${kat.length ? `<table class="tabell"><thead><tr><th>Kategori</th><th>Antall · snittvekt</th></tr></thead><tbody>
-      ${kat.map(([k, v]) => { const [a, kj] = k.split('-'); return `<tr><td>${h(ALDER[a] || 'Ukjent alder')} ${h((KJONN[kj] || '').toLowerCase())}</td><td>${v.antall}${v.snittvekt ? ` · ${v.snittvekt} kg` : ''}</td></tr>`; }).join('')}
-    </tbody></table>` : ''}
-    ${o.felt.manglerCwd.length ? `<p class="boks naer">Mangler CWD-prøve: ${o.felt.manglerCwd.map(h).join(', ')}</p>` : ''}
-    ${o.skadet || o.syk ? `<h3>Avvik</h3><p>${o.skadet ? `Skadeskyting/ettersøk: <b>${o.skadet}</b><br>` : ''}${o.syk ? `Syk/død rein: <b>${o.syk}</b>` : ''}</p>` : ''}`;
-  $('#b-csv').disabled = !punkter.length;
-  return { o, aar: valgtAar, vald: valgtVald };
-}
-$('#r-aar').addEventListener('change', tegnRein);
-$('#r-vald').addEventListener('change', tegnRein);
-$('#b-csv').addEventListener('click', () => {
-  const { aar, vald } = tegnRein();
-  const utvalg = punkter.filter((p) => jaktaar(p.tid) === aar && (!vald || p.vald === vald));
-  lastNed(csv(utvalg), `villrein-nordfjella-${aar}${vald ? `-${vald}` : ''}.csv`, 'text/csv;charset=utf-8');
-});
-$('#b-del').addEventListener('click', async () => {
-  const { o, aar, vald } = tegnRein();
-  const tekst = oppsummeringTekst(o, { tittel: `Villrein Nordfjella ${aar}${vald ? `, vald ${vald}` : ''}` });
-  try {
-    if (navigator.share) { await navigator.share({ title: 'Villrein Nordfjella', text: tekst }); return; }
-    await navigator.clipboard.writeText(tekst); melding('Oppsummeringen er kopiert – lim den inn i SMS eller e-post.');
-  } catch (e) { if (e?.name !== 'AbortError') melding('Kunne ikke dele. Prøv CSV i stedet.'); }
 });
 
 function lastNed(innhold, filnavn, type) {
@@ -676,7 +459,7 @@ function tegnImport() {
       pane: 'grenser',
       style: { color: i.farge, weight: 3, fillOpacity: 0.06, dashArray: '10 6', interactive: false },
       pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 5, color: i.farge, fillOpacity: 0.9 }),
-      onEachFeature: (f, l) => { const v = valdFraEgenskaper(f.properties); const n = v ? `Vald ${valdTekst(v)}` : f.properties?.navn || f.properties?.name; if (n) l.bindTooltip(h(n), { sticky: true }); },
+      onEachFeature: (f, l) => { const n = f.properties?.navn || f.properties?.name; if (n) l.bindTooltip(h(n), { sticky: true }); },
       interactive: false,
     }).addTo(importLag);
   }
@@ -700,22 +483,16 @@ $('#fil').addEventListener('change', async (e) => {
 // ---------- Meny ----------
 
 function tegnMeny() {
-  const grupper = new Map();
-  for (const g of grunner) { const k = g.vald?.nr || ''; if (!grupper.has(k)) grupper.set(k, []); grupper.get(k).push(g); }
-  $('#grunn-liste').innerHTML = grunner.length ? [...grupper].sort(([a], [b]) => (a || 'ÅÅ').localeCompare(b || 'ÅÅ')).map(([nr, liste]) => `
-    <li class="gruppe"><i class="farge" style="background:${valdFarge(nr)};margin:0"></i><span class="tekst"><b>${nr ? `Vald ${h(valdTekst(liste[0].vald))}` : 'Uten vald'}</b><small>${liste.length} eiendom${liste.length > 1 ? 'mer' : ''}</small></span>
-      <button type="button" class="knapp liten-knapp" data-vis-vald="${h(nr)}">Vis</button></li>
-    ${liste.map((g) => `
-    <li class="under"><span class="tekst"><b>${h(g.enheter.map((e) => e.tekst).join(', '))}</b><small>${h(kommunenavn(g.kommunenr))} · nøyaktighet ${h(g.noyaktighet)}</small></span>
+  $('#grunn-liste').innerHTML = grunner.length ? grunner.map((g) => `
+    <li><span class="ikon">🟩</span><span class="tekst"><b>${h(g.enheter.map((e) => e.tekst).join(', '))}</b><small>${h(kommunenavn(g.kommunenr))} · nøyaktighet ${h(g.noyaktighet)}</small></span>
       <button type="button" class="knapp liten-knapp" data-vis-grunn="${h(g.id)}">Vis</button>
-      <button type="button" class="knapp liten-knapp fare" data-slett-grunn="${h(g.id)}" aria-label="Fjern">×</button></li>`).join('')}`).join('')
+      <button type="button" class="knapp liten-knapp fare" data-slett-grunn="${h(g.id)}" aria-label="Fjern">×</button></li>`).join('')
     : '<li class="tom">Ingen jaktgrunner lagret ennå.</li>';
-  $('#vald-liste').innerHTML = valdliste.map((v) => `<li><span class="mono">${h(v.nr)}</span> ${h(v.navn)}</li>`).join('');
   const sortert = [...punkter].sort((a, b) => b.tid - a.tid);
   $('#punkt-liste').innerHTML = sortert.length ? sortert.map((pt) => `
     <li><span class="ikon">${(TYPER[pt.type] || TYPER.annet).ikon}</span><span class="tekst"><b>${h(pt.navn)}</b><small>${h(tid(pt.tid))}${posisjon ? ` · ${avstand(avstandM(posisjon.p, [pt.lon, pt.lat]))} unna` : ''}</small></span>
       <button type="button" class="knapp liten-knapp" data-vis-punkt="${h(pt.id)}">Vis</button></li>`).join('')
-    : '<li class="tom">Ingen registreringer ennå. Bruk knappen med nål for å registrere der du står.</li>';
+    : '<li class="tom">Ingen punkter ennå. Bruk knappen med nål for å merke der du står.</li>';
   $('#b-gpx').disabled = $('#b-slett-punkter').disabled = !punkter.length;
   $('#import-liste').innerHTML = importert.map((i) => `
     <li><i class="farge" style="background:${h(i.farge)};margin:0"></i><span class="tekst"><b>${h(i.navn)}</b><small>${i.fc.features.length} objekter</small></span>
@@ -725,7 +502,6 @@ function tegnMeny() {
 }
 $('#meny').addEventListener('click', (e) => {
   const d = e.target.closest('button')?.dataset; if (!d) return;
-  if (d.visVald !== undefined) { const gs = grunner.filter((g) => (g.vald?.nr || '') === d.visVald); if (gs.length) { lukkArk('meny'); kart.fitBounds(L.geoJSON({ type: 'FeatureCollection', features: gs.map((g) => ({ type: 'Feature', properties: {}, geometry: g.geometri })) }).getBounds(), { padding: [30, 30] }); } }
   if (d.visGrunn) { const g = grunner.find((x) => x.id === d.visGrunn); if (g) { lukkArk('meny'); kart.fitBounds(L.geoJSON(g.geometri).getBounds(), { padding: [30, 30] }); } }
   if (d.slettGrunn) { const g = grunner.find((x) => x.id === d.slettGrunn); if (g && confirm(`Fjerne ${teigNavn(g)} fra mine jaktgrunner?`)) { grunner = grunner.filter((x) => x !== g); lagre.sett('grunner', grunner); tegnGrunner(); tegnMeny(); gjeldendeTeig = null; oppdaterStatus(); } }
   if (d.visPunkt) { lukkArk('meny'); const pt = punkter.find((x) => x.id === d.visPunkt); if (pt) { kart.setView([pt.lat, pt.lon], Math.max(kart.getZoom(), 14)); visMerketPunkt(pt.id); } }
@@ -842,6 +618,5 @@ tegnImport();
 oppdaterStatus();
 maalStatus();
 if (lagre.hent('gps', false)) startGps();
-oppdaterValdliste();
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

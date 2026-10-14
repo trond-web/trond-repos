@@ -1,9 +1,9 @@
 // Service worker: appen, nedlastede og besøkte kartruter virker uten nett.
 // Mangler en kartrute uten nett, lages den ved å forstørre en lagret rute fra et lavere zoomnivå.
-const APP = 'nfv-app-v1';
+const APP = 'nfv-app-v2';
 const FLISER = 'nfv-fliser-v1';
 const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'data/nordfjella.geojson',
-  'js/app.js', 'js/geo.js', 'js/kilder.js', 'js/registrering.js',
+  'js/app.js', 'js/geo.js', 'js/kilder.js',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
   'https://unpkg.com/leaflet@1.9.4/dist/images/layers.png'];
 const FLISVERTER = ['cache.kartverket.no', 'wms.geonorge.no', 'kart.miljodirektoratet.no', 'server.arcgisonline.com'];
