@@ -11,6 +11,7 @@ on:
       - "sefrak-eiendom/**"
       - "borsradar/**"
       - "team-sjusjoen/**"
+      - "nordfjella-villrein/**"
       - ".github/workflows/deploy-pages.yml"
   schedule:
     # Børsradar: ny analyse hver handelsdag etter børsslutt (18:45 norsk sommertid / 17:45 vintertid)
@@ -51,7 +52,7 @@ jobs:
       # tretetthet-flyfoto ligger fortsatt på rot-URL-en, øvrige apper under egne stier
       - name: Assemble site
         run: |
-          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom _site/borsradar _site/team-sjusjoen
+          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom _site/borsradar _site/team-sjusjoen _site/nordfjella-villrein
           cp -r tretetthet-flyfoto/. _site/
           cp -r snovill-skifore/. _site/snovill-skifore/
           cp -r therese-helge/. _site/therese-helge/
@@ -59,9 +60,10 @@ jobs:
           cp -r sefrak-eiendom/. _site/sefrak-eiendom/
           cp -r borsradar/. _site/borsradar/
           cp -r team-sjusjoen/. _site/team-sjusjoen/
+          cp -r nordfjella-villrein/. _site/nordfjella-villrein/
           rm -f _site/team-sjusjoen/bilder/README.md
           # Tester, verktøy og serverfiler (Railway) publiseres ikke på GitHub Pages
-          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/borsradar/analyse _site/borsradar/data/innsidehandel.json
+          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/borsradar/analyse _site/borsradar/data/innsidehandel.json _site/nordfjella-villrein/tests
 
       # Snøvill: snødybde, snømengde og smelting fra NVE/seNorge legges ved som datafil
       - name: Snødata fra NVE (Snøvill)
