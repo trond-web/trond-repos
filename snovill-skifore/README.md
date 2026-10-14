@@ -15,6 +15,7 @@ Ren statisk HTML/CSS/JS, uten byggesteg. Alt hentes direkte fra nettleseren.
 | **Storm (StormGeo)** | Storm.no viderekobler i dag til TV 2 Vær, som viser StormGeo-prognoser (15 dager). Hentes fra TV 2s GraphQL-API med sted-ID = base64(`#` + geohash) | `www.tv2.no/vaer/backend-api` |
 | **Sporet.no** | Siste preparering per løype innenfor 3–4 km av hvert sted | `api.sporet.no/loypeapi/publicfree/skiroutes/detailsbybbox` (UTM33) |
 | **Webkamera (Sporet.no)** | Alle Sporet-kameraer (POI-type `CAM`) innenfor 20 km av hvert sted. Nærmeste kamera vises stort i kortet, resten under «Vis flere». Bildeadressene hentes fra `pois/{id}/webcams`; bare https-bilder vises, og lagrede kopier fra søkemotorer filtreres bort. Listen mellomlagres i et døgn | `ags.sporet.no/.../Sporet_simple/MapServer/2` + `api.sporet.no/loypeapi/publicfree/pois/{id}/webcams` |
+| **NVE / seNorge** | Snødybde, snømengde (vannekvivalent), nysnø, smelting, flytende vann og døgntemperatur per dag for hvert sted – samme kilde som Yr viser snødybde fra. Hentes av Pages-workflowen ved hver bygging (også kl. 05:17 og 19:17 UTC) og legges ved som `data/nve-sno.json`, fordi NVE ikke tillater kall fra nettleseren | `gts.nve.no/api/GridTimeSeries/{x}/{y}/{fra}/{til}/{tema}.json` |
 | **Netatmo** | Live-temperatur og nedbør fra private værstasjoner rundt hyttefeltene. **Krever eget access token**, som du limer inn under ⚙️ Innstillinger (lages på [dev.netatmo.com](https://dev.netatmo.com/apps) med scope `read_station`, varer ca. 3 timer) | `api.netatmo.com/api/getpublicdata` |
 
 Alle fire tillater kall fra nettleseren (CORS). Svarene mellomlagres i 20 minutter i
@@ -26,16 +27,28 @@ Alle fire tillater kall fra nettleseren (CORS). Svarene mellomlagres i 20 minutt
 ## Slik regnes skiføret ut
 
 1. Prognosen deles i tidsblokker (1 t / 3 t / 6 t / døgn) og plasseres på lokal dato.
-2. Nedbør blir snø ved ≤ 0 °C og regn ved ≥ +2 °C, med lineær overgang mellom. 1 mm ≈ 1 cm snø.
-3. Snømodellen per døgn: `dybde = dybde·0,97 + nysnø − 1,2·graddøgn − 0,15·regn`.
+2. Nedbør blir snø ved ≤ 0 °C og regn ved ≥ +2 °C, med lineær overgang mellom.
+3. **Snømodellen** går time for time og følger snømengde (SWE, mm vann) og tetthet, så snøen
+   bæres videre fra dag til dag – 20 cm i dag blir ikke 0 cm i morgen:
+   - **Nysnø:** tettheten avhenger av temperatur (Anderson: 50 + 1,7·(T+15)^1,5 kg/m³, tyngre når våt)
+     og vind (vind pakker snøen). Over 6 m/s blåser en del av nysnøen bort.
+   - **Smelting:** 4 mm vann per plussgrad per døgn, regnet time for time (døgnblokker bruker en
+     sinuskurve mellom min og maks), pluss varme fra regn, varm bakke (0,3 mm/døgn) og fordamping i vind.
+   - **Snøfokk:** over 7 m/s i kulde flyttes løs, lett snø bort fra åpne flater til den er pakket.
+   - **Setning:** snøen pakker seg mot 350 kg/m³ (450 når den er våt), raskest i mildvær og vind.
+   - Modellen gjelder åpent terreng; i skog blåser det mindre, og snøen ligger ofte lenger.
 4. **Sannsynlighet**: 30 varianter (Yr og Storm × temperaturavvik −2…+2 × spredning som
    øker med tiden × nedbør 60/100/140 %). Andelen varianter med snødybde over grensen gir to sjanser:
    - 🎿 **oppkjørte spor**: snødybde ≥ 25 cm (kan justeres 10–50 cm)
    - 👣 **tråkke spor selv**: snødybde ≥ 2 cm (kan justeres 1–20 cm)
 5. **Snøvill-indeks** (0–100) = 0,75 × sjansen for å tråkke selv + 0,25 × sjansen for oppkjørte spor.
    Snøvill blir glad bare det er snø å tråkke i, og oppkjørte spor gir full pott.
-6. **Startdybde**: «Auto» anslår ut fra Sporet (kjørt siste 2 døgn → 35 cm, siste uke →
-   25 cm, siste 3 uker → 10 cm, ellers 0). Kan overstyres per sted i innstillingene.
+6. **Startpunkt:** manuell dybde fra innstillingene, ellers **NVE/seNorge** sin snødybde og snømengde
+   for i dag (eller i går), ellers et anslag fra Sporet (kjørt siste 2 døgn → 35 cm, siste uke → 25 cm,
+   siste 3 uker → 10 cm, ellers 0).
+7. **Sammenligning:** dagsrutene, verktøytipset og tabellen viser NVEs egen prognose for snødybde
+   ved siden av modellen. Modellen viser snødybden ved dagens slutt, og sammenlignes derfor med NVE
+   kl. 06 neste morgen.
 
 ## 🧴 Smøreguide
 
