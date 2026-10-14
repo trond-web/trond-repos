@@ -259,11 +259,11 @@ async function fetchJson(url, opts = {}) {
 
 /* --------------------------- data: Yr ----------------------------- *
  * MET Norge Locationforecast – samme data som Yr viser.
- * Returnerer blokker: { start: ISO, hours, precip (mm), temp (°C), rh (%) }
+ * Returnerer blokker: { start: ISO, hours, precip (mm), temp (°C), rh (%), wind (m/s) }
  */
 
 async function fetchYr(loc, force) {
-  return cached(`yr2.${loc.id}`, async () => {
+  return cached(`yr3.${loc.id}`, async () => {
     const url = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${loc.lat}&lon=${loc.lon}&altitude=${loc.altitude}`;
     const data = await fetchJson(url);
     const ts = data.properties.timeseries;
@@ -294,7 +294,10 @@ async function fetchYr(loc, force) {
       const rh0 = ts[i].data.instant.details.relative_humidity;
       const rh1 = endIdx > -1 ? ts[endIdx].data.instant.details.relative_humidity : rh0;
       const rh = rh0 != null && rh1 != null ? (rh0 + rh1) / 2 : rh0 ?? null;
-      blocks.push({ start: ts[i].time, hours, precip, temp: (temp0 + temp1) / 2, rh });
+      const w0 = ts[i].data.instant.details.wind_speed;
+      const w1 = endIdx > -1 ? ts[endIdx].data.instant.details.wind_speed : w0;
+      const wind = w0 != null && w1 != null ? (w0 + w1) / 2 : w0 ?? null;
+      blocks.push({ start: ts[i].time, hours, precip, temp: (temp0 + temp1) / 2, rh, wind });
       coveredUntil = t + hours * 3600000;
     }
     return { blocks, now: ts[0]?.data.instant.details.air_temperature ?? null };
@@ -311,16 +314,16 @@ const STORM_QUERY = `query($placeId: String!, $from: Date!, $to: Date!, $geoHash
     current { temperature symbol time }
     days {
       date
-      dayForecast { minTemperature maxTemperature precipitation symbol humidity }
-      weatherOneHourSteps { startTime endTime precipitation temperature symbol humidity }
-      weatherThreeHourSteps { startTime endTime precipitation temperature symbol humidity }
-      weatherSixHourSteps { startTime endTime precipitation temperature symbol humidity }
+      dayForecast { minTemperature maxTemperature precipitation symbol humidity windSpeed }
+      weatherOneHourSteps { startTime endTime precipitation temperature symbol humidity windSpeed }
+      weatherThreeHourSteps { startTime endTime precipitation temperature symbol humidity windSpeed }
+      weatherSixHourSteps { startTime endTime precipitation temperature symbol humidity windSpeed }
     }
   }
 }`;
 
 async function fetchStorm(loc, force) {
-  return cached(`storm2.${loc.id}`, async () => {
+  return cached(`storm3.${loc.id}`, async () => {
     const placeId = btoa("#" + geohash(loc.lat, loc.lon));
     const days = nextDays(16);
     const body = {
@@ -345,7 +348,7 @@ async function fetchStorm(loc, force) {
         for (const s of steps) {
           const hours = (Date.parse(s.endTime) - Date.parse(s.startTime)) / 3600000;
           if (!(hours > 0) || s.temperature == null) continue;
-          blocks.push({ start: s.startTime, hours, precip: s.precipitation ?? 0, temp: s.temperature, rh: s.humidity ?? null });
+          blocks.push({ start: s.startTime, hours, precip: s.precipitation ?? 0, temp: s.temperature, rh: s.humidity ?? null, wind: s.windSpeed ?? null });
         }
       } else if (day.dayForecast) {
         const df = day.dayForecast;
@@ -357,6 +360,7 @@ async function fetchStorm(loc, force) {
           tmin: df.minTemperature,
           tmax: df.maxTemperature,
           rh: df.humidity ?? null,
+          wind: df.windSpeed ?? null,
         });
       }
     }
@@ -518,31 +522,98 @@ function daySummary(blocks) {
  * Kjører snømodellen gjennom dagene for én variant.
  * dayBlocks: array (per dag) av blokker; offset: temperaturavvik per dag; pscale: nedbørsskalering.
  */
-function simulate(dayBlocks, startDepth, offsets, pscale) {
-  let depth = startDepth;
+/* Snømodell time for time. Følger snømengde (SWE, mm vann) og tetthet (kg/m³),
+ * slik at snødybden bæres videre fra dag til dag og bare reduseres av smelting,
+ * setning (snøen pakker seg) og vind. */
+const SNOW_MODEL = {
+  ddf: 4.0, // smelting, mm vann per plussgrad per døgn
+  rainHeat: 0.0126, // varme fra regn: mm smelting per mm regn per °C
+  groundMelt: 0.3, // varm bakke tidlig i sesongen, mm per døgn
+  sublimation: 0.1, // fordamping i vind, mm per døgn
+  drift: 0.05, // snøfokk fra løs snø, mm per time per m/s over 7 m/s
+  defaultDensity: 250, // eldre snø uten målt tetthet
+};
+
+// Tetthet på nysnø (Anderson): lett i kulde, tung når den er våt, vind pakker den
+function newSnowDensity(t, wind) {
+  const base = t <= -15 ? 50 : t <= 0 ? 50 + 1.7 * (t + 15) ** 1.5 : 149 + 25 * Math.min(t, 2);
+  return Math.min(350, base + 15 * Math.max(0, (wind ?? 3) - 4));
+}
+
+// Plussgradtimer i blokken. Døgnblokker bruker en sinuskurve mellom min og maks.
+function degreeHours(b, off) {
+  if (b.hours >= 24 && b.tmin != null && b.tmax != null) {
+    const lo = b.tmin + off;
+    const hi = b.tmax + off;
+    if (hi <= 0) return 0;
+    if (lo >= 0) return ((lo + hi) / 2) * 24;
+    return ((hi * hi) / (2 * (hi - lo))) * 24;
+  }
+  return Math.max(0, b.temp + off) * b.hours;
+}
+
+function simulate(dayBlocks, start, offsets, pscale) {
+  let swe = start.swe;
+  let depth = start.depth;
+  let rho = depth > 0 ? Math.min(500, Math.max(80, (swe * 100) / depth)) : 150;
   const depths = [];
   const newSnow = [];
+  const swes = [];
   dayBlocks.forEach((blocks, i) => {
     const off = offsets[i];
     let fresh = 0;
-    let rain = 0;
-    let degreeDays = 0;
     for (const b of blocks || []) {
       const t = b.temp + off;
+      const h = b.hours;
+      const wind = b.wind ?? 3;
       const p = b.precip * pscale;
-      const f = snowFraction(t);
-      fresh += p * f;
-      rain += p * (1 - f);
-      // Ved døgnsnitt (Storm langt frem) bruk halve spennet for å fange dagsmelting
-      const tWarm = b.hours >= 24 && b.tmax != null ? (b.temp + b.tmax) / 2 + off : t;
-      degreeDays += (Math.max(0, tWarm) * b.hours) / 24;
+      const ps = p * snowFraction(t);
+      const pr = p - ps;
+
+      // Nysnø – sterk vind blåser en del av løssnøen bort fra åpne flater
+      const windLoss = wind > 6 ? Math.min(0.4, 0.04 * (wind - 6)) : 0;
+      const kept = ps * (1 - windLoss);
+      if (kept > 0) {
+        const cm = (kept * 100) / newSnowDensity(t, wind);
+        swe += kept;
+        depth += cm;
+        fresh += cm;
+      }
+      if (swe <= 0) continue;
+
+      // Smelting: plussgrader, varme fra regn, varm bakke og fordamping i vind
+      let melt = (SNOW_MODEL.ddf / 24) * degreeHours(b, off);
+      melt += pr * Math.max(0, t) * SNOW_MODEL.rainHeat;
+      melt += (SNOW_MODEL.groundMelt * h) / 24;
+      if (wind > 5 && t < 0) melt += (SNOW_MODEL.sublimation * h) / 24;
+      // Snøfokk: sterk vind flytter løs, lett snø bort fra åpne flater
+      rho = (swe * 100) / depth;
+      if (wind > 7 && t < 0 && rho < 200) melt += SNOW_MODEL.drift * (wind - 7) * h;
+      melt = Math.min(melt, swe);
+      rho = (swe * 100) / depth;
+      depth -= (melt * 100) / rho;
+      swe -= melt;
+      if (swe < 0.05 || depth < 0.05) {
+        swe = 0;
+        depth = 0;
+        continue;
+      }
+
+      // Setning: snøen pakker seg, raskest når den er våt og i sterk vind
+      const wet = t > 0 || pr > 0.2;
+      let k = wet ? 0.35 : t > -5 ? 0.12 : 0.06;
+      if (wind > 8) k += 0.15;
+      const rhoMax = wet ? 450 : 350;
+      rho = (swe * 100) / depth;
+      rho += (rhoMax - rho) * (1 - Math.exp((-k * h) / 24));
+      rho = Math.min(550, Math.max(50, rho));
+      depth = (swe * 100) / rho;
     }
-    const melt = degreeDays * 1.2 + (depth > 0 ? rain * 0.15 : 0);
-    depth = Math.max(0, depth * 0.97 + fresh - melt);
     depths.push(depth);
     newSnow.push(fresh);
+    swes.push(swe);
   });
-  return { depths, newSnow };
+  return { depths, newSnow, swes };
 }
 
 const TEMP_STEPS = [-2, -1, 0, 1, 2];
@@ -557,7 +628,8 @@ function snovillIndex(probSelf, probGroom) {
 }
 
 /** thresholds: { groom: cm for oppkjørte spor, self: cm for å tråkke spor selv } */
-function runEnsemble(sourceDays, days, startDepth, thresholds) {
+/** start: { depth (cm), swe (mm) } – snøen som ligger når varselet starter */
+function runEnsemble(sourceDays, days, start, thresholds) {
   const sourceIds = Object.keys(sourceDays).filter((s) => sourceDays[s]);
   if (!sourceIds.length) return null;
 
@@ -576,13 +648,13 @@ function runEnsemble(sourceDays, days, startDepth, thresholds) {
     for (const k of TEMP_STEPS) {
       const offsets = days.map((_, i) => k * (0.4 + 0.2 * i));
       for (const ps of PRECIP_SCALES) {
-        scenarios.push({ source: sourceIds[si], k, ps, ...simulate(dayBlocks, startDepth, offsets, ps) });
+        scenarios.push({ source: sourceIds[si], k, ps, ...simulate(dayBlocks, start, offsets, ps) });
       }
     }
   });
 
   const zero = days.map((_, i) => 0 * i);
-  const central = perSource.map((dayBlocks) => simulate(dayBlocks, startDepth, zero, 1));
+  const central = perSource.map((dayBlocks) => simulate(dayBlocks, start, zero, 1));
 
   return days.map((d, i) => {
     const depths = scenarios.map((s) => s.depths[i]);
@@ -607,6 +679,7 @@ function runEnsemble(sourceDays, days, startDepth, thresholds) {
       depthLo: quantile(depths, 0.1),
       depthHi: quantile(depths, 0.9),
       newSnow: median(central.map((c) => c.newSnow[i])),
+      swe: median(central.map((c) => c.swes[i])),
       perSource: summaries,
       tmin: avg("tmin"),
       tmax: avg("tmax"),
@@ -786,11 +859,11 @@ function renderResorts() {
         const st = d.perSource.storm;
         const fight =
           yr && st
-            ? `Yr ${fmt1(yr.snow)} cm vs Storm ${fmt1(st.snow)} cm nysnø`
+            ? `Yr ${fmt1(yr.snow)} mm vs Storm ${fmt1(st.snow)} mm snøfall (vann)`
             : yr
-              ? `Yr ${fmt1(yr.snow)} cm nysnø`
+              ? `Yr ${fmt1(yr.snow)} mm snøfall (vann)`
               : st
-                ? `Storm ${fmt1(st.snow)} cm nysnø`
+                ? `Storm ${fmt1(st.snow)} mm snøfall (vann)`
                 : "";
         const title = `${weekdayLongFmt.format(d.date)}: Snøvill-indeks ${d.prob}. Oppkjørte spor (≥ ${state.settings.threshold} cm): ${d.probGroom} %. Tråkke selv (≥ ${state.settings.selfThreshold} cm): ${d.probSelf} %. Beregnet snødybde ${fmt0(d.depth)} cm (${fmt0(d.depthLo)}–${fmt0(d.depthHi)}). ${fight}. Nedbør ${fmt1(d.precip)} mm. ${wax.name}.`;
         return `
@@ -801,7 +874,8 @@ function renderResorts() {
             <span class="day-prob">${d.prob}</span>
             <span class="bar"><span style="width:${d.prob}%"></span></span>
             <span class="day-split" aria-label="Oppkjørte spor ${d.probGroom} prosent, tråkke selv ${d.probSelf} prosent"><span title="Oppkjørte spor">🎿 ${d.probGroom}%</span><span title="Tråkke spor selv">👣 ${d.probSelf}%</span></span>
-            <span class="day-snow">${d.newSnow >= 0.5 ? `❄️ ${fmt0(d.newSnow)} cm` : `<span class="muted">ingen nysnø</span>`}</span>
+            <span class="day-depth" title="Beregnet snødybde${d.nveDepth != null ? ` · NVE/seNorge ${fmt1(d.nveDepth)} cm` : ""}">📏 ${fmt0(d.depth)} cm${d.nveDepth != null ? `<small> · NVE ${fmt0(d.nveDepth)}</small>` : ""}</span>
+            <span class="day-snow">${d.newSnow >= 0.5 ? `❄️ +${fmt0(d.newSnow)} cm` : `<span class="muted">ingen nysnø</span>`}</span>
             <span class="day-temp">${fmt0(d.tmin)}° / ${fmt0(d.tmax)}°</span>
             <span class="wax ${wax.cls}">${wax.short}</span>
           </li>`;
@@ -813,7 +887,7 @@ function renderResorts() {
         <header class="resort-head">
           <div>
             <h2>${loc.emoji} ${loc.name}</h2>
-            <p class="resort-meta">${loc.altitude} moh · start ${fmt0(r.startDepth)} cm snø (${escapeHtml(r.startWhy)})</p>
+            <p class="resort-meta">${loc.altitude} moh · start ${fmt1(r.startDepth)} cm snø${r.startSwe > 0 ? ` / ${fmt1(r.startSwe)} mm vann` : ""} (${escapeHtml(r.startWhy)})</p>
           </div>
           <div class="resort-verdict ${lvl.cls}">
             <span class="verdict-face" aria-hidden="true">${lvl.face}</span>
@@ -1107,7 +1181,7 @@ function renderChart() {
     const rows = series
       .map(
         (s) =>
-          `<div class="tip-row"><span class="swatch" style="background:${s.color}"></span>${s.loc.name}<strong>${fmt0(s.days[i].depth)} cm</strong><span class="muted">indeks ${s.days[i].prob}</span></div>`
+          `<div class="tip-row"><span class="swatch" style="background:${s.color}"></span>${s.loc.name}<strong>${fmt0(s.days[i].depth)} cm</strong><span class="muted">${s.days[i].nveDepth != null ? `NVE ${fmt0(s.days[i].nveDepth)} · ` : ""}indeks ${s.days[i].prob}</span></div>`
       )
       .join("");
     tip.innerHTML = `<div class="tip-title">${escapeHtml(cap(weekdayLongFmt.format(series[0].days[i].date)))}</div>${rows}`;
@@ -1129,7 +1203,7 @@ function renderChart() {
   const body = series
     .map(
       (s) =>
-        `<tr><th scope="row">${s.loc.name}</th>${s.days.map((d) => `<td>${fmt0(d.depth)} cm<br><small>indeks ${d.prob}</small></td>`).join("")}</tr>`
+        `<tr><th scope="row">${s.loc.name}</th>${s.days.map((d) => `<td>${fmt0(d.depth)} cm<br><small>${d.nveDepth != null ? `NVE ${fmt0(d.nveDepth)} · ` : ""}indeks ${d.prob}</small></td>`).join("")}</tr>`
     )
     .join("");
   $("depthTable").innerHTML = `<div class="table-scroll"><table><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
@@ -1450,6 +1524,58 @@ async function initWatch() {
   }
 }
 
+/* ------------------------- data: NVE/seNorge ------------------------- *
+ * Pages-workflowen henter snødata fra NVE (samme kilde som Yr viser snødybde fra)
+ * og legger dem ved siden som data/nve-sno.json. Brukes som startpunkt og til sammenligning.
+ */
+
+async function fetchNve() {
+  try {
+    const res = await fetch(`data/nve-sno.json?t=${Math.floor(Date.now() / 3600000)}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+function nveFor(loc) {
+  return state.nve?.steder?.[loc.name]?.days || null;
+}
+
+// Startpunkt: manuell dybde > NVE/seNorge i dag (eller i går) > anslag fra Sporet
+function startState(loc, sporet) {
+  const manual = state.settings.baseDepth[loc.id];
+  if (manual != null) {
+    return { depth: manual, swe: (manual * SNOW_MODEL.defaultDensity) / 100, why: "satt manuelt" };
+  }
+  const nve = nveFor(loc);
+  if (nve) {
+    const today = dateKey(new Date());
+    const yesterday = dateKey(new Date(Date.now() - 86400000));
+    const row = nve.find((r) => r.date === today && r.sd != null) || nve.find((r) => r.date === yesterday && r.sd != null);
+    if (row) {
+      const depth = row.sd || 0;
+      const swe = row.swe != null ? row.swe : (depth * SNOW_MODEL.defaultDensity) / 100;
+      return { depth, swe: depth > 0 ? swe : 0, why: `NVE/seNorge ${row.date === today ? "i dag" : "i går"}` };
+    }
+  }
+  const auto = autoBaseDepth(sporet);
+  return { depth: auto.depth, swe: (auto.depth * SNOW_MODEL.defaultDensity) / 100, why: auto.why };
+}
+
+// NVEs egen prognose for snødybde per dag, til sammenligning med modellen
+function attachNve(loc, r) {
+  const nve = nveFor(loc);
+  if (!nve || !r?.days) return;
+  // Modellen viser snødybden ved dagens slutt, NVE gjelder kl. 06 – sammenlign med neste morgen
+  for (const d of r.days) {
+    const next = dateKey(new Date(d.date.getTime() + 86400000));
+    const row = nve.find((x) => x.date === next);
+    d.nveDepth = row?.sd ?? null;
+  }
+}
+
 /* ------------------------------ main ------------------------------ */
 
 async function loadAll(force = false) {
@@ -1460,6 +1586,8 @@ async function loadAll(force = false) {
 
   const counts = { yr: 0, storm: 0, sporet: 0, netatmo: 0 };
   const errors = { yr: [], storm: [], sporet: [], netatmo: [] };
+
+  state.nve = await fetchNve();
 
   state.camBust = Math.floor(Date.now() / 60000);
   const webcamsPromise = fetchWebcams(force)
@@ -1490,25 +1618,24 @@ async function loadAll(force = false) {
       const sporetV = val(sporet, "sporet");
       const netV = val(netatmo, "netatmo");
 
-      const auto = autoBaseDepth(sporetV);
-      const manual = state.settings.baseDepth[loc.id];
-      const startDepth = manual != null ? manual : auto.depth;
-      const startWhy = manual != null ? "satt manuelt" : auto.why;
+      const start = startState(loc, sporetV);
 
       const sourceDays = {
         yr: yrV ? blocksByDay(yrV.blocks) : null,
         storm: stormV ? blocksByDay(stormV.blocks) : null,
       };
       state.results[loc.id] = {
-        days: runEnsemble(sourceDays, state.days, startDepth, thresholds()),
+        days: runEnsemble(sourceDays, state.days, start, thresholds()),
         sporet: sporetV,
         netatmo: netatmo.status === "rejected" ? { error: netatmoError(netatmo.reason) } : netV,
         yrNow: yrV?.now,
         stormNow: stormV?.now,
-        startDepth,
-        startWhy,
+        startDepth: start.depth,
+        startSwe: start.swe,
+        startWhy: start.why,
         sourceDays,
       };
+      attachNve(loc, state.results[loc.id]);
       attachWax(state.results[loc.id]);
     })
   );
@@ -1539,11 +1666,12 @@ function recompute() {
   for (const loc of LOCATIONS) {
     const r = state.results[loc.id];
     if (!r) continue;
-    const auto = autoBaseDepth(r.sporet);
-    const manual = state.settings.baseDepth[loc.id];
-    r.startDepth = manual != null ? manual : auto.depth;
-    r.startWhy = manual != null ? "satt manuelt" : auto.why;
-    r.days = runEnsemble(r.sourceDays, state.days, r.startDepth, thresholds());
+    const start = startState(loc, r.sporet);
+    r.startDepth = start.depth;
+    r.startSwe = start.swe;
+    r.startWhy = start.why;
+    r.days = runEnsemble(r.sourceDays, state.days, start, thresholds());
+    attachNve(loc, r);
     attachWax(r);
   }
   renderResorts();

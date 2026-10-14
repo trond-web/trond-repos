@@ -410,6 +410,8 @@ h2 { font-size: 1.35rem; font-weight: 700; }
 .day-prob { font-family: "Baloo 2", sans-serif; font-size: 1.4rem; font-weight: 800; line-height: 1; }
 .day-prob small { font-size: 0.75rem; }
 .day-snow, .day-temp { font-size: 0.78rem; color: var(--text-2); white-space: nowrap; }
+.day-depth { font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+.day-depth small { font-weight: 500; color: var(--muted); }
 .day-split { display: flex; flex-direction: column; align-items: center; font-size: 0.72rem; line-height: 1.3; color: var(--text-2); white-space: nowrap; }
 
 .bar {

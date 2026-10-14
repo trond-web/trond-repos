@@ -15,6 +15,8 @@ on:
   schedule:
     # Børsradar: ny analyse hver handelsdag etter børsslutt (18:45 norsk sommertid / 17:45 vintertid)
     - cron: "45 16 * * 1-5"
+    # Snøvill: ferske snødata fra NVE/seNorge morgen og kveld, utenfor børsens åpningstid
+    - cron: "17 5,19 * * *"
   workflow_dispatch:
 
 permissions:
@@ -60,6 +62,12 @@ jobs:
           rm -f _site/team-sjusjoen/bilder/README.md
           # Tester, verktøy og serverfiler (Railway) publiseres ikke på GitHub Pages
           rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/borsradar/analyse _site/borsradar/data/innsidehandel.json
+
+      # Snøvill: snødybde, snømengde og smelting fra NVE/seNorge legges ved som datafil
+      - name: Snødata fra NVE (Snøvill)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: node snovill-skifore/data/hent-nve.mjs _site/snovill-skifore/data/nve-sno.json
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
