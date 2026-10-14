@@ -82,42 +82,6 @@ export async function hoydeI([lon, lat], o) {
   return typeof z === 'number' ? z : null;
 }
 
-// ---------- Villreinvald ----------
-
-// Villreinvald i Nordfjella (villreinområde 2211) slik de står i Hjorteviltregisteret 14.10.2026.
-// Listen oppdateres fra registeret når appen har nett. Valdgrensene finnes ikke som åpne kartdata;
-// et vald er en samling eiendommer, så grensene bygges av eiendommene du knytter til valdet,
-// eller leses fra en fil fra kommunen/villreinnemnda.
-export const VALD_NORDFJELLA = [
-  { nr: '2211V0007', navn: 'Ulvik villreinvald' },
-  { nr: '2211V0009', navn: 'Hol 2' },
-  { nr: '2211V0011', navn: 'Aurland 2' },
-];
-export const OMRAADENR = '2211';
-export const valdTekst = (v) => (v ? `${v.nr}${v.navn ? ` ${v.navn}` : ''}` : '');
-export const gyldigValdnr = (s) => /^\d{4}V\d{4}$/.test(String(s).trim().toUpperCase());
-
-export async function hentVald(o) {
-  const d = await hentJson(`https://hjorteviltregisteret.no/Statistikk/HentVillreinvald?text=${OMRAADENR}V`, o);
-  return (Array.isArray(d) ? d : []).map((v) => String(v.Navn || '').match(/^(\d{4}V\d{4})\s*(.*)$/))
-    .filter((m) => m && m[1].startsWith(`${OMRAADENR}V`)).map((m) => ({ nr: m[1], navn: m[2].trim() }))
-    .sort((a, b) => a.nr.localeCompare(b.nr));
-}
-
-// Finner valdnummer i egenskapene til et objekt fra en importert fil (valdnr, valdnummer, VALD_ID …).
-export function valdFraEgenskaper(p = {}) {
-  for (const [k, v] of Object.entries(p)) {
-    if (v == null) continue;
-    const m = String(v).toUpperCase().match(/\b(\d{4}V\d{4})\b/);
-    if (m) return { nr: m[1], navn: String(p.valdnavn || p.Valdnavn || p.VALDNAVN || p.navn || p.name || '').replace(m[1], '').trim() };
-    if (/^vald.?(nr|nummer|id)$/i.test(k) && /^\d{4}V?\d{4}$/i.test(String(v).trim())) {
-      const s = String(v).trim().toUpperCase();
-      return { nr: s.includes('V') ? s : `${s.slice(0, 4)}V${s.slice(4)}`, navn: String(p.valdnavn || p.navn || p.name || '').trim() };
-    }
-  }
-  return null;
-}
-
 // ---------- Import av egne grenser ----------
 
 const tall = (s) => s.trim().split(/[\s]+/).map((t) => t.split(',').map(Number)).filter((c) => c.length >= 2 && c.every((v) => !Number.isNaN(v))).map(([x, y]) => [x, y]);

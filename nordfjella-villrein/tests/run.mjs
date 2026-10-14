@@ -2,8 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { punktIPolygon, avstandTilGrense, avstandM, retning, himmelretning, utm, utmTekst, fliserFor, flisBbox3857, flisX, flisY, gpx } from '../js/geo.js';
-import { wmsUrl, WMS, flisUrl, BAKGRUNNER, tolkTeig, teigNavn, teigI, hoydeI, lesGeoJson, valdFraEgenskaper, gyldigValdnr, hentVald, VALD_NORDFJELLA } from '../js/kilder.js';
-import { antallDyr, flytt, jaktaar, oppsummering, oppsummeringTekst, csv } from '../js/registrering.js';
+import { wmsUrl, WMS, flisUrl, BAKGRUNNER, tolkTeig, teigNavn, teigI, hoydeI, lesGeoJson } from '../js/kilder.js';
 
 let ok = 0;
 const venter = [];
@@ -96,62 +95,7 @@ test('GPX-eksport', () => {
   assert.match(x, /<name>Bukk &lt;2&gt;<\/name>/);
 });
 
-test('valdnummer fra filegenskaper', () => {
-  assert.deepEqual(valdFraEgenskaper({ valdnummer: '2211V0009', valdnavn: 'Hol 2' }), { nr: '2211V0009', navn: 'Hol 2' });
-  assert.equal(valdFraEgenskaper({ VALDNR: '22110011', navn: 'Aurland 2' }).nr, '2211V0011');
-  assert.equal(valdFraEgenskaper({ navn: 'Vald 2211v0007 Ulvik' }).nr, '2211V0007');
-  assert.equal(valdFraEgenskaper({ navn: 'Jaktfelt 3' }), null);
-  assert.equal(gyldigValdnr('2211V0009'), true);
-  assert.equal(gyldigValdnr('2211-9'), false);
-  assert.ok(VALD_NORDFJELLA.every((v) => gyldigValdnr(v.nr)));
-});
-
-test('reinregistrering: antall, flytting og jaktår', () => {
-  assert.equal(antallDyr({ total: 40, kalv: 5, simle: 10 }), 40);
-  assert.equal(antallDyr({ total: 10, kalv: 5, simle: 10 }), 15);
-  assert.equal(antallDyr({ kalv: 3 }), 3);
-  const q = flytt([7.9, 60.85], 1000, 90);
-  assert.ok(Math.abs(avstandM([7.9, 60.85], q) - 1000) < 1);
-  assert.equal(himmelretning(retning([7.9, 60.85], q)), 'Ø');
-  assert.equal(jaktaar(new Date(2026, 7, 20).getTime()), 2026);
-  assert.equal(jaktaar(new Date(2027, 1, 1).getTime()), 2026);
-});
-
-test('reinregistrering: oppsummering for forvaltningen og CSV', () => {
-  const t = new Date(2026, 7, 21, 10).getTime();
-  const pk = [
-    { type: 'obs', tid: t, lat: 60.85, lon: 7.9, navn: 'Flokk', vald: '2211V0009', obs: { total: 60, kalv: 10, simle: 20, ungdyr: 5, bukkSmaa: 2, bukkMellom: 2, bukkStor: 1, merket: true } },
-    { type: 'obs', tid: t, lat: 60.86, lon: 7.9, navn: 'Flokk 2', vald: '2211V0011', obs: { kalv: 2, simle: 5 } },
-    { type: 'felt', tid: t, lat: 60.85, lon: 7.91, navn: 'Bukk; "stor"', vald: '2211V0009', felt: { kjonn: 'bukk', alder: 'eldre', vekt: 62, kjeve: true, cwd: true } },
-    { type: 'felt', tid: t, lat: 60.85, lon: 7.91, navn: 'Kalv', vald: '2211V0009', felt: { kjonn: 'simle', alder: 'kalv', vekt: 20, kjeve: false, cwd: false } },
-    { type: 'syk', tid: t, lat: 60.85, lon: 7.92, navn: 'Syk', annet: { tilstand: 'Syk/avmagret', antall: 1 } },
-    { type: 'obs', tid: new Date(2025, 8, 1).getTime(), lat: 60.85, lon: 7.9, navn: 'I fjor', obs: { total: 99 } },
-  ];
-  const o = oppsummering(pk, { aar: 2026 });
-  assert.equal(o.obs.registreringer, 2);
-  assert.equal(o.obs.dyr, 67);
-  assert.equal(o.obs.kalvPer100Simler, 48); // 12 kalv / 25 simler
-  assert.equal(o.obs.bukkerPer100Simler, 20);
-  assert.equal(o.obs.andelStoreBukker, 20);
-  assert.equal(o.felt.antall, 2);
-  assert.equal(o.felt.cwd, 1);
-  assert.deepEqual(o.felt.manglerCwd, ['Kalv']);
-  assert.equal(o.felt.kategorier['eldre-bukk'].snittvekt, 62);
-  assert.equal(o.syk, 1);
-  assert.equal(oppsummering(pk, { aar: 2026, vald: '2211V0011' }).obs.dyr, 7);
-  assert.match(oppsummeringTekst(o), /Kalv per 100 simler: 48/);
-  const c = csv(pk);
-  assert.ok(c.startsWith('﻿tid;type;navn;vald;'));
-  assert.equal(c.trim().split('\n').length, 7);
-  assert.ok(c.includes('"Bukk; ""stor"""'));
-  assert.ok(c.includes(';Felt dyr;'));
-});
-
 if (process.env.LIVE) {
-  test('LIVE: villreinvald fra Hjorteviltregisteret', async () => {
-    const v = await hentVald();
-    assert.ok(v.length >= 1 && v.every((x) => x.nr.startsWith('2211V')), JSON.stringify(v));
-  });
   test('LIVE: teig og høyde fra Kartverket', async () => {
     const t = await teigI([7.9, 60.85]);
     assert.equal(t.kommunenr, '3328');

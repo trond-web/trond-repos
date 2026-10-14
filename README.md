@@ -6,4 +6,4 @@
 - [`fox-classic-2026/`](fox-classic-2026/) – påmeldingsløsning for Fox Classic 2026
 - [`borsradar/`](borsradar/) – Børsradar: kjøp-, hold- og selgsignaler for Oslo Børs på kort og lang sikt (trend, nyheter, innsidehandel, analytikere), med egen portefølje og historisk test
 - [`team-sjusjoen/`](team-sjusjoen/) – nettsiden til Team Sjusjøen Kaffebryggeriet (Ski Classics Pro Team): laget, løpere, terminliste, partnere og kontakt
-- [`nordfjella-villrein/`](nordfjella-villrein/) – jaktkart for villreinjakt i Nordfjella: grensa for villreinområdet, eiendomsgrenser, vald, GPS, reinregistrering for forvaltningen og kart som virker uten nett
+- [`nordfjella-villrein/`](nordfjella-villrein/) – jaktkart for villreinjakt i Nordfjella: grensa for villreinområdet, eiendomsgrenser, GPS og kart som virker uten nett
