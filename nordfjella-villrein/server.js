@@ -22,7 +22,7 @@ const TYPER = {
   '.ico': 'image/x-icon',
 };
 // Mapper og filer som ikke skal publiseres.
-const SKJULT = /^\/(tests|node_modules)(\/|$)|^\/(server\.js|package(-lock)?\.json|railway\.json|README\.md)$|\/\./;
+const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|package(-lock)?\.json|railway\.json|README\.md)$|\/\./;
 const KOMPRIMER = /^(text\/|application\/(json|geo\+json|manifest\+json)|image\/svg)/;
 
 const SIKKERHET = {
