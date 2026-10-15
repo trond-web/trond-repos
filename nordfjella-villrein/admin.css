@@ -1,0 +1,40 @@
+/* Admin: kart til venstre, panel til høyre (under hverandre på smal skjerm). Bygger på style.css. */
+body.admin { overflow: hidden; background: var(--papir); }
+.a-topp {
+  position: fixed; inset: 0 0 auto 0; height: calc(52px + var(--topp)); padding: var(--topp) 12px 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: space-between; background: var(--skog); color: #f3efe2;
+}
+.a-topp .merke { box-shadow: none; padding-left: 0; text-decoration: none; }
+.a-bruker { font-size: 14px; opacity: .9; }
+.a-login { position: fixed; inset: calc(52px + var(--topp)) 0 0 0; display: grid; place-items: center; padding: 16px; overflow: auto; }
+.a-kort { background: var(--papir); border: 1px solid var(--linje); border-radius: var(--radius); padding: 18px; width: min(380px, 100%); box-shadow: var(--skygge); display: grid; gap: 6px; }
+.a-kort.flat { box-shadow: none; width: auto; padding: 12px; }
+.a-kort h1 { margin: 0; font-size: 22px; }
+.a-kort h3 { margin: 0; }
+.feil { color: var(--ute); font-weight: 600; margin: 4px 0; }
+.a-flate { position: fixed; inset: calc(52px + var(--topp)) 0 0 0; display: grid; grid-template-columns: 1fr 400px; }
+#a-kart { position: relative; height: 100%; }
+.a-panel { overflow-y: auto; border-left: 1px solid var(--linje); padding: 8px 14px 24px; background: var(--papir); }
+@media (max-width: 800px) {
+  .a-flate { grid-template-columns: 1fr; grid-template-rows: 52vh 1fr; }
+  .a-panel { border-left: 0; border-top: 1px solid var(--linje); }
+}
+.a-panel .liste li { flex-wrap: wrap; }
+.vald-valg { border: 1px solid var(--linje); border-radius: 10px; padding: 6px 10px 10px; }
+.vald-valg legend { font-size: 14px; color: var(--dempet); padding: 0 4px; }
+#s-vald { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#s-vald label { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--linje); border-radius: 8px; cursor: pointer; }
+#s-vald input { width: 20px; height: 20px; }
+#s-vald i { width: 14px; height: 14px; border-radius: 3px; flex: none; }
+.chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.chip.aktiv { background: #facc15; color: #111; }
+.chip.kommende { background: var(--graa-bg); color: var(--tekst); }
+.chip.avsluttet { background: var(--graa-bg); color: var(--dempet); }
+.valgt-kort { border: 2px solid #facc15; border-radius: 12px; padding: 10px 12px; margin: 10px 0; }
+.valgt-kort h3 { margin: 0 0 4px; font-size: 17px; text-transform: none; letter-spacing: 0; color: var(--tekst); }
+.redigerer { background: #fffbeb; }
+@media (prefers-color-scheme: dark) { .redigerer { background: #3b2f0a; } }
+.logg li { font-size: 14px; }
+.logg time { color: var(--dempet); font-size: 12px; display: block; }
+.velger { padding: 10px; border-radius: 8px; border: 1px solid var(--linje); background: var(--papir); color: var(--tekst); font-size: 16px; width: 100%; }
+.to { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

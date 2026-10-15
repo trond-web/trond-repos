@@ -1,9 +1,9 @@
 // Service worker: appen, nedlastede og besøkte kartruter virker uten nett.
 // Mangler en kartrute uten nett, lages den ved å forstørre en lagret rute fra et lavere zoomnivå.
-const APP = 'nfv-app-v4';
+const APP = 'nfv-app-v5';
 const FLISER = 'nfv-fliser-v1';
 const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'data/nordfjella.geojson', 'data/jaktfelt.geojson',
-  'js/app.js', 'js/geo.js', 'js/kilder.js', 'js/versjon.js', 'js/installer.js', 'js/jaktfelt.js',
+  'js/app.js', 'js/geo.js', 'js/kilder.js', 'js/versjon.js', 'js/installer.js', 'js/jaktfelt.js', 'js/samjakt.js',
   'ikoner/icon-192.png', 'ikoner/icon-512.png', 'ikoner/apple-touch-icon.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
   'https://unpkg.com/leaflet@1.9.4/dist/images/layers.png'];
@@ -28,7 +28,8 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(medTidsavbrudd(fetch(e.request), 6000).then((svar) => {
       if (svar.ok) { const kopi = svar.clone(); caches.open(APP).then((c) => c.put(e.request, kopi)); }
       return svar;
-    }).catch(() => caches.match(e.request, { ignoreSearch: true }).then((r) => r || caches.match('index.html'))));
+    }).catch(() => caches.match(e.request, { ignoreSearch: !url.pathname.includes('/api/') }).then((r) => r
+      || (url.pathname.includes('/api/') ? new Response('{"feil":"Uten nett"}', { status: 503, headers: { 'Content-Type': 'application/json' } }) : caches.match('index.html')))));
   }
 });
 

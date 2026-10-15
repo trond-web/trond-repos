@@ -2,7 +2,7 @@
 
 Kartapp for villreinjakt i Nordfjella villreinområde. Laget for telefon, og virker uten mobildekning når kartet er lastet ned.
 
-Versjon 1.2.0 · Utviklet av Trond Harald Sand · I produksjon: **https://nordfjella.up.railway.app**
+Versjon 1.3.0 · Utviklet av Trond Harald Sand · I produksjon: **https://nordfjella.up.railway.app**
 
 ## Hva den gjør
 
@@ -29,6 +29,37 @@ Versjon 1.2.0 · Utviklet av Trond Harald Sand · I produksjon: **https://nordfj
   Veiledningen kan åpnes igjen fra Meny og under Om.
 
 Jaktgrunner og punkter blir værende på telefonen. Ved oppslag av eiendom og høyde sendes bare koordinatet til Kartverket.
+
+## Admin (for valdansvarlige)
+
+`https://nordfjella.up.railway.app/admin.html` – innlogging med brukernavn og passord. Lenke ligger under Meny → Om i appen.
+
+- **Valdgrenser**: klikk på et jaktfelt (eller velg i lista). Feltet kan flyttes til et annet vald, og grensen kan
+  redigeres ved å dra punktene (punkter festes til nabofeltets grense når du drar nær). «Tilbakestill til valdkartet»
+  fjerner endringen. Endringer vises for alle brukere med en gang og lagres i en logg med hvem som gjorde hva.
+- **Samjakt**: velg vald som skal jakte sammen og periode (fra og med – til og med, norsk dato). I appen vises samjakten
+  med gult banner øverst, gul skravur over feltene i valdene og en linje i statuskortet («Samjakt med …»). Den slås av
+  automatisk etter siste dag – også på telefoner uten nett, fordi appen selv sjekker datoene. «Avslutt nå» slår den av med en gang.
+- **Logg** og **Konto** (bytt passord).
+
+Teknisk: serveren (`server.js`, `server/`) har et lite API uten eksterne avhengigheter. Data (endringer, samjakt, brukere,
+logg) lagres i `nordfjella.json` i `DATA_DIR` – på Railway et volum montert på `/data`, så de overlever nye publiseringer.
+Passord lagres som scrypt-hash, innloggingen er en signert, HttpOnly-kapsel som varer i 12 timer, og det er sperre etter
+8 feil på 15 minutter. Endringer krever egen header og samme opprinnelse (vern mot CSRF).
+
+Miljøvariabler på Railway: `DATA_DIR=/data`, `ADMIN_BRUKER` og `ADMIN_PASSORD` (første admin opprettes ved oppstart når det
+ikke finnes brukere), `SESJON_HEMMELIGHET`.
+
+| Endepunkt | |
+|---|---|
+| `GET /api/jaktfelt` | Valdkartet med admins endringer (ETag, gzip) |
+| `GET /api/samjakt` | Samjakter som er aktive eller kommende |
+| `POST /api/login`, `/api/logout` | Innlogging |
+| `PUT/DELETE /api/admin/jaktfelt/:id` | Endre vald/grense, tilbakestille |
+| `GET/POST /api/admin/samjakt`, `DELETE /api/admin/samjakt/:id`, `POST …/:id/avslutt` | Samjakt |
+| `GET /api/admin/logg`, `POST /api/admin/passord` | Logg, bytt passord |
+
+På GitHub Pages finnes ikke serveren; der bruker appen valdkartet som følger med, uten samjakt og admin.
 
 ## Datakilder
 
