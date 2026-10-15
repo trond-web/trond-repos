@@ -51,14 +51,14 @@ def main(kilde, mål):
         g = grupper.setdefault(n, {'nr': nr, 'navn': (navn or '').strip() or None, 'vald': vald or None, 'type': type_, 'polys': []})
         g['polys'] += les_gpkg_geom(geom)
     features = []
-    for g in grupper.values():
+    for nøkkel, g in grupper.items():
         polys = [[dp(r, TOLERANSE) for r in p] for p in g['polys']]
         polys = [[r for r in p if len(r) >= 4] for p in polys]
         polys = [p for p in polys if p]
         størst = max(polys, key=lambda p: areal(p[0]))
         ex, ny = etikettpunkt(størst)
         grader = lambda r: [[round(v, 6) for v in utm_til_grader(x, y)] for x, y in r]
-        props = {'nr': g['nr'], 'navn': g['navn'], 'vald': g['vald'], 'valdnavn': VALD.get(g['vald']), 'type': g['type'],
+        props = {'id': nøkkel, 'nr': g['nr'], 'navn': g['navn'], 'vald': g['vald'], 'valdnavn': VALD.get(g['vald']), 'type': g['type'],
                  'daa': round(sum(areal(p[0]) - sum(areal(h) for h in p[1:]) for p in polys) / 1000),
                  'etikett': [round(v, 6) for v in utm_til_grader(ex, ny)]}
         features.append({'type': 'Feature', 'properties': props,

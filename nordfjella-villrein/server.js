@@ -6,6 +6,8 @@ import { stat } from 'node:fs/promises';
 import { createGzip } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { aapneLager } from './server/lager.js';
+import { lagApi } from './server/api.js';
 
 const ROT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8080;
@@ -22,7 +24,7 @@ const TYPER = {
   '.ico': 'image/x-icon',
 };
 // Mapper og filer som ikke skal publiseres.
-const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|package(-lock)?\.json|railway\.json|README\.md)$|\/\./;
+const SKJULT = /^\/(tests|verktoy|server|node_modules)(\/|$)|^\/(server\.js|package(-lock)?\.json|railway\.json|README\.md)$|\/\./;
 const KOMPRIMER = /^(text\/|application\/(json|geo\+json|manifest\+json)|image\/svg)/;
 
 const SIKKERHET = {
@@ -37,10 +39,17 @@ function svar(res, status, tekst) {
   res.end(tekst);
 }
 
+// Varige data (admins endringer av jaktfelt, samjakt, brukere) ligger i DATA_DIR – på Railway et volum på /data.
+const DATA_DIR = process.env.DATA_DIR || path.join(ROT, '.lokaldata');
+const lager = await aapneLager(DATA_DIR);
+const api = await lagApi({ lager, grunnfil: path.join(ROT, 'data', 'jaktfelt.geojson'), sikkerhetshoder: SIKKERHET, sikreKapsler: process.env.USIKRE_KAPSLER !== '1' });
+console.log(`Data lagres i ${lager.fil} (${Object.keys(lager.data.brukere).length} admin-brukere)`);
+
 const server = http.createServer(async (req, res) => {
-  if (req.method !== 'GET' && req.method !== 'HEAD') return svar(res, 405, 'Metoden er ikke tillatt');
   let sti;
   try { sti = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { return svar(res, 400, 'Ugyldig adresse'); }
+  if (sti.startsWith('/api/')) return api(req, res, sti);
+  if (req.method !== 'GET' && req.method !== 'HEAD') return svar(res, 405, 'Metoden er ikke tillatt');
   if (sti === '/healthz') return svar(res, 200, 'ok');
   if (sti.endsWith('/')) sti += 'index.html';
   if (SKJULT.test(sti)) return svar(res, 404, 'Finnes ikke');

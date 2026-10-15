@@ -1,6 +1,7 @@
 import { punktIPolygon, avstandTilGrense, avstandM, retning, himmelretning, utmTekst, bbox, fliserFor, gpx } from './geo.js';
 import { VERSJON } from './versjon.js';
 import { VALD, TVIST_FARGE, UTEN_FARGE, farge, valdTekst, feltTekst, forbered, beskriv } from './jaktfelt.js';
+import { aktive, samjaktForVald, periodeTekst, datoTekst, osloDato } from './samjakt.js';
 import { plattform, erIos, erMobil, steg, etterpaa, gpsHjelp } from './installer.js';
 import { BAKGRUNNER, WMS, flisUrl, wmsUrl, teigI, teigNavn, hoydeI, kommunenavn, lesFil } from './kilder.js';
 
@@ -29,7 +30,17 @@ const omraade = await fetch('data/nordfjella.geojson').then((r) => r.json());
 const omraadeInfo = omraade.features[0].properties;
 const [v, s, ø, n] = bbox(omraade);
 const omraadeGrenser = L.latLngBounds([s, v], [n, ø]);
-const jaktfelt = forbered(await fetch('data/jaktfelt.geojson').then((r) => r.json()));
+// Valdgrenser: fra serveren (med admins endringer) når den finnes, ellers valdkartet som følger med appen.
+// Service workeren tar vare på siste svar, så det virker uten nett.
+async function hentJaktfelt() {
+  try {
+    const r = await fetch('api/jaktfelt');
+    if (r.ok) return forbered(await r.json());
+  } catch { /* uten server eller nett */ }
+  return forbered(await fetch('data/jaktfelt.geojson').then((r) => r.json()));
+}
+let jaktfelt = await hentJaktfelt();
+let samjakt = lagre.hent('samjakt', []);
 
 let grunner = lagre.hent('grunner', []); // mine jaktgrunner (teiger med geometri)
 let teigcache = lagre.hent('teigcache', []); // nylig oppslåtte teiger, for oppslag uten nett
@@ -37,7 +48,7 @@ let punkter = lagre.hent('punkter', []);
 let importert = lagre.hent('import', []);
 let mal = lagre.hent('mal', null);
 // Nye kartlag får standardverdien selv om brukeren har lagret valg fra en eldre versjon.
-const synlig = { grense: true, skygge: true, jaktfelt: true, feltnavn: true, eiendom: true, teig: true, grunner: true, punkter: true, trekk: false, kalving: false, ...lagre.hent('synlig', {}) };
+const synlig = { grense: true, skygge: true, jaktfelt: true, samjakt: true, feltnavn: true, eiendom: true, teig: true, grunner: true, punkter: true, trekk: false, kalving: false, ...lagre.hent('synlig', {}) };
 
 // ---------- Kart ----------
 
@@ -51,6 +62,7 @@ kart.on('moveend', () => lagre.sett('visning', { c: kart.getCenter(), z: kart.ge
 kart.createPane('overleggfliser').style.zIndex = 350;
 kart.createPane('skygge').style.zIndex = 380;
 kart.createPane('jaktfelt').style.zIndex = 400;
+kart.createPane('samjakt').style.zIndex = 410;
 kart.createPane('grenser').style.zIndex = 420;
 kart.createPane('feltnavn').style.zIndex = 450;
 
@@ -86,18 +98,72 @@ const feltStil = (f) => {
   const e = f.properties, c = farge(e);
   return { renderer: feltLerret, color: c, weight: e.type === 'jaktfelt' ? 2.6 : 2.2, opacity: 1, dashArray: e.type === 'jaktfelt' ? null : '8 6', fillColor: c, fillOpacity: e.type === 'jaktfelt' ? 0.07 : 0.16, interactive: false };
 };
-const jaktfeltLag = L.layerGroup([
-  L.geoJSON(jaktfelt, { style: () => ({ renderer: feltLerret, color: '#fff', weight: 5.5, opacity: 0.75, fill: false, interactive: false }) }),
-  L.geoJSON(jaktfelt, { style: feltStil }),
-]);
+const jaktfeltLag = L.layerGroup();
 const feltnavnLag = L.layerGroup();
-for (const f of jaktfelt.features) {
-  const e = f.properties;
-  if (e.type === 'uten') continue;
-  const tekst = e.type === 'tvist' ? `<b>${h(e.nr)}</b>` : `<b>${h(e.nr)}</b><span>${h(e.navn || '')}</span>`;
-  L.marker([e.etikett[1], e.etikett[0]], { pane: 'feltnavn', interactive: false, keyboard: false,
-    icon: L.divIcon({ className: 'felt-etikett', html: `<div style="--c:${farge(e)}">${tekst}</div>`, iconSize: null }) }).addTo(feltnavnLag);
+function tegnJaktfelt() {
+  jaktfeltLag.clearLayers(); feltnavnLag.clearLayers();
+  L.geoJSON(jaktfelt, { style: () => ({ renderer: feltLerret, color: '#fff', weight: 5.5, opacity: 0.75, fill: false, interactive: false }) }).addTo(jaktfeltLag);
+  L.geoJSON(jaktfelt, { style: feltStil }).addTo(jaktfeltLag);
+  for (const f of jaktfelt.features) {
+    const e = f.properties;
+    if (e.type === 'uten') continue;
+    const tekst = e.type === 'tvist' ? `<b>${h(e.nr)}</b>` : `<b>${h(e.nr)}</b><span>${h(e.navn || '')}</span>`;
+    L.marker([e.etikett[1], e.etikett[0]], { pane: 'feltnavn', interactive: false, keyboard: false,
+      icon: L.divIcon({ className: 'felt-etikett', html: `<div style="--c:${farge(e)}">${tekst}</div>`, iconSize: null }) }).addTo(feltnavnLag);
+  }
 }
+tegnJaktfelt();
+
+// Samjakt: feltene i valdene som jakter sammen, skravert gult mens perioden varer. Slås av av seg selv etter siste dag.
+const samjaktLerret = L.canvas({ pane: 'samjakt', padding: 0.3 });
+const samjaktLag = L.layerGroup();
+let samjaktNokkel = null;
+function tegnSamjakt(tving = false) {
+  const idag = osloDato();
+  const aktiv = aktive(samjakt, idag);
+  const nokkel = `${idag}|${aktiv.map((x) => `${x.id}:${x.vald}:${x.til}`).join(',')}|${jaktfelt.revisjon ?? ''}`;
+  if (nokkel === samjaktNokkel && !tving) return;
+  samjaktNokkel = nokkel;
+  samjaktLag.clearLayers();
+  const vald = new Set(aktiv.flatMap((x) => x.vald));
+  const felt = jaktfelt.features.filter((f) => vald.has(f.properties.vald));
+  if (felt.length) {
+    const fc = { type: 'FeatureCollection', features: felt };
+    L.geoJSON(fc, { style: { renderer: samjaktLerret, color: '#111', weight: 7, opacity: 0.45, fillColor: '#facc15', fillOpacity: 0.3, interactive: false } }).addTo(samjaktLag);
+    L.geoJSON(fc, { style: { renderer: samjaktLerret, color: '#facc15', weight: 3.5, opacity: 1, dashArray: '12 8', fill: false, interactive: false } }).addTo(samjaktLag);
+  }
+  const banner = $('#samjakt-banner');
+  banner.hidden = !aktiv.length || !synlig.samjakt;
+  banner.innerHTML = aktiv.map((x) => `<button type="button" data-samjakt="${h(x.id)}" title="${h(x.navn || 'Samjakt')}"><b>🤝 Samjakt:</b> ${x.vald.map((v) => `${v} ${h(VALD[v]?.navn || '')}`).join(' + ')} · t.o.m. ${h(datoTekst(x.til))}</button>`).join('');
+  maalStatus();
+  if (posisjon) oppdaterStatus(false);
+}
+$('#samjakt-banner').addEventListener('click', (e) => {
+  const x = samjakt.find((s) => s.id === e.target.closest('[data-samjakt]')?.dataset.samjakt);
+  const felt = x && jaktfelt.features.filter((f) => x.vald.includes(f.properties.vald));
+  if (felt?.length) kart.fitBounds(L.geoJSON({ type: 'FeatureCollection', features: felt }).getBounds(), { padding: [20, 20] });
+});
+
+// Henter nye valdgrenser og samjakt fra serveren (ved start, hvert 10. minutt og når nettet kommer tilbake).
+async function oppdaterFraServer() {
+  try {
+    const r = await fetch('api/samjakt', { cache: 'no-cache' });
+    if (r.ok) { samjakt = (await r.json()).samjakt || []; lagre.sett('samjakt', samjakt); }
+  } catch { /* uten nett: bruker lagret liste */ }
+  try {
+    const r = await fetch('api/jaktfelt', { cache: 'no-cache' });
+    if (r.ok) {
+      const ny = await r.json();
+      if (ny.revisjon !== jaktfelt.revisjon) { jaktfelt = forbered(ny); tegnJaktfelt(); if (posisjon) oppdaterStatus(false); }
+    }
+  } catch { /* beholder det vi har */ }
+  tegnSamjakt(true);
+}
+setInterval(oppdaterFraServer, 10 * 60e3);
+// Sjekker hvert minutt om en samjakt har startet eller er over (virker også uten nett).
+setInterval(() => tegnSamjakt(), 60e3);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tegnSamjakt(); });
+
 // Navnene vises fra zoom 11; bare nummeret på zoom 11, nummer og navn fra zoom 12.
 function oppdaterFeltnavn() {
   const z = kart.getZoom();
@@ -117,6 +183,7 @@ const OVERLEGG = [
   { id: 'grense', navn: 'Grense for villreinområdet', info: 'Miljødirektoratet', lag: grenseGruppe, farge: '#b91c1c' },
   { id: 'skygge', navn: 'Skygg utenfor området', lag: skyggeLag, farge: '#6b4f3f' },
   { id: 'jaktfelt', navn: 'Valdgrenser og jaktfelt', info: 'Valdkart 2026, farge per vald', lag: jaktfeltLag, farge: '#1d4ed8' },
+  { id: 'samjakt', navn: 'Samjakt', info: 'Gul skravur mens samjakten varer', lag: samjaktLag, farge: '#facc15' },
   { id: 'feltnavn', navn: 'Navn på jaktfelt', info: 'Vises fra zoom 11', lag: feltnavnLag },
   { id: 'eiendom', navn: 'Eiendomsgrenser', info: 'Kartverket, fra zoom 14', lag: wmsLag.eiendom, farge: '#e11d48' },
   { id: 'teig', navn: 'Gårds- og bruksnummer', info: 'Vises helt innzoomet', lag: wmsLag.teig },
@@ -143,7 +210,7 @@ function tegnLagvalg() {
     <label><input type="checkbox" data-lag="${o.id}" ${synlig[o.id] ? 'checked' : ''}>
       <span class="info">${h(o.navn)}${o.info ? `<small>${h(o.info)}</small>` : ''}</span>${o.farge ? `<i class="farge" style="background:${o.farge}"></i>` : ''}</label>`).join('')
     + `<div class="tegnforklaring-vald">${Object.entries(VALD).map(([nr, v]) => `<span><i style="background:${v.farge}"></i>${nr} ${h(v.navn)}</span>`).join('')}
-      <span><i class="stiplet" style="border-color:${TVIST_FARGE}"></i>Tvist</span><span><i class="stiplet" style="border-color:${UTEN_FARGE}"></i>Uten jaktfelt</span></div>`
+      <span><i style="background:#facc15;outline:1px solid #111"></i>Samjakt</span>      <span><i class="stiplet" style="border-color:${TVIST_FARGE}"></i>Tvist</span><span><i class="stiplet" style="border-color:${UTEN_FARGE}"></i>Uten jaktfelt</span></div>`
     + importert.map((i) => `
     <label><input type="checkbox" data-import="${h(i.id)}" ${i.synlig !== false ? 'checked' : ''}>
       <span class="info">${h(i.navn)}<small>Egen fil</small></span><i class="farge" style="background:${h(i.farge)}"></i></label>`).join('');
@@ -156,7 +223,7 @@ $('#bakgrunner').addEventListener('change', (e) => {
 });
 $('#overlegg').addEventListener('change', (e) => {
   const t = e.target;
-  if (t.dataset.lag) { synlig[t.dataset.lag] = t.checked; lagre.sett('synlig', synlig); brukSynlighet(); }
+  if (t.dataset.lag) { synlig[t.dataset.lag] = t.checked; lagre.sett('synlig', synlig); brukSynlighet(); tegnSamjakt(true); }
   if (t.dataset.import) { const i = importert.find((x) => x.id === t.dataset.import); if (i) { i.synlig = t.checked; lagre.sett('import', importert); tegnImport(); } }
 });
 
@@ -346,6 +413,14 @@ function feltHtml(p, medAvstand) {
   const b = beskriv(p, jaktfelt);
   const deler = [`<span class="${b.klasse}">${h(b.tekst)}</span>`];
   if (b.vald) deler.push(h(b.vald));
+  const vald = b.felt?.properties.vald;
+  // Samme vald i flere samjakter samtidig vises én gang, med siste dag.
+  const med = new Map();
+  for (const x of vald ? samjaktForVald(vald, samjakt) : []) {
+    const andre = x.vald.filter((v) => v !== vald).map((v) => `${v} ${VALD[v]?.navn || ''}`).join(' + ');
+    if (!med.has(andre) || med.get(andre) < x.til) med.set(andre, x.til);
+  }
+  for (const [andre, til] of med) deler.push(`<span class="samjakt-merke">🤝 Samjakt med ${h(andre)} t.o.m. ${h(datoTekst(til))}</span>`);
   if (medAvstand && b.grense?.punkt) deler.push(`<span class="mono">${avstand(b.grense.meter)}</span> til feltgrensa (${himmelretning(retning(p, b.grense.punkt))})`);
   return deler.join(' · ');
 }
@@ -714,7 +789,7 @@ visMenyknapp();
 // ---------- Nett-status og oppstart ----------
 
 const nettStatus = () => { $('#nett').hidden = navigator.onLine; };
-addEventListener('online', () => { nettStatus(); oppdaterStatus(); });
+addEventListener('online', () => { nettStatus(); oppdaterStatus(); oppdaterFraServer(); });
 addEventListener('offline', nettStatus);
 nettStatus();
 
@@ -724,6 +799,8 @@ tegnGrunner();
 tegnPunkter();
 tegnImport();
 oppdaterStatus();
+tegnSamjakt();
+oppdaterFraServer();
 maalStatus();
 if (lagre.hent('gps', false)) startGps();
 

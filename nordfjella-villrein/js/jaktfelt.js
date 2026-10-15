@@ -46,3 +46,22 @@ export function beskriv(p, fc) {
   if (e.type === 'uten') return { klasse: 'advarsel', tekst: 'Område uten jaktfelt i valdkartet', felt: f, grense: d };
   return { klasse: 'ok', tekst: feltTekst(e), vald: valdTekst(e), felt: f, grense: d };
 }
+
+// Punkt godt inne i flaten (der navnet skal stå): beste punkt i et rutenett over den største delflaten.
+export function etikettpunkt(geometri) {
+  const polys = geometri.type === 'Polygon' ? [geometri.coordinates] : geometri.coordinates;
+  const areal = (r) => Math.abs(r.reduce((a, [x1, y1], i) => { const [x2, y2] = r[(i + 1) % r.length]; return a + x1 * y2 - x2 * y1; }, 0)) / 2;
+  const størst = polys.reduce((a, b) => (areal(b[0]) > areal(a[0]) ? b : a));
+  const g = { type: 'Polygon', coordinates: størst };
+  const [v, s, ø, n] = bbox(g);
+  let best = -1, bp = størst[0][0];
+  for (let i = 1; i < 16; i++) {
+    for (let j = 1; j < 16; j++) {
+      const p = [v + ((ø - v) * i) / 16, s + ((n - s) * j) / 16];
+      if (!punktIPolygon(p, g)) continue;
+      const d = avstandTilGrense(p, g).meter;
+      if (d > best) { best = d; bp = p; }
+    }
+  }
+  return [Math.round(bp[0] * 1e6) / 1e6, Math.round(bp[1] * 1e6) / 1e6];
+}

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Admin – Nordfjella villrein</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#24352b">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.17.0/dist/leaflet-geoman.css" crossorigin="">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin">
+<header class="a-topp">
+  <a class="merke" href="./" title="Til kartappen">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 4c0 4 2 6 5 7m5-7c0 4-2 6-5 7m-7-5c-2 3-1 5 1 6m15-6c2 3 1 5-1 6M16 11c-4 0-6 3-6 7 0 5 3 9 6 9s6-4 6-9c0-4-2-7-6-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>Nordfjella villrein · admin</span>
+  </a>
+  <span id="a-bruker" class="a-bruker" hidden></span>
+</header>
+
+<!-- Innlogging -->
+<section id="a-login" class="a-login" hidden>
+  <form id="login-skjema" class="a-kort">
+    <h1>Logg inn</h1>
+    <p class="liten">For de som forvalter valdgrenser og samjakt i Nordfjella.</p>
+    <label class="felt">Brukernavn <input name="bruker" autocomplete="username" required autocapitalize="none"></label>
+    <label class="felt">Passord <input name="passord" type="password" autocomplete="current-password" required></label>
+    <p id="login-feil" class="feil" role="alert" hidden></p>
+    <button class="knapp hoved" type="submit">Logg inn</button>
+    <p class="liten"><a href="./">← Tilbake til kartet</a></p>
+  </form>
+</section>
+
+<section id="a-utenserver" class="a-login" hidden>
+  <div class="a-kort">
+    <h1>Admin er ikke tilgjengelig her</h1>
+    <p>Admin krever serveren. Bruk <a href="https://nordfjella.up.railway.app/admin.html">nordfjella.up.railway.app/admin.html</a>.</p>
+  </div>
+</section>
+
+<!-- Arbeidsflate -->
+<main id="a-flate" class="a-flate" hidden>
+  <div id="a-kart"></div>
+  <aside class="a-panel">
+    <nav class="faner" role="tablist">
+      <button type="button" role="tab" data-fane="t-grenser" aria-selected="true">Valdgrenser</button>
+      <button type="button" role="tab" data-fane="t-samjakt">Samjakt</button>
+      <button type="button" role="tab" data-fane="t-logg">Logg</button>
+      <button type="button" role="tab" data-fane="t-konto">Konto</button>
+    </nav>
+
+    <div id="t-grenser" class="fane">
+      <p class="liten">Klikk på et jaktfelt i kartet, eller velg i lista. Du kan flytte feltet til et annet vald eller endre grensen.
+        Endringene vises for alle brukere av appen med en gang.</p>
+      <label class="felt">Jaktfelt <select id="g-velg" class="velger"></select></label>
+      <div id="g-valgt"></div>
+      <h3>Endrede jaktfelt</h3>
+      <ul id="g-endret" class="liste"></ul>
+    </div>
+
+    <div id="t-samjakt" class="fane" hidden>
+      <form id="s-skjema" class="a-kort flat">
+        <h3>Ny samjakt</h3>
+        <p class="liten">Valdene som velges, jakter sammen i perioden. Samjakten vises tydelig i kartet og slås av automatisk etter siste dag.</p>
+        <fieldset class="vald-valg"><legend>Vald som jakter sammen</legend><div id="s-vald"></div></fieldset>
+        <div class="to">
+          <label class="felt">Fra og med <input name="fra" type="date" required></label>
+          <label class="felt">Til og med <input name="til" type="date" required></label>
+        </div>
+        <label class="felt">Navn (valgfritt) <input name="navn" maxlength="80" placeholder="F.eks. Samjakt Hol–Ål uke 35"></label>
+        <p id="s-feil" class="feil" role="alert" hidden></p>
+        <button class="knapp hoved" type="submit">Opprett samjakt</button>
+      </form>
+      <h3>Samjakter</h3>
+      <ul id="s-liste" class="liste"></ul>
+    </div>
+
+    <div id="t-logg" class="fane" hidden>
+      <ul id="l-liste" class="liste logg"></ul>
+    </div>
+
+    <div id="t-konto" class="fane" hidden>
+      <form id="p-skjema" class="a-kort flat">
+        <h3>Bytt passord</h3>
+        <label class="felt">Nåværende passord <input name="gammelt" type="password" autocomplete="current-password" required></label>
+        <label class="felt">Nytt passord (minst 10 tegn) <input name="nytt" type="password" autocomplete="new-password" minlength="10" required></label>
+        <p id="p-melding" role="status" hidden></p>
+        <button class="knapp" type="submit">Bytt passord</button>
+      </form>
+      <button id="b-loggut" class="knapp fare" type="button">Logg ut</button>
+      <p class="signatur">Versjon <span class="versjon"></span> · Utviklet av Trond Harald Sand</p>
+    </div>
+  </aside>
+</main>
+
+<div id="melding" class="melding" role="status" hidden></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.17.0/dist/leaflet-geoman.js" crossorigin=""></script>
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>
