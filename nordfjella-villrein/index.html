@@ -7,11 +7,14 @@
 <meta name="description" content="Jaktkart for villreinjakt i Nordfjella: grensa for villreinområdet, eiendomsgrenser, GPS-posisjon, merkede punkter og kart som virker uten nett.">
 <meta name="theme-color" content="#24352b">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="author" content="Trond Harald Sand">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Villrein">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="ikoner/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="ikoner/apple-touch-icon.png" sizes="180x180">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -84,6 +87,7 @@
     <h2>Meny</h2>
     <button class="lukk" type="button" data-lukk="meny" aria-label="Lukk">×</button>
   </div>
+  <button id="b-installer-meny" type="button" class="knapp hoved installer-knapp" hidden>📲 Legg appen på hjemskjermen</button>
   <nav class="faner" role="tablist">
     <button type="button" role="tab" data-fane="f-grunn" aria-selected="true">Jaktgrunn</button>
     <button type="button" role="tab" data-fane="f-punkter">Punkter</button>
@@ -148,8 +152,11 @@
     <p class="liten">Villreinområde og funksjonsområder: Miljødirektoratet. Eiendomsgrenser, eiendomsoppslag, høyder og kart: Kartverket.
       Flyfoto: Esri. Ingen data om deg sendes noe sted – posisjon og punkter blir på telefonen. Ved oppslag av eiendom og høyde sendes
       bare koordinatet til Kartverket.</p>
-    <p class="liten">Legg appen til på hjemskjermen (Del → «Legg til på Hjem-skjerm» i Safari, eller «Installer app» i Chrome) så starter den som en vanlig app.</p>
+    <h3>Bruk på mobil</h3>
+    <p class="liten">Appen fungerer best lagt på hjemskjermen: den starter i fullskjerm, husker GPS-tillatelsen og beholder nedlastede kart.</p>
+    <div class="knapperad"><button id="b-installer-om" type="button" class="knapp">📲 Veiledning: hjemskjerm og GPS</button></div>
   </div>
+  <p class="signatur bunn">Versjon <span class="versjon"></span> · Utviklet av Trond Harald Sand</p>
 </section>
 
 <!-- Merk punkt -->
@@ -168,6 +175,33 @@
       <button value="avbryt" type="submit" class="knapp" formnovalidate>Avbryt</button>
       <button value="lagre" type="submit" class="knapp hoved">Lagre</button>
     </div>
+  </form>
+</dialog>
+
+<!-- Veiledning: legg til på hjemskjermen -->
+<dialog id="installer" class="dialog installer">
+  <div class="installer-topp">
+    <img src="ikoner/icon-192.png" alt="" width="56" height="56">
+    <div>
+      <h2 id="i-tittel">Legg appen på hjemskjermen</h2>
+      <p class="liten">Nordfjella villrein · versjon <span class="versjon"></span></p>
+    </div>
+  </div>
+  <p id="i-hvorfor" class="liten">Da starter den som en vanlig app i fullskjerm, husker GPS-tillatelsen og beholder nedlastede kart på fjellet.</p>
+  <ol id="i-steg" class="steg"></ol>
+  <div id="i-handling" class="knapperad"></div>
+  <details id="i-etter" open>
+    <summary>Når appen er på hjemskjermen</summary>
+    <ol id="i-etter-liste" class="steg liten-steg"></ol>
+  </details>
+  <details>
+    <summary>Hvis GPS ikke virker</summary>
+    <p id="i-gps"></p>
+  </details>
+  <p class="signatur">Utviklet av Trond Harald Sand</p>
+  <form method="dialog" class="knapperad">
+    <button value="senere" class="knapp" id="i-senere">Ikke nå</button>
+    <button value="ok" class="knapp hoved" autofocus>OK</button>
   </form>
 </dialog>
 

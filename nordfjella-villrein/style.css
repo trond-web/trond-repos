@@ -211,3 +211,27 @@ a { color: inherit; }
 .grense-etikett { background: rgba(185, 28, 28, .9); color: #fff; border: 0; font-weight: 600; box-shadow: none; }
 .grense-etikett::before { display: none; }
 
+
+/* ---------- Hjemskjerm-veiledning og versjon ---------- */
+.installer { width: min(460px, calc(100vw - 20px)); }
+.installer-topp { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; }
+.installer-topp img { border-radius: 13px; flex: none; box-shadow: 0 1px 4px rgba(0, 0, 0, .25); }
+.installer-topp h2 { margin: 0; font-size: 19px; line-height: 1.2; }
+.installer-topp p { margin: 2px 0 0; }
+.steg { margin: 10px 0; padding-left: 0; list-style: none; counter-reset: steg; }
+.steg li { counter-increment: steg; position: relative; padding: 8px 0 8px 40px; border-bottom: 1px solid var(--linje); line-height: 1.4; }
+.steg li:last-child { border-bottom: 0; }
+.steg li::before {
+  content: counter(steg); position: absolute; left: 0; top: 7px; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--skog); color: #f3efe2; font-weight: 700; display: grid; place-items: center; font-size: 14px;
+}
+.liten-steg li { font-size: 14px; padding-top: 6px; padding-bottom: 6px; }
+.liten-steg li::before { width: 24px; height: 24px; font-size: 12px; top: 6px; background: var(--skog-2); }
+.ikon-inline { width: 20px; height: 20px; vertical-align: -4px; color: #1a73e8; }
+.tast { display: inline-block; min-width: 22px; padding: 0 5px; border: 1px solid var(--linje); border-radius: 6px; text-align: center; background: var(--graa-bg); }
+.installer details { margin: 8px 0; border: 1px solid var(--linje); border-radius: 10px; padding: 8px 12px; }
+.installer summary { font-weight: 650; cursor: pointer; }
+.installer .adresse { display: block; padding: 10px; border-radius: 8px; background: var(--graa-bg); font-weight: 600; word-break: break-all; text-align: center; margin: 6px 0; }
+.installer-knapp { width: 100%; margin: 2px 0 8px; }
+.signatur { text-align: center; color: var(--dempet); font-size: 13px; margin: 18px 0 4px; }
+.signatur.bunn { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--linje); }

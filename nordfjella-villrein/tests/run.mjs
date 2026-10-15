@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { punktIPolygon, avstandTilGrense, avstandM, retning, himmelretning, utm, utmTekst, fliserFor, flisBbox3857, flisX, flisY, gpx } from '../js/geo.js';
 import { wmsUrl, WMS, flisUrl, BAKGRUNNER, tolkTeig, teigNavn, teigI, hoydeI, lesGeoJson } from '../js/kilder.js';
+import { plattform, erIos, erMobil, steg, etterpaa, gpsHjelp } from '../js/installer.js';
+import { VERSJON, UTVIKLER } from '../js/versjon.js';
 
 let ok = 0;
 const venter = [];
@@ -93,6 +95,59 @@ test('GPX-eksport', () => {
   const x = gpx([{ lat: 60.85, lon: 7.9, tid: 0, navn: 'Bukk <2>', type: 'felt', notat: 'Ved vatnet', hoyde: 1267 }]);
   assert.match(x, /<wpt lat="60\.850000" lon="7\.900000"><ele>1267\.0<\/ele>/);
   assert.match(x, /<name>Bukk &lt;2&gt;<\/name>/);
+});
+
+test('plattform for hjemskjerm-veiledning', () => {
+  const iphone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+  const ipad = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
+  const chromeIos = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/129.0 Mobile/15E148 Safari/604.1';
+  const android = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
+  const samsung = 'Mozilla/5.0 (Linux; Android 14; SM-S921B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/26.0 Chrome/122.0 Mobile Safari/537.36';
+  const firefox = 'Mozilla/5.0 (Android 14; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0';
+  const messenger = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/MessengerForiOS;FBAV/480.0]';
+  const pc = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36';
+  assert.equal(plattform(iphone), 'ios-safari');
+  assert.equal(plattform(ipad, { berøring: 5 }), 'ios-safari');
+  assert.equal(plattform(ipad), 'pc'); // ekte Mac
+  assert.equal(plattform(chromeIos), 'ios-annen');
+  assert.equal(plattform(android), 'android-chrome');
+  assert.equal(plattform(samsung), 'android-samsung');
+  assert.equal(plattform(firefox), 'android-firefox');
+  assert.equal(plattform(messenger), 'innebygd');
+  assert.equal(plattform(pc), 'pc');
+  assert.equal(plattform(iphone, { standalone: true }), 'installert');
+  assert.equal(erMobil('ios-safari'), true);
+  assert.equal(erMobil('pc'), false);
+  assert.equal(erIos(iphone), true);
+  assert.equal(erIos(android), false);
+});
+
+test('veiledningssteg finnes for alle plattformer', () => {
+  for (const p of ['ios-safari', 'ios-annen', 'android-chrome', 'android-samsung', 'android-firefox', 'innebygd', 'pc']) assert.ok(steg(p).length >= 1, p);
+  assert.match(steg('ios-safari').join(' '), /Legg til på Hjem-skjerm/);
+  assert.match(steg('ios-safari', { ipad: true })[0], /øverst til høyre/);
+  assert.match(steg('android-chrome', { harPrompt: true })[0], /Installer appen/);
+  assert.match(steg('android-chrome')[1], /Installer app/);
+  assert.equal(etterpaa(true).length, 3);
+  assert.match(etterpaa(true)[2], /egen lagring/);
+  assert.match(gpsHjelp(true), /Stedstjenester/);
+  assert.match(gpsHjelp(false), /Android/);
+});
+
+test('versjon, utvikler og ikoner', () => {
+  assert.match(VERSJON, /^\d+\.\d+\.\d+$/);
+  assert.equal(UTVIKLER, 'Trond Harald Sand');
+  const pakke = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url)));
+  assert.equal(pakke.version, VERSJON);
+  const manifest = JSON.parse(fs.readFileSync(new URL('../manifest.webmanifest', import.meta.url)));
+  for (const str of ['192x192', '512x512']) assert.ok(manifest.icons.some((i) => i.sizes === str && i.type === 'image/png'), str);
+  assert.ok(manifest.icons.some((i) => i.purpose === 'maskable'));
+  for (const i of manifest.icons) assert.ok(fs.existsSync(new URL(`../${i.src}`, import.meta.url)), i.src);
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /rel="apple-touch-icon" href="ikoner\/apple-touch-icon\.png"/);
+  assert.match(html, /Utviklet av Trond Harald Sand/);
+  const sw = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  for (const f of ['js/versjon.js', 'js/installer.js', 'ikoner/apple-touch-icon.png']) assert.ok(sw.includes(`'${f}'`), f);
 });
 
 if (process.env.LIVE) {
