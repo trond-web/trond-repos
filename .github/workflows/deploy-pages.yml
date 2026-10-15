@@ -60,10 +60,11 @@ jobs:
           cp -r sefrak-eiendom/. _site/sefrak-eiendom/
           cp -r borsradar/. _site/borsradar/
           cp -r team-sjusjoen/. _site/team-sjusjoen/
-          cp -r nordfjella-villrein/. _site/nordfjella-villrein/
+          # Nordfjella villrein kjører på Railway (med server). Pages sender videre dit og rydder bort den gamle appen.
+          cp nordfjella-villrein/pages-videresending/* _site/nordfjella-villrein/
           rm -f _site/team-sjusjoen/bilder/README.md
           # Tester, verktøy og serverfiler (Railway) publiseres ikke på GitHub Pages
-          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/borsradar/analyse _site/borsradar/data/innsidehandel.json _site/nordfjella-villrein/tests _site/nordfjella-villrein/verktoy _site/nordfjella-villrein/server.js _site/nordfjella-villrein/server _site/nordfjella-villrein/package.json _site/nordfjella-villrein/railway.json
+          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/borsradar/analyse _site/borsradar/data/innsidehandel.json
 
       # Snøvill: snødybde, snømengde og smelting fra NVE/seNorge legges ved som datafil
       - name: Snødata fra NVE (Snøvill)

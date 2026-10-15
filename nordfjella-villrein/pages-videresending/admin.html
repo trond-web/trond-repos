@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nordfjella villrein har flyttet</title>
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://nordfjella.up.railway.app/">
+<meta http-equiv="refresh" content="3; url=https://nordfjella.up.railway.app/">
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font: 17px/1.5 system-ui, sans-serif; background: #24352b; color: #f3efe2; padding: 20px; box-sizing: border-box; text-align: center; }
+  a { color: #facc15; font-weight: 700; word-break: break-all; }
+  .kort { max-width: 440px; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  p { margin: 8px 0; }
+  .liten { font-size: 14px; opacity: .85; }
+</style>
+</head>
+<body>
+<div class="kort">
+  <h1>Appen har ny adresse</h1>
+  <p>Nordfjella villrein ligger nå på<br><a id="lenke" href="https://nordfjella.up.railway.app/">nordfjella.up.railway.app</a></p>
+  <p>Du sendes videre om et øyeblikk.</p>
+  <p class="liten">Har du lagt appen på hjemskjermen fra den gamle adressen, slett den og legg den til på nytt fra den nye – der får du oppdaterte valdgrenser og samjakt.
+    Jaktgrunner og punkter må lagres på nytt i den nye appen.</p>
+</div>
+<script>
+  // Tar med eventuell lenke til et sted i appen (#…) og sender videre med en gang.
+  var mål = 'https://nordfjella.up.railway.app/' + (/admin\.html$/.test(location.pathname) ? 'admin.html' : '') + location.hash;
+  document.getElementById('lenke').href = mål;
+  setTimeout(function () { location.replace(mål); }, 1500);
+</script>
+</body>
+</html>

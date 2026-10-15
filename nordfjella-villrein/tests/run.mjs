@@ -282,7 +282,14 @@ test('server: API, innlogging, samjakt og endring av jaktfelt', async () => {
     assert.equal((await kall('POST', 'admin/passord', { gammelt: 'hemmelig-passord-1', nytt: 'nytt-langt-passord' })).status, 200);
     const logg = (await kall('GET', 'admin/logg')).data.logg.map((l) => l.hva).join(' | ');
     assert.match(logg, /Opprettet samjakt vald 2 \+ 3/); assert.match(logg, /Tilbakestilte NF101/); assert.match(logg, /Byttet passord/);
+    // Sikkerhetskopi: nedlasting uten sesjonsnøkkel, dagskopi og forrige versjon på disk
+    const kopi = await kall('GET', 'admin/sikkerhetskopi');
+    assert.equal(kopi.status, 200); assert.equal(kopi.data.type, 'nordfjella-villrein-sikkerhetskopi');
+    assert.equal(kopi.data.data.samjakt.length, 1); assert.equal(kopi.data.data.hemmelighet, undefined);
+    assert.ok((await kall('GET', 'admin/kopier')).data.kopier.length >= 1);
+    assert.ok(fs.existsSync(`${dir}/nordfjella.forrige.json`));
     await kall('POST', 'logout');
+    assert.equal((await kall('GET', 'admin/sikkerhetskopi')).status, 401);
     assert.equal((await kall('POST', 'login', { bruker: 'trond', passord: 'nytt-langt-passord' })).status, 200);
     // Data er lagret på disk og ikke tilgjengelig som fil
     const lagret = JSON.parse(fs.readFileSync(`${dir}/nordfjella.json`, 'utf8'));

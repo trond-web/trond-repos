@@ -133,6 +133,15 @@ export async function lagApi({ lager, grunnfil, sikkerhetshoder, sikreKapsler = 
 
       if (del[0] === 'logg' && metode === 'GET') return json(res, 200, { logg: lager.data.logg.slice(0, 200) });
 
+      if (del[0] === 'sikkerhetskopi' && metode === 'GET') {
+        // Alt som trengs for å gjenopprette (uten sesjonsnøkkelen). Passordene ligger bare som hash.
+        const { hemmelighet, ...kopi } = lager.data;
+        const dag = osloDato();
+        return json(res, 200, { type: 'nordfjella-villrein-sikkerhetskopi', laget: new Date().toISOString(), av: meg, data: kopi },
+          { 'Content-Disposition': `attachment; filename="nordfjella-sikkerhetskopi-${dag}.json"` });
+      }
+      if (del[0] === 'kopier' && metode === 'GET') return json(res, 200, { kopier: await lager.kopiliste() });
+
       if (del[0] === 'jaktfelt' && del[1]) {
         const id = del[1];
         const f = grunn.features.find((x) => x.properties.id === id);

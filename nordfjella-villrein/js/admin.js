@@ -41,6 +41,14 @@ $('#login-skjema').addEventListener('submit', async (e) => {
     start(s.innlogget);
   } catch (err) { $('#login-feil').textContent = err.message; $('#login-feil').hidden = false; }
 });
+async function visKopier() {
+  try {
+    const { kopier } = await kall('GET', 'admin/kopier');
+    $('#k-status').textContent = kopier.length ? `${kopier.length} automatiske kopier på serveren, siste fra ${kopier[0].replace(/^nordfjella-|\.json$/g, '')}.` : 'Første automatiske kopi tas ved neste endring.';
+  } catch { /* vises ikke */ }
+}
+$('#b-kopi').addEventListener('click', () => { location.href = 'api/admin/sikkerhetskopi'; setTimeout(visKopier, 1500); });
+
 $('#b-loggut').addEventListener('click', async () => { await kall('POST', 'logout').catch(() => {}); location.reload(); });
 
 
@@ -71,6 +79,7 @@ document.querySelector('.faner').addEventListener('click', (e) => {
   const b = e.target.closest('[data-fane]'); if (!b) return;
   for (const f of document.querySelectorAll('.faner [data-fane]')) { f.setAttribute('aria-selected', String(f === b)); $(`#${f.dataset.fane}`).hidden = f !== b; }
   if (b.dataset.fane === 't-logg') lastLogg();
+  if (b.dataset.fane === 't-konto') visKopier();
   if (b.dataset.fane !== 't-samjakt') samjaktLag?.clearLayers();
 });
 
