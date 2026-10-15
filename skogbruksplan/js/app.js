@@ -7,7 +7,8 @@ import {
 } from './model.js';
 import { lesFil, slaaSammen } from './importers.js';
 import { lagDemo } from './demo.js';
-import { lagre, hent, listPlaner, lagrePlan, hentPlan, slettPlan } from './store.js';
+import { lagre, hent, listPlaner, lagrePlan, hentPlan, slettPlan, hentVerdi, lagreVerdi } from './store.js';
+import { initFlereEiendommer } from './flere-eiendommer.js';
 import { genererPlan, hentKommuner, finnKommune } from './generator.js';
 import { initKommune } from './kommune-ui.js';
 import { initVeier } from './veier-ui.js';
@@ -102,7 +103,7 @@ let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks.
 let kart; let bestandLag; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
-let etikettLag; let flyfotoAktiv = false;
+let etikettLag; let flyfotoAktiv = false; let lagKontroll = null; let andreVisning = null;
 
 function initKart() {
   kart = L.map('kart', { zoomControl: false, attributionControl: false, preferCanvas: false }).setView([60.85, 11.2], 9);
@@ -135,7 +136,7 @@ function initKart() {
   document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto }, { ...overlays, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto }, { ...overlays, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
 
   kart.on('click', (e) => {
@@ -234,6 +235,7 @@ function tegnLegend() {
       + (vr.stier?.length ? `<div>${strek(VEISTIL.sti.farge, [2, 4])}Sti</div>` : '');
   }
   if (kat.length && kart.hasLayer(markslagLag)) html += `<b style="display:block;margin-top:6px">Uproduktiv mark</b>${Object.keys(MARKSLAG).filter((k) => kat.includes(k)).map((k) => `<div>${symbolRute(k)} ${esc(MARKSLAG[k].kort)}</div>`).join('')}`;
+  html += andreVisning?.legend() || '';
   $('#kartLegend').innerHTML = `<button type="button" class="legend-knapp" aria-expanded="${!legendLukket}">Tegnforklaring ${legendLukket ? '▸' : '▾'}</button><div class="legend-innhold" ${legendLukket ? 'hidden' : ''}>${html}</div>`;
 }
 
@@ -330,6 +332,8 @@ function oppdaterEtiketter() {
   }
 }
 
+// Avgrensningsboks for den åpne planen.
+function bboxFor() { return bbox([...S.bestand.map((b) => b.geometri), S.eiendom.grense].filter(Boolean)); }
 function zoomTilAlle() {
   const bb = bbox([...S.bestand.map((b) => b.geometri), S.eiendom.grense]);
   if (bb) kart.fitBounds([[bb[1], bb[0]], [bb[3], bb[2]]], synligPadding(kart, 20));
@@ -1355,17 +1359,19 @@ async function aapnePlan(id) {
   tegnEiendom(); tegnInnstillinger(); tegnRegistreringer();
   endret({ kart: true, zoom: true });
   visFane('oversikt');
+  andreVisning?.tegn(); tegnPlanListe();
   melding(`Åpnet ${S.eiendom.navn || 'planen'}.`);
 }
 
 async function tegnPlanListe() {
   const liste = await listPlaner();
-  $('#planListe').innerHTML = liste.length ? liste.map((p) => `
+  const synligeAndre = andreVisning?.antall() || 0;
+  $('#planListe').innerHTML = (liste.length > 1 ? `<div class="plan-kartvalg"><span class="hint">Vis flere eiendommer i kartet samtidig${synligeAndre ? ` – ${synligeAndre} til vises nå` : ''}:</span><div class="knapperad" style="margin:0"><button class="knapp liten" type="button" data-plan-alle="vis">Vis alle</button><button class="knapp liten" type="button" data-plan-alle="skjul" ${synligeAndre ? '' : 'disabled'}>Skjul andre</button><button class="knapp liten" type="button" data-plan-alle="zoom" ${synligeAndre ? '' : 'disabled'}>Zoom til alle</button></div></div>` : '') + (liste.length ? liste.map((p) => `
     <div class="plan-rad" data-plan="${esc(p.id)}">
       <div><div class="navn">${esc(p.navn)}${p.id === S.planId ? '<span class="merke-aktiv">Åpen</span>' : ''}</div>
       <div class="hint">${fmt(p.areal)} daa · ${p.antall} bestand · endret ${new Date(p.endret).toLocaleDateString('nb-NO')}</div></div>
-      <div class="knapperad" style="margin:0"><button class="knapp liten primar" data-plan-handling="aapne" type="button">Åpne</button><button class="knapp liten fare" data-plan-handling="slett" type="button">Slett</button></div>
-    </div>`).join('') : '<div class="tom">Ingen lagrede planer ennå. Lag en over, eller importer en plan under Data.</div>';
+      <div class="knapperad" style="margin:0"><label class="plan-kart" title="${p.id === S.planId ? 'Planen er åpen og vises alltid' : 'Vis eiendommen i kartet sammen med planen som er åpen'}"><input type="checkbox" data-plan-kart ${p.id === S.planId || andreVisning?.erSynlig(p.id) ? 'checked' : ''} ${p.id === S.planId ? 'disabled' : ''}> I kartet</label><button class="knapp liten primar" data-plan-handling="aapne" type="button">Åpne</button><button class="knapp liten fare" data-plan-handling="slett" type="button">Slett</button></div>
+    </div>`).join('') : '<div class="tom">Ingen lagrede planer ennå. Lag en over, eller importer en plan under Data.</div>');
 }
 
 const GEN_STEG = [
@@ -1516,6 +1522,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Gjødslingsplan', under: 'Gjødselbehov per skifte, forslag og utskrift (gjødselforskriften § 26)', sok: 'skifteplan gjødsel gjødsling jordprøve nitrogen fosfor kalium husdyrgjødsel jordbruk', utfor: () => { visFane('skifteplan'); skifteplanVisning?.underfane('gjodsling'); } },
     { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Sprøytejournal / plantevernjournal', under: 'Registrer sprøyting og skriv ut journalen', sok: 'skifteplan sprøyting plantevern plantevernmidler ugras journal ipv', utfor: () => { visFane('skifteplan'); skifteplanVisning?.underfane('sproyting'); } },
     { gruppe: 'Handlinger', ikon: '¤', tittel: 'Verdiberegning', under: 'Eiendomsverdi, slaktverdi, jordverdi og nåverdi', sok: 'verdi nåverdi slaktverdi takst lev faustmann', utfor: () => visFane('verdi') },
+    { gruppe: 'Handlinger', ikon: '▤', tittel: 'Vis alle eiendommene mine i kartet', under: 'Andre skogbruksplaner vises sammen med planen som er åpen', sok: 'flere eiendommer kart alle planer vis samtidig naboeiendom', utfor: async () => { await andreVisning.settAlle(true); await andreVisning.zoomAlle(bboxFor()); tegnPlanListe(); } },
     { gruppe: 'Handlinger', ikon: '♲', tittel: 'Karbonkreditter – potensial og prosjekt', under: 'Merlager mot referanse, egnethet, kreditter og verifisering', sok: 'karbon co2 klima kreditter karbonkreditt klimakvote binding vm0045 crcf verra noora', utfor: () => visFane('karbon') },
     { gruppe: 'Handlinger', ikon: '✓', tittel: 'KSL – egenrevisjon og dokumentasjon', under: 'Sjekklister, avvik, kontroller med frister og dokumentarkiv', sok: 'ksl kvalitetssystem landbruk egenrevisjon hms vernerunde avvik dokumentasjon matmerk norsk mat', utfor: () => visFane('ksl') },
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'PEFC-status og avvik', sok: 'pefc skogstandard krav avvik sertifisering', utfor: () => visFane('pefc') },
@@ -1600,6 +1607,12 @@ function kobleHendelser() {
       return lagSkifteinndeling(fig, { klipping, jordsmonn, iAar: IAAR, nyId });
     },
   });
+  andreVisning = initFlereEiendommer({
+    L, kart, hentPlan, listPlaner, hentVerdi, lagreVerdi, aktivId: () => S.planId, aapnePlan,
+    padding: () => synligPadding(kart, 20), endretSynlig: () => tegnLegend(), opptatt: () => !!(kartKlikk || deling || tegning),
+  });
+  lagKontroll.addOverlay(andreVisning.lag, 'Andre eiendommer (mine planer)');
+  andreVisning.start().then(() => tegnPlanListe());
   kslVisning = initKsl({ hentPlan: () => S, endret, melding, nyId, iAar: IAAR, visFane });
   karbonVisning = initKarbon({
     hentPlan: () => S, endret, melding, iAar: IAAR, visFane,
@@ -1641,13 +1654,23 @@ function kobleHendelser() {
   });
   kommuneVisning = initKommune({ kart, melding, innstillinger: inn, lastKommuner, finnKommune, lagPlanFor });
   $('#genKommune').addEventListener('focus', lastKommuner, { once: true });
+  $('#planListe').addEventListener('change', async (e) => {
+    const rad = e.target.closest('.plan-rad'); if (!rad || !e.target.matches('[data-plan-kart]')) return;
+    andreVisning.settSynlig(rad.dataset.plan, e.target.checked);
+    if (e.target.checked) await andreVisning.zoomAlle(S.bestand.length ? bboxFor() : null);
+    tegnPlanListe();
+  });
   $('#planListe').addEventListener('click', async (e) => {
+    const alle = e.target.closest('[data-plan-alle]')?.dataset.planAlle;
+    if (alle === 'vis') { await andreVisning.settAlle(true); await andreVisning.zoomAlle(bboxFor()); tegnPlanListe(); return; }
+    if (alle === 'skjul') { await andreVisning.settAlle(false); tegnPlanListe(); return; }
+    if (alle === 'zoom') { await andreVisning.zoomAlle(bboxFor()); if (erMobil()) settArk('halv'); return; }
     const rad = e.target.closest('.plan-rad'); const h = e.target.dataset.planHandling; if (!rad || !h) return;
     if (h === 'aapne') aapnePlan(rad.dataset.plan);
     if (h === 'slett') {
       const navn = rad.querySelector('.navn').firstChild.textContent;
       if (!confirm(`Slette planen «${navn}»? Dette kan ikke angres.`)) return;
-      await slettPlan(rad.dataset.plan);
+      await slettPlan(rad.dataset.plan); andreVisning?.glem(rad.dataset.plan);
       if (rad.dataset.plan === S.planId) S.planId = null;
       tegnPlanListe();
     }

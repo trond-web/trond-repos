@@ -870,3 +870,14 @@ progress { accent-color: var(--accent); height: 8px; }
 .farge-prikk { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 6px; vertical-align: 0; }
 .kort-under { margin-top: 10px; }
 .kort-under summary { cursor: pointer; font-weight: 600; margin-bottom: 8px; }
+
+/* Flere eiendommer i kartet */
+.plan-kartvalg { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 0 0 10px; border-bottom: 1px solid var(--grid); }
+.plan-kart { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
+.plan-kart input { margin: 0; }
+.plan-rad .knapperad { flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+.andre-etikett { background: none; border: 0; box-shadow: none; padding: 0; pointer-events: none; }
+.andre-etikett::before { display: none; }
+.andre-etikett span { display: inline-block; background: rgba(255,255,255,.92); border: 1.5px solid; border-radius: 99px; padding: 2px 9px; font: 700 12px/1.3 var(--font-body); white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
+.andre-popup { min-width: 180px; }
+.andre-popup .hint { margin-top: 2px; }
