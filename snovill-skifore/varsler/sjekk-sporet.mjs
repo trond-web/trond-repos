@@ -84,7 +84,15 @@ async function main() {
 
   const areas = config.steder.map((s) => ({ lat: s.lat, lon: s.lon, radiusKm: s.radiusKm || 10, label: `ved ${s.navn}`, navn: s.navn }));
   // Første kjøring (eller gammelt state-format) lagrer bare hvilke områder som er aktive nå
-  const { activeNow, perArea, baseline, total } = await detectStarts(Array.isArray(state.active) ? state.active : null, areas);
+  let result;
+  try {
+    result = await detectStarts(Array.isArray(state.active) ? state.active : null, areas);
+  } catch (err) {
+    // Sporet nede en kort stund: behold forrige status og prøv igjen ved neste kjøring
+    console.log(`::warning::Sporet svarte ikke, prøver igjen neste gang: ${err.message}`);
+    return;
+  }
+  const { activeNow, perArea, baseline, total } = result;
 
   console.log(`${total} skiområder i Sporet, ${activeNow.length} kjøres nå${baseline ? " (grunnlinje lagret)" : ""}`);
   for (const { area, near, started } of perArea) {
