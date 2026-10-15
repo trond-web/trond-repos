@@ -420,6 +420,7 @@ async function fetchWebcams(force) {
       "?where=poitypeid%3D%27CAM%27&outFields=id,name&outSR=4326&f=json";
     const data = await fetchJson(url);
     const pois = (data.features || [])
+      .filter((f) => f.geometry)
       .map((f) => ({ id: f.attributes.id, name: f.attributes.name, lat: f.geometry.y, lon: f.geometry.x }))
       .filter((p) => LOCATIONS.some((l) => distanceKm(l.lat, l.lon, p.lat, p.lon) <= WEBCAM_RADIUS_KM));
     const results = await Promise.allSettled(

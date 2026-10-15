@@ -103,18 +103,29 @@
     70: "Ikke kjørt denne sesongen",
   };
 
-  async function fetchDestinations() {
-    const res = await fetch(DEST_URL, { cache: "no-store" });
-    if (!res.ok) throw new Error(`Sporet-kartet svarte ${res.status}`);
-    const data = await res.json();
-    if (data.error) throw new Error(`Sporet-kartet: ${data.error.message}`);
+  // Sporet-kartet svarer av og til 502/503; prøv noen ganger før vi gir opp
+  async function fetchDestinations(tries = 3) {
+    let data;
+    for (let i = 1; ; i++) {
+      try {
+        const res = await fetch(DEST_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Sporet-kartet svarte ${res.status}`);
+        data = await res.json();
+        if (data.error) throw new Error(`Sporet-kartet: ${data.error.message}`);
+        break;
+      } catch (err) {
+        if (i >= tries) throw err;
+        await new Promise((r) => setTimeout(r, 2000 * i));
+      }
+    }
     return (data.features || []).map((f) => ({
       id: f.attributes.id,
       name: f.attributes.name,
       municipality: f.attributes.municipalname,
       prep: f.attributes.prepsymbol,
-      lat: f.geometry.y,
-      lon: f.geometry.x,
+      // Enkelte områder mangler punkt i kartlaget; de beholdes i status, men får ingen avstand
+      lat: f.geometry?.y ?? null,
+      lon: f.geometry?.x ?? null,
     }));
   }
 
@@ -128,6 +139,7 @@
 
   function nearby(dests, lat, lon, radiusKm) {
     return dests
+      .filter((d) => Number.isFinite(d.lat) && Number.isFinite(d.lon))
       .map((d) => ({ ...d, km: distanceKm(lat, lon, d.lat, d.lon) }))
       .filter((d) => d.km <= radiusKm)
       .sort((a, b) => a.km - b.km);
