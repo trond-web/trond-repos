@@ -2,7 +2,7 @@
 
 Kartapp for villreinjakt i Nordfjella villreinområde. Laget for telefon, og virker uten mobildekning når kartet er lastet ned.
 
-Versjon 1.4.0 · Utviklet av Trond Harald Sand for **Villreinutvalet for Nordfjella** · I produksjon: **https://nordfjella.up.railway.app**
+Versjon 1.4.1 · Utviklet av Trond Harald Sand for **Villreinutvalet for Nordfjella** · I produksjon: **https://nordfjella.up.railway.app**
 
 ## Hva den gjør
 
@@ -59,7 +59,15 @@ ikke finnes brukere), `SESJON_HEMMELIGHET`.
 | `GET/POST /api/admin/samjakt`, `DELETE /api/admin/samjakt/:id`, `POST …/:id/avslutt` | Samjakt |
 | `GET /api/admin/logg`, `POST /api/admin/passord` | Logg, bytt passord |
 
-På GitHub Pages finnes ikke serveren; der bruker appen valdkartet som følger med, uten samjakt og admin.
+GitHub Pages-adressen (`trond-web.github.io/trond-repos/nordfjella-villrein/`) sender videre til Railway
+(`pages-videresending/`). En egen service worker der sletter den gamle appen hos brukere som hadde den, så ingen blir
+stående med gamle valdgrenser.
+
+**Sikkerhetskopi:** serveren beholder forrige versjon av datafila (`nordfjella.forrige.json`) og tar én kopi per dag i
+`kopier/` (de siste 30 dagene) på volumet. I admin (Konto) kan du laste ned en fullstendig kopi (`/api/admin/sikkerhetskopi`).
+
+**Ytelse:** serveren gzipper hver fil én gang og holder den i minnet (over 3 000 svar/s på valdkartet lokalt). Første åpning
+av appen henter ca. 1,2 MB fra serveren; valdkartet hentes én gang og deretter bare sjekket med ETag.
 
 ## Datakilder
 
@@ -93,11 +101,11 @@ komprimering, ETag/304, sikkerhetshoder og helsesjekk på `/healthz`. Testfiler,
 3. **Networking** → **Generate Domain** for å få en offentlig adresse (`*.up.railway.app`), eller legg til eget domene.
 
 Railway bygger med Railpack (Node ≥ 20) og starter `node server.js` på porten i `PORT`. Ingen miljøvariabler er nødvendige.
-Appen publiseres også på GitHub Pages (`https://trond-web.github.io/trond-repos/nordfjella-villrein/`).
+Den gamle GitHub Pages-adressen sender videre hit (se over).
 
 ## Utvikling
 
-Ren statisk side (Leaflet fra unpkg, ES-moduler) uten byggesteg. Kjør `npm start` (port 8080) i mappen og åpne i nettleseren.
+Ren statisk side (ES-moduler) uten byggesteg. Leaflet 1.9.4 og Leaflet-Geoman 2.17.0 ligger i `vendor/` (egen server, ingen avhengighet til eksterne CDN-er). Kjør `npm start` (port 8080) i mappen og åpne i nettleseren.
 
 ```
 node tests/run.mjs          # enhetstester
