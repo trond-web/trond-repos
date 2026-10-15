@@ -1,10 +1,11 @@
 // Kjør med: node tests/run.mjs        (LIVE=1 node tests/run.mjs tester også mot de ekte datatjenestene)
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { punktIPolygon, avstandTilGrense, avstandM, retning, himmelretning, utm, utmTekst, fliserFor, flisBbox3857, flisX, flisY, gpx } from '../js/geo.js';
+import { bbox, punktIPolygon, avstandTilGrense, avstandM, retning, himmelretning, utm, utmTekst, fliserFor, flisBbox3857, flisX, flisY, gpx } from '../js/geo.js';
 import { wmsUrl, WMS, flisUrl, BAKGRUNNER, tolkTeig, teigNavn, teigI, hoydeI, lesGeoJson } from '../js/kilder.js';
 import { plattform, erIos, erMobil, steg, etterpaa, gpsHjelp } from '../js/installer.js';
 import { VERSJON, UTVIKLER } from '../js/versjon.js';
+import { VALD, forbered, jaktfeltI, beskriv, valdTekst, feltTekst } from '../js/jaktfelt.js';
 
 let ok = 0;
 const venter = [];
@@ -148,6 +149,36 @@ test('versjon, utvikler og ikoner', () => {
   assert.match(html, /Utviklet av Trond Harald Sand/);
   const sw = fs.readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   for (const f of ['js/versjon.js', 'js/installer.js', 'ikoner/apple-touch-icon.png']) assert.ok(sw.includes(`'${f}'`), f);
+});
+
+test('valdkart: jaktfelt, vald og oppslag i punkt', () => {
+  const fc = forbered(JSON.parse(fs.readFileSync(new URL('../data/jaktfelt.geojson', import.meta.url))));
+  const p = (nr) => fc.features.find((f) => f.properties.nr === nr);
+  assert.equal(fc.features.filter((f) => f.properties.type === 'jaktfelt').length, 132);
+  assert.deepEqual([...new Set(fc.features.map((f) => f.properties.vald).filter(Boolean))].sort(), [1, 2, 3, 4, 5, 6]);
+  // Navnepunktet ligger inne i sitt eget felt, og oppslaget finner feltet igjen.
+  for (const f of fc.features.filter((x) => x.properties.type === 'jaktfelt')) {
+    const e = f.properties;
+    assert.ok(punktIPolygon(e.etikett, f.geometry), `etikett utenfor ${e.nr}`);
+    const funnet = jaktfeltI(e.etikett, fc);
+    assert.ok(funnet, e.nr);
+    assert.ok(funnet === f || funnet.properties.type === 'tvist', `${e.nr} ga ${funnet.properties.nr}`);
+  }
+  const hallingskarvet = p('NF351');
+  assert.equal(hallingskarvet.properties.navn, 'Hallingskarvet statsallmenning');
+  assert.equal(valdTekst(hallingskarvet.properties), 'Vald 3 Hol');
+  assert.equal(feltTekst(hallingskarvet.properties), 'NF351 Hallingskarvet statsallmenning');
+  const b = beskriv(hallingskarvet.properties.etikett, fc);
+  assert.equal(b.klasse, 'ok'); assert.equal(b.vald, 'Vald 3 Hol'); assert.ok(b.grense.meter > 0);
+  assert.equal(p('NF601').properties.vald, 6); // Ulvik har NF6xx-nummer, men ikke valdnummer i fila
+  assert.equal(beskriv([10.75, 59.91], fc).tekst, 'Ikke i noe jaktfelt i valdkartet');
+  const tvist = fc.features.find((f) => f.properties.type === 'tvist');
+  assert.equal(beskriv(tvist.properties.etikett, fc).klasse, 'feil');
+  // Konverteringen fra UTM 32 stemmer med valdkartets utstrekning (395258–481104 Ø, 6708130–6779514 N).
+  const [v, s, ø, n] = bbox(fc);
+  const sv = utm([v, s], 32), nø = utm([ø, n], 32);
+  assert.ok(sv.øst > 393000 && sv.øst < 397000 && nø.nord > 6778000 && nø.nord < 6781000, `${sv.øst} ${nø.nord}`);
+  for (const nr of Object.keys(VALD)) assert.match(VALD[nr].farge, /^#[0-9a-f]{6}$/);
 });
 
 if (process.env.LIVE) {

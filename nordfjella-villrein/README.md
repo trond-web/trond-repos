@@ -2,12 +2,16 @@
 
 Kartapp for villreinjakt i Nordfjella villreinområde. Laget for telefon, og virker uten mobildekning når kartet er lastet ned.
 
-Versjon 1.1.0 · Utviklet av Trond Harald Sand · I produksjon: **https://nordfjella.up.railway.app**
+Versjon 1.2.0 · Utviklet av Trond Harald Sand · I produksjon: **https://nordfjella.up.railway.app**
 
 ## Hva den gjør
 
 - **Grensa for villreinområdet** (Miljødirektoratets leveområde for Nordfjella), med området utenfor skyggelagt.
   Grensa følger med appen og virker alltid uten nett.
+- **Valdgrenser og jaktfelt** fra valdkartet for Nordfjella (2026): 132 jaktfelt i seks vald, hvert vald med egen farge
+  (1 Hemsedal, 2 Ål, 3 Hol, 4 Aurland, 5 Lærdal, 6 Ulvik). Jaktfeltnummer (NFxxx) og navn vises fra zoom 11–12.
+  Omstridte områder («Tvist») er stiplet rødt, og områder uten jaktfelt i kartet er stiplet grått. Valdkartet følger med
+  appen og virker alltid, også uten nett. Statuskortet viser hvilket jaktfelt og vald du står i, og avstanden til feltgrensa.
 - **Eiendomsgrenser** fra Kartverket (fra zoom 14), og gårds- og bruksnummer når du zoomer helt inn.
 - **GPS-status** nederst på skjermen: innenfor eller utenfor villreinområdet, avstand og retning til grensa,
   eiendom (gnr/bnr og kommune), og UTM 32-koordinater med GPS-nøyaktighet.
@@ -32,6 +36,7 @@ Jaktgrunner og punkter blir værende på telefonen. Ved oppslag av eiendom og h�
 |---|---|
 | Grensa for Nordfjella (`data/nordfjella.geojson`, lokalId BV00003542) | Miljødirektoratet, *Villreinområder* (`villrein_leveomrade_grense`) |
 | Trekk- og kalvingsområder | Miljødirektoratet, WMS *Villrein* |
+| Valdgrenser og jaktfelt (`data/jaktfelt.geojson`) | Valdkart for Nordfjella, `verktoy/valdkart_2026_10_15.gpkg` (UTM 32) |
 | Eiendomsgrenser, gnr/bnr | Kartverket, WMS *Matrikkelkart* |
 | Eiendom i punkt (teig med geometri) | Kartverket `api.kartverket.no/eiendom/v1/punkt/omrader` |
 | Høyde | Kartverket `ws.geonorge.no/hoydedata` |
@@ -74,8 +79,21 @@ LIVE=1 node tests/run.mjs   # også mot Kartverket og Miljødirektoratet
 | `js/geo.js` | Punkt i flate, avstand til grense, UTM, kartruter og GPX |
 | `js/installer.js` | Veiledning for hjemskjermen: plattform, steg og GPS-hjelp |
 | `js/versjon.js` | Versjonsnummer og utvikler (vises i appen) |
+| `js/jaktfelt.js` | Jaktfelt og vald: farger, oppslag i punkt og tekst til statuskortet |
 | `js/kilder.js` | Kartlag, eiendoms- og høydeoppslag og import av filer |
 | `ikoner/` | PNG-ikoner for hjemskjerm (iPhone krever PNG, Android krever 192 og 512 px) |
 | `sw.js` | Service worker: appen og kartrutene uten nett |
 
 Ved ny versjon: oppdater `js/versjon.js` og `package.json`, og øk cachenavnet `APP` i `sw.js`.
+
+### Oppdatere valdkartet
+
+Legg ny GeoPackage i `verktoy/` (lag `nordfjella_valdgr` med feltene `VALD`, `Feltnavn`, `Jaktfeltna`) og kjør
+
+```
+python3 verktoy/lag-jaktfelt.py verktoy/<ny fil>.gpkg data/jaktfelt.geojson
+node tests/run.mjs
+```
+
+Skriptet regner om fra UTM 32 til grader, forenkler linjene med 1 m toleranse, slår sammen deler av samme jaktfelt og
+finner et punkt inne i hvert felt til navnet. Øk så versjonen og cachenavnet i `sw.js`, så telefonene henter det nye kartet.

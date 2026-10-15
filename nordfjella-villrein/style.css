@@ -235,3 +235,17 @@ a { color: inherit; }
 .installer-knapp { width: 100%; margin: 2px 0 8px; }
 .signatur { text-align: center; color: var(--dempet); font-size: 13px; margin: 18px 0 4px; }
 .signatur.bunn { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--linje); }
+
+/* ---------- Jaktfelt og valdgrenser ---------- */
+.felt-etikett { background: none; border: 0; width: auto !important; height: auto !important; }
+.felt-etikett div {
+  transform: translate(-50%, -50%); white-space: nowrap; text-align: center; line-height: 1.1; pointer-events: none;
+  font: 700 12px/1.15 system-ui, sans-serif; color: var(--c);
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 4px #fff, 0 0 6px #fff;
+}
+.felt-etikett span { display: block; font-weight: 600; font-size: 11px; color: #1f2937; }
+.leaflet-feltnavn-pane.kort .felt-etikett span { display: none; }
+.tegnforklaring-vald { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 8px 4px 10px 38px; font-size: 13px; color: var(--dempet); border-bottom: 1px solid var(--linje); }
+.tegnforklaring-vald span { display: inline-flex; align-items: center; gap: 5px; }
+.tegnforklaring-vald i { width: 16px; height: 4px; border-radius: 2px; }
+.tegnforklaring-vald i.stiplet { height: 0; border-top: 3px dashed; border-radius: 0; }

@@ -1,9 +1,9 @@
 // Service worker: appen, nedlastede og besøkte kartruter virker uten nett.
 // Mangler en kartrute uten nett, lages den ved å forstørre en lagret rute fra et lavere zoomnivå.
-const APP = 'nfv-app-v3';
+const APP = 'nfv-app-v4';
 const FLISER = 'nfv-fliser-v1';
-const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'data/nordfjella.geojson',
-  'js/app.js', 'js/geo.js', 'js/kilder.js', 'js/versjon.js', 'js/installer.js',
+const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'data/nordfjella.geojson', 'data/jaktfelt.geojson',
+  'js/app.js', 'js/geo.js', 'js/kilder.js', 'js/versjon.js', 'js/installer.js', 'js/jaktfelt.js',
   'ikoner/icon-192.png', 'ikoner/icon-512.png', 'ikoner/apple-touch-icon.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
   'https://unpkg.com/leaflet@1.9.4/dist/images/layers.png'];

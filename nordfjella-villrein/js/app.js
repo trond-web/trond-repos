@@ -1,5 +1,6 @@
 import { punktIPolygon, avstandTilGrense, avstandM, retning, himmelretning, utmTekst, bbox, fliserFor, gpx } from './geo.js';
 import { VERSJON } from './versjon.js';
+import { VALD, TVIST_FARGE, UTEN_FARGE, farge, valdTekst, feltTekst, forbered, beskriv } from './jaktfelt.js';
 import { plattform, erIos, erMobil, steg, etterpaa, gpsHjelp } from './installer.js';
 import { BAKGRUNNER, WMS, flisUrl, wmsUrl, teigI, teigNavn, hoydeI, kommunenavn, lesFil } from './kilder.js';
 
@@ -28,13 +29,15 @@ const omraade = await fetch('data/nordfjella.geojson').then((r) => r.json());
 const omraadeInfo = omraade.features[0].properties;
 const [v, s, ø, n] = bbox(omraade);
 const omraadeGrenser = L.latLngBounds([s, v], [n, ø]);
+const jaktfelt = forbered(await fetch('data/jaktfelt.geojson').then((r) => r.json()));
 
 let grunner = lagre.hent('grunner', []); // mine jaktgrunner (teiger med geometri)
 let teigcache = lagre.hent('teigcache', []); // nylig oppslåtte teiger, for oppslag uten nett
 let punkter = lagre.hent('punkter', []);
 let importert = lagre.hent('import', []);
 let mal = lagre.hent('mal', null);
-const synlig = lagre.hent('synlig', { grense: true, skygge: true, eiendom: true, teig: true, grunner: true, punkter: true, trekk: false, kalving: false });
+// Nye kartlag får standardverdien selv om brukeren har lagret valg fra en eldre versjon.
+const synlig = { grense: true, skygge: true, jaktfelt: true, feltnavn: true, eiendom: true, teig: true, grunner: true, punkter: true, trekk: false, kalving: false, ...lagre.hent('synlig', {}) };
 
 // ---------- Kart ----------
 
@@ -47,7 +50,9 @@ kart.on('moveend', () => lagre.sett('visning', { c: kart.getCenter(), z: kart.ge
 
 kart.createPane('overleggfliser').style.zIndex = 350;
 kart.createPane('skygge').style.zIndex = 380;
+kart.createPane('jaktfelt').style.zIndex = 400;
 kart.createPane('grenser').style.zIndex = 420;
+kart.createPane('feltnavn').style.zIndex = 450;
 
 const bakgrunnslag = {};
 for (const [id, b] of Object.entries(BAKGRUNNER)) {
@@ -74,6 +79,34 @@ const verden = [[-89, -179], [-89, 179], [89, 179], [89, -179]];
 const ringer = omraade.features[0].geometry.coordinates.map((r) => r.map(([x, y]) => [y, x]));
 const skyggeLag = L.polygon([verden, ...ringer], { pane: 'skygge', stroke: false, fillColor: '#2a1a12', fillOpacity: 0.32, interactive: false });
 
+// Valdgrenser og jaktfelt fra valdkartet. Følger med appen og virker alltid uten nett.
+// Tegnes på canvas (raskere på mobil med mange punkter): hvit kant under, valdfarge over.
+const feltLerret = L.canvas({ pane: 'jaktfelt', padding: 0.3 });
+const feltStil = (f) => {
+  const e = f.properties, c = farge(e);
+  return { renderer: feltLerret, color: c, weight: e.type === 'jaktfelt' ? 2.6 : 2.2, opacity: 1, dashArray: e.type === 'jaktfelt' ? null : '8 6', fillColor: c, fillOpacity: e.type === 'jaktfelt' ? 0.07 : 0.16, interactive: false };
+};
+const jaktfeltLag = L.layerGroup([
+  L.geoJSON(jaktfelt, { style: () => ({ renderer: feltLerret, color: '#fff', weight: 5.5, opacity: 0.75, fill: false, interactive: false }) }),
+  L.geoJSON(jaktfelt, { style: feltStil }),
+]);
+const feltnavnLag = L.layerGroup();
+for (const f of jaktfelt.features) {
+  const e = f.properties;
+  if (e.type === 'uten') continue;
+  const tekst = e.type === 'tvist' ? `<b>${h(e.nr)}</b>` : `<b>${h(e.nr)}</b><span>${h(e.navn || '')}</span>`;
+  L.marker([e.etikett[1], e.etikett[0]], { pane: 'feltnavn', interactive: false, keyboard: false,
+    icon: L.divIcon({ className: 'felt-etikett', html: `<div style="--c:${farge(e)}">${tekst}</div>`, iconSize: null }) }).addTo(feltnavnLag);
+}
+// Navnene vises fra zoom 11; bare nummeret på zoom 11, nummer og navn fra zoom 12.
+function oppdaterFeltnavn() {
+  const z = kart.getZoom();
+  const el = kart.getPane('feltnavn');
+  el.hidden = z < 11;
+  el.classList.toggle('kort', z < 12);
+}
+kart.on('zoomend', oppdaterFeltnavn);
+
 const grunnLag = L.layerGroup();
 const punktLag = L.layerGroup();
 const importLag = L.layerGroup();
@@ -83,6 +116,8 @@ const malLag = L.layerGroup().addTo(kart);
 const OVERLEGG = [
   { id: 'grense', navn: 'Grense for villreinområdet', info: 'Miljødirektoratet', lag: grenseGruppe, farge: '#b91c1c' },
   { id: 'skygge', navn: 'Skygg utenfor området', lag: skyggeLag, farge: '#6b4f3f' },
+  { id: 'jaktfelt', navn: 'Valdgrenser og jaktfelt', info: 'Valdkart 2026, farge per vald', lag: jaktfeltLag, farge: '#1d4ed8' },
+  { id: 'feltnavn', navn: 'Navn på jaktfelt', info: 'Vises fra zoom 11', lag: feltnavnLag },
   { id: 'eiendom', navn: 'Eiendomsgrenser', info: 'Kartverket, fra zoom 14', lag: wmsLag.eiendom, farge: '#e11d48' },
   { id: 'teig', navn: 'Gårds- og bruksnummer', info: 'Vises helt innzoomet', lag: wmsLag.teig },
   { id: 'grunner', navn: 'Mine jaktgrunner', lag: grunnLag, farge: '#16a34a' },
@@ -107,6 +142,8 @@ function tegnLagvalg() {
   $('#overlegg').innerHTML = OVERLEGG.map((o) => `
     <label><input type="checkbox" data-lag="${o.id}" ${synlig[o.id] ? 'checked' : ''}>
       <span class="info">${h(o.navn)}${o.info ? `<small>${h(o.info)}</small>` : ''}</span>${o.farge ? `<i class="farge" style="background:${o.farge}"></i>` : ''}</label>`).join('')
+    + `<div class="tegnforklaring-vald">${Object.entries(VALD).map(([nr, v]) => `<span><i style="background:${v.farge}"></i>${nr} ${h(v.navn)}</span>`).join('')}
+      <span><i class="stiplet" style="border-color:${TVIST_FARGE}"></i>Tvist</span><span><i class="stiplet" style="border-color:${UTEN_FARGE}"></i>Uten jaktfelt</span></div>`
     + importert.map((i) => `
     <label><input type="checkbox" data-import="${h(i.id)}" ${i.synlig !== false ? 'checked' : ''}>
       <span class="info">${h(i.navn)}<small>Egen fil</small></span><i class="farge" style="background:${h(i.farge)}"></i></label>`).join('');
@@ -288,7 +325,7 @@ function oppdaterStatus(slaaOpp = true) {
   if (!posisjon) {
     el.className = 'merkelapp graa';
     el.innerHTML = gpsModus === 'venter' ? 'Søker etter GPS-posisjon …' : 'Trykk på ◎ for å se hvor du er';
-    $('#s-eiendom').textContent = '–'; $('#s-pos').textContent = '–';
+    $('#s-eiendom').textContent = '–'; $('#s-felt').textContent = '–'; $('#s-pos').textContent = '–';
     oppdaterMal();
     return;
   }
@@ -296,11 +333,21 @@ function oppdaterStatus(slaaOpp = true) {
   const o = omraadeTekst(iOmraadet(p));
   el.className = `merkelapp ${o.klasse}`;
   el.innerHTML = `${h(o.tittel)}<small>${h(o.under)}</small>`;
+  $('#s-felt').innerHTML = feltHtml(p, true);
   $('#s-eiendom').innerHTML = eiendomStatusHtml(p);
   const alt = posisjon.alt != null ? ` · ${Math.round(posisjon.alt)} moh.` : '';
   $('#s-pos').innerHTML = `<span class="mono">${h(utmTekst(p, 32))}</span> <span class="liten">±${Math.round(posisjon.acc)} m${alt}</span>`;
   oppdaterMal();
   if (slaaOpp) oppdaterEiendomForPosisjon();
+}
+
+// Jaktfelt og vald i punktet, med avstand til feltgrensa når det er din posisjon.
+function feltHtml(p, medAvstand) {
+  const b = beskriv(p, jaktfelt);
+  const deler = [`<span class="${b.klasse}">${h(b.tekst)}</span>`];
+  if (b.vald) deler.push(h(b.vald));
+  if (medAvstand && b.grense?.punkt) deler.push(`<span class="mono">${avstand(b.grense.meter)}</span> til feltgrensa (${himmelretning(retning(p, b.grense.punkt))})`);
+  return deler.join(' · ');
 }
 
 // ---------- Mål («gå hit») ----------
@@ -343,6 +390,7 @@ async function visPunkt(p, tittel = 'Punkt i kartet', ekstraHtml = '') {
     ${ekstraHtml}
     <div class="boks ${o.klasse}"><b>${h(o.tittel)}</b><br>${h(o.under)}</div>
     <div class="fakta">
+      <div class="rad"><span class="ledetekst">Jaktfelt</span><span>${feltHtml(p, false)}</span></div>
       <div class="rad"><span class="ledetekst">Eiendom</span><span id="p-eiendom">Slår opp …</span></div>
       <div class="rad"><span class="ledetekst">Høyde</span><span id="p-hoyde" class="mono">…</span></div>
       <div class="rad"><span class="ledetekst">UTM 32</span><span class="mono">${h(utmTekst(p, 32))}</span></div>
@@ -671,6 +719,7 @@ addEventListener('offline', nettStatus);
 nettStatus();
 
 brukSynlighet();
+oppdaterFeltnavn();
 tegnGrunner();
 tegnPunkter();
 tegnImport();
