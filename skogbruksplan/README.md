@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.6.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.7.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -68,6 +68,15 @@ Store eiendommer støttes:
 - **Rask geometri:** polygonklipping gjøres med `polygon-clipping`, med Turf som reserve.
 - **Delte bestand:** bestand som NIBIO har lagret som flere flater med samme nummer, slås sammen. Har delene ulike data, får de bokstav etter nummeret (f.eks. 1-45a og 1-45b).
 - **Eksempel:** Flå 22/1 (12 teiger, 11 455 daa) gir 563 bestand på 9 822 daa skog.
+
+## Flere eiendommer i kartet (fanen «Planer»)
+
+Andre skogbruksplaner kan vises i kartet sammen med planen som er åpen (`js/flere-eiendommer.js`).
+
+- Kryss av «I kartet» for hver plan under «Mine skogbruksplaner», eller bruk «Vis alle», «Skjul andre» og «Zoom til alle». Valget huskes i nettleseren.
+- Hver eiendom får egen farge på den stiplede grensen og en navnelapp. Bestandene er farget etter hogstklasse og ligger under den åpne planen. Den åpne planen har fortsatt rød stiplet grense.
+- Klikk på en annen eiendom for å se areal, antall bestand, volum og hogstmoden skog, med knapper for «Åpne planen» og «Skjul».
+- Laget heter «Andre eiendommer (mine planer)» i lagvelgeren, og eiendommene vises i tegnforklaringen. Kommandopaletten har «Vis alle eiendommene mine i kartet».
 
 ## Tiltaksmotor – automatiske tiltak (fanen «Tiltak»)
 

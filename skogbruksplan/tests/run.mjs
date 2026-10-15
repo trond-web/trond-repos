@@ -33,6 +33,7 @@ import * as VEG from '../js/vegetasjon.js';
 import * as OPP from '../js/oppdrag.js';
 import * as KSL from '../js/ksl.js';
 import * as KB from '../js/karbon.js';
+import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER, kjedeSammen, hentTraktorveierOgStier, slaaInnFkb, tomtVeiregister } from '../js/veier.js';
 
@@ -1088,6 +1089,19 @@ test('Tiltaksmotor: prinsippet «karbon og klima» og bestand i karbonprosjekt',
   S.karbon = { prosjekt: { status: 'registrert', bestand: [b.id] } };
   const oko = genererTiltak(S, { iAar: 2026, prinsipp: 'okonomi' }).filter((x) => x.b === b && ['sluttavvirkning', 'lukkethogst'].includes(x.type));
   assert.ok(oko.every((x) => x.type === 'lukkethogst'));
+});
+
+test('Flere eiendommer: avgrensning per plan og hogstklasse med planens egne innstillinger', () => {
+  const S = lagDemo(2026);
+  const bb = planBoks(S);
+  assert.ok(bb && bb[0] < bb[2] && bb[1] < bb[3]);
+  const utenGrense = { bestand: S.bestand };
+  const bb2 = planBoks(utenGrense); assert.ok(bb2[0] >= bb[0] - 1e-9 && bb2[2] <= bb[2] + 1e-9);
+  assert.equal(planBoks({ bestand: [] }), null);
+  const b = { ...S.bestand.find((x) => x.alder > 0), hogstklasse: null };
+  assert.ok([1, 2, 3, 4, 5].includes(hkFor(b, { ...STANDARD_INNSTILLINGER, ...S.innstillinger })));
+  assert.equal(hkFor({ ...b, hogstklasse: 3 }, STANDARD_INNSTILLINGER), 3);
+  assert.ok(new Set(EIENDOM_FARGER).size === EIENDOM_FARGER.length);
 });
 
 await Promise.all(venter);
