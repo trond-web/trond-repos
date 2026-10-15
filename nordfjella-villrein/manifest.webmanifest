@@ -1,7 +1,7 @@
 {
   "name": "Nordfjella villrein – jaktkart",
   "short_name": "Villrein",
-  "description": "Jaktkart for villreinjakt i Nordfjella: grensa for villreinområdet, eiendomsgrenser, GPS og kart uten nett. Utviklet av Trond Harald Sand.",
+  "description": "Jaktkart for villreinjakt i Nordfjella: grensa for villreinområdet, eiendomsgrenser, GPS og kart uten nett. Utviklet av Trond Harald Sand for Villreinutvalet for Nordfjella.",
   "lang": "no",
   "start_url": "./",
   "scope": "./",

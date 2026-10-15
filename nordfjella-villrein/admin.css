@@ -38,3 +38,8 @@ body.admin { overflow: hidden; background: var(--papir); }
 .logg time { color: var(--dempet); font-size: 12px; display: block; }
 .velger { padding: 10px; border-radius: 8px; border: 1px solid var(--linje); background: var(--papir); color: var(--tekst); font-size: 16px; width: 100%; }
 .to { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.a-logo { display: inline-flex; align-items: center; gap: 10px; }
+.a-logo img { height: 30px; width: auto; display: block; }
+.a-logo span { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; opacity: .8; border-left: 1px solid rgba(255,255,255,.35); padding-left: 10px; }
+@media (max-width: 520px) { .a-logo img { height: 22px; } }
+.a-kort > .logo { max-width: 300px; margin: 0 auto 10px; }
