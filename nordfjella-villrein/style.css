@@ -260,3 +260,12 @@ a { color: inherit; }
 }
 .samjakt-merke { display: inline-block; background: #facc15; color: #111; border-radius: 6px; padding: 1px 6px; font-weight: 700; font-size: 13px; }
 @media (min-width: 700px) { .samjakt-banner { right: auto; width: 420px; } }
+
+/* ---------- Logo: Villreinutvalet for Nordfjella ---------- */
+.merke svg { width: 28px; height: 25px; }
+.logo { display: block; }
+.logo img { display: block; width: 100%; height: auto; }
+#f-om > .logo { max-width: 420px; margin: 6px auto 4px; }
+.installer > .logo { max-width: 360px; margin: 0 auto 12px; }
+.signatur.bunn .logo { max-width: 240px; margin: 0 auto 6px; }
+.signatur.bunn p { margin: 0; }

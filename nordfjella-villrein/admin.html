@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Admin – Nordfjella villrein</title>
+<title>Admin – Villreinutvalet for Nordfjella</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#24352b">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -14,16 +14,14 @@
 </head>
 <body class="admin">
 <header class="a-topp">
-  <a class="merke" href="./" title="Til kartappen">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 4c0 4 2 6 5 7m5-7c0 4-2 6-5 7m-7-5c-2 3-1 5 1 6m15-6c2 3 1 5-1 6M16 11c-4 0-6 3-6 7 0 5 3 9 6 9s6-4 6-9c0-4-2-7-6-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <span>Nordfjella villrein · admin</span>
-  </a>
+  <a class="merke a-logo" href="./" title="Til kartappen"><img src="ikoner/logo-lys.svg" alt="Villreinutvalet for Nordfjella"><span>admin</span></a>
   <span id="a-bruker" class="a-bruker" hidden></span>
 </header>
 
 <!-- Innlogging -->
 <section id="a-login" class="a-login" hidden>
   <form id="login-skjema" class="a-kort">
+    <picture class="logo"><source srcset="ikoner/logo-lys.svg" media="(prefers-color-scheme: dark)"><img src="ikoner/logo.svg" alt="Villreinutvalet for Nordfjella"></picture>
     <h1>Logg inn</h1>
     <p class="liten">For de som forvalter valdgrenser og samjakt i Nordfjella.</p>
     <label class="felt">Brukernavn <input name="bruker" autocomplete="username" required autocapitalize="none"></label>
@@ -91,7 +89,7 @@
         <button class="knapp" type="submit">Bytt passord</button>
       </form>
       <button id="b-loggut" class="knapp fare" type="button">Logg ut</button>
-      <p class="signatur">Versjon <span class="versjon"></span> · Utviklet av Trond Harald Sand</p>
+      <p class="signatur">Versjon <span class="versjon"></span> · Utviklet av Trond Harald Sand for Villreinutvalet for Nordfjella</p>
     </div>
   </aside>
 </main>

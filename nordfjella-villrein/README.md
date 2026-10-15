@@ -2,7 +2,7 @@
 
 Kartapp for villreinjakt i Nordfjella villreinområde. Laget for telefon, og virker uten mobildekning når kartet er lastet ned.
 
-Versjon 1.3.0 · Utviklet av Trond Harald Sand · I produksjon: **https://nordfjella.up.railway.app**
+Versjon 1.4.0 · Utviklet av Trond Harald Sand for **Villreinutvalet for Nordfjella** · I produksjon: **https://nordfjella.up.railway.app**
 
 ## Hva den gjør
 
@@ -128,3 +128,16 @@ node tests/run.mjs
 
 Skriptet regner om fra UTM 32 til grader, forenkler linjene med 1 m toleranse, slår sammen deler av samme jaktfelt og
 finner et punkt inne i hvert felt til navnet. Øk så versjonen og cachenavnet i `sw.js`, så telefonene henter det nye kartet.
+
+### Logo
+
+Logoen til Villreinutvalet for Nordfjella er tegnet opp på nytt som vektorgrafikk fra den opprinnelige
+(`verktoy/logo/logo-original.jpg`) med `python3 verktoy/lag-logo.py`:
+
+- Reinsdyret er sporet fra originalen (`verktoy/spor-rein.py`), med strengere terskel i geviret så takkene skilles.
+- Teksten er tegnet som kurver med Archivo Black (SIL Open Font License 1.1), som ligner skrifta i originalen,
+  med grå fylling, mørk kontur og skygge som i originalen.
+- Filer: `ikoner/logo.svg` (lys bakgrunn), `ikoner/logo-lys.svg` (mørk bakgrunn), `ikoner/rein.svg` (bare reinsdyret)
+  og appikonet `icon.svg` med PNG-varianter i `ikoner/`.
+
+Logoen står i menyen, under Om, i veiledningen for hjemskjermen og i admin. Reinsdyret er appikonet og står i toppfeltet.
