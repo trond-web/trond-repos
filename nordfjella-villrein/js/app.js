@@ -1,4 +1,6 @@
 import { punktIPolygon, avstandTilGrense, avstandM, retning, himmelretning, utmTekst, bbox, fliserFor, gpx } from './geo.js';
+import { VERSJON } from './versjon.js';
+import { plattform, erIos, erMobil, steg, etterpaa, gpsHjelp } from './installer.js';
 import { BAKGRUNNER, WMS, flisUrl, wmsUrl, teigI, teigNavn, hoydeI, kommunenavn, lesFil } from './kilder.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -206,7 +208,7 @@ function startGps() {
   if (vakt != null) return;
   settGpsModus('venter');
   vakt = navigator.geolocation.watchPosition(nyPosisjon, (e) => {
-    if (e.code === 1) { melding('Du må gi appen tilgang til posisjon i innstillingene.', 6000); stoppGps(); }
+    if (e.code === 1) { stoppGps(); visInstaller({ gps: true }); }
     else melding('Finner ikke GPS-posisjon ennå …');
   }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
 }
@@ -603,6 +605,63 @@ $('#b-tom-fliser').addEventListener('click', async () => {
   melding('Nedlastede kart er slettet.');
   tegnOffline();
 });
+
+// ---------- Hjemskjerm-veiledning ----------
+
+const ua = navigator.userAgent;
+const berøring = navigator.maxTouchPoints || 0;
+const ios = erIos(ua, berøring);
+const frittstaaende = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
+let installPrompt = null; // Chrome/Android: tilbud om installasjon vi kan vise når brukeren vil
+
+function visInstaller({ gps = false, velkommen = false } = {}) {
+  const p = plattform(ua, { standalone: frittstaaende(), berøring });
+  const adresse = location.href.replace(/[?#].*$/, '');
+  const ferdig = p === 'installert';
+  $('#i-tittel').textContent = velkommen ? 'Velkommen til Nordfjella villrein' : gps ? 'Slå på GPS-posisjon' : ferdig ? 'Appen er på hjemskjermen ✓' : 'Legg appen på hjemskjermen';
+  $('#i-hvorfor').textContent = gps ? 'Appen fikk ikke tilgang til posisjonen din. Slik slår du det på:' : 'Da starter den som en vanlig app i fullskjerm, husker GPS-tillatelsen og beholder nedlastede kart på fjellet.';
+  $('#i-hvorfor').hidden = ferdig && !gps;
+  const liste = gps || ferdig ? [] : steg(p, { harPrompt: !!installPrompt, ipad: /iPad|Macintosh/.test(ua) });
+  $('#i-steg').innerHTML = liste.map((x) => `<li>${x}</li>`).join('');
+  $('#i-steg').hidden = !liste.length;
+  const handling = [];
+  if (!gps && p === 'android-chrome' && installPrompt) handling.push('<button type="button" class="knapp hoved" id="i-installer">📲 Installer appen</button>');
+  if (!gps && (p === 'innebygd' || p === 'pc')) handling.push(`<span class="adresse">${h(adresse)}</span>`, '<button type="button" class="knapp" id="i-kopier">Kopier lenken</button>');
+  $('#i-handling').innerHTML = handling.join('');
+  $('#i-handling').hidden = !handling.length;
+  $('#i-etter').hidden = p === 'pc' || p === 'innebygd';
+  $('#i-etter').open = !gps && (ferdig || velkommen || !liste.length);
+  $('#i-etter-liste').innerHTML = etterpaa(ios).map((x) => `<li>${x}</li>`).join('');
+  const gpsDel = $('#i-gps').closest('details');
+  $('#i-gps').textContent = gpsHjelp(ios);
+  gpsDel.open = gps;
+  $('#i-senere').hidden = ferdig || gps || velkommen;
+  $('#i-installer')?.addEventListener('click', async () => {
+    const tilbud = installPrompt; installPrompt = null;
+    tilbud.prompt();
+    const { outcome } = await tilbud.userChoice.catch(() => ({}));
+    if (outcome === 'accepted') { $('#installer').close(); melding('Appen installeres – åpne den fra ikonet «Villrein».', 6000); } else visInstaller();
+  });
+  $('#i-kopier')?.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(adresse); melding('Lenken er kopiert.'); } catch { melding(adresse, 8000); }
+  });
+  if (!$('#installer').open) $('#installer').showModal();
+}
+$('#installer').addEventListener('close', () => lagre.sett('installerVist', Date.now()));
+$('#b-installer-meny').addEventListener('click', () => visInstaller());
+$('#b-installer-om').addEventListener('click', () => visInstaller());
+addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; });
+addEventListener('appinstalled', () => { installPrompt = null; melding('Appen er lagt på hjemskjermen. Åpne den fra ikonet «Villrein».', 6000); visMenyknapp(); });
+function visMenyknapp() { $('#b-installer-meny').hidden = frittstaaende(); }
+
+for (const el of document.querySelectorAll('.versjon')) el.textContent = VERSJON;
+visMenyknapp();
+{
+  // Første gang: veiledning om hjemskjerm på mobil, og en kort velkomst når appen åpnes fra hjemskjermen.
+  const p = plattform(ua, { standalone: frittstaaende(), berøring });
+  if (p === 'installert' && !lagre.hent('velkommenVist', false)) { lagre.sett('velkommenVist', true); setTimeout(() => visInstaller({ velkommen: true }), 800); }
+  else if (erMobil(p) && !lagre.hent('installerVist', false)) setTimeout(() => visInstaller(), 1500);
+}
 
 // ---------- Nett-status og oppstart ----------
 

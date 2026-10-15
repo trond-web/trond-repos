@@ -1,7 +1,8 @@
 # Nordfjella villrein – jaktkart for mobil
 
 Kartapp for villreinjakt i Nordfjella villreinområde. Laget for telefon, og virker uten mobildekning når kartet er lastet ned.
-Legg den til på hjemskjermen (Safari: Del → «Legg til på Hjem-skjerm», Chrome: «Installer app»).
+
+Versjon 1.1.0 · Utviklet av Trond Harald Sand · I produksjon: **https://nordfjella.up.railway.app**
 
 ## Hva den gjør
 
@@ -16,6 +17,12 @@ Legg den til på hjemskjermen (Safari: Del → «Legg til på Hjem-skjerm», Chr
 - **Uten nett**: last ned hele området (oversikt ca. 30 MB, standard ca. 85 MB, detaljert ca. 285 MB). Mangler en kartrute,
   forstørrer appen en lagret rute fra et lavere zoomnivå.
 - **Egne grenser**: legg inn jaktfelt eller soner som GeoJSON, KML eller GPX.
+- **Veiledning for hjemskjermen**: første gang appen åpnes på mobil, viser den steg for steg hvordan den legges på
+  hjemskjermen, tilpasset telefonen og nettleseren (iPhone/iPad i Safari eller Chrome, Android i Chrome, Samsung Internet
+  eller Firefox). Åpnes lenken inne i Messenger, Facebook o.l., forklarer appen hvordan den åpnes i nettleseren. På Android
+  kan den installeres med én knapp. Når appen åpnes fra hjemskjermen første gang, får brukeren råd om GPS-tillatelse,
+  nedlasting av kart og lagring av jaktgrunner. Nekter brukeren GPS-tilgang, viser appen hvordan det slås på.
+  Veiledningen kan åpnes igjen fra Meny og under Om.
 
 Jaktgrunner og punkter blir værende på telefonen. Ved oppslag av eiendom og høyde sendes bare koordinatet til Kartverket.
 
@@ -65,5 +72,10 @@ LIVE=1 node tests/run.mjs   # også mot Kartverket og Miljødirektoratet
 |---|---|
 | `js/app.js` | Kart, GPS-status, jaktgrunner, punkter, meny og offline-nedlasting |
 | `js/geo.js` | Punkt i flate, avstand til grense, UTM, kartruter og GPX |
+| `js/installer.js` | Veiledning for hjemskjermen: plattform, steg og GPS-hjelp |
+| `js/versjon.js` | Versjonsnummer og utvikler (vises i appen) |
 | `js/kilder.js` | Kartlag, eiendoms- og høydeoppslag og import av filer |
+| `ikoner/` | PNG-ikoner for hjemskjerm (iPhone krever PNG, Android krever 192 og 512 px) |
 | `sw.js` | Service worker: appen og kartrutene uten nett |
+
+Ved ny versjon: oppdater `js/versjon.js` og `package.json`, og øk cachenavnet `APP` i `sw.js`.
