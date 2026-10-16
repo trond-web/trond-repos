@@ -16,6 +16,8 @@ Ren statisk HTML/CSS/JS, uten byggesteg. Alt hentes direkte fra nettleseren.
 | **Sporet.no** | Siste preparering per løype innenfor 3–4 km av hvert sted | `api.sporet.no/loypeapi/publicfree/skiroutes/detailsbybbox` (UTM33) |
 | **Webkamera (Sporet.no)** | Alle Sporet-kameraer (POI-type `CAM`) innenfor 20 km av hvert sted. Nærmeste kamera vises stort i kortet, resten under «Vis flere». Bildeadressene hentes fra `pois/{id}/webcams`; bare https-bilder vises, og lagrede kopier fra søkemotorer filtreres bort. Listen mellomlagres i et døgn | `ags.sporet.no/.../Sporet_simple/MapServer/2` + `api.sporet.no/loypeapi/publicfree/pois/{id}/webcams` |
 | **NVE / seNorge** | Snødybde, snømengde (vannekvivalent), nysnø, smelting, flytende vann og døgntemperatur per dag for hvert sted – samme kilde som Yr viser snødybde fra. Hentes av Pages-workflowen ved hver bygging (også kl. 05:17 og 19:17 UTC) og legges ved som `data/nve-sno.json`, fordi NVE ikke tillater kall fra nettleseren | `gts.nve.no/api/GridTimeSeries/{x}/{y}/{fra}/{til}/{tema}.json` |
+| **Løyper.net (FMS Nordic)** | Løypestrekninger med tid for siste kjøring, lysløype og «åpen, ikke preparert» innenfor 10 km av hvert sted. Leses fra vektorfliser (zoom 11) av Pages-workflowen og legges ved som `data/loyper.json`, fordi Løyper.net ikke tillater kall fra nettleseren | `api.loyper.net/segments/{z}/{x}/{y}` |
+| **Løypekart (Sporet.no)** | Løypelinjer med preparering og løypetype innenfor 8 km, hentet direkte i nettleseren | `ags.sporet.no/.../Sporet_simple/MapServer/6` |
 | **Netatmo** | Live-temperatur og nedbør fra private værstasjoner rundt hyttefeltene. **Krever eget access token**, som du limer inn under ⚙️ Innstillinger (lages på [dev.netatmo.com](https://dev.netatmo.com/apps) med scope `read_station`, varer ca. 3 timer) | `api.netatmo.com/api/getpublicdata` |
 
 Alle fire tillater kall fra nettleseren (CORS). Svarene mellomlagres i 20 minutter i
@@ -49,6 +51,19 @@ Alle fire tillater kall fra nettleseren (CORS). Svarene mellomlagres i 20 minutt
 7. **Sammenligning:** dagsrutene, verktøytipset og tabellen viser NVEs egen prognose for snødybde
    ved siden av modellen. Modellen viser snødybden ved dagens slutt, og sammenlignes derfor med NVE
    kl. 06 neste morgen.
+
+## 🗺️ Løypekart
+
+Kartet viser løypene rundt valgt sted på Kartverkets topografiske kart (Leaflet, lastes først når kartet
+kommer til syne). Fargen viser hvor lenge siden løypa ble kjørt, med samme inndeling som Sporet: siste 6 t,
+6–18 t, 18 t–2 døgn, 2–14 døgn, eldre, og ikke kjørt i år/ukjent. Heltrukne linjer er Sporet.no, stiplede er
+Løyper.net. Under kartet står antall km løype og hvor mange km som er kjørt siste 18 timer.
+
+- **Sporet.no** hentes direkte fra kartlaget `Loypetype`, med navn på skiområdet fra `Destinasjoner_prep`.
+- **Løyper.net** hentes av `data/hent-loyper.mjs` (med en liten vektorflis-leser i `data/mvt.mjs`) ved hver
+  bygging av Pages, også kl. 05:17 og 19:17 UTC. Tidene tolkes som norsk tid.
+- Løyper.net dekker blant annet Nannestad–Maura, Åsen/Romeriksåsen, Skjerva, Hakadal, Synnfjell og Åstdalen,
+  mens Sporet dekker de fleste løypelag. Samme løype kan derfor finnes i begge kildene.
 
 ## 🧴 Smøreguide
 

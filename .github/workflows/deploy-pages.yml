@@ -72,6 +72,12 @@ jobs:
         timeout-minutes: 5
         run: node snovill-skifore/data/hent-nve.mjs _site/snovill-skifore/data/nve-sno.json
 
+      # Snøvill: løypestrekninger fra Løyper.net til løypekartet (tillater ikke kall fra nettleseren)
+      - name: Løyper fra Løyper.net (Snøvill)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: node snovill-skifore/data/hent-loyper.mjs _site/snovill-skifore/data/loyper.json
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
