@@ -562,3 +562,29 @@ footer { text-align: center; color: var(--muted); font-size: 0.85rem; padding: 1
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* 🗺️ Løypekart */
+.trail-map {
+  height: 440px;
+  margin-top: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: var(--surface-2);
+  z-index: 0;
+}
+.map-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 500; cursor: pointer; }
+.map-toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
+.map-info { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; font-size: 0.85rem; color: var(--text-2); }
+.map-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 0.8rem; color: var(--text-2); }
+.map-key { display: inline-flex; align-items: center; gap: 6px; }
+.map-key i { display: inline-block; width: 22px; height: 5px; border-radius: 3px; }
+.map-key i.line-solid { background: var(--text-2); }
+.map-key i.line-dashed { background: repeating-linear-gradient(90deg, var(--text-2) 0 6px, transparent 6px 10px); }
+.trail-map .leaflet-popup-content { font: 500 0.85rem/1.4 Inter, system-ui, sans-serif; color: #0e1b2c; }
+.trail-map .map-src { color: #6b7a8f; font-size: 0.75rem; }
+.trail-map .map-place { font: 700 0.8rem Inter, system-ui, sans-serif; }
+@media (max-width: 720px) {
+  .trail-map { height: 340px; }
+}
