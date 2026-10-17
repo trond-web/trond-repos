@@ -8,6 +8,8 @@ import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import { VERSJON } from './versjon.js';
 import { initSporlogg, lastPC } from './sporlogg-ui.js';
 import { startFlateRedigering } from './flate-redigering.js';
+import { initOppdragFelt } from './oppdrag-felt.js';
+import { ledig as oppdragLedig } from './oppdrag.js';
 import { synligeTiltaksflater, treffVed, tiltakStil, tiltakNavn, tiltakLinje, tiltakDetaljer } from './treff.js';
 import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
 
@@ -27,6 +29,7 @@ const lagPerBestand = new Map(); let bestandLag; let grenseLag; let regLag; let 
 let valgtId = null; let visning = 'kart';
 let gps = { watch: null, pos: null, folg: false, markor: null, sirkel: null };
 let installHendelse = null; let spor = null; let flate = null;
+let oppdrag = null; let uthevOppdrag = new Set(); // bestand i oppdraget som er åpent
 let tiltaksflateLag = null; let valgtTiltak = null; let treffMarkor = null; // tiltak som er valgt i kartet, og markør for trykkpunktet
 
 // ---------- hjelpere ----------
@@ -68,8 +71,8 @@ function initKart() {
 }
 
 function stil(b) {
-  const h = hk(b); const valgt = b.id === valgtId; const fly = lagNavn === 'flyfoto';
-  return { color: valgt ? '#ffd400' : fly ? '#f5f06a' : '#1b1c19', weight: valgt ? 4 : fly ? 1.6 : 1.1, opacity: 0.95, fillColor: h ? HK_FARGER[h - 1] : '#999', fillOpacity: fly ? 0.25 : h ? 0.8 : 0.1 };
+  const h = hk(b); const valgt = b.id === valgtId; const fly = lagNavn === 'flyfoto'; const ut = uthevOppdrag.has(b.id);
+  return { color: valgt ? '#ffd400' : ut ? '#ff6a00' : fly ? '#f5f06a' : '#1b1c19', weight: valgt ? 4 : ut ? 3.5 : fly ? 1.6 : 1.1, opacity: 0.95, fillColor: h ? HK_FARGER[h - 1] : '#999', fillOpacity: fly ? 0.25 : h ? 0.8 : 0.1 };
 }
 function tegnPlan(zoom = false) {
   bestandLag.clearLayers(); etikettLag.clearLayers(); lagPerBestand.clear();
@@ -117,6 +120,8 @@ function lukkArk(fraHistorikk = false) {
   endring = null;
   if (valgtId) { valgtId = null; oppdaterStiler(); }
   if (valgtTiltak) { valgtTiltak = null; tegnTiltaksflater(); }
+  if (uthevOppdrag.size) { uthevOppdrag = new Set(); oppdaterStiler(); }
+  oppdrag?.nullstill();
   treffMarkor?.remove(); treffMarkor = null;
   settVisning('kart', false);
 }
@@ -127,6 +132,7 @@ function settVisning(v, apne = true) {
   if (v === 'kart') lukkArk();
   else if (v === 'tiltak') visTiltak();
   else if (v === 'reg') visRegListe();
+  else if (v === 'oppdrag') oppdrag.visListe();
   else if (v === 'mer') visMer();
 }
 
@@ -186,6 +192,7 @@ async function settUtfort(bid, tid, tilbakeTil = null) {
   if (ferdig && t.type === 'planting' && confirm(`Sette bestand ${b.nr} til hogstklasse II (ungskog) med alder 1?`)) { b.hogstklasse = 2; b.alder = 1; }
   await lagrePlanen(); oppdaterStiler(); tegnTiltaksflater();
   melding(ferdig ? `${TILTAKSTYPER[t.type]?.navn || 'Tiltak'} i ${b.nr} er merket utført.` : 'Merket som planlagt igjen.');
+  if (typeof tilbakeTil === 'function') { await tilbakeTil(); return; }
   if (tilbakeTil === 'tiltakkort') visTiltakKort(bid, tid); else if (visning === 'tiltak') visTiltak(); else visBestand(bid);
 }
 
@@ -215,11 +222,12 @@ function visTiltakKort(bid, tid, { zoom = false } = {}) {
   if (zoom) zoomTilTiltak(bid, tid);
   const utfort = t.status === 'utfort';
   aapneArk(`<h2>${esc(tiltakNavn(t))}</h2>
-    <div><span class="merke" style="${utfort ? '' : 'background:#e3ecf8;color:#1d4f91'}">${utfort ? 'Utført' : 'Planlagt'}</span>${t.dekning ? '<span class="merke">Flate i kartet</span>' : ''}${t.oppdragId ? '<span class="merke">I oppdrag</span>' : ''}</div>
+    <div><span class="merke" style="${utfort ? '' : 'background:#e3ecf8;color:#1d4f91'}">${utfort ? 'Utført' : 'Planlagt'}</span>${t.dekning ? '<span class="merke">Flate i kartet</span>' : ''}${t.oppdragId && (P.oppdrag || []).some((o) => o.id === t.oppdragId) ? `<span class="merke lenke" data-oppdrag="${esc(t.oppdragId)}">Oppdrag ${esc((P.oppdrag || []).find((o) => o.id === t.oppdragId).nr)}</span>` : ''}</div>
     <dl class="kort-liste">${tiltakDetaljer(b, t).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
     ${t.kommentar ? `<p>${esc(t.kommentar)}</p>` : ''}
     <div class="knapper"><button type="button" class="knapp" data-kort="utfort">${utfort ? 'Angre utført' : '✓ Merk utført'}</button><button type="button" class="knapp primar" data-kort="endre">✎ Endre</button></div>
-    <div class="knapper"><button type="button" class="knapp" data-kort="flate">${t.dekning ? 'Endre flate' : 'Tegn flate'}</button><button type="button" class="knapp" data-kort="bestand">Bestand ${esc(b.nr)}</button>${t.dekning ? '<button type="button" class="knapp" data-kort="zoom">Vis i kart</button>' : ''}</div>`);
+    <div class="knapper"><button type="button" class="knapp" data-kort="flate">${t.dekning ? 'Endre flate' : 'Tegn flate'}</button><button type="button" class="knapp" data-kort="bestand">Bestand ${esc(b.nr)}</button>${t.dekning ? '<button type="button" class="knapp" data-kort="zoom">Vis i kart</button>' : ''}</div>
+    ${oppdragLedig(t, P.oppdrag) ? '<div class="knapper"><button type="button" class="knapp" data-kort="oppdrag">+ Legg i oppdrag</button></div>' : ''}`);
 }
 function zoomTilTiltak(bid, tid) {
   const b = finn(bid); const t = b?.tiltak?.find((x) => x.id === tid); if (!b) return;
@@ -479,6 +487,7 @@ function kobleHendelser() {
   kart.on('moveend', () => { if (regPagar) tegnRegSkjemaPos(); });
   const ark = $('#arkInnhold');
   ark.addEventListener('click', async (e) => {
+    if (await oppdrag.klikk(e)) return;
     const plan = e.target.closest('[data-plan]'); if (plan) { await velgPlan(plan.dataset.plan); lukkArk(); return; }
     const en = e.target.closest('[data-endre]'); if (en) { e.stopPropagation(); const [bid, tid] = en.dataset.endre.split('|'); visEndreTiltak(bid, tid); return; }
     const ut = e.target.closest('[data-utfort]'); if (ut) { e.stopPropagation(); const [bid, tid] = ut.dataset.utfort.split('|'); settUtfort(bid, tid); return; }
@@ -492,6 +501,7 @@ function kobleHendelser() {
       if (kh === 'utfort') { settUtfort(bid, tid, 'tiltakkort'); return; }
       if (kh === 'bestand') { visBestand(bid, { zoom: true }); return; }
       if (kh === 'zoom') { zoomTilTiltak(bid, tid); return; }
+      if (kh === 'oppdrag') { oppdrag.visLeggIOppdrag(bid, tid); return; }
     }
     const best = e.target.closest('[data-bestand]'); if (best) { visBestand(best.dataset.bestand, { zoom: true }); return; }
     const bv = e.target.closest('[data-bestand-vis]'); if (bv) { visBestand(bv.dataset.bestandVis, { zoom: true }); return; }
@@ -513,6 +523,7 @@ function kobleHendelser() {
     if (h === 'installer' && installHendelse) { installHendelse.prompt(); const v = await installHendelse.userChoice; installHendelse = null; if (v.outcome === 'accepted') melding('SkogIQ Felt er installert.'); visMer(); }
   });
   ark.addEventListener('change', async (e) => {
+    if (await oppdrag.endring(e)) return;
     if (e.target.id === 'regBilde' && e.target.files[0] && regPagar) {
       regPagar.tekst = $('#regTekst').value;
       try { regPagar.bilde = await skalerBilde(e.target.files[0]); } catch { melding('Kunne ikke lese bildet.'); }
@@ -549,6 +560,12 @@ function kobleHendelser() {
 async function start() {
   initKart();
   spor = initSporlogg({ L, kart, plan: () => P, lagrePlanen, aapneArk, lukkArk, melding, tegnPlan: () => tegnPlan(false), nyId, tegnFlater: () => tegnTiltaksflater(), settStatus: (paa) => document.body.classList.toggle('spor-aktiv', paa) });
+  oppdrag = initOppdragFelt({
+    plan: () => P, aapneArk, lagrePlanen, melding, nyId, iAar: IAAR, visTiltakKort,
+    settUtfort: (bid, tid, tilbake) => settUtfort(bid, tid, tilbake),
+    uthev: (ider) => { uthevOppdrag = new Set(ider); oppdaterStiler(); },
+    zoomTil: (ider) => { const lag = ider.map((id) => lagPerBestand.get(id)).filter(Boolean); if (lag.length) kart.fitBounds(L.featureGroup(lag).getBounds(), { maxZoom: 16, padding: [40, 40], paddingBottomRight: [40, window.innerHeight * 0.5] }); },
+  });
   kobleHendelser(); nettStatus();
   const liste = await listPlaner();
   const h = await hent().catch(() => null);

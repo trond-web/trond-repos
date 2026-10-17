@@ -63,7 +63,7 @@ body.ark-aapent .fab { display: none; }
 .hint { color: var(--muted); font-size: 13px; }
 
 /* Bunnmeny */
-.bunn { position: fixed; left: 0; right: 0; bottom: 0; height: var(--bunnhoyde); padding-bottom: var(--bunnkant); background: var(--rail); display: grid; grid-template-columns: repeat(4, 1fr); z-index: 1200; }
+.bunn { position: fixed; left: 0; right: 0; bottom: 0; height: var(--bunnhoyde); padding-bottom: var(--bunnkant); background: var(--rail); display: grid; grid-template-columns: repeat(5, 1fr); z-index: 1200; }
 .bunn button { border: 0; background: none; color: #b9c9bf; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11.5px; font-weight: 600; }
 .bunn button.aktiv { color: #7fd1a4; }
 
@@ -160,3 +160,12 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .kort-liste { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 12px 0; font-size: 14.5px; }
 .kort-liste dt { color: var(--muted); }
 .kort-liste dd { margin: 0; font-weight: 600; }
+
+/* Oppdrag */
+.o-status { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 1px 7px; border-radius: 99px; color: #fff; background: var(--f); margin-right: 4px; }
+.sjekkliste { display: grid; gap: 6px; }
+.sjekk { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; padding: 8px 10px; background: var(--surface-2); border-radius: 10px; font-size: 14px; }
+.sjekk input { width: 22px; height: 22px; margin: 0; }
+.sjekk-rad { cursor: pointer; }
+.knapp[href] { text-decoration: none; }
+.merke.lenke { cursor: pointer; text-decoration: underline; }

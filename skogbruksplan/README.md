@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.13.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.14.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -116,6 +116,16 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
   - med tilbakeknappen eller tilbakesveip, som lukker panelet i stedet for å forlate appen
   - med Esc
   Meldinger kan trykkes vekk.
+- **Oppdrag** (`js/oppdrag-felt.js`, samme regler og data som fullversjonen i `js/oppdrag.js`): egen fane i bunnmenyen.
+  - **Liste:** aktive oppdrag først, med status, antall bestand, areal, utfører og periode.
+  - **Oppdragskort:**
+    - status med ett trykk (Utkast → Bestilt → Pågår → Utført, eller Avbrutt)
+    - utfører med knapper for å ringe (`tel:`) og sende e-post (`mailto:`), og periode
+    - tiltakene, som krysses av som utført; når alle er utført, foreslås status Utført
+    - oppdragsfeltene og PEFC-sjekklisten, som kan krysses av
+    - «Vis i kart», og bestandene i oppdraget utheves i oransje
+  - **Endre:** nytt oppdrag (velg type, så tiltak), legg til eller fjern tiltak, rediger utfører, periode og merknad, og slett oppdraget. Tiltakene beholdes.
+  - **Fra tiltakskortet:** «+ Legg i oppdrag» legger tiltaket i et aktivt oppdrag av samme type eller i et nytt. Merket «Oppdrag O-…» åpner oppdraget.
 - **Tiltak:** liste over tiltak i år og neste år, senere tiltak og nylig utførte.
 - **Offline:**
   - Service workeren lagrer appen, også Leaflet og bibliotekene, slik at begge versjonene åpner uten nett.
