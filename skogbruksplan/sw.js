@@ -1,5 +1,5 @@
 // Service worker: appen og besøkte/nedlastede kartfliser fungerer uten nett.
-const APP = 'skogiq-app-v39';
+const APP = 'skogiq-app-v40';
 const FLISER = 'kartfliser-v1';
 const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'ikon-180.png', 'ikon-192.png', 'ikon-512.png', 'ikon-maskerbar-512.png',
   'felt.html', 'felt.css', 'felt.webmanifest', 'js/felt-app.js', 'js/offline-kart.js', 'js/sporlogg.js', 'js/sporlogg-ui.js', 'js/tiltak-endring.js',
