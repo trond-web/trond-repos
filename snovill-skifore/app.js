@@ -825,7 +825,7 @@ function renderResorts() {
     const r = state.results[loc.id];
     if (!r) return "";
     if (!r.days) {
-      return `<article class="card resort"><h2>${loc.emoji} ${loc.name}</h2><p class="error">Fikk ikke værdata akkurat nå. Prøv «Oppdater» om litt.</p></article>`;
+      return `<article class="card resort"><h2>${loc.emoji} ${loc.name}</h2><p class="error">Fikk ikke værdata akkurat nå. Prøv «Oppdater» om litt.</p><div class="resort-map-slot" data-loc="${loc.id}"></div>${renderWebcams(loc)}</article>`;
     }
     const best = r.days.reduce((a, b) => (b.prob > a.prob ? b : a), r.days[0]);
     const lvl = level(best.prob);
@@ -901,11 +901,14 @@ function renderResorts() {
           <div class="stat"><span class="stat-label">📡 Akkurat nå</span><span class="stat-value">${nowHtml}</span></div>
         </div>
         <ol class="days">${tiles}</ol>
+        <div class="resort-map-slot" data-loc="${loc.id}"></div>
         ${renderWebcams(loc)}
         ${renderSporetList(sporet)}
       </article>`;
   }).join("");
   $("resorts").innerHTML = html;
+  // Løypekartene (kart.js) flyttes inn i kortene etter hver opptegning
+  if (typeof mountResortMaps === "function") mountResortMaps();
 }
 
 function camUrl(url) {

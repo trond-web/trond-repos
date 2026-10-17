@@ -563,21 +563,27 @@ footer { text-align: center; color: var(--muted); font-size: 0.85rem; padding: 1
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-/* 🗺️ Løypekart */
+/* 🗺️ Løypekart i hvert stedskort */
+.resort-map { margin-top: 16px; }
+.resort-map-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+.resort-map-head h3 { margin: 0; font-size: 1rem; }
+.map-toggles { display: flex; gap: 12px; flex-wrap: wrap; }
 .trail-map {
-  height: 440px;
-  margin-top: 12px;
+  height: 340px;
+  margin-top: 10px;
   border-radius: 12px;
   border: 1px solid var(--border);
   overflow: hidden;
   background: var(--surface-2);
   z-index: 0;
 }
-.map-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 500; cursor: pointer; }
+.map-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; }
 .map-toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
-.map-info { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; font-size: 0.85rem; color: var(--text-2); }
-.map-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; }
-.map-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 0.8rem; color: var(--text-2); }
+.map-info { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; font-size: 0.82rem; color: var(--text-2); }
+.map-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; }
+.map-legend-wrap { margin-top: 6px; font-size: 0.8rem; color: var(--text-2); }
+.map-legend-wrap summary { cursor: pointer; color: var(--muted); }
+.map-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
 .map-key { display: inline-flex; align-items: center; gap: 6px; }
 .map-key i { display: inline-block; width: 22px; height: 5px; border-radius: 3px; }
 .map-key i.line-solid { background: var(--text-2); }
@@ -586,5 +592,5 @@ footer { text-align: center; color: var(--muted); font-size: 0.85rem; padding: 1
 .trail-map .map-src { color: #6b7a8f; font-size: 0.75rem; }
 .trail-map .map-place { font: 700 0.8rem Inter, system-ui, sans-serif; }
 @media (max-width: 720px) {
-  .trail-map { height: 340px; }
+  .trail-map { height: 280px; }
 }

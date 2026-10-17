@@ -7,8 +7,11 @@
  *  - Løyper.net: tillater ikke kall fra nettleseren, så Pages-workflowen
  *    legger strekningene ved som data/loyper.json (se data/hent-loyper.mjs).
  *
- *  Leaflet lastes først når kartet kommer til syne. Bruker LOCATIONS,
- *  $, escapeHtml, timeAgo og storageGet/storageSet fra app.js.
+ *  Hvert stedskort i app.js har en plassholder (.resort-map-slot). Kartet
+ *  lages én gang per sted og flyttes inn i kortet hver gang kortene tegnes
+ *  på nytt, så det beholder zoom og data. Leaflet lastes først når et kart
+ *  kommer til syne. Bruker LOCATIONS, escapeHtml, timeAgo, fmt0, distanceKm
+ *  og fetchJson fra app.js.
  * ------------------------------------------------------------------ */
 
 const MAP_RADIUS_KM = 8;
@@ -45,15 +48,12 @@ const TRAIL_TYPES = {
 };
 
 const kart = {
-  map: null,
-  layers: { sporet: null, loyper: null, place: null },
-  loc: null,
-  show: { sporet: true, loyper: true },
+  maps: new Map(), // sted-id → { el, map, layers, show, seq, observed }
   sporetCache: new Map(),
   dests: null,
   loyperData: undefined,
   leaflet: null,
-  seq: 0,
+  io: null,
 };
 
 // Kjørt for mer enn ~4 måneder siden regnes som forrige sesong
@@ -189,41 +189,79 @@ function summarize(trails) {
   return { total, fresh };
 }
 
-function renderMapInfo(parts) {
-  $("mapInfo").innerHTML = parts.map((p) => `<span class="map-chip">${p}</span>`).join("");
+function legendHtml() {
+  return (
+    GROOM_CLASSES.map((c) => `<span class="map-key"><i style="background:${c.color}"></i>${escapeHtml(c.label)}</span>`).join("") +
+    '<span class="map-key"><i class="line-solid"></i>Sporet.no</span><span class="map-key"><i class="line-dashed"></i>Løyper.net</span>'
+  );
 }
 
-async function showMapPlace(id) {
-  const loc = LOCATIONS.find((l) => l.id === id) || LOCATIONS[0];
-  kart.loc = loc;
-  storageSet("snovill.kartsted", loc.id);
-  const seq = ++kart.seq;
+// Kartblokken for ett sted lages én gang og gjenbrukes når kortene tegnes på nytt
+function mapEntry(loc) {
+  if (kart.maps.has(loc.id)) return kart.maps.get(loc.id);
+  const el = document.createElement("section");
+  el.className = "resort-map";
+  el.setAttribute("aria-label", `Løypekart for ${loc.name}`);
+  el.innerHTML = `
+    <div class="resort-map-head">
+      <h3>🗺️ Løypekart <small class="muted">${MAP_RADIUS_KM} km rundt</small></h3>
+      <div class="map-toggles">
+        <label class="map-toggle"><input type="checkbox" data-src="sporet" checked> Sporet.no</label>
+        <label class="map-toggle"><input type="checkbox" data-src="loyper" checked> Løyper.net</label>
+      </div>
+    </div>
+    <div class="trail-map" role="region" aria-label="Kart over løyper ved ${escapeHtml(loc.name)}"></div>
+    <div class="map-info" aria-live="polite"><span class="map-chip">Kartet lastes når du kommer hit</span></div>
+    <details class="map-legend-wrap"><summary>Fargeforklaring</summary><div class="map-legend">${legendHtml()}</div></details>`;
+  const entry = { loc, el, map: null, layers: { sporet: null, loyper: null, place: null }, show: { sporet: true, loyper: true }, seq: 0, started: false };
+  el.querySelectorAll("input[data-src]").forEach((input) =>
+    input.addEventListener("change", (e) => {
+      const src = e.target.dataset.src;
+      entry.show[src] = e.target.checked;
+      const layer = entry.layers[src];
+      if (!entry.map || !layer) return;
+      if (e.target.checked) layer.addTo(entry.map);
+      else entry.map.removeLayer(layer);
+      entry.layers.place?.bringToFront();
+    })
+  );
+  kart.maps.set(loc.id, entry);
+  return entry;
+}
+
+function renderMapInfo(entry, parts) {
+  entry.el.querySelector(".map-info").innerHTML = parts.map((p) => `<span class="map-chip">${p}</span>`).join("");
+}
+
+async function drawMap(entry) {
+  const { loc } = entry;
+  const seq = ++entry.seq;
   const L = await loadLeaflet();
-  if (!kart.map) {
-    kart.map = L.map("trailMap", { scrollWheelZoom: false, zoomSnap: 0.5 });
+  if (!entry.map) {
+    entry.map = L.map(entry.el.querySelector(".trail-map"), { scrollWheelZoom: false, zoomSnap: 0.5 });
     L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png", {
       maxZoom: 17,
       attribution: '© <a href="https://www.kartverket.no/">Kartverket</a> · Løyper: <a href="https://sporet.no/">Sporet.no</a>, <a href="https://www.loyper.net/">Løyper.net</a>',
-    }).addTo(kart.map);
+    }).addTo(entry.map);
+    const b = boxAround(loc, MAP_RADIUS_KM * 0.7);
+    entry.map.fitBounds([[b.s, b.w], [b.n, b.e]]);
   }
-  const b = boxAround(loc, MAP_RADIUS_KM * 0.7);
-  kart.map.fitBounds([[b.s, b.w], [b.n, b.e]]);
-  for (const k of Object.keys(kart.layers)) {
-    if (kart.layers[k]) kart.map.removeLayer(kart.layers[k]);
-    kart.layers[k] = null;
+  for (const k of Object.keys(entry.layers)) {
+    if (entry.layers[k]) entry.map.removeLayer(entry.layers[k]);
+    entry.layers[k] = null;
   }
-  kart.layers.place = L.circleMarker([loc.lat, loc.lon], { radius: 7, color: "#ffffff", weight: 2, fillColor: "#2a78d6", fillOpacity: 1 })
+  entry.layers.place = L.circleMarker([loc.lat, loc.lon], { radius: 7, color: "#ffffff", weight: 2, fillColor: "#2a78d6", fillOpacity: 1 })
     .bindTooltip(`${loc.emoji} ${escapeHtml(loc.name)}`, { permanent: true, direction: "top", offset: [0, -8], className: "map-place" })
-    .addTo(kart.map);
-  renderMapInfo(['<span class="spinner"></span> Henter løyper …']);
+    .addTo(entry.map);
+  renderMapInfo(entry, ['<span class="spinner"></span> Henter løyper …']);
 
   const [sp, lp] = await Promise.allSettled([sporetTrails(loc), loyperData()]);
-  if (seq !== kart.seq) return; // brukeren har byttet sted i mellomtiden
+  if (seq !== entry.seq) return; // en nyere opptegning er på vei
 
   const info = [];
   if (sp.status === "fulfilled") {
-    kart.layers.sporet = drawTrails(L, sp.value, false, sporetPopup);
-    if (kart.show.sporet) kart.layers.sporet.addTo(kart.map);
+    entry.layers.sporet = drawTrails(L, sp.value, false, sporetPopup);
+    if (entry.show.sporet) entry.layers.sporet.addTo(entry.map);
     const s = summarize(sp.value);
     info.push(`<b>Sporet.no</b> ${fmt0(s.total)} km${s.fresh >= 0.5 ? ` · 🟢 ${fmt0(s.fresh)} km kjørt siste 18 t` : ""}`);
   } else {
@@ -232,8 +270,8 @@ async function showMapPlace(id) {
   const data = lp.status === "fulfilled" ? lp.value : null;
   if (data) {
     const trails = loyperTrails(data, loc);
-    kart.layers.loyper = drawTrails(L, trails, true, loyperPopup);
-    if (kart.show.loyper) kart.layers.loyper.addTo(kart.map);
+    entry.layers.loyper = drawTrails(L, trails, true, loyperPopup);
+    if (entry.show.loyper) entry.layers.loyper.addTo(entry.map);
     const s = summarize(trails);
     const fetched = data.hentet ? ` · hentet ${escapeHtml(timeAgo(new Date(data.hentet)))}` : "";
     info.push(
@@ -244,49 +282,48 @@ async function showMapPlace(id) {
   } else {
     info.push("<b>Løyper.net</b> ikke tilgjengelig ennå");
   }
-  if (kart.layers.place) kart.layers.place.bringToFront();
-  renderMapInfo(info);
+  entry.layers.place?.bringToFront();
+  renderMapInfo(entry, info);
 }
 
-function renderMapLegend() {
-  $("mapLegend").innerHTML =
-    GROOM_CLASSES.map((c) => `<span class="map-key"><i style="background:${c.color}"></i>${escapeHtml(c.label)}</span>`).join("") +
-    '<span class="map-key"><i class="line-solid"></i>Sporet.no</span><span class="map-key"><i class="line-dashed"></i>Løyper.net</span>';
+function startMap(entry) {
+  if (entry.started) return;
+  entry.started = true;
+  drawMap(entry).catch((err) => {
+    entry.started = false;
+    renderMapInfo(entry, [`Kartet kunne ikke vises: ${escapeHtml(err.message)}`]);
+  });
 }
 
-function initTrailMap() {
-  const sel = $("mapLoc");
-  const box = $("trailMap");
-  if (!sel || !box) return;
-  sel.innerHTML = LOCATIONS.map((l) => `<option value="${l.id}">${escapeHtml(l.name)}</option>`).join("");
-  const saved = storageGet("snovill.kartsted");
-  sel.value = LOCATIONS.some((l) => l.id === saved) ? saved : LOCATIONS[0].id;
-  renderMapLegend();
-
-  const start = () => showMapPlace(sel.value).catch((err) => renderMapInfo([`Kartet kunne ikke vises: ${escapeHtml(err.message)}`]));
-  sel.addEventListener("change", start);
-  for (const src of ["sporet", "loyper"]) {
-    $(`mapShow_${src}`).addEventListener("change", (e) => {
-      kart.show[src] = e.target.checked;
-      const layer = kart.layers[src];
-      if (!kart.map || !layer) return;
-      if (e.target.checked) layer.addTo(kart.map);
-      else kart.map.removeLayer(layer);
-      kart.layers.place?.bringToFront();
-    });
+/** Kalles av renderResorts i app.js etter at stedskortene er tegnet. */
+function mountResortMaps() {
+  if (!kart.io && "IntersectionObserver" in window) {
+    kart.io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          kart.io.unobserve(e.target);
+          const entry = kart.maps.get(e.target.dataset.loc);
+          if (entry) startMap(entry);
+        }
+      },
+      { rootMargin: "400px" }
+    );
   }
-
-  if ("IntersectionObserver" in window) {
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) {
-        io.disconnect();
-        start();
-      }
-    }, { rootMargin: "300px" });
-    io.observe(box);
-  } else {
-    start();
-  }
+  document.querySelectorAll(".resort-map-slot[data-loc]").forEach((slot) => {
+    const loc = LOCATIONS.find((l) => l.id === slot.dataset.loc);
+    if (!loc) return;
+    const entry = mapEntry(loc);
+    slot.appendChild(entry.el);
+    if (entry.map) {
+      entry.map.invalidateSize();
+    } else if (kart.io) {
+      entry.el.dataset.loc = loc.id;
+      kart.io.observe(entry.el);
+    } else {
+      startMap(entry);
+    }
+  });
 }
 
-initTrailMap();
+mountResortMaps();
