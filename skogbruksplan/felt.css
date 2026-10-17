@@ -130,3 +130,12 @@ body.spor-aktiv .gpsstripe { top: calc(150px + var(--topp)); }
 .spor-rad.dempet { opacity: .55; }
 .spor-rad label { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
 .stor-avkryss { width: 26px; height: 26px; }
+
+/* Endre tiltak */
+.rad-knapper { display: flex; gap: 6px; }
+.avkryss.endre { font-size: 15px; color: var(--text-2); }
+.skjema-felt { display: grid; gap: 10px; }
+.skjema-felt label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.skjema-felt input[type=number], .skjema-felt input[type=text], .skjema-felt input[type=date] { width: 100%; font: inherit; font-size: 15px; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); color: var(--text); }
+.skjema-felt label.bryter { display: flex; color: var(--text); font-size: 15px; }
+.feilboks { background: #fae6ea; color: #8c1d33; border-radius: 12px; padding: 10px 12px; font-size: 14px; margin: 8px 0; }

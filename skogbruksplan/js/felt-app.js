@@ -7,6 +7,7 @@ import { hkFor } from './flere-eiendommer.js';
 import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import { VERSJON } from './versjon.js';
 import { initSporlogg } from './sporlogg-ui.js';
+import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -119,7 +120,7 @@ const nesteTiltak = (b) => (b.tiltak || []).filter((t) => t.status !== 'utfort')
 function tiltakRad(b, t, medBestand = false) {
   const ferdig = t.status === 'utfort';
   return `<div class="rad"><div><div class="tittel">${esc(TILTAKSTYPER[t.type]?.navn || t.type)} ${t.aar ? `· ${t.aar}` : ''}</div><div class="under">${medBestand ? `Bestand ${esc(b.nr)} · ` : ''}${esc(t.kommentar || '')}${ferdig && t.utfortDato ? ` · utført ${esc(t.utfortDato)}` : ''}</div></div>
-    <button type="button" class="avkryss ${ferdig ? 'ferdig' : ''}" data-utfort="${esc(b.id)}|${esc(t.id)}" aria-label="${ferdig ? 'Angre utført' : 'Merk som utført'}">${ferdig ? '✓' : ''}</button></div>`;
+    <div class="rad-knapper"><button type="button" class="avkryss endre" data-endre="${esc(b.id)}|${esc(t.id)}" aria-label="Endre eller slett tiltaket">✎</button><button type="button" class="avkryss ${ferdig ? 'ferdig' : ''}" data-utfort="${esc(b.id)}|${esc(t.id)}" aria-label="${ferdig ? 'Angre utført' : 'Merk som utført'}">${ferdig ? '✓' : ''}</button></div></div>`;
 }
 function visBestand(id, { zoom = false } = {}) {
   const b = finn(id); if (!b) return;
@@ -170,6 +171,49 @@ async function settUtfort(bid, tid) {
   await lagrePlanen(); oppdaterStiler();
   melding(ferdig ? `${TILTAKSTYPER[t.type]?.navn || 'Tiltak'} i ${b.nr} er merket utført.` : 'Merket som planlagt igjen.');
   if (visning === 'tiltak') visTiltak(); else visBestand(bid);
+}
+
+// ---------- endre og slette tiltak ----------
+let endring = null; // { bid, tid, fra }
+function visEndreTiltak(bid, tid, feil = []) {
+  const b = finn(bid); const t = b?.tiltak?.find((x) => x.id === tid); if (!t) return;
+  endring = endring?.tid === tid ? { ...endring, bid } : { bid, tid, fra: visning === 'tiltak' ? 'tiltak' : 'bestand' };
+  const v = { ...skjemaVerdier(b, t), ...(endring.utkast || {}) };
+  const utfort = v.status === 'utfort';
+  aapneArk(`<h2>Endre tiltak</h2><p class="hint">Bestand ${esc(b.nr)} · ${fmt(b.areal, 1)} daa${t.kilde === 'motor' ? ' · laget av tiltaksmotoren – blir et manuelt tiltak når du endrer det' : ''}</p>
+    ${feil.length ? `<div class="feilboks">${feil.map(esc).join('<br>')}</div>` : ''}
+    <div class="skjema-felt">
+      <label>Tiltak<select data-tf="type">${Object.entries(TILTAKSTYPER).map(([k, x]) => `<option value="${k}" ${k === v.type ? 'selected' : ''}>${esc(x.navn)}</option>`).join('')}</select></label>
+      <div class="chips">${Object.entries(STATUSER).map(([k, n]) => `<button type="button" class="chip" data-tf-status="${k}" aria-pressed="${k === v.status}">${n}</button>`).join('')}</div>
+      ${utfort ? `<label>Utført dato<input type="date" data-tf="utfortDato" value="${esc(v.utfortDato || new Date().toISOString().slice(0, 10))}" max="${new Date().toISOString().slice(0, 10)}"></label>` : `<label>År<input type="number" inputmode="numeric" data-tf="aar" value="${esc(v.aar)}" min="1950" max="2150"></label>`}
+      <label class="bryter"><span>Hele bestandet</span><input type="checkbox" data-tf="helt" ${v.helt ? 'checked' : ''}></label>
+      ${v.helt ? '' : `<label>Areal (daa)<input type="text" inputmode="decimal" data-tf="arealDaa" value="${esc(String(v.arealDaa ?? '').replace('.', ','))}"></label>`}
+      <label>Kommentar<textarea data-tf="kommentar" rows="2">${esc(v.kommentar)}</textarea></label>
+      ${t.dekning ? `<label class="bryter"><span>Fjern registrert flate (sporlogg)</span><input type="checkbox" data-tf="fjernDekning" ${v.fjernDekning ? 'checked' : ''}></label>` : ''}
+      ${t.oppdragId ? '<p class="hint">Tiltaket ligger i et oppdrag.</p>' : ''}
+    </div>
+    <div class="knapper"><button type="button" class="knapp fare" data-h="slett-tiltak">Slett</button><button type="button" class="knapp" data-h="avbryt-endring">Avbryt</button><button type="button" class="knapp primar" data-h="lagre-endring">Lagre</button></div>`);
+}
+function lesEndring() {
+  const u = { ...(endring.utkast || {}) };
+  document.querySelectorAll('[data-tf]').forEach((el) => { u[el.dataset.tf] = el.type === 'checkbox' ? el.checked : el.value; });
+  return u;
+}
+function tilbakeFraEndring() { const { bid, fra } = endring; endring = null; if (fra === 'tiltak') visTiltak(); else visBestand(bid); }
+async function lagreEndring() {
+  const b = finn(endring.bid); const t = b?.tiltak?.find((x) => x.id === endring.tid); if (!t) return;
+  const u = lesEndring();
+  const r = endreTiltak(b, t, u);
+  if (!r.ok) { endring.utkast = u; visEndreTiltak(endring.bid, endring.tid, r.feil); return; }
+  await lagrePlanen(); oppdaterStiler(); spor?.tegnUtfort();
+  melding('Tiltaket er endret.'); tilbakeFraEndring();
+}
+async function slettEndring() {
+  const b = finn(endring.bid); const t = b?.tiltak?.find((x) => x.id === endring.tid); if (!t) return;
+  if (!confirm(slettTekst(b, t))) return;
+  slettTiltak(P, b, t);
+  await lagrePlanen(); oppdaterStiler(); spor?.tegnUtfort();
+  melding('Tiltaket er slettet.'); tilbakeFraEndring();
 }
 
 // ---------- registreringer ----------
@@ -276,6 +320,7 @@ async function velgPlan(id, { zoom = true } = {}) {
   const plan = await hentPlan(id);
   if (!plan) { melding('Fant ikke planen.'); return; }
   P = plan; P.registreringer = P.registreringer || []; ls.set(LS.plan, id);
+  for (const b of P.bestand) for (const t of b.tiltak || []) if (!t.id) t.id = nyId('t'); // eldre importerte tiltak uten id
   $('#planNavn').textContent = P.eiendom?.navn || 'Plan';
   document.title = `${P.eiendom?.navn || 'Plan'} · SkogIQ Felt`;
   valgtId = null; tegnPlan(zoom); gpsStripe(); spor?.tegnUtfort();
@@ -354,11 +399,13 @@ function kobleHendelser() {
   const ark = $('#arkInnhold');
   ark.addEventListener('click', async (e) => {
     const plan = e.target.closest('[data-plan]'); if (plan) { await velgPlan(plan.dataset.plan); lukkArk(); return; }
+    const en = e.target.closest('[data-endre]'); if (en) { e.stopPropagation(); const [bid, tid] = en.dataset.endre.split('|'); visEndreTiltak(bid, tid); return; }
     const ut = e.target.closest('[data-utfort]'); if (ut) { e.stopPropagation(); const [bid, tid] = ut.dataset.utfort.split('|'); settUtfort(bid, tid); return; }
     const best = e.target.closest('[data-bestand]'); if (best) { visBestand(best.dataset.bestand, { zoom: true }); return; }
     const bv = e.target.closest('[data-bestand-vis]'); if (bv) { visBestand(bv.dataset.bestandVis, { zoom: true }); return; }
     const reg = e.target.closest('[data-reg]'); if (reg) { visRegistrering(reg.dataset.reg); return; }
     const slett = e.target.closest('[data-slett-reg]'); if (slett) { if (!confirm('Slette registreringen?')) return; P.registreringer = P.registreringer.filter((r) => r.id !== slett.dataset.slettReg); await lagrePlanen(); tegnRegistreringer(); visRegListe(); return; }
+    const st = e.target.closest('[data-tf-status]'); if (st && endring) { endring.utkast = { ...lesEndring(), status: st.dataset.tfStatus }; visEndreTiltak(endring.bid, endring.tid); return; }
     const kat = e.target.closest('[data-kat]'); if (kat && regPagar) { regPagar.kategori = kat.dataset.kat; regPagar.tekst = $('#regTekst').value; document.querySelectorAll('[data-kat]').forEach((c) => c.setAttribute('aria-pressed', String(c === kat))); return; }
     const h = e.target.closest('[data-h]')?.dataset.h; if (!h) return;
     if (h === 'reg-her') startReg(valgtId);
@@ -366,6 +413,9 @@ function kobleHendelser() {
     if (h === 'avbryt-reg') { avbrytReg(); visRegListe(); }
     if (h === 'lagre-reg') lagreReg();
     if (h === 'offline') lastNedOffline();
+    if (h === 'lagre-endring') lagreEndring();
+    if (h === 'slett-tiltak') slettEndring();
+    if (h === 'avbryt-endring') tilbakeFraEndring();
     if (h === 'sporlogg') spor.visStart();
     if (h === 'installer' && installHendelse) { installHendelse.prompt(); const v = await installHendelse.userChoice; installHendelse = null; if (v.outcome === 'accepted') melding('SkogIQ Felt er installert.'); visMer(); }
   });
@@ -375,6 +425,7 @@ function kobleHendelser() {
       try { regPagar.bilde = await skalerBilde(e.target.files[0]); } catch { melding('Kunne ikke lese bildet.'); }
       tegnRegSkjema();
     }
+    if (e.target.dataset?.tf === 'helt' && endring) { endring.utkast = lesEndring(); visEndreTiltak(endring.bid, endring.tid); return; }
     if (e.target.id === 'startFelt') { ls.set(LS.start, e.target.checked ? '1' : null); melding(e.target.checked ? 'Appen åpner nå i mobilversjonen.' : 'Appen åpner i fullversjonen.'); }
   });
   ark.addEventListener('input', (e) => { if (e.target.id === 'regTekst' && regPagar) regPagar.tekst = e.target.value; });
