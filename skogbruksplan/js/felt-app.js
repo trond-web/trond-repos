@@ -6,7 +6,8 @@ import { punktIGeometri, etikettPunkt, bbox } from './proj.js';
 import { hkFor } from './flere-eiendommer.js';
 import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import { VERSJON } from './versjon.js';
-import { initSporlogg } from './sporlogg-ui.js';
+import { initSporlogg, lastPC } from './sporlogg-ui.js';
+import { startFlateRedigering } from './flate-redigering.js';
 import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -24,7 +25,7 @@ let kart; let grunnlag = {}; let lagNavn = ls.get(LS.lag) || 'graa';
 const lagPerBestand = new Map(); let bestandLag; let grenseLag; let regLag; let etikettLag;
 let valgtId = null; let visning = 'kart';
 let gps = { watch: null, pos: null, folg: false, markor: null, sirkel: null };
-let installHendelse = null; let spor = null;
+let installHendelse = null; let spor = null; let flate = null;
 
 // ---------- hjelpere ----------
 let meldingTimer;
@@ -61,7 +62,7 @@ function initKart() {
   kart.on('zoomend', etiketter); etiketter();
   kart.on('dragstart', () => { if (gps.folg) { gps.folg = false; oppdaterGpsKnapp(); } });
   // Trykk i kartet utenfor arket lukker det – men ikke midt i et skjema (registrering, endring, sporlogg).
-  kart.on('click', () => { if (!$('#ark').hidden && !regPagar && !endring && !spor?.harResultat() && !spor?.tegner()) lukkArk(); });
+  kart.on('click', (e) => { if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (!$('#ark').hidden && !regPagar && !endring && !spor?.harResultat() && !spor?.tegner()) lukkArk(); });
 }
 
 function stil(b) {
@@ -76,7 +77,7 @@ function tegnPlan(zoom = false) {
   for (const b of P.bestand) {
     if (!b.geometri) continue;
     const l = L.geoJSON(b.geometri, { style: () => stil(b) });
-    l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (spor?.tegner()) { spor.leggTilPunkt(e.latlng); return; } if (regPagar) return; visBestand(b.id); });
+    l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (spor?.tegner()) { spor.leggTilPunkt(e.latlng); return; } if (regPagar) return; visBestand(b.id); });
     l.addTo(bestandLag); lagPerBestand.set(b.id, l);
     const pt = etikettPunkt(b.geometri);
     if (pt) L.tooltip({ permanent: true, direction: 'center', className: 'nr-etikett', interactive: false }).setLatLng([pt[1], pt[0]]).setContent(esc(b.nr)).addTo(etikettLag);
@@ -90,7 +91,7 @@ function tegnRegistreringer() {
   regLag.clearLayers();
   for (const r of P?.registreringer || []) {
     L.circleMarker([r.lat, r.lon], { radius: 8, color: '#fff', weight: 2.5, fillColor: '#e34948', fillOpacity: 1 })
-      .on('click', (e) => { L.DomEvent.stopPropagation(e); if (spor?.tegner()) { spor.leggTilPunkt(e.latlng); return; } visRegistrering(r.id); }).addTo(regLag);
+      .on('click', (e) => { L.DomEvent.stopPropagation(e); if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (spor?.tegner()) { spor.leggTilPunkt(e.latlng); return; } visRegistrering(r.id); }).addTo(regLag);
   }
 }
 
@@ -200,10 +201,31 @@ function visEndreTiltak(bid, tid, feil = []) {
       <label class="bryter"><span>Hele bestandet</span><input type="checkbox" data-tf="helt" ${v.helt ? 'checked' : ''}></label>
       ${v.helt ? '' : `<label>Areal (daa)<input type="text" inputmode="decimal" data-tf="arealDaa" value="${esc(String(v.arealDaa ?? '').replace('.', ','))}"></label>`}
       <label>Kommentar<textarea data-tf="kommentar" rows="2">${esc(v.kommentar)}</textarea></label>
-      ${t.dekning ? `<label class="bryter"><span>Fjern registrert flate (sporlogg)</span><input type="checkbox" data-tf="fjernDekning" ${v.fjernDekning ? 'checked' : ''}></label>` : ''}
+      <div class="flate-valg"><button type="button" class="knapp" data-h="endre-flate">✎ ${t.dekning ? 'Endre flate i kartet' : 'Tegn flate i kartet'}</button>${t.dekning ? `<span class="hint">Flate registrert: ${fmt(t.arealDaa ?? b.areal, 1)} daa</span>` : '<span class="hint">Ingen flate – tiltaket gjelder hele bestandet eller arealet over.</span>'}</div>
+      ${t.dekning ? `<label class="bryter"><span>Fjern registrert flate</span><input type="checkbox" data-tf="fjernDekning" ${v.fjernDekning ? 'checked' : ''}></label>` : ''}
       ${t.oppdragId ? '<p class="hint">Tiltaket ligger i et oppdrag.</p>' : ''}
     </div>
     <div class="knapper"><button type="button" class="knapp fare" data-h="slett-tiltak">Slett</button><button type="button" class="knapp" data-h="avbryt-endring">Avbryt</button><button type="button" class="knapp primar" data-h="lagre-endring">Lagre</button></div>`);
+}
+// Endre flaten i kartet. Endringen lagres direkte på tiltaket, og skjemaet åpnes igjen etterpå.
+async function endreFlate() {
+  const b = finn(endring.bid); const t = b?.tiltak?.find((x) => x.id === endring.tid); if (!t) return;
+  let PC; try { PC = await lastPC(); } catch (e) { melding(e.message, 6000); return; }
+  const tilbake = { ...endring, utkast: lesEndring() };
+  lukkArk(); document.body.classList.add('flate-aktiv');
+  const ferdig = () => { flate = null; document.body.classList.remove('flate-aktiv'); endring = tilbake; };
+  flate = startFlateRedigering({
+    L, kart, PC, start: t.dekning || null, bestand: b, tittel: `${TILTAKSTYPER[t.type]?.navn || ''} i ${b.nr}`, plassering: 'felt',
+    vedFerdig: async ({ geometri, daa, andel }) => {
+      ferdig();
+      if (geometri) { t.dekning = geometri; if (andel >= 0.995) { delete t.arealDaa; tilbake.utkast.helt = true; } else { t.arealDaa = daa; tilbake.utkast.helt = false; tilbake.utkast.arealDaa = daa; } } else { delete t.dekning; }
+      tilbake.utkast.fjernDekning = false; t.endret = new Date().toISOString().slice(0, 10);
+      await lagrePlanen(); spor?.tegnUtfort(); oppdaterStiler();
+      melding(geometri ? `Flaten er endret: ${fmt(daa, 1)} daa.` : 'Flaten er fjernet.');
+      visEndreTiltak(tilbake.bid, tilbake.tid);
+    },
+    vedAvbryt: () => { ferdig(); visEndreTiltak(tilbake.bid, tilbake.tid); },
+  });
 }
 function lesEndring() {
   const u = { ...(endring.utkast || {}) };
@@ -431,6 +453,7 @@ function kobleHendelser() {
     if (h === 'lagre-reg') lagreReg();
     if (h === 'offline') lastNedOffline();
     if (h === 'lagre-endring') lagreEndring();
+    if (h === 'endre-flate') endreFlate();
     if (h === 'slett-tiltak') slettEndring();
     if (h === 'avbryt-endring') tilbakeFraEndring();
     if (h === 'sporlogg') spor.visStart();

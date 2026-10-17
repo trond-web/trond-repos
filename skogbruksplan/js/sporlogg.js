@@ -94,10 +94,10 @@ export function dekningFlate(punkter, PC) {
   try { return PC.union([ring]); } catch { return [[ring]]; }
 }
 export const flateArealM2 = (punkter) => { if (punkter.length < 3) return 0; const r = punkter.map((p) => tilUtm([p.lon, p.lat])); let a = 0; for (let i = 0; i < r.length; i++) { const j = (i + 1) % r.length; a += r[i][0] * r[j][1] - r[j][0] * r[i][1]; } return Math.abs(a / 2); };
-const mpTilUtm = (g) => (g.type === 'Polygon' ? [g.coordinates] : g.coordinates).map((p) => p.map((ring) => ring.map(tilUtm)));
-const mpTilGeo = (mp) => mp.map((p) => p.map((ring) => ring.map(tilGeo)));
+export const mpTilUtm = (g) => (g.type === 'Polygon' ? [g.coordinates] : g.coordinates).map((p) => p.map((ring) => ring.map(tilUtm)));
+export const mpTilGeo = (mp) => mp.map((p) => p.map((ring) => ring.map(tilGeo)));
 export const tilGeometri = (mpUtm) => (mpUtm.length ? { type: 'MultiPolygon', coordinates: mpTilGeo(mpUtm) } : null);
-const arealUtm = (mp) => mp.reduce((s, p) => s + p.reduce((t, ring, i) => { let a = 0; for (let k = 1; k < ring.length; k++) a += ring[k - 1][0] * ring[k][1] - ring[k][0] * ring[k - 1][1]; return t + (i ? -1 : 1) * Math.abs(a / 2); }, 0), 0);
+export const arealUtm = (mp) => mp.reduce((s, p) => s + p.reduce((t, ring, i) => { let a = 0; for (let k = 1; k < ring.length; k++) a += ring[k - 1][0] * ring[k][1] - ring[k][0] * ring[k - 1][1]; return t + (i ? -1 : 1) * Math.abs(a / 2); }, 0), 0);
 
 // Fordeler dekningsflaten på bestandene. Gir [{ b, daa, andel, geometri }] sortert etter areal.
 export function fordelPaaBestand(dekning, bestand, PC) {

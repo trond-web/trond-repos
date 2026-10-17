@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.11.1** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.12.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -84,6 +84,13 @@ Tiltak kan endres og slettes både i fullversjonen og i SkogIQ Felt (`js/tiltak-
   - prioritet (i fullversjonen) og kommentar
   - fjerning av en registrert sporlogg-flate
 - **Kontroll:** ukjent type, ugyldig år, dato fram i tid og areal større enn bestandet avvises med melding. Ingenting endres før alt er gyldig.
+- **Endre flaten i kartet** (`js/flate-redigering.js`, `js/flate-geometri.js`): knappen «Endre flate i kartet» (eller «Tegn flate i kartet») ligger i endre-skjemaet i begge versjonene.
+  - **Hjørner:** dra hjørnene for å flytte dem. Dra eller trykk de små kantpunktene for å lage nye hjørner. Trykk et hjørne og «Slett punkt» for å fjerne det.
+  - **Områder:** «＋ Legg til område» og «− Fjern område» tegner et område som slås sammen med eller trekkes fra flaten. Det egner seg godt for sporlogg-flater med mange punkter. «Tegn på nytt» erstatter flaten, og «Hele bestandet» bruker bestandets grense som start.
+  - **Angre og avbryt:** Angre har opptil 30 steg. Avbryt eller Esc lar flaten være uendret.
+  - **Forenkling:** flaten forenkles til høyst ca. 160 hjørner for redigering (Douglas–Peucker for lukkede ringer), og biter og hull under 10 m² fjernes.
+  - **Ferdig:** flaten ryddes med union og klippes mot bestandet. Arealet og andelen regnes ut på nytt. Over 99,5 % regnes som hele bestandet.
+  - **I kartet:** fullversjonen viser flatene til tiltakene i bestandet som er valgt.
 - **Motortiltak:** et tiltak fra tiltaksmotoren som endres for hånd, blir manuelt, slik at motoren ikke erstatter det.
 - **Sletting:** du må bekrefte. Bekreftelsen sier fra om tiltaket ligger i et oppdrag eller har en sporlogg-flate. Tiltaket fjernes også fra oppdraget og fra sporloggens bestandsliste.
 - **Gamle tiltak:** importerte tiltak uten id får id automatisk, slik at de kan endres.

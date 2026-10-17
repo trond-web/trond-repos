@@ -10,6 +10,7 @@ import { lagDemo } from './demo.js';
 import { lagre, hent, listPlaner, lagrePlan, hentPlan, slettPlan, hentVerdi, lagreVerdi } from './store.js';
 import { initFlereEiendommer } from './flere-eiendommer.js';
 import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
+import { startFlateRedigering } from './flate-redigering.js';
 import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import { genererPlan, hentKommuner, finnKommune } from './generator.js';
 import { initKommune } from './kommune-ui.js';
@@ -245,6 +246,14 @@ function tegnLegend() {
   $('#kartLegend').innerHTML = `<button type="button" class="legend-knapp" aria-expanded="${!legendLukket}">Tegnforklaring ${legendLukket ? '▸' : '▾'}</button><div class="legend-innhold" ${legendLukket ? 'hidden' : ''}>${html}</div>`;
 }
 
+// Flater registrert på tiltakene i valgt bestand (sporlogg eller tegnet), vist over bestandet.
+let tiltaksflateLag = null;
+function tegnTiltaksflater() {
+  if (!tiltaksflateLag) tiltaksflateLag = L.layerGroup().addTo(kart);
+  tiltaksflateLag.clearLayers();
+  const b = valgtId ? finnBestand(valgtId) : null; if (!b) return;
+  for (const t of b.tiltak || []) if (t.dekning) L.geoJSON(t.dekning, { style: { color: t.status === 'utfort' ? '#0d4d30' : '#2a78d6', weight: 1.5, dashArray: '4 3', fillColor: t.status === 'utfort' ? '#1f8f5a' : '#2a78d6', fillOpacity: 0.3 }, interactive: false }).addTo(tiltaksflateLag);
+}
 function stilFor(b) {
   const farge = fargeFor(b);
   const valgt = b.id === valgtId; const ut = uthevet.has(b.id);
@@ -305,6 +314,7 @@ function tegnBestandKart(zoom = false) {
   tegnMis();
   oppdaterEtiketter();
   tegnLegend();
+  tegnTiltaksflater();
   if (zoom) zoomTilAlle();
 }
 
@@ -631,6 +641,7 @@ function tegnBestandTabell() {
 function velgBestand(id, { zoom = true } = {}) {
   valgtId = id;
   oppdaterStiler();
+  tegnTiltaksflater();
   tegnBestandTabell();
   visDetalj();
   const lag = lagPerBestand.get(id);
@@ -942,7 +953,8 @@ function aapneTiltakDialog(b, t, feil = [], utkast = null) {
     <label class="avkryss"><input type="checkbox" name="helt" ${v.helt ? 'checked' : ''}> Hele bestandet (${fmt(b.areal, 1)} daa)</label>
     <label data-areal ${v.helt ? 'hidden' : ''}>Areal (daa)<input type="text" inputmode="decimal" name="arealDaa" value="${esc(String(v.arealDaa ?? '').replace('.', ','))}"></label>
     <label class="hel">Kommentar<textarea name="kommentar" rows="2">${esc(v.kommentar)}</textarea></label>
-    ${t.dekning ? '<label class="avkryss hel"><input type="checkbox" name="fjernDekning"> Fjern registrert flate (sporlogg)</label>' : ''}
+    <div class="hel knapperad" style="margin:0;align-items:center"><button type="button" class="knapp" data-d="flate">✎ ${t.dekning ? 'Endre flate i kartet' : 'Tegn flate i kartet'}</button><span class="hint">${t.dekning ? `Flate registrert: ${fmt(t.arealDaa ?? b.areal, 1)} daa` : 'Ingen flate – gjelder hele bestandet eller arealet over'}</span></div>
+    ${t.dekning ? '<label class="avkryss hel"><input type="checkbox" name="fjernDekning"> Fjern registrert flate</label>' : ''}
     <div class="knapperad hel"><button type="button" class="knapp fare" data-d="slett">Slett</button><span style="flex:1"></span><button type="button" class="knapp" data-d="avbryt">Avbryt</button><button type="submit" class="knapp primar">Lagre</button></div>
   </form>`;
   const f = $('#tiltakDialogSkjema');
@@ -950,6 +962,25 @@ function aapneTiltakDialog(b, t, feil = [], utkast = null) {
   f.elements.status.onchange = () => { const u = f.elements.status.value === 'utfort'; f.querySelector('[data-vis-planlagt]').hidden = u; f.querySelector('[data-vis-utfort]').hidden = !u; };
   f.elements.helt.onchange = () => { f.querySelector('[data-areal]').hidden = f.elements.helt.checked; };
   f.querySelector('[data-d="avbryt"]').onclick = () => d.close();
+  f.querySelector('[data-d="flate"]').onclick = async () => {
+    const utkastNaa = les(); d.close();
+    const PC = await lastKlipping(); if (!PC) { melding('Geometribiblioteket kunne ikke lastes. Sjekk nettforbindelsen.'); aapneTiltakDialog(b, t, [], utkastNaa); return; }
+    if (erMobil()) settArk('lav');
+    let red = null;
+    const ferdig = () => { kartKlikk = null; };
+    red = startFlateRedigering({
+      L, kart, PC, start: t.dekning || null, bestand: b, tittel: `${TILTAKSTYPER[t.type]?.navn || ''} i ${b.nr}`, plassering: 'full',
+      vedFerdig: ({ geometri, daa, andel }) => {
+        ferdig();
+        if (geometri) { t.dekning = geometri; if (andel >= 0.995) { delete t.arealDaa; utkastNaa.helt = true; } else { t.arealDaa = daa; utkastNaa.helt = false; utkastNaa.arealDaa = daa; } } else delete t.dekning;
+        utkastNaa.fjernDekning = false; t.endret = new Date().toISOString().slice(0, 10);
+        endret({ kart: true }); tegnTiltaksflater(); melding(geometri ? `Flaten er endret: ${fmt(daa, 1)} daa.` : 'Flaten er fjernet.');
+        aapneTiltakDialog(b, t, [], utkastNaa);
+      },
+      vedAvbryt: () => { ferdig(); aapneTiltakDialog(b, t, [], utkastNaa); },
+    });
+    kartKlikk = (ll) => red.klikk(ll);
+  };
   f.querySelector('[data-d="slett"]').onclick = () => { if (!confirm(slettTekst(b, t))) return; slettTiltak(S, b, t); d.close(); endret(); if (valgtId === b.id) visDetalj(); melding('Tiltaket er slettet.'); };
   f.onsubmit = (e) => {
     e.preventDefault(); const u = les();

@@ -19,7 +19,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const tid = (ms) => { const s = Math.floor(ms / 1000); const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return h ? `${h} t ${m} min` : `${m} min ${s % 60} s`; };
 
 let pcLaster = null;
-function lastPC() {
+export function lastPC() {
   if (window.polygonClipping) return Promise.resolve(window.polygonClipping);
   if (!pcLaster) {
     pcLaster = new Promise((res, rej) => { const s = document.createElement('script'); s.src = PC_URL; s.onload = () => res(window.polygonClipping); s.onerror = () => { pcLaster = null; rej(new Error('Geometribiblioteket mangler. Åpne appen én gang på nett først.')); }; document.head.appendChild(s); });
