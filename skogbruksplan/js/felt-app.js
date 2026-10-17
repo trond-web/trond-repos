@@ -8,6 +8,7 @@ import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import { VERSJON } from './versjon.js';
 import { initSporlogg, lastPC } from './sporlogg-ui.js';
 import { startFlateRedigering } from './flate-redigering.js';
+import { synligeTiltaksflater, treffVed, tiltakStil, tiltakNavn, tiltakLinje, tiltakDetaljer } from './treff.js';
 import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -26,6 +27,7 @@ const lagPerBestand = new Map(); let bestandLag; let grenseLag; let regLag; let 
 let valgtId = null; let visning = 'kart';
 let gps = { watch: null, pos: null, folg: false, markor: null, sirkel: null };
 let installHendelse = null; let spor = null; let flate = null;
+let tiltaksflateLag = null; let valgtTiltak = null; let treffMarkor = null; // tiltak som er valgt i kartet, og markør for trykkpunktet
 
 // ---------- hjelpere ----------
 let meldingTimer;
@@ -77,7 +79,7 @@ function tegnPlan(zoom = false) {
   for (const b of P.bestand) {
     if (!b.geometri) continue;
     const l = L.geoJSON(b.geometri, { style: () => stil(b) });
-    l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (spor?.tegner()) { spor.leggTilPunkt(e.latlng); return; } if (regPagar) return; visBestand(b.id); });
+    l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (spor?.tegner()) { spor.leggTilPunkt(e.latlng); return; } if (regPagar) return; identifiser(e.latlng, b); });
     l.addTo(bestandLag); lagPerBestand.set(b.id, l);
     const pt = etikettPunkt(b.geometri);
     if (pt) L.tooltip({ permanent: true, direction: 'center', className: 'nr-etikett', interactive: false }).setLatLng([pt[1], pt[0]]).setContent(esc(b.nr)).addTo(etikettLag);
@@ -114,6 +116,8 @@ function lukkArk(fraHistorikk = false) {
   if (regPagar) avbrytReg();
   endring = null;
   if (valgtId) { valgtId = null; oppdaterStiler(); }
+  if (valgtTiltak) { valgtTiltak = null; tegnTiltaksflater(); }
+  treffMarkor?.remove(); treffMarkor = null;
   settVisning('kart', false);
 }
 function settVisning(v, apne = true) {
@@ -131,7 +135,7 @@ const utfortNylig = (b) => (b.tiltak || []).filter((t) => t.status === 'utfort' 
 const nesteTiltak = (b) => (b.tiltak || []).filter((t) => t.status !== 'utfort').sort((x, y) => (x.aar || 0) - (y.aar || 0));
 function tiltakRad(b, t, medBestand = false) {
   const ferdig = t.status === 'utfort';
-  return `<div class="rad"><div><div class="tittel">${esc(TILTAKSTYPER[t.type]?.navn || t.type)} ${t.aar ? `· ${t.aar}` : ''}</div><div class="under">${medBestand ? `Bestand ${esc(b.nr)} · ` : ''}${esc(t.kommentar || '')}${ferdig && t.utfortDato ? ` · utført ${esc(t.utfortDato)}` : ''}</div></div>
+  return `<div class="rad"><div class="rad-tekst" data-tiltakkort="${esc(b.id)}|${esc(t.id)}" role="button" tabindex="0"><div class="tittel">${t.dekning ? '<span class="flate-merke" aria-hidden="true"></span>' : ''}${esc(TILTAKSTYPER[t.type]?.navn || t.type)} ${t.aar ? `· ${t.aar}` : ''}</div><div class="under">${medBestand ? `Bestand ${esc(b.nr)} · ` : ''}${esc(t.kommentar || '')}${ferdig && t.utfortDato ? ` · utført ${esc(t.utfortDato)}` : ''}</div></div>
     <div class="rad-knapper"><button type="button" class="avkryss endre" data-endre="${esc(b.id)}|${esc(t.id)}" aria-label="Endre eller slett tiltaket">✎</button><button type="button" class="avkryss ${ferdig ? 'ferdig' : ''}" data-utfort="${esc(b.id)}|${esc(t.id)}" aria-label="${ferdig ? 'Angre utført' : 'Merk som utført'}">${ferdig ? '✓' : ''}</button></div></div>`;
 }
 function visBestand(id, { zoom = false } = {}) {
@@ -166,23 +170,61 @@ function visTiltak() {
   const naa = alle.filter((x) => (x.t.aar || IAAR) <= IAAR + 1);
   const senere = alle.filter((x) => (x.t.aar || IAAR) > IAAR + 1).slice(0, 30);
   const nylig = (P?.bestand || []).flatMap((b) => (b.tiltak || []).filter((t) => t.status === 'utfort' && t.utfortDato && t.utfortDato.slice(0, 4) >= String(IAAR - 1)).map((t) => ({ b, t })));
-  const liste = (l) => l.map(({ b, t }) => `<div data-bestand="${esc(b.id)}">${tiltakRad(b, t, true)}</div>`).join('');
+  const liste = (l) => l.map(({ b, t }) => tiltakRad(b, t, true)).join('');
   aapneArk(`<h2>Tiltak</h2><p class="hint">Trykk på et tiltak for å se bestandet i kartet. Kryss av når det er gjort – det lagres med dagens dato.</p>
     <div class="knapper"><button type="button" class="knapp primar" data-h="sporlogg">Registrer utført tiltak med sporlogg</button></div>
     <h3>I år og neste år (${naa.length})</h3><div class="liste">${liste(naa) || '<div class="tom">Ingen tiltak de to neste årene.</div>'}</div>
     ${senere.length ? `<h3>Senere</h3><div class="liste">${liste(senere)}</div>` : ''}
     ${nylig.length ? `<h3>Nylig utført</h3><div class="liste">${liste(nylig)}</div>` : ''}`, { hoy: true });
 }
-async function settUtfort(bid, tid) {
+async function settUtfort(bid, tid, tilbakeTil = null) {
   const b = finn(bid); const t = b?.tiltak?.find((x) => x.id === tid); if (!t) return;
   const ferdig = t.status !== 'utfort';
   t.status = ferdig ? 'utfort' : 'planlagt';
   t.utfortDato = ferdig ? new Date().toISOString().slice(0, 10) : undefined;
   if (ferdig && t.type === 'sluttavvirkning' && confirm(`Oppdatere bestand ${b.nr} til hogstklasse I (alder 0, volum 0)?`)) { b.hogstklasse = null; b.alder = 0; b.volumDaa = 0; b.treantall = null; b.hoyde = null; }
   if (ferdig && t.type === 'planting' && confirm(`Sette bestand ${b.nr} til hogstklasse II (ungskog) med alder 1?`)) { b.hogstklasse = 2; b.alder = 1; }
-  await lagrePlanen(); oppdaterStiler();
+  await lagrePlanen(); oppdaterStiler(); tegnTiltaksflater();
   melding(ferdig ? `${TILTAKSTYPER[t.type]?.navn || 'Tiltak'} i ${b.nr} er merket utført.` : 'Merket som planlagt igjen.');
-  if (visning === 'tiltak') visTiltak(); else visBestand(bid);
+  if (tilbakeTil === 'tiltakkort') visTiltakKort(bid, tid); else if (visning === 'tiltak') visTiltak(); else visBestand(bid);
+}
+
+// ---------- identifisering i kartet: tiltaksflater og bestand ----------
+// Tiltak med egen flate (sporlogg/tegnet) vises i kartet: utførte grønne, planlagte blå og stiplet. Trykk i kartet
+// åpner det som ligger der – ett treff direkte, flere treff som en kort liste («Her ligger»).
+function tegnTiltaksflater() {
+  if (!tiltaksflateLag) { kart.createPane('tiltakPane'); kart.getPane('tiltakPane').style.zIndex = 420; kart.getPane('tiltakPane').style.pointerEvents = 'none'; tiltaksflateLag = L.layerGroup().addTo(kart); }
+  tiltaksflateLag.clearLayers();
+  for (const { t } of synligeTiltaksflater(P, { iAar: IAAR })) {
+    L.geoJSON(t.dekning, { pane: 'tiltakPane', style: tiltakStil(t, valgtTiltak?.tid === t.id), interactive: false }).addTo(tiltaksflateLag);
+  }
+}
+function identifiser(ll, b) {
+  const h = treffVed(P, ll.lat, ll.lng, { iAar: IAAR });
+  const best = h.bestand || b;
+  if (!h.tiltak.length) { visBestand(best.id); return; }
+  treffMarkor?.remove();
+  treffMarkor = L.circleMarker(ll, { radius: 7, color: '#fff', weight: 2.5, fillColor: '#c93a55', fillOpacity: 1, interactive: false }).addTo(kart);
+  aapneArk(`<h2>Her ligger</h2><p class="hint">Velg hva du vil se.</p>
+    <div class="liste">${h.tiltak.map(({ b: tb, t }) => `<button type="button" class="rad treff-rad" data-tiltakkort="${esc(tb.id)}|${esc(t.id)}"><div><div class="tittel"><span class="treff-ikon ${t.status === 'utfort' ? 'utfort' : 'planlagt'}" aria-hidden="true"></span>${esc(tiltakNavn(t))}</div><div class="under">${esc(tiltakLinje(tb, t))} · bestand ${esc(tb.nr)}</div></div><span>›</span></button>`).join('')}
+    ${best ? `<button type="button" class="rad treff-rad" data-bestand-kort="${esc(best.id)}"><div><div class="tittel"><span class="treff-ikon bestand" aria-hidden="true"></span>Bestand ${esc(best.nr)}</div><div class="under">${esc(TRESLAG[best.treslag] || '')}${best.bonitet ? ` · bonitet ${esc(best.bonitet)}` : ''}${hk(best) ? ` · HK ${HK_ROMERTALL[hk(best)]}` : ''} · ${fmt(best.areal, 1)} daa</div></div><span>›</span></button>` : ''}</div>`);
+}
+function visTiltakKort(bid, tid, { zoom = false } = {}) {
+  const b = finn(bid); const t = b?.tiltak?.find((x) => x.id === tid); if (!b || !t) return;
+  valgtTiltak = { bid, tid }; valgtId = null; oppdaterStiler(); tegnTiltaksflater();
+  if (zoom) zoomTilTiltak(bid, tid);
+  const utfort = t.status === 'utfort';
+  aapneArk(`<h2>${esc(tiltakNavn(t))}</h2>
+    <div><span class="merke" style="${utfort ? '' : 'background:#e3ecf8;color:#1d4f91'}">${utfort ? 'Utført' : 'Planlagt'}</span>${t.dekning ? '<span class="merke">Flate i kartet</span>' : ''}${t.oppdragId ? '<span class="merke">I oppdrag</span>' : ''}</div>
+    <dl class="kort-liste">${tiltakDetaljer(b, t).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+    ${t.kommentar ? `<p>${esc(t.kommentar)}</p>` : ''}
+    <div class="knapper"><button type="button" class="knapp" data-kort="utfort">${utfort ? 'Angre utført' : '✓ Merk utført'}</button><button type="button" class="knapp primar" data-kort="endre">✎ Endre</button></div>
+    <div class="knapper"><button type="button" class="knapp" data-kort="flate">${t.dekning ? 'Endre flate' : 'Tegn flate'}</button><button type="button" class="knapp" data-kort="bestand">Bestand ${esc(b.nr)}</button>${t.dekning ? '<button type="button" class="knapp" data-kort="zoom">Vis i kart</button>' : ''}</div>`);
+}
+function zoomTilTiltak(bid, tid) {
+  const b = finn(bid); const t = b?.tiltak?.find((x) => x.id === tid); if (!b) return;
+  const g = t?.dekning ? L.geoJSON(t.dekning) : lagPerBestand.get(bid); if (!g) return;
+  kart.fitBounds(g.getBounds(), { maxZoom: 17, padding: [40, 40], paddingBottomRight: [40, window.innerHeight * 0.45] });
 }
 
 // ---------- endre og slette tiltak ----------
@@ -222,9 +264,9 @@ async function endreFlate() {
       tilbake.utkast.fjernDekning = false; t.endret = new Date().toISOString().slice(0, 10);
       await lagrePlanen(); spor?.tegnUtfort(); oppdaterStiler();
       melding(geometri ? `Flaten er endret: ${fmt(daa, 1)} daa.` : 'Flaten er fjernet.');
-      visEndreTiltak(tilbake.bid, tilbake.tid);
+      if (tilbake.fra === 'tiltakkort') { endring = null; visTiltakKort(tilbake.bid, tilbake.tid); } else visEndreTiltak(tilbake.bid, tilbake.tid);
     },
-    vedAvbryt: () => { ferdig(); visEndreTiltak(tilbake.bid, tilbake.tid); },
+    vedAvbryt: () => { ferdig(); if (tilbake.fra === 'tiltakkort') { endring = null; visTiltakKort(tilbake.bid, tilbake.tid); } else visEndreTiltak(tilbake.bid, tilbake.tid); },
   });
 }
 function lesEndring() {
@@ -232,7 +274,7 @@ function lesEndring() {
   document.querySelectorAll('[data-tf]').forEach((el) => { u[el.dataset.tf] = el.type === 'checkbox' ? el.checked : el.value; });
   return u;
 }
-function tilbakeFraEndring() { const { bid, fra } = endring; endring = null; if (fra === 'tiltak') visTiltak(); else visBestand(bid); }
+function tilbakeFraEndring() { const { bid, tid, fra } = endring; endring = null; if (fra === 'tiltak') visTiltak(); else if (fra === 'tiltakkort' && finn(bid)?.tiltak?.some((x) => x.id === tid)) visTiltakKort(bid, tid); else visBestand(bid); }
 async function lagreEndring() {
   const b = finn(endring.bid); const t = b?.tiltak?.find((x) => x.id === endring.tid); if (!t) return;
   const u = lesEndring();
@@ -440,6 +482,17 @@ function kobleHendelser() {
     const plan = e.target.closest('[data-plan]'); if (plan) { await velgPlan(plan.dataset.plan); lukkArk(); return; }
     const en = e.target.closest('[data-endre]'); if (en) { e.stopPropagation(); const [bid, tid] = en.dataset.endre.split('|'); visEndreTiltak(bid, tid); return; }
     const ut = e.target.closest('[data-utfort]'); if (ut) { e.stopPropagation(); const [bid, tid] = ut.dataset.utfort.split('|'); settUtfort(bid, tid); return; }
+    const bk = e.target.closest('[data-bestand-kort]'); if (bk) { visBestand(bk.dataset.bestandKort); return; }
+    const tk = e.target.closest('[data-tiltakkort]'); if (tk) { const [bid, tid] = tk.dataset.tiltakkort.split('|'); visTiltakKort(bid, tid, { zoom: true }); return; }
+    const kh = e.target.closest('[data-kort]')?.dataset.kort;
+    if (kh && valgtTiltak) {
+      const { bid, tid } = valgtTiltak;
+      if (kh === 'endre') { visEndreTiltak(bid, tid); endring.fra = 'tiltakkort'; return; }
+      if (kh === 'flate') { endring = { bid, tid, fra: 'tiltakkort' }; endreFlate(); return; }
+      if (kh === 'utfort') { settUtfort(bid, tid, 'tiltakkort'); return; }
+      if (kh === 'bestand') { visBestand(bid, { zoom: true }); return; }
+      if (kh === 'zoom') { zoomTilTiltak(bid, tid); return; }
+    }
     const best = e.target.closest('[data-bestand]'); if (best) { visBestand(best.dataset.bestand, { zoom: true }); return; }
     const bv = e.target.closest('[data-bestand-vis]'); if (bv) { visBestand(bv.dataset.bestandVis, { zoom: true }); return; }
     const reg = e.target.closest('[data-reg]'); if (reg) { visRegistrering(reg.dataset.reg); return; }
@@ -495,7 +548,7 @@ function kobleHendelser() {
 
 async function start() {
   initKart();
-  spor = initSporlogg({ L, kart, plan: () => P, lagrePlanen, aapneArk, lukkArk, melding, tegnPlan: () => tegnPlan(false), nyId, settStatus: (paa) => document.body.classList.toggle('spor-aktiv', paa) });
+  spor = initSporlogg({ L, kart, plan: () => P, lagrePlanen, aapneArk, lukkArk, melding, tegnPlan: () => tegnPlan(false), nyId, tegnFlater: () => tegnTiltaksflater(), settStatus: (paa) => document.body.classList.toggle('spor-aktiv', paa) });
   kobleHendelser(); nettStatus();
   const liste = await listPlaner();
   const h = await hent().catch(() => null);

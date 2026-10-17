@@ -27,7 +27,7 @@ export function lastPC() {
   return pcLaster;
 }
 
-export function initSporlogg({ L, kart, plan, lagrePlanen, aapneArk, lukkArk, melding, tegnPlan, nyId, settStatus }) {
+export function initSporlogg({ L, kart, plan, lagrePlanen, aapneArk, lukkArk, melding, tegnPlan, nyId, settStatus, tegnFlater = null }) {
   let aktiv = null; // { planId, type, bredde, start, segmenter: [[{lat,lon,noyaktighet,tid}]], pauset, pauseTid }
   let watch = null; let wake = null; let tikk = null;
   let linjer = []; let dekningLag = null; let resultat = null;
@@ -54,6 +54,7 @@ export function initSporlogg({ L, kart, plan, lagrePlanen, aapneArk, lukkArk, me
   kart.on('zoomend', tegnSpor);
   function tegnUtfort() {
     utfortLag.clearLayers();
+    if (tegnFlater) { tegnFlater(); return; } // verten tegner tiltaksflatene selv
     const P = plan(); if (!P) return;
     const fra = String(new Date().getFullYear() - 1);
     for (const b of P.bestand) for (const t of b.tiltak || []) {

@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.12.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.13.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -91,6 +91,12 @@ Tiltak kan endres og slettes både i fullversjonen og i SkogIQ Felt (`js/tiltak-
   - **Forenkling:** flaten forenkles til høyst ca. 160 hjørner for redigering (Douglas–Peucker for lukkede ringer), og biter og hull under 10 m² fjernes.
   - **Ferdig:** flaten ryddes med union og klippes mot bestandet. Arealet og andelen regnes ut på nytt. Over 99,5 % regnes som hele bestandet.
   - **I kartet:** fullversjonen viser flatene til tiltakene i bestandet som er valgt.
+- **Identifisere i kartet** (`js/treff.js`):
+  - **I kartet:** tiltak med egen flate vises over bestandene. Planlagte er blå og stiplet, og utførte de siste to årene er grønne.
+  - **Ett treff:** bestandet åpnes som før.
+  - **Flere treff:** ligger det tiltaksflater der du trykker, vises «Her ligger», med tiltakene (planlagte først) og bestandet.
+  - **I Felt** åpner valget et tiltakskort med status, areal og andel, bestand, kilde og kommentar. Kortet har knappene Merk utført/Angre, Endre, Endre flate, Bestand og Vis i kart, og den valgte flaten utheves med gult. Trykk på et tiltak i en liste åpner også kortet.
+  - **I fullversjonen** vises listen og kortet i en popup i kartet. «Tiltaksflater» er eget lag i lagvelgeren og står i tegnforklaringen.
 - **Motortiltak:** et tiltak fra tiltaksmotoren som endres for hånd, blir manuelt, slik at motoren ikke erstatter det.
 - **Sletting:** du må bekrefte. Bekreftelsen sier fra om tiltaket ligger i et oppdrag eller har en sporlogg-flate. Tiltaket fjernes også fra oppdraget og fra sporloggens bestandsliste.
 - **Gamle tiltak:** importerte tiltak uten id får id automatisk, slik at de kan endres.

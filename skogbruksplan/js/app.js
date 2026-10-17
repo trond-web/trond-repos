@@ -11,6 +11,7 @@ import { lagre, hent, listPlaner, lagrePlan, hentPlan, slettPlan, hentVerdi, lag
 import { initFlereEiendommer } from './flere-eiendommer.js';
 import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
 import { startFlateRedigering } from './flate-redigering.js';
+import { synligeTiltaksflater, treffVed, tiltakStil, tiltakNavn, tiltakLinje, tiltakDetaljer } from './treff.js';
 import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import { genererPlan, hentKommuner, finnKommune } from './generator.js';
 import { initKommune } from './kommune-ui.js';
@@ -136,6 +137,9 @@ function initKart() {
   graa.addTo(kart);
   markslagLag = L.featureGroup().addTo(kart);
   bestandLag = L.featureGroup().addTo(kart);
+  // Tiltak med egen flate (sporlogg/tegnet) over bestandene. Klikk går gjennom til bestandene og identifiseres der.
+  kart.createPane('tiltakPane'); kart.getPane('tiltakPane').style.zIndex = 420; kart.getPane('tiltakPane').style.pointerEvents = 'none';
+  tiltaksflateLag = L.layerGroup().addTo(kart);
   // Nøkkelbiotoper (MiS) og miljøfigurer i eget lag over bestandene, synlig i alle faner. Klikk går gjennom til bestandene.
   kart.createPane('misPane'); kart.getPane('misPane').style.zIndex = 450; kart.getPane('misPane').style.pointerEvents = 'none';
   misLag = L.featureGroup().addTo(kart);
@@ -143,7 +147,7 @@ function initKart() {
   document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto }, { ...overlays, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto }, { ...overlays, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
 
   kart.on('click', (e) => {
@@ -242,17 +246,55 @@ function tegnLegend() {
       + (vr.stier?.length ? `<div>${strek(VEISTIL.sti.farge, [2, 4])}Sti</div>` : '');
   }
   if (kat.length && kart.hasLayer(markslagLag)) html += `<b style="display:block;margin-top:6px">Uproduktiv mark</b>${Object.keys(MARKSLAG).filter((k) => kat.includes(k)).map((k) => `<div>${symbolRute(k)} ${esc(MARKSLAG[k].kort)}</div>`).join('')}`;
+  if (kart.hasLayer(tiltaksflateLag)) {
+    const fl = synligeTiltaksflater(S, { iAar: IAAR });
+    if (fl.length) html += `<b style="display:block;margin-top:6px">Tiltaksflater</b>${fl.some(({ t }) => t.status === 'utfort') ? '<div><i style="background:#1f8f5a;opacity:.6;box-shadow:inset 0 0 0 1.5px #0d4d30"></i>Utført (siste 2 år)</div>' : ''}${fl.some(({ t }) => t.status !== 'utfort') ? '<div><i style="background:repeating-linear-gradient(45deg,#2a78d6 0 3px,#cfe0f7 3px 6px);box-shadow:inset 0 0 0 1.5px #1d4f91"></i>Planlagt</div>' : ''}<div class="hint" style="font-size:11px">Klikk i flaten for å se tiltaket</div>`;
+  }
   html += andreVisning?.legend() || '';
   $('#kartLegend').innerHTML = `<button type="button" class="legend-knapp" aria-expanded="${!legendLukket}">Tegnforklaring ${legendLukket ? '▸' : '▾'}</button><div class="legend-innhold" ${legendLukket ? 'hidden' : ''}>${html}</div>`;
 }
 
 // Flater registrert på tiltakene i valgt bestand (sporlogg eller tegnet), vist over bestandet.
-let tiltaksflateLag = null;
+let tiltaksflateLag = null; let valgtTiltakId = null;
 function tegnTiltaksflater() {
-  if (!tiltaksflateLag) tiltaksflateLag = L.layerGroup().addTo(kart);
+  if (!tiltaksflateLag) return;
   tiltaksflateLag.clearLayers();
-  const b = valgtId ? finnBestand(valgtId) : null; if (!b) return;
-  for (const t of b.tiltak || []) if (t.dekning) L.geoJSON(t.dekning, { style: { color: t.status === 'utfort' ? '#0d4d30' : '#2a78d6', weight: 1.5, dashArray: '4 3', fillColor: t.status === 'utfort' ? '#1f8f5a' : '#2a78d6', fillOpacity: 0.3 }, interactive: false }).addTo(tiltaksflateLag);
+  for (const { t } of synligeTiltaksflater(S, { iAar: IAAR })) L.geoJSON(t.dekning, { pane: 'tiltakPane', style: tiltakStil(t, t.id === valgtTiltakId), interactive: false }).addTo(tiltaksflateLag);
+}
+// Klikk i kartet: ligger det tiltaksflater der, vises en liste med tiltakene og bestandet; ellers åpnes bestandet.
+function identifiser(ll, b) {
+  const h = (kart.hasLayer(tiltaksflateLag) ? treffVed(S, ll.lat, ll.lng, { iAar: IAAR }) : { tiltak: [], bestand: b });
+  if (!h.tiltak.length) { velgBestand(b.id, { zoom: false }); visFane('bestand'); return; }
+  const best = h.bestand || b;
+  const div = document.createElement('div'); div.className = 'treff-popup';
+  // Innholdet byttes ut ved klikk. Leaflet ser da ikke lenger at klikket var i popupen og lukker den – stopp klikket her.
+  L.DomEvent.disableClickPropagation(div); div.addEventListener('click', (e) => e.stopPropagation());
+  const liste = () => {
+    valgtTiltakId = null; tegnTiltaksflater();
+    div.innerHTML = `<b>Her ligger</b><div class="treff-liste">${h.tiltak.map(({ b: tb, t }, i) => `<button type="button" data-treff="${i}"><span class="treff-ikon ${t.status === 'utfort' ? 'utfort' : 'planlagt'}"></span><span><b>${esc(tiltakNavn(t))}</b><small>${esc(tiltakLinje(tb, t))} · bestand ${esc(tb.nr)}</small></span></button>`).join('')}
+      <button type="button" data-treff="bestand"><span class="treff-ikon bestand"></span><span><b>Bestand ${esc(best.nr)}</b><small>${esc(TRESLAG[best.treslag] || '')}${best.bonitet ? ` · bonitet ${esc(best.bonitet)}` : ''} · ${fmt(best.areal, 1)} daa</small></span></button></div>`;
+  };
+  const kort = (i) => {
+    const { b: tb, t } = h.tiltak[i]; valgtTiltakId = t.id; tegnTiltaksflater();
+    const utfort = t.status === 'utfort';
+    div.innerHTML = `<b>${esc(tiltakNavn(t))}</b> <span class="hint">${utfort ? 'utført' : 'planlagt'}</span>
+      <dl class="treff-dl">${tiltakDetaljer(tb, t).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>${t.kommentar ? `<p class="hint" style="margin:4px 0">${esc(t.kommentar)}</p>` : ''}
+      <div class="knapperad" style="margin:6px 0 0"><button type="button" class="knapp liten primar" data-k="endre">✎ Endre</button><button type="button" class="knapp liten" data-k="utfort">${utfort ? 'Angre utført' : '✓ Utført'}</button><button type="button" class="knapp liten" data-k="bestand">Bestand ${esc(tb.nr)}</button>${h.tiltak.length > 1 ? '<button type="button" class="knapp liten" data-k="tilbake">‹ Liste</button>' : ''}</div>`;
+    div.onclick = (e) => {
+      const k = e.target.closest('[data-k]')?.dataset.k; if (!k) return;
+      if (k === 'endre') { kart.closePopup(); aapneTiltakDialog(tb, t); }
+      if (k === 'utfort') { settUtfort(tb, t, !utfort); endret({ kart: true }); if (valgtId === tb.id) visDetalj(); kort(i); }
+      if (k === 'bestand') { kart.closePopup(); velgBestand(tb.id, { zoom: false }); visFane('bestand'); }
+      if (k === 'tilbake') { liste(); div.onclick = listeKlikk; }
+    };
+  };
+  const listeKlikk = (e) => {
+    const v = e.target.closest('[data-treff]')?.dataset.treff; if (v == null) return;
+    if (v === 'bestand') { kart.closePopup(); velgBestand(best.id, { zoom: false }); visFane('bestand'); return; }
+    kort(Number(v));
+  };
+  if (h.tiltak.length === 1) kort(0); else { liste(); div.onclick = listeKlikk; }
+  L.popup({ maxWidth: 320, minWidth: 240, className: 'treff-pop' }).setLatLng(ll).setContent(div).openOn(kart).on('remove', () => { valgtTiltakId = null; tegnTiltaksflater(); });
 }
 function stilFor(b) {
   const farge = fargeFor(b);
@@ -305,7 +347,7 @@ function tegnBestandKart(zoom = false) {
   for (const b of S.bestand) {
     if (!b.geometri) continue;
     const lag = L.geoJSON(b.geometri, { style: () => stilFor(b) });
-    lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (deling) { leggTilDelepunkt(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } velgBestand(b.id, { zoom: false }); visFane('bestand'); });
+    lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (deling) { leggTilDelepunkt(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } identifiser(e.latlng, b); });
     lag.addTo(bestandLag);
     lagPerBestand.set(b.id, lag);
     const pt = etikettPunkt(b.geometri);
