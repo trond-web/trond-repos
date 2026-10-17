@@ -881,3 +881,10 @@ progress { accent-color: var(--accent); height: 8px; }
 .andre-etikett span { display: inline-block; background: rgba(255,255,255,.92); border: 1.5px solid; border-radius: 99px; padding: 2px 9px; font: 700 12px/1.3 var(--font-body); white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
 .andre-popup { min-width: 180px; }
 .andre-popup .hint { margin-top: 2px; }
+
+/* Lenke til mobilversjonen (SkogIQ Felt) */
+.felt-lenke { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; text-decoration: none; color: inherit; }
+.felt-lenke .felt-ikon { font-size: 26px; }
+.felt-lenke b { display: block; }
+.felt-lenke .hint { display: block; margin-top: 2px; }
+@media (min-width: 861px) { .felt-lenke.bare-mobil { display: none; } }

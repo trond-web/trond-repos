@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.7.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.8.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -68,6 +68,24 @@ Store eiendommer støttes:
 - **Rask geometri:** polygonklipping gjøres med `polygon-clipping`, med Turf som reserve.
 - **Delte bestand:** bestand som NIBIO har lagret som flere flater med samme nummer, slås sammen. Har delene ulike data, får de bokstav etter nummeret (f.eks. 1-45a og 1-45b).
 - **Eksempel:** Flå 22/1 (12 teiger, 11 455 daa) gir 563 bestand på 9 822 daa skog.
+
+## SkogIQ Felt – mobilversjon som fungerer offline (`felt.html`)
+
+En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen er med (`felt.html`, `felt.css`, `js/felt-app.js`). Den bruker de samme planene som fullversjonen (IndexedDB i nettleseren). Endringer synkroniseres mellom faner med `BroadcastChannel`.
+
+- **Kart:** bestandene er farget etter hogstklasse med bestandsnummer, og eiendomsgrensen vises. Du kan bytte mellom gråtone, topografisk kart og flyfoto, og zoome til hele eiendommen.
+- **GPS:** viser posisjonen med nøyaktighet og følger deg. Stripen øverst viser hvilket bestand du står i. Trykk på den for bestandskortet.
+- **Bestandskort:** treslag, bonitet, hogstklasse, areal, alder, volum, treantall, høyde og planlagte tiltak. Tiltak krysses av som utført med dagens dato. Ved sluttavvirkning og planting tilbys oppdatering av bestandet, som i fullversjonen.
+- **Registrering:** kategori, beskrivelse og bilde fra kameraet. Posisjonen tas fra GPS, eller fra et sikte midt i kartet. Registreringene vises i kartet og i fullversjonen.
+- **Tiltak:** liste over tiltak i år og neste år, senere tiltak og nylig utførte.
+- **Offline:**
+  - Service workeren lagrer appen, også Leaflet og bibliotekene, slik at begge versjonene åpner uten nett.
+  - «Last ned kart for offline» lagrer Kartverkets topografiske kart for eiendommen (zoom 10–17). Flyfoto krever nett.
+  - Registreringer og utførte tiltak lagres på telefonen uten nett. En prikk øverst viser nettstatus.
+- **PWA:** egen manifestfil (`felt.webmanifest`) med PNG-ikoner og maskerbart ikon. Den kan installeres som «SkogIQ Felt», og har knapp for installering (Android/Chrome) eller veiledning for iPhone (Del → Legg til på Hjem-skjerm).
+- **Fullversjonen:** den har lenke til mobilversjonen i Felt-fanen, i Planer på mobil og i kommandopaletten. Fullversjonens manifest har snarveien «Felt».
+- **Start i mobilversjonen:** dette kan slås på under «Mer». `./?full` åpner alltid fullversjonen.
+- **Test:** testene sjekker at alle moduler som importeres fra `app.js` og `felt-app.js` ligger i service workerens liste. Ellers ville offline-støtten bryte uten at noen merket det.
 
 ## Flere eiendommer i kartet (fanen «Planer»)
 

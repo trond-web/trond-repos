@@ -34,6 +34,7 @@ import * as OPP from '../js/oppdrag.js';
 import * as KSL from '../js/ksl.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
+import { flisUrler } from '../js/offline-kart.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER, kjedeSammen, hentTraktorveierOgStier, slaaInnFkb, tomtVeiregister } from '../js/veier.js';
 
@@ -1102,6 +1103,34 @@ test('Flere eiendommer: avgrensning per plan og hogstklasse med planens egne inn
   assert.ok([1, 2, 3, 4, 5].includes(hkFor(b, { ...STANDARD_INNSTILLINGER, ...S.innstillinger })));
   assert.equal(hkFor({ ...b, hogstklasse: 3 }, STANDARD_INNSTILLINGER), 3);
   assert.ok(new Set(EIENDOM_FARGER).size === EIENDOM_FARGER.length);
+});
+
+test('Offline (PWA): service workeren bufrer alle moduler for fullversjonen og SkogIQ Felt, og kartfliser for eiendommen', async () => {
+  const fs = await import('node:fs'); const path = await import('node:path');
+  const rot = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
+  const sw = fs.readFileSync(path.join(rot, 'sw.js'), 'utf8');
+  const skall = new Set([...sw.slice(sw.indexOf('const SKALL'), sw.indexOf('];', sw.indexOf('const SKALL'))).matchAll(/'([^']+)'/g)].map((m) => m[1]));
+  // Alle moduler som importeres (rekursivt) fra app.js og felt-app.js må ligge i SKALL.
+  const besokt = new Set(); const mangler = [];
+  const gaa = (fil) => {
+    if (besokt.has(fil)) return; besokt.add(fil);
+    if (!skall.has(fil)) mangler.push(fil);
+    const kode = fs.readFileSync(path.join(rot, fil), 'utf8');
+    for (const m of kode.matchAll(/(?:import|export)[^'"]*from\s*['"](\.\/[^'"]+)['"]/g)) gaa(path.posix.join(path.posix.dirname(fil), m[1]));
+  };
+  gaa('js/app.js'); gaa('js/felt-app.js');
+  assert.deepEqual(mangler, [], `mangler i sw.js: ${mangler.join(', ')}`);
+  for (const f of ['felt.html', 'felt.css', 'felt.webmanifest', 'index.html', 'manifest.webmanifest', 'ikon-192.png', 'ikon-512.png']) {
+    assert.ok(skall.has(f), f); assert.ok(fs.existsSync(path.join(rot, f)), `${f} finnes`);
+  }
+  for (const m of ['manifest.webmanifest', 'felt.webmanifest']) {
+    const j = JSON.parse(fs.readFileSync(path.join(rot, m), 'utf8'));
+    assert.ok(j.icons.some((i) => i.sizes === '512x512') && j.icons.some((i) => i.sizes === '192x192') && j.display === 'standalone', m);
+  }
+  // Kartfliser: alle zoomnivåer 10–17 og begge kartlag.
+  const u = flisUrler([11.0, 60.0, 11.02, 60.01]);
+  assert.ok(u.length > 100 && u.every((x) => x.startsWith('https://cache.kartverket.no/')));
+  assert.ok(u.some((x) => x.includes('/topo/default/webmercator/17/')) && u.some((x) => x.includes('/topograatone/default/webmercator/10/')));
 });
 
 await Promise.all(venter);

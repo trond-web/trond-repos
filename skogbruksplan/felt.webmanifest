@@ -1,0 +1,22 @@
+{
+  "id": "felt.html",
+  "name": "SkogIQ Felt",
+  "short_name": "SkogIQ Felt",
+  "description": "Mobilversjon av skogbruksplanen: kart, bestand, GPS, registreringer og tiltak – fungerer offline.",
+  "lang": "no",
+  "start_url": "felt.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#10241c",
+  "theme_color": "#10241c",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "ikon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "ikon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "ikon-maskerbar-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Fullversjon", "url": "./?full", "icons": [{ "src": "ikon-192.png", "sizes": "192x192" }] }
+  ]
+}

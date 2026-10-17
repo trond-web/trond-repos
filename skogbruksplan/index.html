@@ -14,6 +14,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Schibsted+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="style.css">
+<script>try { if (localStorage.getItem('skogiq-start-felt') === '1' && !/[?&]full\b/.test(location.search)) location.replace('felt.html'); } catch (e) {}</script>
+<link rel="apple-touch-icon" href="ikon-180.png">
 <script>try { const t = localStorage.getItem('skogiq-tema'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
 </head>
 <body>
@@ -107,6 +109,7 @@
     <div class="panel-innhold">
     <!-- PLANER -->
     <div class="fane" id="fane-planer" hidden>
+      <a class="kort felt-lenke bare-mobil" href="felt.html"><span class="felt-ikon" aria-hidden="true">📱</span><span><b>SkogIQ Felt – mobilversjonen</b><span class="hint">Kartet i fullskjerm, GPS, registreringer og tiltak. Fungerer uten nett og kan installeres på telefonen.</span></span><span aria-hidden="true">›</span></a>
       <div class="kort helt">
         <h3>Skogbruksplan på under ett minutt</h3>
         <p>Skriv inn kommune, gårds- og bruksnummer. SkogIQ setter sammen planen fra åpne data og sammenligner den gamle taksten med nye fjernmålinger.</p>
@@ -470,6 +473,7 @@
 
     <!-- FELT -->
     <div class="fane" id="fane-felt" hidden>
+      <a class="kort felt-lenke" href="felt.html"><span class="felt-ikon" aria-hidden="true">📱</span><span><b>SkogIQ Felt – mobilversjonen</b><span class="hint">Kartet i fullskjerm, GPS, registreringer og tiltak. Fungerer uten nett og kan installeres på telefonen.</span></span><span aria-hidden="true">›</span></a>
       <div class="kort">
         <h3>Hvor er jeg?</h3>
         <p id="gpsStatus" class="hint">Trykk på knappen for å slå på GPS. Appen viser hvilket bestand du står i.</p>
