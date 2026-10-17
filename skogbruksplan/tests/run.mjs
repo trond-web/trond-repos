@@ -35,6 +35,7 @@ import * as KSL from '../js/ksl.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
+import * as SPOR from '../js/sporlogg.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER, kjedeSammen, hentTraktorveierOgStier, slaaInnFkb, tomtVeiregister } from '../js/veier.js';
 
@@ -1131,6 +1132,49 @@ test('Offline (PWA): service workeren bufrer alle moduler for fullversjonen og S
   const u = flisUrler([11.0, 60.0, 11.02, 60.01]);
   assert.ok(u.length > 100 && u.every((x) => x.startsWith('https://cache.kartverket.no/')));
   assert.ok(u.some((x) => x.includes('/topo/default/webmercator/17/')) && u.some((x) => x.includes('/topograatone/default/webmercator/10/')));
+});
+
+test('Sporlogg: rensing, dekningsflate per bestand, planlagt → utført, sammenslåing uten dobbelttelling og GPX', async () => {
+  // GPS-støy: unøyaktige punkter, stillestående og urealistiske hopp fjernes.
+  const t0 = Date.parse('2026-10-01T08:00:00Z');
+  const rå = [{ lat: 60, lon: 11, noyaktighet: 5, tid: t0 }, { lat: 60, lon: 11.000005, noyaktighet: 5, tid: t0 + 1000 }, { lat: 60.0001, lon: 11, noyaktighet: 80, tid: t0 + 2000 }, { lat: 60.01, lon: 11, noyaktighet: 5, tid: t0 + 3000 }, { lat: 60.00005, lon: 11, noyaktighet: 5, tid: t0 + 4000 }];
+  const rene = SPOR.rensSpor(rå);
+  assert.equal(rene.length, 2, JSON.stringify(rene));
+  // GPX tur–retur
+  const gpx = SPOR.tilGpx([rene]); const lest = SPOR.lesGpx(gpx);
+  assert.equal(lest.length, 1); assert.equal(lest[0].length, 2); assert.ok(Math.abs(lest[0][1].lat - rene[1].lat) < 1e-6 && lest[0][0].tid === t0);
+  let PC; try { PC = (await import('polygon-clipping')).default; } catch { return; } // geometrien krever polygon-clipping
+  const S = lagDemo(2026);
+  const b = S.bestand.find((x) => x.nr === '2');
+  b.tiltak = [{ id: 'p1', type: 'ungskogpleie', aar: 2026, status: 'planlagt' }];
+  const [lon, lat] = etikettPunkt(b.geometri); const [x0, y0] = geoTilUtm(lon, lat, 33);
+  const stripe = (dy) => Array.from({ length: 31 }, (_, k) => { const [lo, la] = utmTilGeo(x0 - 60 + k * 4, y0 + dy, 33); return { lat: la, lon: lo, noyaktighet: 5, tid: t0 + k * 3000 }; });
+  // To striper 8 m fra hverandre med 8 m bredde: ca. 2 × 120 m × 8 m ≈ 1,9 daa (+ ender)
+  const dek = SPOR.dekningUtm([stripe(0), stripe(8)], 8, PC);
+  const fd = SPOR.fordelPaaBestand(dek, S.bestand, PC);
+  const i2 = fd.find((f) => f.b === b);
+  assert.ok(i2 && i2.daa > 1.8 && i2.daa < 2.2, `${i2?.daa}`);
+  const f1 = SPOR.foreslaa(fd, 'ungskogpleie', { aar: 2026, PC });
+  assert.equal(f1.find((f) => f.b === b).handling, 'utfor-planlagt');
+  assert.ok(SPOR.bruk(f1, 'ungskogpleie', { dato: '2026-10-01', sporId: 's1', PC }) >= 1);
+  const t = b.tiltak.find((x) => x.id === 'p1');
+  assert.equal(t.status, 'utfort'); assert.equal(t.utfortDato, '2026-10-01'); assert.ok(t.dekning && Math.abs(t.arealDaa - i2.daa) < 0.02);
+  // Samme stripe en gang til + én ny: slås sammen, og bare den nye stripen øker arealet.
+  const fd2 = SPOR.fordelPaaBestand(SPOR.dekningUtm([stripe(8), stripe(16)], 8, PC), S.bestand, PC);
+  const f2 = SPOR.foreslaa(fd2, 'ungskogpleie', { aar: 2026, PC });
+  const r2 = f2.find((f) => f.b === b);
+  assert.equal(r2.handling, 'slaa-sammen');
+  assert.ok(r2.nyttDaa > t.arealDaa + 0.8 && r2.nyttDaa < t.arealDaa + 1.1, `${t.arealDaa} → ${r2.nyttDaa}`);
+  SPOR.bruk(f2, 'ungskogpleie', { dato: '2026-10-02', sporId: 's2', PC });
+  assert.equal(b.tiltak.filter((x) => x.type === 'ungskogpleie' && x.status === 'utfort').length, 1, 'ett sammenslått tiltak');
+  assert.deepEqual(t.sporIder, ['s1', 's2']);
+  // Annet år eller annen type gir nytt tiltak.
+  const f3 = SPOR.foreslaa(fd2, 'markberedning', { aar: 2026, PC }); assert.equal(f3.find((f) => f.b === b).handling, 'nytt');
+  const f4 = SPOR.foreslaa(fd2, 'ungskogpleie', { aar: 2027, PC }); assert.equal(f4.find((f) => f.b === b).handling, 'nytt');
+  // «Hele bestandet» bruker bestandets areal.
+  const f5 = f3.map((f) => ({ ...f, brukHelt: true }));
+  SPOR.bruk(f5.filter((f) => f.b === b), 'markberedning', { dato: '2026-10-03', PC });
+  assert.equal(b.tiltak.find((x) => x.type === 'markberedning').arealDaa, b.areal);
 });
 
 await Promise.all(venter);

@@ -757,7 +757,8 @@ function alleTiltak() {
 }
 
 function tiltakOkonomi(t) {
-  const b = t.bestand; const areal = b.areal || 0;
+  // Tiltak registrert med sporlogg har eget areal (dekningen), ellers hele bestandet.
+  const b = t.bestand; const areal = t.arealDaa ?? b.areal ?? 0;
   if (HOGSTTYPER.includes(t.type)) {
     const aarFrem = Math.max(0, (t.aar || IAAR) - IAAR);
     const v = framskriv([b], aarFrem, inn(), { folgPlan: false }).perBestand.get(b.id)[aarFrem].volumDaa * areal;
@@ -1132,7 +1133,7 @@ function eksporter(type) {
   }
   if (type === 'tiltakcsv') {
     const kol = ['År', 'Bestand', 'Tiltak', 'Status', 'Prioritet', 'Areal daa', 'Volum m3', 'Netto kr', 'Skogfond kr', 'Kommentar'];
-    const rader = alleTiltak().sort((a, b) => a.aar - b.aar).map((t) => { const o = tiltakOkonomi(t); return csvRad([t.aar, t.bestand.nr, TILTAKSTYPER[t.type]?.navn, t.status, t.prioritet, t.bestand.areal, runde(o.m3), runde(o.netto), runde(o.skogfond), t.kommentar]); });
+    const rader = alleTiltak().sort((a, b) => a.aar - b.aar).map((t) => { const o = tiltakOkonomi(t); return csvRad([t.aar, t.bestand.nr, TILTAKSTYPER[t.type]?.navn, t.status, t.prioritet, t.arealDaa ?? t.bestand.areal, runde(o.m3), runde(o.netto), runde(o.skogfond), t.kommentar]); });
     return lastNed(filnavn('tiltak.csv'), `﻿${[kol.join(';'), ...rader].join('\n')}`, 'text/csv');
   }
   if (type === 'rapport') return skrivRapport();
@@ -1211,7 +1212,7 @@ function skrivRapport() {
     ${HOGSTKLASSER.map((h) => `<tr><td>${HK_NAVN[h]}</td>${Object.keys(TRESLAG).map((k) => `<td class="tall">${fmt(s.perHk[h][k], 1)}</td>`).join('')}<td class="tall">${fmt(Object.values(s.perHk[h]).reduce((a, b) => a + b, 0), 1)}</td></tr>`).join('')}</table>
     <h2>Tiltaksplan</h2>
     <table><tr><th>År</th><th>Bestand</th><th>Tiltak</th><th class="tall">Daa</th><th class="tall">m³</th><th class="tall">Netto kr</th><th>Merknad</th></tr>
-    ${tiltak.map((t) => { const o = tiltakOkonomi(t); return `<tr><td>${t.aar}</td><td>${esc(t.bestand.nr)}</td><td>${esc(TILTAKSTYPER[t.type]?.navn)}</td><td class="tall">${fmt(t.bestand.areal, 1)}</td><td class="tall">${o.m3 ? fmt(o.m3) : ''}</td><td class="tall">${fmt(o.netto)}</td><td>${esc(t.kommentar)}</td></tr>`; }).join('')}</table>
+    ${tiltak.map((t) => { const o = tiltakOkonomi(t); return `<tr><td>${t.aar}</td><td>${esc(t.bestand.nr)}</td><td>${esc(TILTAKSTYPER[t.type]?.navn)}</td><td class="tall">${fmt(t.arealDaa ?? t.bestand.areal, 1)}</td><td class="tall">${o.m3 ? fmt(o.m3) : ''}</td><td class="tall">${fmt(o.netto)}</td><td>${esc(t.kommentar)}</td></tr>`; }).join('')}</table>
     <h2>Bestandsliste</h2>
     <table><tr><th>Nr</th><th class="tall">Daa</th><th>Treslag</th><th class="tall">Bon</th><th>HK</th><th class="tall">Alder</th><th class="tall">m³/daa</th><th class="tall">m³</th><th>Merknad</th></tr>
     ${[...S.bestand].sort((a, b) => sortNr(a.nr, b.nr)).map((b) => { const st = startTilstand(b); return `<tr><td>${esc(b.nr)}</td><td class="tall">${fmt(b.areal, 1)}</td><td>${TRESLAG[b.treslag] || ''}</td><td class="tall">${b.bonitet ?? ''}</td><td>${HK_ROMERTALL[hk(b)] || ''}</td><td class="tall">${b.alder ?? ''}</td><td class="tall">${fmt(st.volumDaa, 1)}</td><td class="tall">${fmt(st.volumDaa * (b.areal || 0))}</td><td>${esc(b.merknad)}</td></tr>`; }).join('')}</table>
