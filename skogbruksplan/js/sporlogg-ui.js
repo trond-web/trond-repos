@@ -1,7 +1,7 @@
 // Sporlogg i SkogIQ Felt: gå med telefonen i lomma mens tiltaket utføres. Når sporet stoppes, regnes dekningen ut per
 // bestand og blir til utførte tiltak (planlagte tiltak markeres utført, like tiltak samme år slås sammen). GPX fra en
 // annen app eller klokke kan leses inn og behandles likt.
-import { SPOR_TILTAK, rensSpor, sporLengde, dekningUtm, fordelPaaBestand, foreslaa, bruk, tilGpx, lesGpx, tilGeometri } from './sporlogg.js';
+import { SPOR_TILTAK, rensSpor, sporLengde, dekningUtm, dekningFlate, flateArealM2, fordelPaaBestand, foreslaa, bruk, tilGpx, lesGpx, tilGeometri } from './sporlogg.js';
 import { TILTAKSTYPER } from './model.js';
 import { hentVerdi, lagreVerdi } from './store.js';
 
@@ -30,7 +30,9 @@ function lastPC() {
 export function initSporlogg({ L, kart, plan, lagrePlanen, aapneArk, lukkArk, melding, tegnPlan, nyId, settStatus }) {
   let aktiv = null; // { planId, type, bredde, start, segmenter: [[{lat,lon,noyaktighet,tid}]], pauset, pauseTid }
   let watch = null; let wake = null; let tikk = null;
-  let linjer = []; let dekningLag = null; let resultat = null; let folg = true; let forstePunkt = true; let sistFeil = 0;
+  let linjer = []; let dekningLag = null; let resultat = null;
+  let tegning = null; // { modus: 'linje' | 'flate', type, bredde, punkter: [{ lat, lon }] }
+  const tegneLag = L.layerGroup().addTo(kart); let folg = true; let forstePunkt = true; let sistFeil = 0;
   kart.on('dragstart', () => { folg = false; });
   const lag = L.layerGroup().addTo(kart);
   const utfortLag = L.layerGroup().addTo(kart);
@@ -64,6 +66,16 @@ export function initSporlogg({ L, kart, plan, lagrePlanen, aapneArk, lukkArk, me
   const punkter = () => aktiv?.segmenter.flat() || [];
   function status() {
     const el = document.getElementById('sporStatus');
+    if (tegning) {
+      const n = tegning.punkter.length; const flate = tegning.modus === 'flate';
+      const daa = flate ? flateArealM2(tegning.punkter) / 1000 : (sporLengde(tegning.punkter) * tegning.bredde) / 1000;
+      const klar = n >= (flate ? 3 : 2);
+      el.hidden = false; settStatus(true);
+      el.innerHTML = `<div><b>✎ ${flate ? 'Tegner område' : 'Tegner spor'}</b> · ${esc(navn(tegning.type))} · ${n} punkt${n === 1 ? '' : 'er'}${n > 1 ? ` · ca. ${dk(daa)} daa` : ''}</div>
+        <div class="hint" style="color:#b9c9bf">${n ? (flate ? 'Trykk rundt hele området som ble behandlet.' : 'Trykk langs veien du gikk.') : (flate ? 'Trykk i kartet for hvert hjørne av området.' : 'Trykk i kartet der du startet, og videre langs sporet.')}</div>
+        <div class="spor-knapper"><button type="button" class="knapp liten" data-spor="angre" ${n ? '' : 'disabled'}>Angre</button><button type="button" class="knapp liten" data-spor="avbryt-tegning">Avbryt</button><button type="button" class="knapp liten primar" data-spor="ferdig-tegning" ${klar ? '' : 'disabled'}>Ferdig</button></div>`;
+      return;
+    }
     if (resultat) { el.hidden = false; settStatus(true); el.innerHTML = `<div><b>${esc(navn(resultat.type))}</b> · sporet er ferdig, men ikke lagret</div><div class="spor-knapper"><button type="button" class="knapp liten primar" data-spor="vis">Vis resultat</button></div>`; return; }
     if (!aktiv) { el.hidden = true; settStatus(false); return; }
     const p = rensSpor(punkter()); const lengde = sporLengde(p);
@@ -113,6 +125,9 @@ export function initSporlogg({ L, kart, plan, lagrePlanen, aapneArk, lukkArk, me
       <input id="sporBredde" type="number" min="1" max="60" step="1" value="${SPOR_TILTAK[valgt].bredde}" inputmode="numeric" class="tallfelt">
       <div class="knapper"><button type="button" class="knapp primar" data-spor="start">● Start sporlogg</button></div>
       <p class="hint">• = planlagt i år eller neste år. Gå i striper med omtrent arbeidsbredden mellom. Appen holder skjermen våken, og telefonen kan ligge i lomma. Låser du skjermen, kan nettleseren stoppe GPS – logg da med en annen app eller klokke og les inn GPX-filen.</p>
+      <h3>Glemte du å starte sporloggen?</h3>
+      <p class="hint">Tegn sporet eller området i kartet i etterkant, eller les inn et spor fra en annen app. Datoen kan settes tilbake i tid før du lagrer.</p>
+      <div class="knapper"><button type="button" class="knapp" data-spor="tegn-linje">✎ Tegn spor</button><button type="button" class="knapp" data-spor="tegn-flate">✎ Tegn område</button></div>
       <div class="knapper"><label class="knapp">Les inn GPX-fil<input type="file" accept=".gpx,application/gpx+xml" id="gpxFil" hidden></label></div>`);
   }
   function start(type, bredde) {
@@ -132,12 +147,41 @@ export function initSporlogg({ L, kart, plan, lagrePlanen, aapneArk, lukkArk, me
   }
   async function forkast() { aktiv = null; resultat = null; await lagreVerdi(NOKKEL, null).catch(() => {}); stoppGps(); tegnSpor(); status(); dekningLag?.remove(); dekningLag = null; lukkArk(); }
 
+  // ---------- tegning (når sporloggen ikke ble startet) ----------
+  function tegnTegning() {
+    tegneLag.clearLayers();
+    if (!tegning) return;
+    const ll = tegning.punkter.map((p) => [p.lat, p.lon]);
+    if (tegning.modus === 'flate') {
+      if (ll.length >= 3) L.polygon(ll, { color: '#0d4d30', weight: 2, fillColor: FARGE, fillOpacity: 0.35, interactive: false }).addTo(tegneLag);
+      else if (ll.length === 2) L.polyline(ll, { color: '#0d4d30', weight: 2, dashArray: '4 4', interactive: false }).addTo(tegneLag);
+    } else if (ll.length >= 2) {
+      L.polyline(ll, { color: FARGE, weight: Math.max(3, tegning.bredde / meterPerPiksel()), opacity: 0.35, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(tegneLag);
+      L.polyline(ll, { color: '#0d4d30', weight: 2, interactive: false }).addTo(tegneLag);
+    }
+    ll.forEach((p, i) => L.circleMarker(p, { radius: i === ll.length - 1 ? 7 : 5, color: '#fff', weight: 2, fillColor: '#0d4d30', fillOpacity: 1, interactive: false }).addTo(tegneLag));
+  }
+  kart.on('zoomend', tegnTegning);
+  function startTegning(modus, type, bredde) {
+    if (aktiv && !aktiv.pauset) { melding('Stopp sporloggen som går før du tegner.'); return; }
+    tegning = { modus, type, bredde, punkter: [] };
+    lukkArk(); tegnTegning(); status();
+    melding(`${modus === 'flate' ? 'Trykk i kartet rundt området som ble behandlet.' : 'Trykk i kartet langs sporet du gikk.'}${kart.getZoom() < 15 ? ' Zoom inn for å tegne mer nøyaktig.' : ''}`, 4500);
+  }
+  function leggTilPunkt(ll) { if (!tegning) return; tegning.punkter.push({ lat: ll.lat, lon: ll.lng }); tegnTegning(); status(); }
+  kart.on('click', (e) => { if (tegning) leggTilPunkt(e.latlng); });
+  async function ferdigTegning() {
+    const t = tegning; if (!t) return;
+    tegning = null; tegnTegning();
+    await beregn({ type: t.type, bredde: t.bredde, segmenter: [t.punkter], flate: t.modus === 'flate', start: null, slutt: Date.now(), kilde: 'tegnet' });
+  }
+
   // ---------- beregning og forslag ----------
   async function beregn(spor) {
     let PC;
     try { PC = await lastPC(); } catch (e) { melding(e.message, 6000); return; }
     const P = plan();
-    const dekning = dekningUtm(spor.segmenter, spor.bredde, PC);
+    const dekning = spor.flate ? dekningFlate(spor.segmenter[0], PC) : dekningUtm(spor.segmenter, spor.bredde, PC);
     const fordeling = fordelPaaBestand(dekning, P.bestand, PC);
     const dato = new Date(spor.slutt || Date.now()).toISOString().slice(0, 10);
     resultat = { ...spor, PC, dekning, fordeling, dato, forslag: foreslaa(fordeling, spor.type, { aar: Number(dato.slice(0, 4)), PC }) };
@@ -154,10 +198,10 @@ export function initSporlogg({ L, kart, plan, lagrePlanen, aapneArk, lukkArk, me
     const r = resultat; const sum = r.fordeling.reduce((s, f) => s + f.daa, 0);
     const lengde = r.segmenter.reduce((s, seg) => s + sporLengde(seg), 0);
     aapneArk(`<h2>${esc(navn(r.type))} – resultat</h2>
-      <p class="hint">${dk(lengde / 1000, 2)} km spor × ${r.bredde} m bredde gir <b>${dk(sum)} daa</b> i ${r.fordeling.length} bestand.${r.kilde === 'gpx' ? ' (fra GPX-fil)' : ''}</p>
+      <p class="hint">${r.flate ? `Tegnet område gir <b>${dk(sum)} daa</b>` : `${dk(lengde / 1000, 2)} km spor × ${r.bredde} m bredde gir <b>${dk(sum)} daa</b>`} i ${r.fordeling.length} bestand.${r.kilde === 'gpx' ? ' (fra GPX-fil)' : r.kilde === 'tegnet' ? ' Tegnet i kartet – sjekk datoen.' : ''}</p>
       <div class="spor-valg">
         <label>Tiltak<select data-spor-felt="type">${Object.keys(SPOR_TILTAK).map((t) => `<option value="${t}" ${t === r.type ? 'selected' : ''}>${esc(navn(t))}</option>`).join('')}</select></label>
-        <label>Bredde (m)<input type="number" min="1" max="60" data-spor-felt="bredde" value="${r.bredde}"></label>
+        ${r.flate ? '<span></span>' : `<label>Bredde (m)<input type="number" min="1" max="60" data-spor-felt="bredde" value="${r.bredde}"></label>`}
         <label>Dato<input type="date" data-spor-felt="dato" value="${r.dato}"></label>
       </div>
       <h3>Bestand</h3>
@@ -174,7 +218,7 @@ export function initSporlogg({ L, kart, plan, lagrePlanen, aapneArk, lukkArk, me
     const sporId = nyId('s');
     const n = bruk(r.forslag, r.type, { dato: r.dato, sporId, PC: r.PC, nyId });
     P.sporlogger = P.sporlogger || [];
-    P.sporlogger.unshift({ id: sporId, type: r.type, bredde: r.bredde, start: r.start ? new Date(r.start).toISOString() : null, slutt: r.slutt ? new Date(r.slutt).toISOString() : null, kilde: r.kilde, lengdeM: Math.round(r.segmenter.reduce((s, seg) => s + sporLengde(seg), 0)), dekningDaa: Math.round(r.fordeling.reduce((s, f) => s + f.daa, 0) * 100) / 100, bestand: r.forslag.filter((f) => f.velg).map((f) => f.b.id), segmenter: r.segmenter.map((s) => s.map((p) => [Math.round(p.lat * 1e6) / 1e6, Math.round(p.lon * 1e6) / 1e6, p.tid || null])) });
+    P.sporlogger.unshift({ id: sporId, type: r.type, bredde: r.flate ? null : r.bredde, flate: !!r.flate, start: r.start ? new Date(r.start).toISOString() : null, slutt: r.slutt ? new Date(r.slutt).toISOString() : null, kilde: r.kilde, lengdeM: Math.round(r.segmenter.reduce((s, seg) => s + sporLengde(seg), 0)), dekningDaa: Math.round(r.fordeling.reduce((s, f) => s + f.daa, 0) * 100) / 100, bestand: r.forslag.filter((f) => f.velg).map((f) => f.b.id), segmenter: r.segmenter.map((s) => s.map((p) => [Math.round(p.lat * 1e6) / 1e6, Math.round(p.lon * 1e6) / 1e6, p.tid || null])) });
     await lagrePlanen();
     if (r.kilde === 'gps' || aktiv?.pauset) { aktiv = null; await lagreVerdi(NOKKEL, null).catch(() => {}); }
     resultat = null; dekningLag?.remove(); dekningLag = null; tegnSpor(); status(); tegnPlan(); tegnUtfort(); lukkArk();
@@ -194,6 +238,9 @@ export function initSporlogg({ L, kart, plan, lagrePlanen, aapneArk, lukkArk, me
   // ---------- hendelser ----------
   document.getElementById('sporStatus').addEventListener('click', (e) => {
     const h = e.target.closest('[data-spor]')?.dataset.spor;
+    if (h === 'angre' && tegning) { tegning.punkter.pop(); tegnTegning(); status(); return; }
+    if (h === 'avbryt-tegning') { tegning = null; tegnTegning(); status(); return; }
+    if (h === 'ferdig-tegning') { ferdigTegning(); return; }
     if (h === 'pause') pause(); else if (h === 'fortsett') fortsett(); else if (h === 'stopp') stopp(); else if (h === 'vis' && resultat) visResultat();
   });
   const ark = document.getElementById('arkInnhold');
@@ -202,6 +249,7 @@ export function initSporlogg({ L, kart, plan, lagrePlanen, aapneArk, lukkArk, me
     if (t) { document.querySelectorAll('[data-spor-type]').forEach((c) => c.setAttribute('aria-pressed', String(c === t))); document.getElementById('sporBredde').value = SPOR_TILTAK[t.dataset.sporType].bredde; document.getElementById('sporBreddeTekst').textContent = SPOR_TILTAK[t.dataset.sporType].tekst; return; }
     const h = e.target.closest('[data-spor]')?.dataset.spor; if (!h) return;
     if (h === 'start') { const ty = document.querySelector('[data-spor-type][aria-pressed="true"]')?.dataset.sporType || 'annet'; start(ty, Math.max(1, Number(document.getElementById('sporBredde').value) || SPOR_TILTAK[ty].bredde)); }
+    if (h === 'tegn-linje' || h === 'tegn-flate') { const ty = document.querySelector('[data-spor-type][aria-pressed="true"]')?.dataset.sporType || 'annet'; startTegning(h === 'tegn-flate' ? 'flate' : 'linje', ty, Math.max(1, Number(document.getElementById('sporBredde').value) || SPOR_TILTAK[ty].bredde)); }
     if (h === 'lagre') lagre();
     if (h === 'gpx') lastNedGpx();
     if (h === 'forkast' && confirm('Forkaste sporet? Ingen tiltak blir lagret.')) forkast();
@@ -226,6 +274,8 @@ export function initSporlogg({ L, kart, plan, lagrePlanen, aapneArk, lukkArk, me
     tegnUtfort,
     aktiv: () => !!aktiv,
     harResultat: () => !!resultat,
+    tegner: () => !!tegning,
+    leggTilPunkt,
     // Et spor som var i gang da appen ble lukket, kan fortsettes eller avsluttes.
     async gjenoppta() {
       const lagret = await hentVerdi(NOKKEL).catch(() => null);

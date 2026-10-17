@@ -87,6 +87,13 @@ export function dekningUtm(spor, breddeM, PC) {
   }
   return deler.length ? samleUnion(PC, deler) : [];
 }
+// Tegnet område: polygonet selv er dekningen (selvkryssende omriss ryddes av union).
+export function dekningFlate(punkter, PC) {
+  if (punkter.length < 3) return [];
+  const ring = punkter.map((p) => tilUtm([p.lon, p.lat])); ring.push(ring[0]);
+  try { return PC.union([ring]); } catch { return [[ring]]; }
+}
+export const flateArealM2 = (punkter) => { if (punkter.length < 3) return 0; const r = punkter.map((p) => tilUtm([p.lon, p.lat])); let a = 0; for (let i = 0; i < r.length; i++) { const j = (i + 1) % r.length; a += r[i][0] * r[j][1] - r[j][0] * r[i][1]; } return Math.abs(a / 2); };
 const mpTilUtm = (g) => (g.type === 'Polygon' ? [g.coordinates] : g.coordinates).map((p) => p.map((ring) => ring.map(tilUtm)));
 const mpTilGeo = (mp) => mp.map((p) => p.map((ring) => ring.map(tilGeo)));
 export const tilGeometri = (mpUtm) => (mpUtm.length ? { type: 'MultiPolygon', coordinates: mpTilGeo(mpUtm) } : null);
