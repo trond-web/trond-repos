@@ -148,3 +148,15 @@ body.spor-aktiv .gpsstripe { top: calc(150px + var(--topp)); }
 body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus { display: none !important; }
 .flate-valg { display: grid; gap: 4px; }
 .flate-valg .knapp { width: 100%; }
+
+/* Identifisering: tiltaksflater og bestand */
+.rad-tekst { cursor: pointer; min-width: 0; }
+.flate-merke { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: #1f8f5a; margin-right: 6px; vertical-align: 0; opacity: .8; }
+.treff-ikon { display: inline-block; width: 14px; height: 14px; border-radius: 4px; margin-right: 8px; vertical-align: -2px; }
+.treff-ikon.utfort { background: #1f8f5a; }
+.treff-ikon.planlagt { background: repeating-linear-gradient(45deg, #2a78d6 0 3px, #cfe0f7 3px 6px); border: 1.5px solid #1d4f91; }
+.treff-ikon.bestand { background: #d9f6c7; border: 1.5px solid #1b1c19; }
+.treff-rad span:last-child { color: var(--muted); font-size: 20px; }
+.kort-liste { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 12px 0; font-size: 14.5px; }
+.kort-liste dt { color: var(--muted); }
+.kort-liste dd { margin: 0; font-weight: 600; }

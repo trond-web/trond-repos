@@ -38,6 +38,7 @@ import { flisUrler } from '../js/offline-kart.js';
 import * as SPOR from '../js/sporlogg.js';
 import * as TE from '../js/tiltak-endring.js';
 import * as FG from '../js/flate-geometri.js';
+import * as TR from '../js/treff.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER, kjedeSammen, hentTraktorveierOgStier, slaaInnFkb, tomtVeiregister } from '../js/veier.js';
 
@@ -1250,6 +1251,32 @@ test('Endre flate: forenkling til redigerbare punkter, legg til / fjern område 
   // Rundtur GeoJSON → UTM → GeoJSON
   const g = FG.tilGeometri(inne); assert.equal(g.type, 'MultiPolygon'); assert.ok(Math.abs(FG.arealUtm(FG.fraGeometri(g)) - 1600) < 1);
   assert.equal(FG.tilGeometri([]), null);
+});
+
+test('Identifisering i kartet: tiltaksflater og bestand i et punkt, synlighet og rekkefølge', () => {
+  const S = lagDemo(2026); const b = S.bestand.find((x) => x.nr === '2');
+  const [lon, lat] = etikettPunkt(b.geometri); const [x0, y0] = geoTilUtm(lon, lat, 33);
+  const kv = (dx0, dy0, w, h) => ({ type: 'Polygon', coordinates: [[[dx0, dy0], [dx0 + w, dy0], [dx0 + w, dy0 + h], [dx0, dy0 + h], [dx0, dy0]].map(([dx, dy]) => utmTilGeo(x0 + dx, y0 + dy, 33))] });
+  const g = (dx, dy) => { const [lo, la] = utmTilGeo(x0 + dx, y0 + dy, 33); return [la, lo]; };
+  b.tiltak = [
+    { id: 'u', type: 'ungskogpleie', status: 'utfort', utfortDato: '2026-09-01', aar: 2026, arealDaa: 4, dekning: kv(-60, -30, 80, 50) },
+    { id: 'p', type: 'markberedning', status: 'planlagt', aar: 2027, dekning: kv(0, -30, 60, 50) },
+    { id: 'gml', type: 'planting', status: 'utfort', utfortDato: '2019-05-01', aar: 2019, dekning: kv(-60, -30, 120, 50) },
+    { id: 'uten', type: 'tynning', status: 'planlagt', aar: 2030 },
+  ];
+  // Synlige: planlagte og utførte siste 2 år – ikke gamle eller uten flate.
+  assert.deepEqual(TR.synligeTiltaksflater(S, { iAar: 2026 }).map(({ t }) => t.id).sort(), ['p', 'u']);
+  // Overlapp: planlagt først, så utført, og bestandet.
+  let h = TR.treffVed(S, ...g(10, -5), { iAar: 2026 });
+  assert.deepEqual(h.tiltak.map(({ t }) => t.id), ['p', 'u']); assert.equal(h.bestand, b);
+  h = TR.treffVed(S, ...g(-40, -5), { iAar: 2026 }); assert.deepEqual(h.tiltak.map(({ t }) => t.id), ['u']);
+  h = TR.treffVed(S, ...g(0, 60), { iAar: 2026 }); assert.equal(h.tiltak.length, 0); assert.equal(h.bestand, b);
+  // Tekster
+  assert.match(TR.tiltakLinje(b, b.tiltak[0]), /utført .*4,0 daa/);
+  assert.match(TR.tiltakLinje(b, b.tiltak[3]), /planlagt 2030 · hele bestandet/);
+  const d = Object.fromEntries(TR.tiltakDetaljer(b, b.tiltak[0]));
+  assert.match(d.Areal, /4,0 daa \(\d+ % av bestandet\)/); assert.equal(d.Registrert, 'Tegnet');
+  assert.equal(TR.tiltakStil(b.tiltak[1], true).color, '#ffd400'); assert.ok(TR.tiltakStil(b.tiltak[1]).dashArray);
 });
 
 await Promise.all(venter);

@@ -897,3 +897,17 @@ progress { accent-color: var(--accent); height: 8px; }
 .dialog label.avkryss input { width: auto; }
 .dialog [hidden] { display: none !important; }
 .feilboks { background: var(--signal-soft); color: #8c1d33; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+
+/* Identifisering i kartet */
+.treff-popup { font: 13px/1.35 var(--font-body); }
+.treff-liste { display: grid; gap: 4px; margin-top: 6px; }
+.treff-liste button { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; text-align: left; border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 7px 9px; cursor: pointer; font: inherit; color: var(--text); }
+.treff-liste button:hover { background: var(--surface-2); }
+.treff-liste small { display: block; color: var(--muted); }
+.treff-ikon { display: inline-block; width: 14px; height: 14px; border-radius: 4px; }
+.treff-ikon.utfort { background: #1f8f5a; }
+.treff-ikon.planlagt { background: repeating-linear-gradient(45deg, #2a78d6 0 3px, #cfe0f7 3px 6px); border: 1.5px solid #1d4f91; }
+.treff-ikon.bestand { background: #d9f6c7; border: 1.5px solid #1b1c19; }
+.treff-dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 6px 0; }
+.treff-dl dt { color: var(--muted); }
+.treff-dl dd { margin: 0; font-weight: 600; }
