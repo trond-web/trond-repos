@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.10.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.11.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -68,6 +68,25 @@ Store eiendommer støttes:
 - **Rask geometri:** polygonklipping gjøres med `polygon-clipping`, med Turf som reserve.
 - **Delte bestand:** bestand som NIBIO har lagret som flere flater med samme nummer, slås sammen. Har delene ulike data, får de bokstav etter nummeret (f.eks. 1-45a og 1-45b).
 - **Eksempel:** Flå 22/1 (12 teiger, 11 455 daa) gir 563 bestand på 9 822 daa skog.
+
+## Endre og slette tiltak
+
+Tiltak kan endres og slettes både i fullversjonen og i SkogIQ Felt (`js/tiltak-endring.js`).
+
+- **Hvor:**
+  - I fullversjonen har hver tiltaksrad ✎ (endre) og ✕ (slett) i tiltakslisten og i bestandsdetaljen. ✎ åpner en dialog.
+  - I Felt har hvert tiltak ✎ ved siden av utført-avkrysningen, både i bestandskortet og i tiltakslisten.
+- **Hva kan endres:**
+  - type
+  - status (planlagt/utført)
+  - år, eller utført-dato for utførte tiltak (året settes fra datoen)
+  - areal, eller hele bestandet
+  - prioritet (i fullversjonen) og kommentar
+  - fjerning av en registrert sporlogg-flate
+- **Kontroll:** ukjent type, ugyldig år, dato fram i tid og areal større enn bestandet avvises med melding. Ingenting endres før alt er gyldig.
+- **Motortiltak:** et tiltak fra tiltaksmotoren som endres for hånd, blir manuelt, slik at motoren ikke erstatter det.
+- **Sletting:** du må bekrefte. Bekreftelsen sier fra om tiltaket ligger i et oppdrag eller har en sporlogg-flate. Tiltaket fjernes også fra oppdraget og fra sporloggens bestandsliste.
+- **Gamle tiltak:** importerte tiltak uten id får id automatisk, slik at de kan endres.
 
 ## SkogIQ Felt – mobilversjon som fungerer offline (`felt.html`)
 

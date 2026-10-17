@@ -9,6 +9,7 @@ import { lesFil, slaaSammen } from './importers.js';
 import { lagDemo } from './demo.js';
 import { lagre, hent, listPlaner, lagrePlan, hentPlan, slettPlan, hentVerdi, lagreVerdi } from './store.js';
 import { initFlereEiendommer } from './flere-eiendommer.js';
+import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
 import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import { genererPlan, hentKommuner, finnKommune } from './generator.js';
 import { initKommune } from './kommune-ui.js';
@@ -796,7 +797,7 @@ function tiltakRadHtml(t, { velg = false } = {}) {
       <div class="info">${fmt(b.areal, 1)} daa · ${b.treslag || ''}${b.bonitet ?? ''}${ok.m3 ? ` · ca. ${fmt(ok.m3)} m³` : ''} · ${ok.netto >= 0 ? 'netto' : 'kostnad'} ca. ${fmt(Math.abs(ok.netto))} kr${ok.skogfond ? ` · skogfond ${fmt(ok.skogfond)} kr` : ''}${t.kommentar ? ` · ${esc(t.kommentar)}` : ''}</div>
       ${begrunnelseHtml(t)}
     </div>
-    <div style="display:flex;gap:6px;align-items:center">${t.prioritet ? `<span class="prio prio-${t.prioritet}">P${t.prioritet}</span>` : ''}<button class="knapp liten" data-handling="zoom" type="button" title="Zoom til bestand ${esc(b.nr)} i kartet" aria-label="Zoom til bestand">🔍</button>${t.forslag ? '' : '<button class="knapp liten" data-handling="slett-tiltak" type="button" title="Slett tiltak" aria-label="Slett">✕</button>'}</div>
+    <div style="display:flex;gap:6px;align-items:center">${t.prioritet ? `<span class="prio prio-${t.prioritet}">P${t.prioritet}</span>` : ''}<button class="knapp liten" data-handling="zoom" type="button" title="Zoom til bestand ${esc(b.nr)} i kartet" aria-label="Zoom til bestand">🔍</button>${t.forslag ? '' : '<button class="knapp liten" data-handling="endre-tiltak" type="button" title="Endre tiltak" aria-label="Endre">✎</button><button class="knapp liten" data-handling="slett-tiltak" type="button" title="Slett tiltak" aria-label="Slett">✕</button>'}</div>
   </div>`;
 }
 
@@ -920,8 +921,43 @@ function handterTiltakKlikk(e) {
   if (h === 'zoom') { velgBestand(b.id); if (erMobil()) settArk('lav'); return; }
   if (h === 'godta') { const f = forslag.find((x) => x.id === rad.dataset.tiltak); if (f) { godtaForslag(f); forslag = forslag.filter((x) => x !== f); endret(); } return; }
   if (!t) return;
-  if (h === 'slett-tiltak') { b.tiltak = b.tiltak.filter((x) => x !== t); endret(); if (valgtId === b.id) visDetalj(); return; }
+  if (h === 'slett-tiltak') { if (!confirm(slettTekst(b, t))) return; slettTiltak(S, b, t); endret(); if (valgtId === b.id) visDetalj(); melding('Tiltaket er slettet.'); return; }
+  if (h === 'endre-tiltak') { aapneTiltakDialog(b, t); return; }
   if (h === 'utfort') { settUtfort(b, t, t.status !== 'utfort'); endret(); if (valgtId === b.id) visDetalj(); }
+}
+
+// Dialog for å endre et tiltak (type, status, år/dato, areal, prioritet, kommentar).
+function aapneTiltakDialog(b, t, feil = [], utkast = null) {
+  const d = $('#tiltakDialog'); const v = { ...skjemaVerdier(b, t), ...(utkast || {}) };
+  const utfort = v.status === 'utfort'; const idag = new Date().toISOString().slice(0, 10);
+  d.innerHTML = `<form method="dialog" class="skjema to-kol" id="tiltakDialogSkjema">
+    <h3 class="hel">Endre tiltak – bestand ${esc(b.nr)}</h3>
+    ${t.kilde === 'motor' ? '<p class="hint hel">Laget av tiltaksmotoren. Når du endrer det, blir det et manuelt tiltak som motoren ikke erstatter.</p>' : ''}
+    ${feil.length ? `<div class="feilboks hel">${feil.map(esc).join('<br>')}</div>` : ''}
+    <label>Tiltak<select name="type">${Object.entries(TILTAKSTYPER).map(([k, x]) => `<option value="${k}" ${k === v.type ? 'selected' : ''}>${esc(x.navn)}</option>`).join('')}</select></label>
+    <label>Status<select name="status">${Object.entries(STATUSER).map(([k, n]) => `<option value="${k}" ${k === v.status ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+    <label data-vis-planlagt ${utfort ? 'hidden' : ''}>År<input type="number" name="aar" value="${esc(v.aar)}" min="1950" max="2150"></label>
+    <label data-vis-utfort ${utfort ? '' : 'hidden'}>Utført dato<input type="date" name="utfortDato" value="${esc(v.utfortDato || idag)}" max="${idag}"></label>
+    <label>Prioritet<select name="prioritet"><option value="">–</option>${[1, 2, 3].map((p) => `<option value="${p}" ${Number(v.prioritet) === p ? 'selected' : ''}>P${p}</option>`).join('')}</select></label>
+    <label class="avkryss"><input type="checkbox" name="helt" ${v.helt ? 'checked' : ''}> Hele bestandet (${fmt(b.areal, 1)} daa)</label>
+    <label data-areal ${v.helt ? 'hidden' : ''}>Areal (daa)<input type="text" inputmode="decimal" name="arealDaa" value="${esc(String(v.arealDaa ?? '').replace('.', ','))}"></label>
+    <label class="hel">Kommentar<textarea name="kommentar" rows="2">${esc(v.kommentar)}</textarea></label>
+    ${t.dekning ? '<label class="avkryss hel"><input type="checkbox" name="fjernDekning"> Fjern registrert flate (sporlogg)</label>' : ''}
+    <div class="knapperad hel"><button type="button" class="knapp fare" data-d="slett">Slett</button><span style="flex:1"></span><button type="button" class="knapp" data-d="avbryt">Avbryt</button><button type="submit" class="knapp primar">Lagre</button></div>
+  </form>`;
+  const f = $('#tiltakDialogSkjema');
+  const les = () => { const fd = new FormData(f); return { type: fd.get('type'), status: fd.get('status'), aar: fd.get('aar'), utfortDato: fd.get('utfortDato'), prioritet: fd.get('prioritet'), helt: fd.get('helt') === 'on', arealDaa: fd.get('arealDaa') ?? '', kommentar: fd.get('kommentar'), fjernDekning: fd.get('fjernDekning') === 'on' }; };
+  f.elements.status.onchange = () => { const u = f.elements.status.value === 'utfort'; f.querySelector('[data-vis-planlagt]').hidden = u; f.querySelector('[data-vis-utfort]').hidden = !u; };
+  f.elements.helt.onchange = () => { f.querySelector('[data-areal]').hidden = f.elements.helt.checked; };
+  f.querySelector('[data-d="avbryt"]').onclick = () => d.close();
+  f.querySelector('[data-d="slett"]').onclick = () => { if (!confirm(slettTekst(b, t))) return; slettTiltak(S, b, t); d.close(); endret(); if (valgtId === b.id) visDetalj(); melding('Tiltaket er slettet.'); };
+  f.onsubmit = (e) => {
+    e.preventDefault(); const u = les();
+    const r = endreTiltak(b, t, u);
+    if (!r.ok) { aapneTiltakDialog(b, t, r.feil, u); return; }
+    d.close(); endret({ kart: true }); if (valgtId === b.id) visDetalj(); melding('Tiltaket er endret.');
+  };
+  if (!d.open) d.showModal();
 }
 
 // Marker et tiltak som utført (eller tilbake til planlagt), og tilby å oppdatere bestandet etter tiltaket.
@@ -1284,6 +1320,7 @@ function tegnEiendom() {
 // ---------------------------------------------------------------- oppdatering
 function endret({ kart: kartEndret = false, zoom = false } = {}) {
   frResultat = null;
+  for (const b of S.bestand) for (const t of b.tiltak || []) if (!t.id) t.id = nyId('t'); // eldre importerte tiltak uten id
   lagreSnart();
   if (kartEndret) { tegnBestandKart(zoom); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); } else oppdaterStiler();
   tegnOversikt();

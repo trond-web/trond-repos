@@ -36,6 +36,7 @@ import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
 import * as SPOR from '../js/sporlogg.js';
+import * as TE from '../js/tiltak-endring.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER, kjedeSammen, hentTraktorveierOgStier, slaaInnFkb, tomtVeiregister } from '../js/veier.js';
 
@@ -1182,6 +1183,41 @@ test('Sporlogg: rensing, dekningsflate per bestand, planlagt → utført, sammen
   const f5 = f3.map((f) => ({ ...f, brukHelt: true }));
   SPOR.bruk(f5.filter((f) => f.b === b), 'markberedning', { dato: '2026-10-03', PC });
   assert.equal(b.tiltak.find((x) => x.type === 'markberedning').arealDaa, b.areal);
+});
+
+test('Endre og slette tiltak: kontroll av verdier, status, areal, motor → manuell og opprydding i oppdrag/sporlogg', () => {
+  const b = { id: 'b1', nr: '7', areal: 20, tiltak: [] };
+  const t = { id: 't1', type: 'tynning', aar: 2027, status: 'planlagt', kilde: 'motor', prioritet: 2 };
+  b.tiltak.push(t);
+  const idag = '2026-10-17';
+  // Ugyldige verdier endrer ingenting.
+  let r = TE.endreTiltak(b, t, { type: 'tull', aar: 'x' }, { idag });
+  assert.equal(r.ok, false); assert.equal(r.feil.length, 2); assert.equal(t.type, 'tynning');
+  r = TE.endreTiltak(b, t, { arealDaa: '25', helt: false }, { idag }); assert.equal(r.ok, false, 'større enn bestandet');
+  r = TE.endreTiltak(b, t, { status: 'utfort', utfortDato: '2027-01-01' }, { idag }); assert.equal(r.ok, false, 'fram i tid');
+  // Gyldig endring: type, år, areal med komma, kommentar. Motorens tiltak blir manuelt.
+  r = TE.endreTiltak(b, t, { type: 'ungskogpleie', aar: '2028', arealDaa: '12,5', helt: false, kommentar: ' Østre del ' }, { idag });
+  assert.ok(r.ok && r.byttetType);
+  assert.deepEqual([t.type, t.aar, t.arealDaa, t.kommentar, t.kilde], ['ungskogpleie', 2028, 12.5, 'Østre del', 'manuell']);
+  // Utført med dato setter året fra datoen; tilbake til planlagt fjerner datoen.
+  r = TE.endreTiltak(b, t, { status: 'utfort', utfortDato: '2026-06-03' }, { idag });
+  assert.ok(r.ok); assert.equal(t.status, 'utfort'); assert.equal(t.aar, 2026); assert.equal(t.utfortDato, '2026-06-03');
+  r = TE.endreTiltak(b, t, { status: 'planlagt', aar: 2029 }, { idag });
+  assert.ok(r.ok); assert.equal(t.utfortDato, undefined); assert.equal(t.aar, 2029);
+  // Hele bestandet fjerner arealet; fjern dekning fjerner flaten.
+  t.dekning = { type: 'Polygon', coordinates: [] }; t.sporIder = ['s1'];
+  r = TE.endreTiltak(b, t, { helt: true, fjernDekning: true }, { idag });
+  assert.ok(r.ok); assert.equal(t.arealDaa, undefined); assert.equal(t.dekning, undefined); assert.equal(t.sporIder, undefined);
+  // Skjemaverdier
+  assert.equal(TE.skjemaVerdier(b, t).helt, true);
+  // Sletting fjerner tiltaket fra bestandet, oppdraget og sporloggen.
+  const t2 = { id: 't2', type: 'planting', aar: 2027, status: 'utfort', oppdragId: 'o1', sporIder: ['s9'], dekning: {} }; b.tiltak.push(t2);
+  const S = { bestand: [b], oppdrag: [{ id: 'o1', linjer: [{ tiltakId: 't2' }, { tiltakId: 'tx' }] }], sporlogger: [{ id: 's9', bestand: ['b1'] }] };
+  assert.match(TE.slettTekst(b, t2), /oppdraget.*flaten/);
+  TE.slettTiltak(S, b, t2);
+  assert.deepEqual(b.tiltak.map((x) => x.id), ['t1']);
+  assert.deepEqual(S.oppdrag[0].linjer, [{ tiltakId: 'tx' }]);
+  assert.deepEqual(S.sporlogger[0].bestand, []);
 });
 
 await Promise.all(venter);
