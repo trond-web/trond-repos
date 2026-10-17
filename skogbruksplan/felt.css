@@ -143,3 +143,8 @@ body.spor-aktiv .gpsstripe { top: calc(150px + var(--topp)); }
 .feilboks { background: #fae6ea; color: #8c1d33; border-radius: 12px; padding: 10px 12px; font-size: 14px; margin: 8px 0; }
 
 .melding { cursor: pointer; }
+
+/* Endre flate */
+body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus { display: none !important; }
+.flate-valg { display: grid; gap: 4px; }
+.flate-valg .knapp { width: 100%; }

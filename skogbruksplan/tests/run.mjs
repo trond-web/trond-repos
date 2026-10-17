@@ -37,6 +37,7 @@ import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
 import * as SPOR from '../js/sporlogg.js';
 import * as TE from '../js/tiltak-endring.js';
+import * as FG from '../js/flate-geometri.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER, kjedeSammen, hentTraktorveierOgStier, slaaInnFkb, tomtVeiregister } from '../js/veier.js';
 
@@ -1218,6 +1219,37 @@ test('Endre og slette tiltak: kontroll av verdier, status, areal, motor → manu
   assert.deepEqual(b.tiltak.map((x) => x.id), ['t1']);
   assert.deepEqual(S.oppdrag[0].linjer, [{ tiltakId: 'tx' }]);
   assert.deepEqual(S.sporlogger[0].bestand, []);
+});
+
+test('Endre flate: forenkling til redigerbare punkter, legg til / fjern område og klipping mot bestandet', async () => {
+  let PC; try { PC = (await import('polygon-clipping')).default; } catch { return; }
+  // Sirkel med 400 punkter → høyst 160 punkter, nesten samme areal.
+  const sirkel = [Array.from({ length: 401 }, (_, i) => { const v = (i % 400) / 400 * 2 * Math.PI; return [300000 + 50 * Math.cos(v), 6700000 + 50 * Math.sin(v)]; })];
+  const f = FG.forenkleForRedigering([sirkel]);
+  assert.ok(FG.antallPunkter(f) <= 160 && FG.antallPunkter(f) >= 8, `${FG.antallPunkter(f)}`);
+  assert.ok(Math.abs(FG.arealUtm(f) - Math.PI * 2500) / (Math.PI * 2500) < 0.03);
+  // Små biter fjernes.
+  const smaa = [[[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]], ...f];
+  assert.equal(FG.forenkleForRedigering(smaa).length, 1);
+  // Kvadrat 100 × 100 m; legg til et 100 × 50 m rektangel inntil, fjern et 20 × 20 m hull.
+  const k = (x0, y0, w, h) => [[x0, y0], [x0 + w, y0], [x0 + w, y0 + h], [x0, y0 + h]];
+  let mp = FG.kombiner([], k(0, 0, 100, 100), 'ny', PC);
+  assert.ok(Math.abs(FG.arealUtm(mp) - 10000) < 1);
+  mp = FG.kombiner(mp, k(100, 0, 100, 50), 'legg-til', PC); assert.ok(Math.abs(FG.arealUtm(mp) - 15000) < 1);
+  mp = FG.kombiner(mp, k(40, 40, 20, 20), 'fjern', PC); assert.ok(Math.abs(FG.arealUtm(mp) - 14600) < 1);
+  assert.equal(mp[0].length, 2, 'hullet er med');
+  assert.deepEqual(FG.kombiner(mp, k(0, 0, 1, 1), 'ny', PC).length, 1);
+  // Klipping mot et bestand (GeoJSON): flaten går 50 m utenfor på én side.
+  const S = lagDemo(2026); const b = S.bestand.find((x) => x.nr === '2');
+  const [lon, lat] = etikettPunkt(b.geometri); const [x0, y0] = geoTilUtm(lon, lat, 33);
+  const inne = FG.kombiner([], k(x0 - 20, y0 - 20, 40, 40), 'ny', PC);
+  const r = FG.klippTilBestand(inne, b.geometri, PC);
+  assert.ok(Math.abs(r.daa - 1.6) < 0.02 && r.andel > 0 && r.andel < 1, `${r.daa}`);
+  const hele = FG.klippTilBestand(FG.fraGeometri(b.geometri), b.geometri, PC);
+  assert.ok(Math.abs(hele.andel - 1) < 0.001);
+  // Rundtur GeoJSON → UTM → GeoJSON
+  const g = FG.tilGeometri(inne); assert.equal(g.type, 'MultiPolygon'); assert.ok(Math.abs(FG.arealUtm(FG.fraGeometri(g)) - 1600) < 1);
+  assert.equal(FG.tilGeometri([]), null);
 });
 
 await Promise.all(venter);
