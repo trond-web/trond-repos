@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="Trond Harald Sand">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<title>SkogIQ Felt</title>
+<meta name="description" content="SkogIQ Felt – mobilversjon av skogbruksplanen: kart, bestand, GPS, registreringer og tiltak. Fungerer offline.">
+<meta name="theme-color" content="#10241c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SkogIQ Felt">
+<link rel="manifest" href="felt.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="ikon-180.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="felt.css">
+</head>
+<body>
+<div id="kart" aria-label="Kart"></div>
+<div class="sikte" id="sikte" hidden aria-hidden="true"></div>
+
+<header class="topp">
+  <button type="button" class="planvelger" id="planVelger" aria-haspopup="dialog">
+    <span class="logo">Skog<b>IQ</b></span>
+    <span class="plannavn" id="planNavn">Velg plan</span>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+  </button>
+  <span class="nett" id="nett" title="Nettstatus"></span>
+</header>
+
+<div class="kartknapper">
+  <button type="button" class="rund" id="lagBtn" title="Bytt kartlag" aria-label="Bytt kartlag"><svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg></button>
+  <button type="button" class="rund" id="zoomPlanBtn" title="Vis hele eiendommen" aria-label="Vis hele eiendommen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  <button type="button" class="rund" id="gpsBtn" title="Min posisjon" aria-label="Min posisjon" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/></svg></button>
+</div>
+
+<div class="gpsstripe" id="gpsStripe" hidden></div>
+
+<button type="button" class="fab" id="nyRegBtn" aria-label="Ny registrering"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Registrer</span></button>
+
+<section class="ark" id="ark" hidden aria-live="polite">
+  <div class="ark-handtak" id="arkHandtak"><span></span></div>
+  <button type="button" class="ark-lukk" id="arkLukk" aria-label="Lukk">✕</button>
+  <div class="ark-innhold" id="arkInnhold"></div>
+</section>
+
+<nav class="bunn" aria-label="Meny">
+  <button type="button" data-vis="kart" class="aktiv"><svg viewBox="0 0 24 24"><path d="M4 6.5 9 4l6 2.5L20 4v13.5L15 20l-6-2.5L4 20Z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span>Kart</span></button>
+  <button type="button" data-vis="tiltak"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11"/><circle cx="5" cy="18" r="1.3"/></svg><span>Tiltak</span></button>
+  <button type="button" data-vis="reg"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span>Registreringer</span></button>
+  <button type="button" data-vis="mer"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>Mer</span></button>
+</nav>
+
+<div class="melding" id="melding" role="status" hidden></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script type="module" src="js/felt-app.js"></script>
+</body>
+</html>

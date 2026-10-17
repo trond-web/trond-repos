@@ -9,6 +9,7 @@ import { lesFil, slaaSammen } from './importers.js';
 import { lagDemo } from './demo.js';
 import { lagre, hent, listPlaner, lagrePlan, hentPlan, slettPlan, hentVerdi, lagreVerdi } from './store.js';
 import { initFlereEiendommer } from './flere-eiendommer.js';
+import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import { genererPlan, hentKommuner, finnKommune } from './generator.js';
 import { initKommune } from './kommune-ui.js';
 import { initVeier } from './veier-ui.js';
@@ -74,12 +75,16 @@ function hogstmodenAar(b) {
 function sortNr(a, b) { return String(a).localeCompare(String(b), 'nb', { numeric: true }); }
 
 let lagreTimer;
+// SkogIQ Felt (mobilversjonen) og fullversjonen i andre faner varsler hverandre når en plan er endret.
+const kanal = 'BroadcastChannel' in window ? new BroadcastChannel('skogiq') : null;
+let stilleLagring = false;
 function lagreSnart() {
   clearTimeout(lagreTimer);
   lagreTimer = setTimeout(async () => {
     try {
       await lagre(S);
-      if (S.planId) { await lagrePlan(S); tegnPlanListe(); }
+      if (S.planId) { await lagrePlan(S); tegnPlanListe(); if (!stilleLagring) kanal?.postMessage({ type: 'plan-endret', planId: S.planId, fra: 'full' }); }
+      stilleLagring = false;
     } catch (e) { melding(`Kunne ikke lagre: ${e.message}`); }
   }, 300);
 }
@@ -1223,20 +1228,9 @@ async function lastNedOfflineKart() {
   const bb = bbox(S.bestand.map((b) => b.geometri));
   if (!bb) { melding('Ingen bestand med kart å laste ned for.'); return; }
   if (!('caches' in window)) { melding('Nettleseren støtter ikke offline-lagring.'); return; }
-  const pad = 0.004;
-  const [minx, miny, maxx, maxy] = [bb[0] - pad, bb[1] - pad, bb[2] + pad, bb[3] + pad];
-  const tx = (lon, z) => Math.floor(((lon + 180) / 360) * 2 ** z);
-  const ty = (lat, z) => Math.floor(((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * 2 ** z);
-  const urler = [];
-  for (let z = 10; z <= 17; z++) {
-    for (let x = tx(minx, z); x <= tx(maxx, z); x++) {
-      for (let y = ty(maxy, z); y <= ty(miny, z); y++) {
-        for (const lag of ['topo', 'topograatone']) urler.push(`https://cache.kartverket.no/v1/wmts/1.0.0/${lag}/default/webmercator/${z}/${y}/${x}.png`);
-      }
-    }
-  }
+  const urler = flisUrler(bb);
   if (urler.length > 6000 && !confirm(`Dette er ${urler.length} kartfliser. Fortsette?`)) return;
-  const cache = await caches.open('kartfliser-v1');
+  const cache = await caches.open(FLIS_CACHE);
   let ferdig = 0; let feil = 0;
   const status = $('#offlineStatus');
   const arbeider = async () => {
@@ -1522,6 +1516,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Gjødslingsplan', under: 'Gjødselbehov per skifte, forslag og utskrift (gjødselforskriften § 26)', sok: 'skifteplan gjødsel gjødsling jordprøve nitrogen fosfor kalium husdyrgjødsel jordbruk', utfor: () => { visFane('skifteplan'); skifteplanVisning?.underfane('gjodsling'); } },
     { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Sprøytejournal / plantevernjournal', under: 'Registrer sprøyting og skriv ut journalen', sok: 'skifteplan sprøyting plantevern plantevernmidler ugras journal ipv', utfor: () => { visFane('skifteplan'); skifteplanVisning?.underfane('sproyting'); } },
     { gruppe: 'Handlinger', ikon: '¤', tittel: 'Verdiberegning', under: 'Eiendomsverdi, slaktverdi, jordverdi og nåverdi', sok: 'verdi nåverdi slaktverdi takst lev faustmann', utfor: () => visFane('verdi') },
+    { gruppe: 'Handlinger', ikon: '📱', tittel: 'Åpne mobilversjonen (SkogIQ Felt)', under: 'Kart i fullskjerm, GPS, registreringer og tiltak – fungerer offline', sok: 'mobil felt mobilversjon offline pwa app installer telefon gps', utfor: () => { location.href = 'felt.html'; } },
     { gruppe: 'Handlinger', ikon: '▤', tittel: 'Vis alle eiendommene mine i kartet', under: 'Andre skogbruksplaner vises sammen med planen som er åpen', sok: 'flere eiendommer kart alle planer vis samtidig naboeiendom', utfor: async () => { await andreVisning.settAlle(true); await andreVisning.zoomAlle(bboxFor()); tegnPlanListe(); } },
     { gruppe: 'Handlinger', ikon: '♲', tittel: 'Karbonkreditter – potensial og prosjekt', under: 'Merlager mot referanse, egnethet, kreditter og verifisering', sok: 'karbon co2 klima kreditter karbonkreditt klimakvote binding vm0045 crcf verra noora', utfor: () => visFane('karbon') },
     { gruppe: 'Handlinger', ikon: '✓', tittel: 'KSL – egenrevisjon og dokumentasjon', under: 'Sjekklister, avvik, kontroller med frister og dokumentarkiv', sok: 'ksl kvalitetssystem landbruk egenrevisjon hms vernerunde avvik dokumentasjon matmerk norsk mat', utfor: () => visFane('ksl') },
@@ -1808,6 +1803,14 @@ async function start() {
   tegnPlanListe();
   if (!S.bestand.length) visFane('planer');
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  // Endringer fra SkogIQ Felt (registreringer, utførte tiltak) i planen som er åpen her: last planen inn på nytt.
+  kanal?.addEventListener('message', async (m) => {
+    if (m.data?.type !== 'plan-endret' || m.data.fra === 'full' || m.data.planId !== S.planId) return;
+    const plan = await hentPlan(S.planId); if (!plan) return;
+    S = { ...plan, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...plan.innstillinger } };
+    stilleLagring = true; tegnRegistreringer(); endret({ kart: true });
+    melding('Planen er oppdatert fra SkogIQ Felt.');
+  });
 }
 
 start();
