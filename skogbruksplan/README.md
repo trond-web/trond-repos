@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.11.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.11.1** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -96,6 +96,13 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
 - **GPS:** viser posisjonen med nøyaktighet og følger deg. Stripen øverst viser hvilket bestand du står i. Trykk på den for bestandskortet.
 - **Bestandskort:** treslag, bonitet, hogstklasse, areal, alder, volum, treantall, høyde og planlagte tiltak. Tiltak krysses av som utført med dagens dato. Ved sluttavvirkning og planting tilbys oppdatering av bestandet, som i fullversjonen.
 - **Registrering:** kategori, beskrivelse og bilde fra kameraet. Posisjonen tas fra GPS, eller fra et sikte midt i kartet. Registreringene vises i kartet og i fullversjonen.
+- **Lukke panelene:** du kan lukke et panel på flere måter:
+  - med krysset, som er 44 px og reagerer direkte på berøring, også rett etter rulling på iPhone
+  - ved å sveipe ned fra toppen, eller fra innholdet når det er rullet helt opp
+  - med et trykk i kartet utenfor panelet (ikke midt i et skjema)
+  - med tilbakeknappen eller tilbakesveip, som lukker panelet i stedet for å forlate appen
+  - med Esc
+  Meldinger kan trykkes vekk.
 - **Tiltak:** liste over tiltak i år og neste år, senere tiltak og nylig utførte.
 - **Offline:**
   - Service workeren lagrer appen, også Leaflet og bibliotekene, slik at begge versjonene åpner uten nett.

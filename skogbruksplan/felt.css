@@ -51,11 +51,13 @@ body.ark-aapent .fab { display: none; }
 /* Bunnark */
 .ark { position: fixed; left: 0; right: 0; bottom: var(--bunnhoyde); z-index: 1100; background: var(--surface); border-radius: 22px 22px 0 0; box-shadow: 0 -8px 30px rgba(16, 36, 28, .18); max-height: 62%; display: flex; flex-direction: column; }
 .ark.hoy { max-height: calc(100% - var(--bunnhoyde) - 70px - var(--topp)); height: calc(100% - var(--bunnhoyde) - 70px - var(--topp)); }
-.ark-handtak { padding: 8px 0 2px; display: grid; place-items: center; touch-action: none; }
+.ark-handtak { padding: 10px 60px 6px; display: grid; place-items: center; touch-action: none; cursor: grab; }
 .ark-handtak span { width: 40px; height: 5px; border-radius: 9px; background: #cfd6cf; }
-.ark-lukk { position: absolute; right: 10px; top: 8px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--surface-2); font-size: 14px; }
+.ark-lukk { position: absolute; right: 6px; top: 6px; z-index: 5; width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--surface-2); font-size: 18px; font-weight: 700; color: var(--text); touch-action: manipulation; display: grid; place-items: center; }
+.ark-lukk:active { background: #dfe6dd; }
+.ark { transition: transform .18s ease-out; will-change: transform; }
 .ark-innhold { overflow: auto; padding: 4px 16px 18px; -webkit-overflow-scrolling: touch; }
-.ark h2 { margin: 2px 40px 2px 0; font-size: 20px; letter-spacing: -.3px; }
+.ark h2 { margin: 2px 48px 2px 0; font-size: 20px; letter-spacing: -.3px; }
 .ark h3 { margin: 16px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
 .ark p { margin: 6px 0; }
 .hint { color: var(--muted); font-size: 13px; }
@@ -139,3 +141,5 @@ body.spor-aktiv .gpsstripe { top: calc(150px + var(--topp)); }
 .skjema-felt input[type=number], .skjema-felt input[type=text], .skjema-felt input[type=date] { width: 100%; font: inherit; font-size: 15px; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); color: var(--text); }
 .skjema-felt label.bryter { display: flex; color: var(--text); font-size: 15px; }
 .feilboks { background: #fae6ea; color: #8c1d33; border-radius: 12px; padding: 10px 12px; font-size: 14px; margin: 8px 0; }
+
+.melding { cursor: pointer; }

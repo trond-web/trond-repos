@@ -60,7 +60,8 @@ function initKart() {
   const etiketter = () => document.body.classList.toggle('skjul-etiketter', kart.getZoom() < 14);
   kart.on('zoomend', etiketter); etiketter();
   kart.on('dragstart', () => { if (gps.folg) { gps.folg = false; oppdaterGpsKnapp(); } });
-  kart.on('click', () => { if (visning === 'kart' && !$('#ark').hidden && !regPagar && !spor?.harResultat() && !spor?.tegner()) lukkArk(); });
+  // Trykk i kartet utenfor arket lukker det – men ikke midt i et skjema (registrering, endring, sporlogg).
+  kart.on('click', () => { if (!$('#ark').hidden && !regPagar && !endring && !spor?.harResultat() && !spor?.tegner()) lukkArk(); });
 }
 
 function stil(b) {
@@ -94,13 +95,23 @@ function tegnRegistreringer() {
 }
 
 // ---------- ark ----------
+// Et åpent ark har en oppføring i nettleserhistorikken, så tilbakeknappen (Android) og tilbakesveip lukker arket
+// i stedet for å forlate appen.
+let arkOppforing = false; let ignorerPop = false;
 function aapneArk(html, { hoy = false } = {}) {
   $('#arkInnhold').innerHTML = html; $('#ark').hidden = false; $('#ark').classList.toggle('hoy', hoy);
+  $('#ark').style.transform = '';
   $('#arkInnhold').scrollTop = 0; document.body.classList.add('ark-aapent');
+  if (!arkOppforing) { try { history.pushState({ skogiqArk: true }, ''); arkOppforing = true; } catch { /* ingen historikk */ } }
 }
-function lukkArk() {
-  $('#ark').hidden = true; document.body.classList.remove('ark-aapent');
+function lukkArk(fraHistorikk = false) {
+  if (fraHistorikk !== true && arkOppforing) {
+    // Fjern historikkoppføringen når arket lukkes med krysset (med litt forsinkelse, i tilfelle et nytt ark åpnes rett etter).
+    setTimeout(() => { if ($('#ark').hidden && arkOppforing) { arkOppforing = false; ignorerPop = true; history.back(); } }, 350);
+  }
+  $('#ark').hidden = true; $('#ark').style.transform = ''; document.body.classList.remove('ark-aapent');
   if (regPagar) avbrytReg();
+  endring = null;
   if (valgtId) { valgtId = null; oppdaterStiler(); }
   settVisning('kart', false);
 }
@@ -384,7 +395,13 @@ function nettStatus() {
 // ---------- hendelser ----------
 function kobleHendelser() {
   $('#planVelger').addEventListener('click', visPlaner);
-  $('#arkLukk').addEventListener('click', lukkArk);
+  // Krysset reagerer på berøring direkte: på iPhone kan et trykk rett etter rulling ellers bli «spist» av rullingen.
+  const lukkKnapp = $('#arkLukk');
+  lukkKnapp.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); lukkArk(); }, { passive: false });
+  lukkKnapp.addEventListener('click', (e) => { e.stopPropagation(); lukkArk(); });
+  window.addEventListener('popstate', () => { if (ignorerPop) { ignorerPop = false; return; } arkOppforing = false; if (!$('#ark').hidden) lukkArk(true); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#ark').hidden) lukkArk(); });
+  $('#melding').addEventListener('click', () => { $('#melding').hidden = true; });
   $('#gpsBtn').addEventListener('click', veksleGps);
   $('#zoomPlanBtn').addEventListener('click', zoomPlan);
   $('#nyRegBtn').addEventListener('click', () => startReg());
@@ -429,10 +446,24 @@ function kobleHendelser() {
     if (e.target.id === 'startFelt') { ls.set(LS.start, e.target.checked ? '1' : null); melding(e.target.checked ? 'Appen åpner nå i mobilversjonen.' : 'Appen åpner i fullversjonen.'); }
   });
   ark.addEventListener('input', (e) => { if (e.target.id === 'regTekst' && regPagar) regPagar.tekst = e.target.value; });
-  // Dra håndtaket ned for å lukke.
-  let y0 = null;
-  $('#arkHandtak').addEventListener('touchstart', (e) => { y0 = e.touches[0].clientY; }, { passive: true });
-  $('#arkHandtak').addEventListener('touchend', (e) => { if (y0 !== null && e.changedTouches[0].clientY - y0 > 50) lukkArk(); y0 = null; });
+  // Sveip ned for å lukke: fra håndtaket/toppen, eller fra innholdet når det er rullet helt til toppen.
+  const arkEl = $('#ark'); let dra = null;
+  arkEl.addEventListener('touchstart', (e) => {
+    if (e.target.closest('textarea, input, select, .ark-lukk')) { dra = null; return; }
+    const topp = !!e.target.closest('#arkHandtak') || e.touches[0].clientY - arkEl.getBoundingClientRect().top < 56;
+    dra = { y0: e.touches[0].clientY, dy: 0, mulig: topp || $('#arkInnhold').scrollTop <= 0, topp };
+  }, { passive: true });
+  arkEl.addEventListener('touchmove', (e) => {
+    if (!dra?.mulig) return;
+    dra.dy = e.touches[0].clientY - dra.y0;
+    if (dra.dy > 8 && (dra.topp || $('#arkInnhold').scrollTop <= 0)) { arkEl.style.transition = 'none'; arkEl.style.transform = `translateY(${Math.max(0, dra.dy)}px)`; }
+  }, { passive: true });
+  arkEl.addEventListener('touchend', () => {
+    if (!dra) return;
+    arkEl.style.transition = '';
+    if (dra.mulig && dra.dy > (dra.topp ? 50 : 90)) lukkArk(); else arkEl.style.transform = '';
+    dra = null;
+  });
   window.addEventListener('online', nettStatus); window.addEventListener('offline', nettStatus);
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installHendelse = e; if (visning === 'mer') visMer(); });
   // Fullversjonen i en annen fane endret planen: last den inn igjen (når ingen registrering pågår).
