@@ -1171,6 +1171,13 @@ test('Sporlogg: rensing, dekningsflate per bestand, planlagt → utført, sammen
   // Annet år eller annen type gir nytt tiltak.
   const f3 = SPOR.foreslaa(fd2, 'markberedning', { aar: 2026, PC }); assert.equal(f3.find((f) => f.b === b).handling, 'nytt');
   const f4 = SPOR.foreslaa(fd2, 'ungskogpleie', { aar: 2027, PC }); assert.equal(f4.find((f) => f.b === b).handling, 'nytt');
+  // Tegnet område: polygonet er dekningen (100 × 50 m = 5 daa), også når omrisset krysser seg selv.
+  const hj = [[-50, -25], [50, -25], [50, 25], [-50, 25]].map(([dx, dy]) => { const [lo, la] = utmTilGeo(x0 + dx, y0 + dy, 33); return { lat: la, lon: lo }; });
+  assert.ok(Math.abs(SPOR.flateArealM2(hj) - 5000) < 5);
+  const fdF = SPOR.fordelPaaBestand(SPOR.dekningFlate(hj, PC), S.bestand, PC);
+  assert.ok(Math.abs(fdF.reduce((s, f) => s + f.daa, 0) - 5) < 0.1, `${fdF.map((f) => f.daa)}`);
+  assert.ok(SPOR.dekningFlate([hj[0], hj[2], hj[1], hj[3]], PC).length >= 1, 'sløyfe ryddes');
+  assert.deepEqual(SPOR.dekningFlate(hj.slice(0, 2), PC), []);
   // «Hele bestandet» bruker bestandets areal.
   const f5 = f3.map((f) => ({ ...f, brukHelt: true }));
   SPOR.bruk(f5.filter((f) => f.b === b), 'markberedning', { dato: '2026-10-03', PC });

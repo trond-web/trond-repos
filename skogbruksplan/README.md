@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.9.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.10.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -92,6 +92,12 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
     - ellers lages et nytt utført tiltak
   - **Justering:** tiltak, bredde og dato kan endres før lagring. Under 0,1 daa i et bestand er ikke valgt. Over 50 % kan registreres som hele bestandet.
   - **Lagring:** tiltaket får `arealDaa`, `dekning` (GeoJSON) og `sporIder`. Sporet lagres i `plan.sporlogger`. Fullversjonen bruker arealet i økonomi og tiltakslister, og dekningen vises i feltkartet.
+  - **Glemte du å starte sporloggen?** Velg «Tegn spor» eller «Tegn område» i Sporlogg:
+    - Med «Tegn spor» trykker du punkter i kartet langs der du gikk, og linjen får arbeidsbredden.
+    - Med «Tegn område» trykker du rundt flaten som ble behandlet, og polygonet blir dekningen.
+    - Angre fjerner siste punkt, og Avbryt forkaster tegningen.
+    - Datoen kan settes tilbake i tid før lagring.
+    - Videre går det som med et GPS-spor: planlagt → utført, sammenslåing og nytt tiltak. Sporet lagres med kilde «tegnet».
   - **GPX:** nettlesere kan stoppe GPS når skjermen låses. Spor fra en annen app eller klokke kan derfor leses inn som GPX og behandles likt. Sporet kan også lastes ned som GPX.
 - **Fullversjonen:** den har lenke til mobilversjonen i Felt-fanen, i Planer på mobil og i kommandopaletten. Fullversjonens manifest har snarveien «Felt».
 - **Start i mobilversjonen:** dette kan slås på under «Mer». `./?full` åpner alltid fullversjonen.

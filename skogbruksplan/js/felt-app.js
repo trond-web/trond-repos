@@ -59,7 +59,7 @@ function initKart() {
   const etiketter = () => document.body.classList.toggle('skjul-etiketter', kart.getZoom() < 14);
   kart.on('zoomend', etiketter); etiketter();
   kart.on('dragstart', () => { if (gps.folg) { gps.folg = false; oppdaterGpsKnapp(); } });
-  kart.on('click', () => { if (visning === 'kart' && !$('#ark').hidden && !regPagar && !spor?.harResultat()) lukkArk(); });
+  kart.on('click', () => { if (visning === 'kart' && !$('#ark').hidden && !regPagar && !spor?.harResultat() && !spor?.tegner()) lukkArk(); });
 }
 
 function stil(b) {
@@ -74,7 +74,7 @@ function tegnPlan(zoom = false) {
   for (const b of P.bestand) {
     if (!b.geometri) continue;
     const l = L.geoJSON(b.geometri, { style: () => stil(b) });
-    l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (regPagar) return; visBestand(b.id); });
+    l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (spor?.tegner()) { spor.leggTilPunkt(e.latlng); return; } if (regPagar) return; visBestand(b.id); });
     l.addTo(bestandLag); lagPerBestand.set(b.id, l);
     const pt = etikettPunkt(b.geometri);
     if (pt) L.tooltip({ permanent: true, direction: 'center', className: 'nr-etikett', interactive: false }).setLatLng([pt[1], pt[0]]).setContent(esc(b.nr)).addTo(etikettLag);
@@ -88,7 +88,7 @@ function tegnRegistreringer() {
   regLag.clearLayers();
   for (const r of P?.registreringer || []) {
     L.circleMarker([r.lat, r.lon], { radius: 8, color: '#fff', weight: 2.5, fillColor: '#e34948', fillOpacity: 1 })
-      .on('click', (e) => { L.DomEvent.stopPropagation(e); visRegistrering(r.id); }).addTo(regLag);
+      .on('click', (e) => { L.DomEvent.stopPropagation(e); if (spor?.tegner()) { spor.leggTilPunkt(e.latlng); return; } visRegistrering(r.id); }).addTo(regLag);
   }
 }
 
