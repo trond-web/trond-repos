@@ -6,6 +6,7 @@ import { punktIGeometri, etikettPunkt, bbox } from './proj.js';
 import { hkFor } from './flere-eiendommer.js';
 import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import { VERSJON } from './versjon.js';
+import { initSporlogg } from './sporlogg-ui.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -22,7 +23,7 @@ let kart; let grunnlag = {}; let lagNavn = ls.get(LS.lag) || 'graa';
 const lagPerBestand = new Map(); let bestandLag; let grenseLag; let regLag; let etikettLag;
 let valgtId = null; let visning = 'kart';
 let gps = { watch: null, pos: null, folg: false, markor: null, sirkel: null };
-let installHendelse = null;
+let installHendelse = null; let spor = null;
 
 // ---------- hjelpere ----------
 let meldingTimer;
@@ -58,7 +59,7 @@ function initKart() {
   const etiketter = () => document.body.classList.toggle('skjul-etiketter', kart.getZoom() < 14);
   kart.on('zoomend', etiketter); etiketter();
   kart.on('dragstart', () => { if (gps.folg) { gps.folg = false; oppdaterGpsKnapp(); } });
-  kart.on('click', () => { if (visning === 'kart' && !$('#ark').hidden && !regPagar) lukkArk(); });
+  kart.on('click', () => { if (visning === 'kart' && !$('#ark').hidden && !regPagar && !spor?.harResultat()) lukkArk(); });
 }
 
 function stil(b) {
@@ -113,6 +114,7 @@ function settVisning(v, apne = true) {
 }
 
 // ---------- bestand ----------
+const utfortNylig = (b) => (b.tiltak || []).filter((t) => t.status === 'utfort' && String(t.utfortDato || t.aar || '').slice(0, 4) >= String(IAAR - 1)).sort((x, y) => String(y.utfortDato).localeCompare(String(x.utfortDato)));
 const nesteTiltak = (b) => (b.tiltak || []).filter((t) => t.status !== 'utfort').sort((x, y) => (x.aar || 0) - (y.aar || 0));
 function tiltakRad(b, t, medBestand = false) {
   const ferdig = t.status === 'utfort';
@@ -140,6 +142,7 @@ function visBestand(id, { zoom = false } = {}) {
     ${b.merknad ? `<p class="hint">${esc(b.merknad)}</p>` : ''}
     <h3>Planlagte tiltak</h3>
     <div class="liste">${tiltak.slice(0, 6).map((t) => tiltakRad(b, t)).join('') || '<div class="tom">Ingen planlagte tiltak.</div>'}</div>
+    ${utfortNylig(b).length ? `<h3>Utført siste år</h3><div class="liste">${utfortNylig(b).map((t) => tiltakRad(b, t)).join('')}</div>` : ''}
     ${regs.length ? `<h3>Registreringer (${regs.length})</h3><div class="liste">${regs.map(regRad).join('')}</div>` : ''}
     <div class="knapper"><button type="button" class="knapp primar" data-h="reg-her">+ Registrering i bestandet</button></div>`);
 }
@@ -152,6 +155,7 @@ function visTiltak() {
   const nylig = (P?.bestand || []).flatMap((b) => (b.tiltak || []).filter((t) => t.status === 'utfort' && t.utfortDato && t.utfortDato.slice(0, 4) >= String(IAAR - 1)).map((t) => ({ b, t })));
   const liste = (l) => l.map(({ b, t }) => `<div data-bestand="${esc(b.id)}">${tiltakRad(b, t, true)}</div>`).join('');
   aapneArk(`<h2>Tiltak</h2><p class="hint">Trykk på et tiltak for å se bestandet i kartet. Kryss av når det er gjort – det lagres med dagens dato.</p>
+    <div class="knapper"><button type="button" class="knapp primar" data-h="sporlogg">Registrer utført tiltak med sporlogg</button></div>
     <h3>I år og neste år (${naa.length})</h3><div class="liste">${liste(naa) || '<div class="tom">Ingen tiltak de to neste årene.</div>'}</div>
     ${senere.length ? `<h3>Senere</h3><div class="liste">${liste(senere)}</div>` : ''}
     ${nylig.length ? `<h3>Nylig utført</h3><div class="liste">${liste(nylig)}</div>` : ''}`, { hoy: true });
@@ -259,7 +263,7 @@ function veksleGps() {
     forste = false;
     gpsStripe();
     if (regPagar) tegnRegSkjemaPos();
-  }, (err) => { melding(`GPS: ${err.message}`); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+  }, (err) => { if (err.code === 1) melding('Appen har ikke tilgang til posisjon. Tillat posisjon i nettleserens innstillinger.', 6000); else if (err.code === 2) melding('Finner ikke GPS-posisjon her.'); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 60000 });
 }
 function tegnRegSkjemaPos() {
   const pos = regPosisjon(); const b = bestandVed(pos.lat, pos.lon); const el = $('.pos'); if (!el) return;
@@ -274,7 +278,7 @@ async function velgPlan(id, { zoom = true } = {}) {
   P = plan; P.registreringer = P.registreringer || []; ls.set(LS.plan, id);
   $('#planNavn').textContent = P.eiendom?.navn || 'Plan';
   document.title = `${P.eiendom?.navn || 'Plan'} · SkogIQ Felt`;
-  valgtId = null; tegnPlan(zoom); gpsStripe();
+  valgtId = null; tegnPlan(zoom); gpsStripe(); spor?.tegnUtfort();
 }
 async function visPlaner() {
   const liste = await listPlaner();
@@ -339,6 +343,7 @@ function kobleHendelser() {
   $('#gpsBtn').addEventListener('click', veksleGps);
   $('#zoomPlanBtn').addEventListener('click', zoomPlan);
   $('#nyRegBtn').addEventListener('click', () => startReg());
+  $('#sporBtn').addEventListener('click', () => spor.visStart());
   $('#lagBtn').addEventListener('click', () => {
     const rekke = ['graa', 'topo', 'flyfoto']; const neste = rekke[(rekke.indexOf(lagNavn) + 1) % rekke.length];
     kart.removeLayer(grunnlag[lagNavn]); lagNavn = neste; grunnlag[lagNavn].addTo(kart); grunnlag[lagNavn].bringToBack(); ls.set(LS.lag, lagNavn);
@@ -361,6 +366,7 @@ function kobleHendelser() {
     if (h === 'avbryt-reg') { avbrytReg(); visRegListe(); }
     if (h === 'lagre-reg') lagreReg();
     if (h === 'offline') lastNedOffline();
+    if (h === 'sporlogg') spor.visStart();
     if (h === 'installer' && installHendelse) { installHendelse.prompt(); const v = await installHendelse.userChoice; installHendelse = null; if (v.outcome === 'accepted') melding('SkogIQ Felt er installert.'); visMer(); }
   });
   ark.addEventListener('change', async (e) => {
@@ -383,11 +389,13 @@ function kobleHendelser() {
 }
 
 async function start() {
-  initKart(); kobleHendelser(); nettStatus();
+  initKart();
+  spor = initSporlogg({ L, kart, plan: () => P, lagrePlanen, aapneArk, lukkArk, melding, tegnPlan: () => tegnPlan(false), nyId, settStatus: (paa) => document.body.classList.toggle('spor-aktiv', paa) });
+  kobleHendelser(); nettStatus();
   const liste = await listPlaner();
   const h = await hent().catch(() => null);
   const id = [ls.get(LS.plan), h?.planId, liste[0]?.id].find((x) => x && liste.some((p) => p.id === x));
-  if (id) await velgPlan(id); else visPlaner();
+  if (id) { await velgPlan(id); await spor.gjenoppta(); } else visPlaner();
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 start();

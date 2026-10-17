@@ -112,3 +112,21 @@ textarea, select { width: 100%; font: inherit; border: 1px solid var(--border); 
   .ark.hoy { height: auto; }
 }
 a.knapp { text-decoration: none; color: inherit; }
+
+/* Sporlogg */
+.fab-spor { right: auto; left: 14px; background: #10241c; box-shadow: 0 6px 20px rgba(16, 36, 28, .4); }
+body.spor-aktiv .fab-spor { display: none; }
+.sporstatus { position: fixed; left: 10px; right: 70px; top: calc(74px + var(--topp)); z-index: 1001; background: #10241c; color: #fff; border-radius: 14px; padding: 9px 12px; box-shadow: var(--skygge); font-size: 13.5px; display: grid; gap: 7px; }
+body.spor-aktiv .gpsstripe { top: calc(150px + var(--topp)); }
+.spor-knapper { display: flex; gap: 6px; }
+.spor-knapper .knapp { flex: 1; color: var(--text); }
+.spor-knapper .knapp.primar { background: #c93a55; border-color: #c93a55; color: #fff; }
+.opptak { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ff5c78; margin-right: 2px; animation: blink 1.2s infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+.tallfelt { width: 100%; font: inherit; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin: 4px 0 6px; }
+.spor-valg { display: grid; grid-template-columns: 1.4fr .8fr 1.2fr; gap: 8px; margin: 8px 0; }
+.spor-valg label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.spor-valg input, .spor-valg select { width: 100%; font: inherit; font-size: 14px; border: 1px solid var(--border); border-radius: 10px; padding: 8px; background: var(--surface); color: var(--text); }
+.spor-rad.dempet { opacity: .55; }
+.spor-rad label { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+.stor-avkryss { width: 26px; height: 26px; }

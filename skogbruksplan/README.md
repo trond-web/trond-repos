@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.8.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.9.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -83,6 +83,16 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
   - «Last ned kart for offline» lagrer Kartverkets topografiske kart for eiendommen (zoom 10–17). Flyfoto krever nett.
   - Registreringer og utførte tiltak lagres på telefonen uten nett. En prikk øverst viser nettstatus.
 - **PWA:** egen manifestfil (`felt.webmanifest`) med PNG-ikoner og maskerbart ikon. Den kan installeres som «SkogIQ Felt», og har knapp for installering (Android/Chrome) eller veiledning for iPhone (Del → Legg til på Hjem-skjerm).
+- **Sporlogg for utførte tiltak** (`js/sporlogg.js`, `js/sporlogg-ui.js`):
+  - **Opptak:** trykk «Sporlogg», velg tiltak og arbeidsbredde, og gå over området mens tiltaket utføres. Standardbredden er for eksempel ungskogpleie 8 m, planting 5 m, markberedning 4 m og hogst med maskin 20 m.
+  - **Under opptaket:** unøyaktige punkter, stillestående GPS-støy og urealistiske hopp filtreres bort. Skjermen holdes våken (Wake Lock). Opptaket kan pauses, og det lagres fortløpende, så det kan fortsettes etter omlasting.
+  - **Ved Stopp:** sporet × bredde blir en dekningsflate (polygon-clipping i UTM 33), som klippes mot bestandene. Hvert bestand får areal og andel, og tre mulige forslag:
+    - et planlagt tiltak av samme type (±3 år) markeres utført
+    - et utført tiltak av samme type samme år slås sammen (flatene slås sammen, overlapp telles ikke dobbelt)
+    - ellers lages et nytt utført tiltak
+  - **Justering:** tiltak, bredde og dato kan endres før lagring. Under 0,1 daa i et bestand er ikke valgt. Over 50 % kan registreres som hele bestandet.
+  - **Lagring:** tiltaket får `arealDaa`, `dekning` (GeoJSON) og `sporIder`. Sporet lagres i `plan.sporlogger`. Fullversjonen bruker arealet i økonomi og tiltakslister, og dekningen vises i feltkartet.
+  - **GPX:** nettlesere kan stoppe GPS når skjermen låses. Spor fra en annen app eller klokke kan derfor leses inn som GPX og behandles likt. Sporet kan også lastes ned som GPX.
 - **Fullversjonen:** den har lenke til mobilversjonen i Felt-fanen, i Planer på mobil og i kommandopaletten. Fullversjonens manifest har snarveien «Felt».
 - **Start i mobilversjonen:** dette kan slås på under «Mer». `./?full` åpner alltid fullversjonen.
 - **Test:** testene sjekker at alle moduler som importeres fra `app.js` og `felt-app.js` ligger i service workerens liste. Ellers ville offline-støtten bryte uten at noen merket det.
