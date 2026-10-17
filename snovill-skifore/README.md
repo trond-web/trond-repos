@@ -54,8 +54,9 @@ Alle fire tillater kall fra nettleseren (CORS). Svarene mellomlagres i 20 minutt
 
 ## 🗺️ Løypekart
 
-Kartet viser løypene rundt valgt sted på Kartverkets topografiske kart (Leaflet, lastes først når kartet
-kommer til syne). Fargen viser hvor lenge siden løypa ble kjørt, med samme inndeling som Sporet: siste 6 t,
+Hvert stedskort har sitt eget løypekart, mellom 10-dagersvarselet og webkameraene, så snøforhold, løyper og
+kamera ligger samlet. Kartet viser løypene rundt stedet på Kartverkets topografiske kart (Leaflet, lastes først
+når kartet kommer til syne, og beholder zoom og data når kortene tegnes på nytt). Fargen viser hvor lenge siden løypa ble kjørt, med samme inndeling som Sporet: siste 6 t,
 6–18 t, 18 t–2 døgn, 2–14 døgn, eldre, og ikke kjørt i år/ukjent. Heltrukne linjer er Sporet.no, stiplede er
 Løyper.net. Under kartet står antall km løype og hvor mange km som er kjørt siste 18 timer.
 
