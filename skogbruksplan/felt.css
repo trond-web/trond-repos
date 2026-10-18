@@ -218,3 +218,13 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 /* Forslag fra tiltaksmotoren i bestandskortet */
 .motor-forslag { background: #fff6e0; border: 1px solid #f0d58a; border-radius: 12px; padding: 10px 12px; margin: 6px 0 8px; font-size: 13.5px; }
 .motor-forslag .knapper { margin: 8px 0 0; }
+
+/* Droneoppdrag (beta) */
+.beta { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: #fff; background: #7b2ff7; border-radius: 99px; padding: 2px 7px; vertical-align: 3px; }
+.drone-tall { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+.drone-tall div { background: var(--surface-2, #eff3ee); border-radius: 10px; padding: 6px 8px; } .drone-tall b { display: block; font-size: 17px; } .drone-tall span { color: var(--muted, #6f7d75); font-size: 12px; }
+.drone-terreng { border-radius: 10px; padding: 8px 10px; font-size: 13px; margin: 6px 0; } .drone-terreng.ok { background: #dfeee4; } .drone-terreng.advarsel { background: #fbf0dd; } .drone-terreng.fare { background: #fae6ea; color: #8a1c31; }
+.to-kol { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.skjema-felt input[type=range] { width: 100%; accent-color: #7b2ff7; }
+.drone-steg { padding-left: 20px; margin: 4px 0; font-size: 14px; } .drone-steg li { margin: 4px 0; }
+.leaflet-tooltip.drone-start { background: #ff3d7f; color: #fff; border: 0; font-weight: 700; font-size: 11px; padding: 1px 6px; }

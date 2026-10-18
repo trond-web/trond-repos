@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.22.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.23.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -197,6 +197,29 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
 - **Fullversjonen:** den har lenke til mobilversjonen i Felt-fanen, i Planer på mobil og i kommandopaletten. Fullversjonens manifest har snarveien «Felt».
 - **Start i mobilversjonen:** dette kan slås på under «Mer». `./?full` åpner alltid fullversjonen.
 - **Test:** testene sjekker at alle moduler som importeres fra `app.js` og `felt-app.js` ligger i service workerens liste. Ellers ville offline-støtten bryte uten at noen merket det.
+
+## Droneoppdrag – ortofoto med DJI Enterprise (beta, SkogIQ Felt)
+
+Feltappen lager flyruter for ortofoto som åpnes i **DJI Pilot 2**. Logikken ligger i `js/drone.js` og skjermbildene i `js/drone-felt.js`.
+
+1. **Område:** Velg «Mer → ✈ Droneoppdrag → Tegn nytt område», eller «✈ Droneoppdrag» på bestandskortet. Området klippes mot eiendommen og kan endres senere.
+2. **Plan:** Velg drone, flyhøyde (40–120 m) og overlapp. Standard er 80/80, fordi tretopper er vanskelige å sette sammen i ortofoto. Velg også flyretning; automatisk gir færrest vendinger. Appen beregner:
+   - **Flylinjer:** parallelle linjer fram og tilbake over området, med en halv bildelengde ekstra i hver ende.
+   - **Avstander:** linjeavstand fra sideoverlappen og bildeavstand fra overlappen fram.
+   - **Fart:** høyst 12 m/s og minst 1–2 s mellom bildene.
+   - **Resultat:** GSD (cm/px), antall bilder, km, flytid og batterier.
+   - **Kartet:** viser linjene og startpunktet.
+3. **Terrengsjekk:** Appen henter høyder fra Kartverket (DTM1, `ws.geonorge.no/hoydedata`) i hjørnene og et rutenett. Ruten flyr med fast høyde over startpunktet, så appen advarer når terrenget stiger så mye at dronen kommer nær tretoppene. Råd: start fra et høyt punkt, eller bruk terrengfølging i DJI Pilot 2.
+4. **Start:** Kryss av i sjekklisten for regelverket i Norge: operatørregistrering, kompetansebevis A1/A3 og A2, luftrom (Ninox/Avinor), verneområder, maks 120 m, synsvidde, varsling av grunneier, vær og batteri. Last deretter ned ruten:
+   - **KMZ i DJI WPML-format:** `wpmz/template.kml` med en kartleggingsmal (`mapping2d`, med polygon, overlapp, høyde, retning, gimbal −90° og høydeoptimalisering) og `wpmz/waylines.wpml` med veipunkter og fotografering med fast avstand (`multipleDistance` og `takePhoto`).
+   - **KML:** bare området, for andre programmer.
+   - **Del:** «Del …» bruker telefonens delingsmeny.
+5. **I DJI Pilot 2:** Velg **Ruter → Importer rute**, kontroller ruten og trykk **Start**. Enklest er å åpne SkogIQ Felt i nettleseren på fjernkontrollen (RC Plus / RC Pro Enterprise). Du kan også overføre filen med USB, minnekort eller FlightHub 2.
+6. Til slutt merker du oppdraget som flydd. Ortofotoet lages i DJI Terra, Pix4D, Metashape eller WebODM. Opplasting til SkogIQ kommer senere.
+
+**Støttede droner** (kodene fra WPML): Mavic 3 Enterprise, Multispectral og Thermal, Matrice 3D, M30 og M350 RTK med H20. Kameraparametrene (sensor, oppløsning, brennvidde) ligger i `DRONER`. Zenmuse P1/L2 og Matrice 4E mangler i WPML-dokumentasjonen og er ikke med ennå.
+
+**Beta:** Ruten er laget etter DJIs offentlige WPML-spesifikasjon, men er ikke testet på alle droner og fastvareversjoner. DJI Pilot 2 kan regenerere linjene fra malen. Kontroller alltid ruten i Pilot 2 før du flyr.
 
 ## Flere eiendommer i kartet (fanen «Planer»)
 
