@@ -231,3 +231,8 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .kontroller-boks { background: #f1ebff; border-radius: 12px; padding: 10px 12px; margin: 6px 0 8px; }
 .kontroller-boks p { margin: 4px 0; font-size: 13.5px; }
 .kode-rad { display: flex; gap: 8px; margin-top: 6px; } .kode-rad input { flex: 1; min-width: 0; font: 700 20px/1 ui-monospace, Menlo, monospace; letter-spacing: 3px; text-transform: uppercase; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); }
+
+/* Hent plan fra PC-en med kode */
+.kodefelt { display: flex; gap: 8px; margin: 6px 0 4px; }
+.kodefelt input { flex: 1; min-width: 0; font: 700 22px/1.2 ui-monospace, 'SFMono-Regular', Menlo, monospace; letter-spacing: .18em; text-transform: uppercase; text-align: center; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); }
+.kodefelt input::placeholder { font: 500 16px/1.2 var(--font, system-ui), sans-serif; letter-spacing: .02em; text-transform: none; }

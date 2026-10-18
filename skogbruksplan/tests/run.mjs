@@ -47,6 +47,8 @@ import * as SK from '../js/skog3d-data.js';
 import * as SV from '../js/skog3d-veg.js';
 import * as SO from '../js/skog3d-omgivelser.js';
 import * as AR from '../js/ar-data.js';
+import * as PS from '../js/plan-synk.js';
+import { lagPlanRelay } from '../plan-relay.js';
 import { lagRelay, KODE_GYLDIG_MS } from '../kontroller-relay.js';
 import { tolkTetthet, alderFraHoyde, startTilstand as startT2, hogstklasseFor, foryngelse, vurderLiteVolum, rettFeilHogd, minForyngelse } from '../js/model.js';
 import { ungskogHtml, effektHtml } from '../js/effekt-html.js';
@@ -1706,6 +1708,62 @@ test('AR i felt: grenser, stier, miljø, kulturminner, retning og varsler', asyn
   assert.equal(AR.kursFraOrientering({ alpha: 270, absolute: true }, { deklinasjon: 0 }), 90);
   assert.equal(AR.kursFraOrientering({ alpha: 10 }), null);
   assert.equal(AR.glattVinkel(350, 10, 0.5), 0); assert.equal(AR.peiling(0, 0, 0, 10).retning, 0); assert.equal(AR.kompassTekst(225), 'SV');
+});
+
+test('Plan fra PC til mobil: relé, pakking, fletting og synkronisering begge veier', async () => {
+  // Relé: opprett, kode, kobling, versjoner og konflikt
+  let klokke = 1e12; const relay = lagPlanRelay({ naa: () => klokke });
+  const a = relay.send({ plan: 'QUJD', navn: 'Test' }); assert.equal(a.versjon, 1); assert.match(a.id, /^[a-f0-9]{32}$/);
+  const k = relay.kode(a.id); assert.equal(k.kode.length, 6); assert.equal(relay.kobl(k.kode.toLowerCase()).id, a.id); assert.equal(relay.kobl(k.kode).id, a.id); // flere mobiler kan bruke koden
+  assert.equal(relay.send({ id: a.id, plan: 'REVG', grunnVersjon: 0 }).status, 409);
+  assert.equal(relay.send({ id: a.id, plan: 'REVG', grunnVersjon: 1 }).versjon, 2);
+  klokke += 16 * 60 * 1000; assert.equal(relay.kobl(k.kode), null); // utløpt
+  assert.equal(relay.send({ plan: '' }).status, 400);
+  const ukjent = 'ab'.repeat(16); assert.equal(relay.send({ id: ukjent, plan: 'QUJD' }).id, ukjent); // gjenopprettes etter omstart
+  // Pakking (gzip + base64) og fingeravtrykk
+  const plan = { planId: 'p1', eiendom: { navn: 'Øvre Skog' }, endret: '2026-10-01T10:00:00Z', bestand: [{ id: 'b1', nr: '1', tiltak: [{ id: 't1', type: 'tynning', aar: 2027, status: 'planlagt' }] }], registreringer: [], synk: { id: 'x' } };
+  const pk = await PS.pakk(plan); assert.equal(pk.gzip, true); const ut = await PS.pakkUt(pk); assert.equal(ut.eiendom.navn, 'Øvre Skog'); assert.equal(ut.synk, undefined);
+  assert.equal(PS.planHash(plan), PS.planHash({ ...plan, endret: 'annen', synk: null })); assert.notEqual(PS.planHash(plan), PS.planHash({ ...plan, registreringer: [{ id: 'r' }] }));
+  // Fletting: registreringer og tiltak fra begge, nyeste versjon per id, slettede kommer ikke tilbake
+  const pc = { ...plan, endret: '2026-10-02T10:00:00Z', bestand: [{ id: 'b1', nr: '1', tiltak: [{ id: 't1', type: 'tynning', aar: 2028, status: 'planlagt', endret: '2026-10-02' }, { id: 't2', type: 'planting', aar: 2027 }] }], registreringer: [{ id: 'r1', tekst: 'PC' }] };
+  const mob = { ...plan, endret: '2026-10-01T12:00:00Z', bestand: [{ id: 'b1', nr: '1', tiltak: [{ id: 't1', type: 'tynning', aar: 2027, status: 'utfort', utfortDato: '2026-10-03' }, { id: 't3', type: 'ungskogpleie', aar: 2026 }] }], registreringer: [{ id: 'r2', tekst: 'Barkbille' }] };
+  PS.merkSlettet(pc, 'tiltak', 't3');
+  const f = PS.flettPlaner(pc, mob);
+  assert.deepEqual(f.registreringer.map((r) => r.id).sort(), ['r1', 'r2']);
+  const tt = f.bestand[0].tiltak; assert.deepEqual(tt.map((t) => t.id).sort(), ['t1', 't2']); // t3 er slettet på PC
+  assert.equal(tt.find((t) => t.id === 't1').status, 'utfort'); // nyeste versjon (utført i felt etter PC-endringen)
+  assert.deepEqual(f.slettet.tiltak, ['t3']);
+  // Synk mot reléet (falsk fetch rett mot planApi-logikken)
+  const r2 = lagPlanRelay();
+  const hent = async (url, o = {}) => {
+    const sti = url.replace(/^https?:\/\/[^/]+/, ''); const kropp = o.body ? JSON.parse(o.body) : {}; const m = sti.match(/^\/api\/plan(?:\/([a-f0-9]{32}))?(\/kode|\/info)?$/);
+    let d; let st = 200;
+    if (sti === '/api/plankobling') { d = r2.kobl(kropp.kode); if (!d) { st = 404; d = { feil: 'ukjent' }; } }
+    else if (!m[1]) d = r2.send(kropp); else if (m[2] === '/kode') d = r2.kode(m[1]); else if (m[2] === '/info') { d = r2.info(m[1]); if (!d) { st = 404; d = {}; } }
+    else if (o.method === 'PUT') d = r2.send({ ...kropp, id: m[1] }); else { d = r2.hent(m[1]); if (!d) { st = 404; d = {}; } }
+    if (d?.status && d.feil) st = d.status;
+    return { ok: st < 300, status: st, json: async () => d };
+  };
+  const PCs = PS.lagPlanSynk({ hent, api: '', enhet: 'pc' }); const MOBs = PS.lagPlanSynk({ hent, api: '', enhet: 'mobil' });
+  const delt = await PCs.del({ ...pc, synk: null }); assert.equal(delt.kode.length, 6); assert.equal(delt.status, 'sendt');
+  let paMobil = await MOBs.hentMedKode(delt.kode); assert.equal(paMobil.planId, 'p1'); assert.equal(paMobil.synk.id, delt.plan.synk.id);
+  assert.equal((await MOBs.synk(paMobil)).status, 'lik');
+  paMobil = { ...paMobil, endret: '2026-10-05T08:00:00Z', registreringer: [...paMobil.registreringer, { id: 'r9', tekst: 'Vindfall' }] };
+  const s1 = await MOBs.synk(paMobil); assert.equal(s1.status, 'sendt');
+  const s2 = await PCs.synk(delt.plan); assert.equal(s2.status, 'hentet'); assert.ok(s2.plan.registreringer.some((r) => r.id === 'r9'));
+  // Begge endrer samtidig → flettes
+  const pcEndret = { ...s2.plan, endret: '2026-10-06T08:00:00Z', registreringer: [...s2.plan.registreringer, { id: 'rPC', tekst: 'fra PC' }] };
+  const mobEndret = { ...s1.plan, endret: '2026-10-06T09:00:00Z', registreringer: [...s1.plan.registreringer, { id: 'rMOB', tekst: 'fra mobil' }] };
+  assert.equal((await PCs.synk(pcEndret)).status, 'sendt');
+  const s3 = await MOBs.synk(mobEndret); assert.equal(s3.status, 'flettet'); assert.ok(['rPC', 'rMOB', 'r9'].every((id) => s3.plan.registreringer.some((r) => r.id === id)));
+  // Serveren glemmer planen (omstart): begge laster opp på nytt – den siste fletter i stedet for å overskrive
+  r2.slett(s3.plan.synk.id);
+  const pcEtter = { ...s3.plan, synk: (await PCs.synk(pcEndret)).plan.synk ?? s3.plan.synk, registreringer: [...s3.plan.registreringer, { id: 'rPC2', tekst: 'PC etter omstart' }] };
+  r2.slett(s3.plan.synk.id);
+  assert.equal((await PCs.synk(pcEtter)).status, 'sendt');
+  const mobEtter = { ...s3.plan, registreringer: [...s3.plan.registreringer, { id: 'rMOB2', tekst: 'mobil etter omstart' }] };
+  const s4 = await MOBs.synk(mobEtter); assert.equal(s4.status, 'flettet'); assert.ok(['rPC2', 'rMOB2'].every((id) => s4.plan.registreringer.some((r) => r.id === id)));
+  assert.equal(PS.lenkeMedKode('ABC123', 'https://x.no/skog/index.html'), 'https://x.no/skog/felt.html?kode=ABC123');
 });
 
 await Promise.all(venter);

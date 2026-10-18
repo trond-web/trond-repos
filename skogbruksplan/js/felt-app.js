@@ -19,6 +19,7 @@ import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
 import { endringer as motorEndringer, oppdaterBestand as motorOppdater, merkKjort } from './tiltaksmotor.js';
+import { lagPlanSynk, merkSlettet, flettPlaner } from './plan-synk.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -57,6 +58,46 @@ async function lagrePlanen() {
   const h = await hent();
   if (!h || h.planId === P.planId) await lagre(P);
   kanal?.postMessage({ type: 'plan-endret', planId: P.planId, fra: 'felt' });
+  if (P.synk?.id) { clearTimeout(synkTimer); synkTimer = setTimeout(() => synkNaa(), 8000); } // send endringene til PC-en
+}
+
+// ---------- planer fra PC-en: hent med kode/QR, og synkroniser endringer begge veier (plan-synk.js) ----------
+const planSynk = lagPlanSynk({ enhet: 'mobil' });
+let synkTimer = null; let synker = false; let synkInfo = null; // { tid, tekst, feil }
+const klokke = (iso) => new Date(iso).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
+async function synkNaa({ stille = true } = {}) {
+  if (!P?.synk?.id || synker) return;
+  if (!navigator.onLine) { synkInfo = { tekst: 'Uten nett – synkroniseres når du får dekning', feil: false }; return; }
+  synker = true; const snap = P; const endret0 = P.endret;
+  try {
+    const r = await planSynk.synk(P);
+    if (P !== snap) return; // byttet plan underveis
+    if (P.endret !== endret0) { P.synk = { ...r.plan.synk, sendtHash: null }; await lagrePlan(P); return; } // endret underveis – sendes neste gang
+    if (r.status === 'hentet' || r.status === 'flettet') {
+      P = r.plan; P.registreringer = P.registreringer || []; await lagrePlan(P);
+      const h = await hent(); if (h?.planId === P.planId) await lagre(P);
+      $('#planNavn').textContent = P.eiendom?.navn || 'Plan'; valgtId = null; tegnPlan(false); gpsStripe(); spor?.tegnUtfort();
+      melding(r.status === 'hentet' ? 'Planen er oppdatert med endringer fra PC-en.' : 'Endringer fra PC-en og mobilen er slått sammen.', 4500);
+    } else { P.synk = r.plan.synk; await lagrePlan(P); }
+    synkInfo = { tid: new Date().toISOString(), tekst: { lik: 'Lik på PC og mobil', sendt: 'Endringene er sendt til PC-en', hentet: 'Oppdatert fra PC-en', flettet: 'Endringer slått sammen' }[r.status], feil: false };
+    if (!stille) melding(`✓ ${synkInfo.tekst}`);
+  } catch (e) { synkInfo = { tid: new Date().toISOString(), tekst: e.message, feil: true }; if (!stille) melding(`Synkronisering feilet: ${e.message}`, 6000); } finally { synker = false; }
+}
+async function hentFraPc(kode) {
+  const k = String(kode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (k.length !== 6) { melding('Koden har 6 tegn – se PC-en (Planer → 📱 Til mobil).'); return false; }
+  if (!navigator.onLine) { melding('Du må ha nett for å hente planen. Etterpå virker den uten nett.'); return false; }
+  melding('Henter planen fra PC-en …', 30000);
+  try {
+    let plan = await planSynk.hentMedKode(k);
+    const finnes = await hentPlan(plan.planId);
+    if (finnes) { plan = { ...flettPlaner(finnes, plan), synk: { ...plan.synk, sendtHash: null } }; } // har planen fra før: ta vare på endringer gjort her
+    await lagrePlan(plan);
+    await velgPlan(plan.planId); lukkArk();
+    melding(`✓ ${plan.eiendom?.navn || 'Planen'} er lagret på mobilen og virker uten nett. Endringer synkroniseres med PC-en.`, 6000);
+    if (finnes) synkNaa();
+    return true;
+  } catch (e) { melding(e.nett ? e.message : `Kunne ikke hente planen: ${e.message}`, 7000); return false; }
 }
 
 // ---------- kart ----------
@@ -481,12 +522,19 @@ async function velgPlan(id, { zoom = true } = {}) {
   $('#planNavn').textContent = P.eiendom?.navn || 'Plan';
   document.title = `${P.eiendom?.navn || 'Plan'} · SkogIQ Felt`;
   valgtId = null; tegnPlan(zoom); gpsStripe(); spor?.tegnUtfort();
+  synkInfo = null; synkNaa(); // hent endringer fra PC-en
 }
 async function visPlaner() {
   const liste = await listPlaner();
-  aapneArk(`<h2>Mine skogbruksplaner</h2><p class="hint">Planene lages og redigeres i fullversjonen. Her ser du dem i felt – også uten nett.</p>
-    <div class="liste">${liste.map((p) => `<button type="button" class="rad ${p.id === P?.planId ? 'aktiv' : ''}" data-plan="${esc(p.id)}"><div><div class="tittel">${esc(p.navn)}</div><div class="under">${fmt(p.areal)} daa · ${p.antall} bestand${ls.get(LS.offline + p.id) ? ` · offline-kart ${esc(ls.get(LS.offline + p.id))}` : ''}</div></div><span>${p.id === P?.planId ? '✓' : '›'}</span></button>`).join('') || '<div class="tom">Ingen planer ennå. Lag en plan i fullversjonen.</div>'}</div>
-    <div class="knapper"><a class="knapp" href="./?full">Åpne fullversjonen</a></div>`, { hoy: true });
+  aapneArk(`<h2>Mine skogbruksplaner</h2>
+    <div class="liste">${liste.map((p) => `<button type="button" class="rad ${p.id === P?.planId ? 'aktiv' : ''}" data-plan="${esc(p.id)}"><div><div class="tittel">${esc(p.navn)}</div><div class="under">${fmt(p.areal)} daa · ${p.antall} bestand${ls.get(LS.offline + p.id) ? ` · offline-kart ${esc(ls.get(LS.offline + p.id))}` : ''}</div></div><span>${p.id === P?.planId ? '✓' : '›'}</span></button>`).join('') || '<div class="tom">Ingen planer på mobilen ennå. Hent en fra PC-en under.</div>'}</div>
+    ${P?.synk?.id ? `<h3>Synkronisert med PC-en</h3><p class="hint">${synkInfo ? `${synkInfo.feil ? '⚠ ' : '✓ '}${esc(synkInfo.tekst)}${synkInfo.tid ? ` (${klokke(synkInfo.tid)})` : ''}` : P.synk.sist ? `Sist synkronisert ${new Date(P.synk.sist).toLocaleString('nb-NO', { dateStyle: 'short', timeStyle: 'short' })}` : ''}. Endringer sendes automatisk når du har nett.</p>
+    <div class="knapper"><button type="button" class="knapp" data-h="synk">⇅ Synkroniser nå</button></div>` : ''}
+    <h3>Hent plan fra PC-en</h3>
+    <p class="hint">Åpne planen i fullversjonen på PC-en og trykk <b>📱 Til mobil</b>. Skann QR-koden med kameraet, eller skriv koden her:</p>
+    <div class="kodefelt"><input id="hentKode" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="F.eks. K7Q2MX" aria-label="Kode fra PC-en"><button type="button" class="knapp primar" data-h="hent-kode">Hent</button></div>
+    <p class="hint">Ny plan fra gårds- og bruksnummer lager du i fullversjonen – også på mobilen.</p>
+    <div class="knapper"><a class="knapp" href="./?full#planer">Lag ny plan i fullversjonen</a></div>`, { hoy: true });
 }
 
 // ---------- mer: offline, installasjon, innstillinger ----------
@@ -552,7 +600,7 @@ function kobleHendelser() {
   lukkKnapp.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); lukkArk(); }, { passive: false });
   lukkKnapp.addEventListener('click', (e) => { e.stopPropagation(); lukkArk(); });
   window.addEventListener('popstate', () => { if (ignorerPop) { ignorerPop = false; return; } arkOppforing = false; if (!$('#ark').hidden) lukkArk(true); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#ark').hidden) lukkArk(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#ark').hidden) lukkArk(); if (e.key === 'Enter' && e.target.id === 'hentKode') hentFraPc(e.target.value); });
   $('#melding').addEventListener('click', () => { $('#melding').hidden = true; });
   $('#gpsBtn').addEventListener('click', veksleGps);
   $('#arBtn').addEventListener('click', startAR);
@@ -590,10 +638,12 @@ function kobleHendelser() {
     const best = e.target.closest('[data-bestand]'); if (best) { visBestand(best.dataset.bestand, { zoom: true }); return; }
     const bv = e.target.closest('[data-bestand-vis]'); if (bv) { visBestand(bv.dataset.bestandVis, { zoom: true }); return; }
     const reg = e.target.closest('[data-reg]'); if (reg) { visRegistrering(reg.dataset.reg); return; }
-    const slett = e.target.closest('[data-slett-reg]'); if (slett) { if (!confirm('Slette registreringen?')) return; P.registreringer = P.registreringer.filter((r) => r.id !== slett.dataset.slettReg); await lagrePlanen(); tegnRegistreringer(); visRegListe(); return; }
+    const slett = e.target.closest('[data-slett-reg]'); if (slett) { if (!confirm('Slette registreringen?')) return; merkSlettet(P, 'registreringer', slett.dataset.slettReg); P.registreringer = P.registreringer.filter((r) => r.id !== slett.dataset.slettReg); await lagrePlanen(); tegnRegistreringer(); visRegListe(); return; }
     const st = e.target.closest('[data-tf-status]'); if (st && endring) { endring.utkast = { ...lesEndring(), status: st.dataset.tfStatus }; visEndreTiltak(endring.bid, endring.tid); return; }
     const kat = e.target.closest('[data-kat]'); if (kat && regPagar) { regPagar.kategori = kat.dataset.kat; regPagar.tekst = $('#regTekst').value; document.querySelectorAll('[data-kat]').forEach((c) => c.setAttribute('aria-pressed', String(c === kat))); return; }
     const h = e.target.closest('[data-h]')?.dataset.h; if (!h) return;
+    if (h === 'hent-kode') { hentFraPc($('#hentKode')?.value); return; }
+    if (h === 'synk') { await synkNaa({ stille: false }); if (!$('#ark').hidden) visPlaner(); return; }
     if (h === 'reg-her') startReg(valgtId);
     if (h === 'ny-reg') startReg();
     if (h === 'avbryt-reg') { avbrytReg(); visRegListe(); }
@@ -677,7 +727,14 @@ async function start() {
   const liste = await listPlaner();
   const h = await hent().catch(() => null);
   const id = [ls.get(LS.plan), h?.planId, liste[0]?.id].find((x) => x && liste.some((p) => p.id === x));
+  window.addEventListener('online', () => synkNaa());
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') synkNaa(); });
+  const kodeILenke = new URLSearchParams(location.search).get('kode');
+  if (kodeILenke) { history.replaceState(null, '', location.pathname); if (await hentFraPc(kodeILenke)) { await spor.gjenoppta(); return registrerSw(); } }
   if (id) { await velgPlan(id); await spor.gjenoppta(); } else visPlaner();
+  registrerSw();
+}
+function registrerSw() {
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 start();

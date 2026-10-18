@@ -59,6 +59,7 @@ export async function lagrePlan(plan) {
     antall: plan.bestand.length,
     endret: new Date().toISOString(),
     laget: plan.metadata?.laget || null,
+    synk: !!plan.synk?.id,
   });
   await skriv('planliste', liste);
 }

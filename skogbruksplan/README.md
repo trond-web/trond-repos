@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.30.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.31.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -145,6 +145,35 @@ Tiltak kan endres og slettes både i fullversjonen og i SkogIQ Felt (`js/tiltak-
 - **Motortiltak:** et tiltak fra tiltaksmotoren som endres for hånd, blir manuelt, slik at motoren ikke erstatter det.
 - **Sletting:** du må bekrefte. Bekreftelsen sier fra om tiltaket ligger i et oppdrag eller har en sporlogg-flate. Tiltaket fjernes også fra oppdraget og fra sporloggens bestandsliste.
 - **Gamle tiltak:** importerte tiltak uten id får id automatisk, slik at de kan endres.
+
+## Fra PC til mobil – send planen med QR-kode og synkroniser begge veier
+
+1. **På PC-en:** Trykk **📱 Til mobil** på planen i Planer, eller **Send planen til mobilen** i Felt-fanen. Etter at en ny plan er laget, finnes også knappen **📱 Send til mobilen**. Du får en QR-kode og en kode på 6 tegn, som gjelder i 15 minutter og kan brukes på flere mobiler.
+2. **På mobilen:** Skann QR-koden med kameraet. Planen åpnes i SkogIQ Felt og lagres på telefonen. Du kan også åpne SkogIQ Felt, trykke på planvelgeren øverst og velge **Hent plan fra PC-en**, og skrive koden.
+3. **Etterpå:** Planen virker uten nett på mobilen. Endringene synkroniseres automatisk begge veier når enhetene har nett:
+   - Mobilen synkroniserer når appen åpnes, når den kommer fram igjen, når nettet kommer tilbake, og 8 s etter en endring.
+   - PC-en synkroniserer når vinduet får fokus, hvert minutt, og 10 s etter en endring.
+   - Du kan også trykke **⇅ Synkroniser nå**.
+   - Planer som synkroniseres, er merket **⇅ mobil** i planlista.
+
+**Fletting** (`js/plan-synk.js`):
+- Det sist endrede eksemplaret er grunnlaget.
+- Registreringer, tiltak, sporlogger, oppdrag og droneoppdrag fra begge sider tas med. For samme id vinner den nyeste versjonen, for eksempel et tiltak som er satt som utført i felt.
+- Slettede tiltak og registreringer huskes (`plan.slettet`), så de ikke kommer tilbake fra den andre enheten.
+- Om en plan er endret siden forrige synkronisering, avgjøres av et fingeravtrykk av innholdet, ikke av klokkeslett.
+
+**Serveren** (`plan-relay.js`, API `/api/plan…`):
+- Den er et mellomlager. Planen ligger alltid på enhetene.
+- Planen sendes gzip-komprimert over HTTPS (typisk 0,1–0,5 MB) og får en hemmelig synk-id.
+- En ny versjon må bygge på den siste. Ellers svarer serveren 409, og enheten fletter.
+- Planer slettes etter 90 dager uten bruk. Med `PLAN_FIL` lagres de også på disk.
+- Er serveren startet på nytt og har glemt planen, laster enhetene den opp på nytt med samme id. Den siste fletter i stedet for å overskrive.
+
+**Raskere henting av eiendommer:**
+- Planen er klar og kan åpnes etter ca. 10 s.
+- Datagrunnlaget hentes samtidig i bakgrunnen og legges inn i planen når det kommer, også om planen er åpnet i mellomtiden. Det gjelder miljødata fra 8 kilder, NVDB-veier, traktorveier og stier fra FKB, og tømmerpriser fra SSB.
+- Før tok hele hentingen ca. 2,5 minutter for Nannestad 29/2. Nå tar den ca. 30 s.
+- SSB får ett nytt forsøk hvis første kall feiler.
 
 ## SkogIQ Felt – mobilversjon som fungerer offline (`felt.html`)
 

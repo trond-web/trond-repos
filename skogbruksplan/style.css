@@ -946,3 +946,13 @@ progress { accent-color: var(--accent); height: 8px; }
 .valg-kart { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
 .valg-kart label { display: flex; gap: 6px; align-items: center; font-weight: 600; font-size: 13px; }
 .valg-kart .hint { flex: 1 1 100%; margin: 0; font-size: 12.5px; }
+
+/* Planen på mobilen (QR-kode og kode) */
+.mobil-dialog { width: min(620px, calc(100vw - 24px)); }
+.mobil-qr { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; margin: 12px 0; }
+.mobil-qr .qr { background: #fff; padding: 10px; border-radius: 14px; line-height: 0; }
+.mobil-qr .qr svg, .mobil-qr .qr img { width: 210px; height: 210px; }
+.mobil-qr ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.mobil-kode { font: 800 30px/1.1 ui-monospace, 'SFMono-Regular', Menlo, monospace; letter-spacing: .14em; padding: 8px 12px; border-radius: 12px; background: var(--surface-2, rgba(0,0,0,.05)); display: inline-block; margin: 4px 0; user-select: all; }
+.synk-merke { font-size: 12px; color: var(--muted); margin-left: 6px; }
+@media (max-width: 560px) { .mobil-qr { grid-template-columns: 1fr; justify-items: center; } }
