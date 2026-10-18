@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.24.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.25.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -197,6 +197,29 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
 - **Fullversjonen:** den har lenke til mobilversjonen i Felt-fanen, i Planer på mobil og i kommandopaletten. Fullversjonens manifest har snarveien «Felt».
 - **Start i mobilversjonen:** dette kan slås på under «Mer». `./?full` åpner alltid fullversjonen.
 - **Test:** testene sjekker at alle moduler som importeres fra `app.js` og `felt-app.js` ligger i service workerens liste. Ellers ville offline-støtten bryte uten at noen merket det.
+
+## Virtuell skog – gå rundt i skogen, også med VR-briller (beta, fullversjonen)
+
+Åpne et bestand og trykk **🥽 Gå inn i skogen**. Du står da i bestandet og kan gå rundt i skogen rundt deg, inn i nabobestandene. Dataene ligger i `js/skog3d-data.js` og visningen i `js/skog3d.js`. Visningen bruker Three.js 0.160 og WebXR.
+
+**Trærne bygges av dataene i planen:**
+- **Treslag og blanding:** grandominert skog er 85 % gran, 10 % lauv og 5 % furu. Furu og lauv har tilsvarende blandinger.
+- **Høyde:** registrert høyde, middelhøyde eller høydekurven, med ±25 % variasjon mellom trærne.
+- **Treantall:**
+  - HK II: fra ungskogfeltene eller treantallsmodellen, med høyde bar og lauv hver for seg.
+  - HK III–V: fra takst eller SR16. Mangler tallet, brukes standardtall som justeres mot volumet og tetthetsklasse b.
+- **Kronen:** Gran har krone helt ned i ung skog og kortere krone med alderen og tettheten. Furu har flat, høy krone, og lauv har eggformet krone med hvit stamme.
+- **Hogstflate (HK I):** livsløpstrær, eventuelt plantede småplanter og lauvoppslag.
+- **Plassering:** Trærne står tilfeldig, men fast for hvert bestand, innenfor bestandsgrensen. Grensene vises som gule linjer på bakken.
+- **Antall og terreng:** Det er høyst ca. 30 000 trær. Radiusen (opptil 250 m) krymper i tett ungskog. Terrenget hentes fra Kartverket (DTM1, 10 × 10 punkter), og uten nett blir det flatt.
+
+**Styring:**
+- **PC:** Klikk i bildet og se rundt med musa. Gå med W A S D eller piltastene, og hold Shift for å løpe.
+- **Mobil og nettbrett:** Venstre halvdel av skjermen går, og høyre halvdel ser rundt.
+- **VR:** Trykk **🥽 VR**. Knappen vises når nettleseren og brillene støtter WebXR, for eksempel Meta Quest-nettleseren. Venstre stikke går, med knapp for å løpe, og høyre stikke snur 30°.
+- Øverst til venstre vises dataene for bestandet du står i: treslag, bonitet, hogstklasse med tetthet, alder, høyde, treantall og volum.
+
+Dette er en tolkning av dataene, ikke en skanning. Enkelttrær fra laserdata kan legges inn senere.
 
 ## Droneoppdrag – ortofoto med DJI Enterprise (beta, SkogIQ Felt)
 
