@@ -7,6 +7,7 @@ import { hkFor } from './flere-eiendommer.js';
 import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import { VERSJON } from './versjon.js';
 import { initSporlogg, lastPC } from './sporlogg-ui.js';
+import { mpTilUtm, mpTilGeo, fordelPaaBestand } from './sporlogg.js';
 import { startFlateRedigering } from './flate-redigering.js';
 import { initOppdragFelt } from './oppdrag-felt.js';
 import { ledig as oppdragLedig } from './oppdrag.js';
@@ -32,7 +33,7 @@ const lagPerBestand = new Map(); let bestandLag; let grenseLag; let regLag; let 
 let valgtId = null; let visning = 'kart';
 let gps = { watch: null, pos: null, folg: false, markor: null, sirkel: null };
 let installHendelse = null; let spor = null; let flate = null;
-let oppdrag = null; let uthevOppdrag = new Set(); // bestand i oppdraget som er åpent
+let oppdrag = null; let uthevOppdrag = new Set(); let kandidatOppdrag = new Set(); // bestand i oppdraget som er åpent, og bestand som kan velges
 let ungskogRed = null; // bestand der ungskogfeltene er åpne for registrering
 let tiltaksflateLag = null; let valgtTiltak = null; let treffMarkor = null; // tiltak som er valgt i kartet, og markør for trykkpunktet
 
@@ -72,12 +73,12 @@ function initKart() {
   kart.on('zoomend', etiketter); etiketter();
   kart.on('dragstart', () => { if (gps.folg) { gps.folg = false; oppdaterGpsKnapp(); } });
   // Trykk i kartet utenfor arket lukker det – men ikke midt i et skjema (registrering, endring, sporlogg).
-  kart.on('click', (e) => { if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (!$('#ark').hidden && !regPagar && !endring && !spor?.harResultat() && !spor?.tegner()) lukkArk(); });
+  kart.on('click', (e) => { if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (!$('#ark').hidden && !regPagar && !endring && !spor?.harResultat() && !spor?.tegner() && !oppdrag?.velgerIKart()) lukkArk(); });
 }
 
 function stil(b) {
-  const h = hk(b); const valgt = b.id === valgtId; const fly = lagNavn === 'flyfoto'; const ut = uthevOppdrag.has(b.id);
-  return { color: valgt ? '#ffd400' : ut ? '#ff6a00' : fly ? '#f5f06a' : '#1b1c19', weight: valgt ? 4 : ut ? 3.5 : fly ? 1.6 : 1.1, opacity: 0.95, fillColor: h ? HK_FARGER[h - 1] : '#999', fillOpacity: fly ? 0.25 : h ? 0.8 : 0.1 };
+  const h = hk(b); const valgt = b.id === valgtId; const fly = lagNavn === 'flyfoto'; const ut = uthevOppdrag.has(b.id); const kand = !ut && kandidatOppdrag.has(b.id);
+  return { color: valgt ? '#ffd400' : ut || kand ? '#ff6a00' : fly ? '#f5f06a' : '#1b1c19', weight: valgt ? 4 : ut ? 3.5 : kand ? 2.5 : fly ? 1.6 : 1.1, dashArray: kand ? '6 5' : null, opacity: 0.95, fillColor: ut ? '#ff6a00' : h ? HK_FARGER[h - 1] : '#999', fillOpacity: ut ? 0.45 : fly ? 0.25 : h ? 0.8 : 0.1 };
 }
 function tegnPlan(zoom = false) {
   bestandLag.clearLayers(); etikettLag.clearLayers(); lagPerBestand.clear();
@@ -87,7 +88,7 @@ function tegnPlan(zoom = false) {
   for (const b of P.bestand) {
     if (!b.geometri) continue;
     const l = L.geoJSON(b.geometri, { style: () => stil(b) });
-    l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (spor?.tegner()) { spor.leggTilPunkt(e.latlng); return; } if (regPagar) return; identifiser(e.latlng, b); });
+    l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (spor?.tegner()) { spor.leggTilPunkt(e.latlng); return; } if (regPagar) return; if (oppdrag?.kartTrykk(b)) return; identifiser(e.latlng, b); });
     l.addTo(bestandLag); lagPerBestand.set(b.id, l);
     const pt = etikettPunkt(b.geometri);
     if (pt) L.tooltip({ permanent: true, direction: 'center', className: 'nr-etikett', interactive: false }).setLatLng([pt[1], pt[0]]).setContent(esc(b.nr)).addTo(etikettLag);
@@ -109,8 +110,8 @@ function tegnRegistreringer() {
 // Et åpent ark har en oppføring i nettleserhistorikken, så tilbakeknappen (Android) og tilbakesveip lukker arket
 // i stedet for å forlate appen.
 let arkOppforing = false; let ignorerPop = false;
-function aapneArk(html, { hoy = false } = {}) {
-  $('#arkInnhold').innerHTML = html; $('#ark').hidden = false; $('#ark').classList.toggle('hoy', hoy);
+function aapneArk(html, { hoy = false, lav = false } = {}) {
+  $('#arkInnhold').innerHTML = html; $('#ark').hidden = false; $('#ark').classList.toggle('hoy', hoy); $('#ark').classList.toggle('lav', lav);
   $('#ark').style.transform = '';
   $('#arkInnhold').scrollTop = 0; document.body.classList.add('ark-aapent');
   if (!arkOppforing) { try { history.pushState({ skogiqArk: true }, ''); arkOppforing = true; } catch { /* ingen historikk */ } }
@@ -125,8 +126,8 @@ function lukkArk(fraHistorikk = false) {
   endring = null;
   if (valgtId) { valgtId = null; oppdaterStiler(); }
   if (valgtTiltak) { valgtTiltak = null; tegnTiltaksflater(); }
-  if (uthevOppdrag.size) { uthevOppdrag = new Set(); oppdaterStiler(); }
   oppdrag?.nullstill();
+  if (uthevOppdrag.size || kandidatOppdrag.size) { uthevOppdrag = new Set(); kandidatOppdrag = new Set(); oppdaterStiler(); }
   treffMarkor?.remove(); treffMarkor = null;
   settVisning('kart', false);
 }
@@ -252,6 +253,23 @@ function zoomTilTiltak(bid, tid) {
   const b = finn(bid); const t = b?.tiltak?.find((x) => x.id === tid); if (!b) return;
   const g = t?.dekning ? L.geoJSON(t.dekning) : lagPerBestand.get(bid); if (!g) return;
   kart.fitBounds(g.getBounds(), { maxZoom: 17, padding: [40, 40], paddingBottomRight: [40, window.innerHeight * 0.45] });
+}
+
+// Tegn en flate over ett eller flere bestand når et oppdrag lages. Arket skjules mens man tegner (utvalget beholdes),
+// og flaten fordeles på bestandene. Gir [{ b, daa, andel, geometri }] eller null ved avbryt.
+async function tegnOppdragsflate(tittel) {
+  let PC; try { PC = await lastPC(); } catch (e) { melding(e.message, 6000); return null; }
+  const deler = P.bestand.filter((b) => b.geometri).map((b) => mpTilUtm(b.geometri));
+  let omriss; try { omriss = P.eiendom?.grense ? mpTilUtm(P.eiendom.grense) : PC.union(...deler); } catch { omriss = deler.flat(); }
+  $('#ark').hidden = true; document.body.classList.add('flate-aktiv');
+  return new Promise((ferdig) => {
+    const slutt = (svar) => { flate = null; document.body.classList.remove('flate-aktiv'); $('#ark').hidden = false; ferdig(svar); };
+    flate = startFlateRedigering({
+      L, kart, PC, bestand: { geometri: { type: 'MultiPolygon', coordinates: mpTilGeo(omriss) } }, tittel, plassering: 'felt', omrade: 'eiendommen', startTegning: true, zoom: false,
+      vedFerdig: ({ geometri }) => slutt(geometri ? fordelPaaBestand(mpTilUtm(geometri), P.bestand, PC) : []),
+      vedAvbryt: () => slutt(null),
+    });
+  });
 }
 
 // ---------- endre og slette tiltak ----------
@@ -594,7 +612,8 @@ async function start() {
   oppdrag = initOppdragFelt({
     plan: () => P, aapneArk, lagrePlanen, melding, nyId, iAar: IAAR, visTiltakKort,
     settUtfort: (bid, tid, tilbake) => settUtfort(bid, tid, tilbake),
-    uthev: (ider) => { uthevOppdrag = new Set(ider); oppdaterStiler(); },
+    uthev: (ider, kandidater = []) => { uthevOppdrag = new Set(ider); kandidatOppdrag = new Set(kandidater); oppdaterStiler(); tegnTiltaksflater(); },
+    tegnFlate: tegnOppdragsflate, inn,
     zoomTil: (ider) => { const lag = ider.map((id) => lagPerBestand.get(id)).filter(Boolean); if (lag.length) kart.fitBounds(L.featureGroup(lag).getBounds(), { maxZoom: 16, padding: [40, 40], paddingBottomRight: [40, window.innerHeight * 0.5] }); },
   });
   kobleHendelser(); nettStatus();

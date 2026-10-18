@@ -198,3 +198,13 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .effekt-andre li { display: grid; grid-template-columns: 18px 1fr; gap: 6px; }
 .effekt-andre li.god span { color: #1f8f5a; font-weight: 700; } .effekt-andre li.advarsel span { color: #b45309; } .effekt-andre li.info span { color: #1d4f91; }
 .effekt-forut { font-size: 12.5px; color: var(--muted, #6f7d75); } .effekt-forut summary { cursor: pointer; font-weight: 600; }
+
+/* Oppdrag: utvalg i kartet */
+.ark.lav { max-height: 40%; }
+.ark.lav h2 { font-size: 17px; }
+.ark.lav .hint { font-size: 12.5px; margin: 4px 0; }
+.o-sum { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface-2, #eff3ee); border-radius: 12px; padding: 8px 10px 8px 12px; margin: 8px 0 6px; }
+.o-sum b { display: block; font-size: 15px; } .o-sum span { color: var(--muted, #6f7d75); font-size: 12.5px; }
+.o-sum .knapp { flex: 0 0 auto; }
+.o-verktoy { display: flex; gap: 6px; margin: 6px 0; } .o-verktoy .knapp { flex: 1 1 0; padding-left: 6px; padding-right: 6px; white-space: nowrap; }
+.o-ny { font-size: 10.5px; font-weight: 700; color: #fff; background: #ff6a00; border-radius: 99px; padding: 1px 6px; vertical-align: 1px; }

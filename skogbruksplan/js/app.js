@@ -38,8 +38,11 @@ import { synligPadding } from './kartutsnitt.js';
 import { initOppdrag } from './oppdrag-ui.js';
 import { initKsl } from './ksl-ui.js';
 import { initKarbon } from './karbon-ui.js';
-import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, typeFor as oppdragstype } from './oppdrag.js';
+import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, OPPDRAGSTYPER, typeFor as oppdragstype } from './oppdrag.js';
+const oppdragstypeNokkel = (t) => (OPPDRAGSTYPER[t] ? t : 'annet');
 import { KRAVPUNKTER } from './pefc.js';
+import { nyttUtvalg, kanLageTiltak, kandidater as utvalgKandidater, bestandStatus, trykkBestand, brukFlate, settValgt, angre as angreUtvalg, harEndringer, rullTilbake, bekreft as bekreftUtvalg, oppsummer as oppsummerUtvalg } from './oppdrag-utvalg.js';
+import { mpTilUtm, mpTilGeo, fordelPaaBestand } from './sporlogg.js';
 import { erUngskog, ungskogData, effektFor, settUngskog } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
@@ -48,6 +51,7 @@ const VEIKLASSER_NAVN = (k) => (VEIKLASSER[k] || VEIKLASSER[0]).navn;
 // Oppdrag: valg av tiltak i tiltakslisten og bestand som er uthevet i kartet for oppdraget som er åpent.
 let kslVisning = null; let karbonVisning = null;
 let valgModus = false; let valgteTiltak = new Set(); let maalOppdrag = null; let uthevet = new Set(); let oppdragVisning = null;
+let kartUtvalg = null; // velg-modus: trykk på bestand i kartet og tegnede flater (oppdrag-utvalg.js), deler valgteTiltak
 const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
 import { stabletSoyle, linje, fmt } from './charts.js';
 
@@ -300,7 +304,10 @@ function identifiser(ll, b) {
 }
 function stilFor(b) {
   const farge = fargeFor(b);
-  const valgt = b.id === valgtId; const ut = uthevet.has(b.id);
+  const valgt = b.id === valgtId; const vs = valgModus && kartUtvalg?.type ? bestandStatus(S, kartUtvalg, b) : null;
+  const ut = uthevet.has(b.id) || vs === 'valgt'; const kand = vs === 'kandidat';
+  if (kand && !valgt) return { color: '#ff6a00', weight: 2.5, opacity: 0.95, dashArray: '6 5', fillColor: fargeFor(b) || '#999', fillOpacity: fargeFor(b) ? 0.7 : 0.08 };
+  if (vs === 'valgt' && !valgt) return { color: '#ff6a00', weight: 3, opacity: 0.95, dashArray: null, fillColor: '#ff6a00', fillOpacity: 0.45 };
   return {
     color: valgt ? (flyfotoAktiv ? '#36e0ff' : '#ffd400') : ut ? '#ff6a00' : flyfotoAktiv ? '#e6e04b' : '#1b1c19', weight: valgt ? 3.5 : ut ? 3 : flyfotoAktiv ? 1.6 : 1.2, opacity: 0.9,
     fillColor: farge || '#999', fillOpacity: !farge ? 0.08 : flyfotoAktiv ? 0.3 : HK_FARGER.includes(farge) ? 0.85 : 0.7,
@@ -349,7 +356,7 @@ function tegnBestandKart(zoom = false) {
   for (const b of S.bestand) {
     if (!b.geometri) continue;
     const lag = L.geoJSON(b.geometri, { style: () => stilFor(b) });
-    lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (deling) { leggTilDelepunkt(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } identifiser(e.latlng, b); });
+    lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (deling) { leggTilDelepunkt(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } if (valgModus && kartVelg(b)) return; identifiser(e.latlng, b); });
     lag.addTo(bestandLag);
     lagPerBestand.set(b.id, lag);
     const pt = etikettPunkt(b.geometri);
@@ -884,7 +891,7 @@ function tiltakRadHtml(t, { velg = false } = {}) {
     ${t.forslag ? `<button class="knapp liten primar" data-handling="godta" type="button">Legg til</button>` : `<button class="knapp liten utfort-knapp${utfort ? ' er-utfort' : ''}" data-handling="utfort" type="button" aria-pressed="${utfort}" title="${utfort ? 'Angre – sett tilbake til planlagt' : 'Marker som utført'}">${utfort ? '✓ Utført' : 'Utført'}</button>`}
     <div>
       <div class="tittel">${esc(TILTAKSTYPER[t.type]?.navn || t.type)} – bestand <a href="#" data-handling="vis">${esc(b.nr)}</a> <span class="hint">${t.aar}${utfort && t.utfortDato ? `, utført ${esc(t.utfortDato)}` : ''}</span>${oppdragMerke(t)}</div>
-      <div class="info">${fmt(b.areal, 1)} daa · ${b.treslag || ''}${b.bonitet ?? ''}${ok.m3 ? ` · ca. ${fmt(ok.m3)} m³` : ''} · ${ok.netto >= 0 ? 'netto' : 'kostnad'} ca. ${fmt(Math.abs(ok.netto))} kr${ok.skogfond ? ` · skogfond ${fmt(ok.skogfond)} kr` : ''}${t.kommentar ? ` · ${esc(t.kommentar)}` : ''}</div>
+      <div class="info">${t.arealDaa != null && t.arealDaa < (b.areal || 0) - 0.05 ? `${fmt(t.arealDaa, 1)} av ${fmt(b.areal, 1)} daa` : `${fmt(b.areal, 1)} daa`} · ${b.treslag || ''}${b.bonitet ?? ''}${ok.m3 ? ` · ca. ${fmt(ok.m3)} m³` : ''} · ${ok.netto >= 0 ? 'netto' : 'kostnad'} ca. ${fmt(Math.abs(ok.netto))} kr${ok.skogfond ? ` · skogfond ${fmt(ok.skogfond)} kr` : ''}${t.kommentar ? ` · ${esc(t.kommentar)}` : ''}</div>
       ${begrunnelseHtml(t)}
     </div>
     <div style="display:flex;gap:6px;align-items:center">${t.prioritet ? `<span class="prio prio-${t.prioritet}">P${t.prioritet}</span>` : ''}<button class="knapp liten" data-handling="zoom" type="button" title="Zoom til bestand ${esc(b.nr)} i kartet" aria-label="Zoom til bestand">🔍</button>${t.forslag ? '' : '<button class="knapp liten" data-handling="endre-tiltak" type="button" title="Endre tiltak" aria-label="Endre">✎</button><button class="knapp liten" data-handling="slett-tiltak" type="button" title="Slett tiltak" aria-label="Slett">✕</button>'}</div>
@@ -1005,7 +1012,7 @@ function handterTiltakKlikk(e) {
   const b = finnBestand(rad.dataset.bestand); const h = e.target.dataset.handling;
   if (!b || !h) return;
   if (h === 'oppdrag') { e.preventDefault(); visFane('tiltak'); visTiltakVisning('oppdrag'); oppdragVisning?.apne(e.target.dataset.oppdrag); return; }
-  if (h === 'velg') { const id = rad.dataset.tiltak; if (e.target.checked) valgteTiltak.add(id); else valgteTiltak.delete(id); rad.classList.toggle('valgt', e.target.checked); tegnValgLinje(); return; }
+  if (h === 'velg') { const id = rad.dataset.tiltak; if (kartUtvalg) settValgt(kartUtvalg, id, e.target.checked); else if (e.target.checked) valgteTiltak.add(id); else valgteTiltak.delete(id); rad.classList.toggle('valgt', e.target.checked); tegnValgLinje(); oppdaterStiler(); return; }
   const t = b.tiltak.find((x) => x.id === rad.dataset.tiltak);
   if (h === 'vis') { e.preventDefault(); velgBestand(b.id); visFane('bestand'); return; }
   if (h === 'zoom') { velgBestand(b.id); if (erMobil()) settArk('lav'); return; }
@@ -1083,7 +1090,11 @@ function settUtfort(b, t, ferdig) {
 
 // ---------------------------------------------------------------- oppdrag
 function settValgModus(paa, maal = null) {
+  if (!paa && kartUtvalg && harEndringer(kartUtvalg)) { rullTilbake(kartUtvalg); endret({ kart: true }); }
   valgModus = paa; maalOppdrag = paa ? maal : null; if (!paa) valgteTiltak = new Set();
+  kartUtvalg = paa ? nyttUtvalg({ type: maal?.type || ($('#tiltakFilterType').value ? oppdragstypeNokkel($('#tiltakFilterType').value) : null) }) : null;
+  if (kartUtvalg) kartUtvalg.valgte = valgteTiltak;
+  oppdaterStiler();
   const k = $('#velgTiltakBtn'); if (k) { k.setAttribute('aria-pressed', String(paa)); k.classList.toggle('aktiv', paa); }
   if (paa && maal) { $('#tiltakFilterStatus').value = 'planlagt'; $('#tiltakFilterType').value = maal.type in TILTAKSTYPER ? maal.type : ''; }
   tegnTiltak();
@@ -1096,7 +1107,12 @@ function tegnValgLinje() {
   el.hidden = !valgModus;
   if (!valgModus) { el.innerHTML = ''; return; }
   const v = valgteListe(); const typer = [...new Set(v.map((x) => x.tiltak.type))];
-  el.innerHTML = `<span><b>${v.length}</b> tiltak valgt${typer.length > 1 ? ` · ${typer.length} typer → ${typer.length} oppdrag` : typer.length ? ` · ${esc(TILTAKSTYPER[typer[0]]?.navn || typer[0])}` : ''}${maalOppdrag ? ` · legges i ${esc(maalOppdrag.nr)}` : ''}</span>
+  const ku = kartUtvalg; const sum = ku?.type ? oppsummerUtvalg(S, ku, inn()) : null;
+  const kartTyper = Object.keys(OPPDRAGSTYPER).filter((k) => kanLageTiltak(k) || utvalgKandidater(S, k).length);
+  el.innerHTML = `<div class="valg-kart"><label>Velg i kartet <select data-valg-type ${maalOppdrag ? 'disabled' : ''}><option value="">Velg type …</option>${kartTyper.map((k) => `<option value="${k}" ${ku?.type === k ? 'selected' : ''}>${esc(OPPDRAGSTYPER[k].kort)}</option>`).join('')}</select></label>
+    <button class="knapp liten" type="button" data-valg="tegn" ${ku?.type && kanLageTiltak(ku.type) ? '' : 'disabled'}>✎ Tegn flate</button><button class="knapp liten" type="button" data-valg="angre" ${ku?.logg.length ? '' : 'disabled'}>↶ Angre</button>
+    <span class="hint">${ku?.type ? `Trykk på bestand i kartet for å velge eller ta ut. Stiplet = har planlagt tiltak.${sum?.tiltak ? ` ${fmt(sum.daa, 1)} daa${sum.kost ? ` · ca. ${fmt(Math.round(sum.kost / 100) * 100)} kr` : ''}` : ''}` : 'Velg type for å velge bestand i kartet eller tegne en flate.'}</span></div>
+  <span><b>${v.length}</b> tiltak valgt${typer.length > 1 ? ` · ${typer.length} typer → ${typer.length} oppdrag` : typer.length ? ` · ${esc(TILTAKSTYPER[typer[0]]?.navn || typer[0])}` : ''}${maalOppdrag ? ` · legges i ${esc(maalOppdrag.nr)}` : ''}</span>
     <span class="knapperad" style="margin:0"><button class="knapp liten" type="button" data-valg="alle">Velg alle synlige</button><button class="knapp liten primar" type="button" data-valg="lag" ${v.length ? '' : 'disabled'}>${maalOppdrag ? `Legg til i ${esc(maalOppdrag.nr)}` : 'Lag oppdrag'}</button><button class="knapp liten" type="button" data-valg="avbryt">Avbryt</button></span>`;
 }
 function visTiltakVisning(navn) {
@@ -1104,8 +1120,41 @@ function visTiltakVisning(navn) {
   $('#oppdragPanel').hidden = navn !== 'oppdrag'; $('#tiltakPlanPanel').hidden = navn !== 'plan';
   if (navn === 'oppdrag') oppdragVisning?.tegn(); else { oppdragVisning?.lukk(); oppdaterStiler(); }
 }
+// Trykk på bestand i kartet i velg-modus. Gir true når trykket er brukt.
+function kartVelg(b) {
+  if (!kartUtvalg?.type) { melding('Velg type i linjen over tiltakslisten for å velge bestand i kartet.'); visFane('tiltak'); return true; }
+  const r = trykkBestand(S, kartUtvalg, b, { nyId, iAar: IAAR });
+  melding(r.tekst);
+  endret(); return true;
+}
+function settKartType(type) {
+  if (!kartUtvalg) return;
+  if (harEndringer(kartUtvalg) && kartUtvalg.type !== type) { rullTilbake(kartUtvalg); }
+  kartUtvalg = nyttUtvalg({ type: type || null }); kartUtvalg.valgte = valgteTiltak;
+  if (type && type in TILTAKSTYPER) { $('#tiltakFilterType').value = type; $('#tiltakFilterStatus').value = 'planlagt'; }
+  endret({ kart: true });
+}
+async function tegnUtvalgsflate() {
+  const ku = kartUtvalg; if (!ku?.type) return;
+  const PC = await lastKlipping(); if (!PC) { melding('Geometribiblioteket kunne ikke lastes. Sjekk nettforbindelsen.'); return; }
+  const deler = S.bestand.filter((b) => b.geometri).map((b) => mpTilUtm(b.geometri));
+  let omriss; try { omriss = S.eiendom?.grense ? mpTilUtm(S.eiendom.grense) : PC.union(...deler); } catch { omriss = deler.flat(); }
+  if (erMobil()) settArk('lav');
+  const ferdig = () => { kartKlikk = null; };
+  const red = startFlateRedigering({
+    L, kart, PC, bestand: { geometri: { type: 'MultiPolygon', coordinates: mpTilGeo(omriss) } }, tittel: `${OPPDRAGSTYPER[ku.type].kort} – oppdrag`, plassering: 'full', omrade: 'eiendommen', startTegning: true, zoom: false,
+    vedFerdig: ({ geometri }) => {
+      ferdig(); if (kartUtvalg !== ku || !geometri) return;
+      const r = brukFlate(S, ku, fordelPaaBestand(mpTilUtm(geometri), S.bestand, PC), { nyId, iAar: IAAR });
+      melding(r.tekst); endret({ kart: true }); tegnTiltaksflater();
+    },
+    vedAvbryt: ferdig,
+  });
+  kartKlikk = (ll) => red.klikk(ll);
+}
 function lagOppdragFraValg() {
   const v = valgteListe(); if (!v.length) return;
+  if (kartUtvalg) bekreftUtvalg(kartUtvalg);
   if (maalOppdrag) {
     const n = leggTilOppdrag(S, maalOppdrag, v); const id = maalOppdrag.id;
     settValgModus(false); endret(); visTiltakVisning('oppdrag'); oppdragVisning?.apne(id);
@@ -1497,7 +1546,7 @@ async function aapnePlan(id) {
   S = { ...plan, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...plan.innstillinger } };
   framskrivPlanTilIAar();
   valgtId = null; forslag = []; avsluttGrenseRedigering();
-  valgModus = false; valgteTiltak = new Set(); maalOppdrag = null; uthevet = new Set(); oppdragVisning?.lukk();
+  valgModus = false; valgteTiltak = new Set(); maalOppdrag = null; uthevet = new Set(); kartUtvalg = null; oppdragVisning?.lukk();
   tegnEiendom(); tegnInnstillinger(); tegnRegistreringer();
   endret({ kart: true, zoom: true });
   visFane('oversikt');
@@ -1779,11 +1828,14 @@ function kobleHendelser() {
   });
   $('#tiltakVisning').addEventListener('click', (e) => { const b = e.target.closest('[data-tv]'); if (b) visTiltakVisning(b.dataset.tv); });
   $('#velgTiltakBtn').addEventListener('click', () => settValgModus(!valgModus));
+  $('#valgLinje').addEventListener('change', (e) => { if (e.target.matches('[data-valg-type]')) settKartType(e.target.value); });
   $('#valgLinje').addEventListener('click', (e) => {
     const k = e.target.closest('[data-valg]')?.dataset.valg; if (!k) return;
-    if (k === 'avbryt') settValgModus(false);
+    if (k === 'avbryt') { if (kartUtvalg && harEndringer(kartUtvalg) && !confirm('Avbryte? Nye tiltak og tegnede flater fra valget forkastes.')) return; settValgModus(false); }
     if (k === 'lag') lagOppdragFraValg();
-    if (k === 'alle') { $$('#tiltakListe .velg-tiltak:not(:disabled)').forEach((c) => { c.checked = true; valgteTiltak.add(c.closest('.tiltak-rad').dataset.tiltak); c.closest('.tiltak-rad').classList.add('valgt'); }); tegnValgLinje(); }
+    if (k === 'tegn') tegnUtvalgsflate();
+    if (k === 'angre' && kartUtvalg) { if (angreUtvalg(kartUtvalg)) melding('Angret.'); endret({ kart: true }); tegnTiltaksflater(); }
+    if (k === 'alle') { $$('#tiltakListe .velg-tiltak:not(:disabled)').forEach((c) => { c.checked = true; valgteTiltak.add(c.closest('.tiltak-rad').dataset.tiltak); c.closest('.tiltak-rad').classList.add('valgt'); }); tegnValgLinje(); oppdaterStiler(); }
   });
   aiVisning = initAssistent({
     hentPlan: () => S, iAar: IAAR,

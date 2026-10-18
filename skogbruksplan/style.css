@@ -940,3 +940,8 @@ progress { accent-color: var(--accent); height: 8px; }
 .effekt-andre li { display: grid; grid-template-columns: 18px 1fr; gap: 6px; }
 .effekt-andre li.god span { color: #1f8f5a; font-weight: 700; } .effekt-andre li.advarsel span { color: #b45309; } .effekt-andre li.info span { color: #1d4f91; }
 .effekt-forut { font-size: 12.5px; color: var(--muted, #6f7d75); } .effekt-forut summary { cursor: pointer; font-weight: 600; }
+
+/* Oppdrag: velg i kartet */
+.valg-kart { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.valg-kart label { display: flex; gap: 6px; align-items: center; font-weight: 600; font-size: 13px; }
+.valg-kart .hint { flex: 1 1 100%; margin: 0; font-size: 12.5px; }

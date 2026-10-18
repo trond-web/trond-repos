@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.15.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.16.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -142,7 +142,8 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
     - tiltakene, som krysses av som utført; når alle er utført, foreslås status Utført
     - oppdragsfeltene og PEFC-sjekklisten, som kan krysses av
     - «Vis i kart», og bestandene i oppdraget utheves i oransje
-  - **Endre:** nytt oppdrag (velg type, så tiltak), legg til eller fjern tiltak, rediger utfører, periode og merknad, og slett oppdraget. Tiltakene beholdes.
+  - **Nytt oppdrag eller legg til:** velg type. Deretter fyller kart, tegning og liste samme utvalg (se «Velge tiltak til oppdrag» under Oppdrag).
+  - **Endre:** fjern tiltak, rediger utfører, periode og merknad, og slett oppdraget. Tiltakene beholdes.
   - **Fra tiltakskortet:** «+ Legg i oppdrag» legger tiltaket i et aktivt oppdrag av samme type eller i et nytt. Merket «Oppdrag O-…» åpner oppdraget.
 - **Tiltak:** liste over tiltak i år og neste år, senere tiltak og nylig utførte.
 - **Offline:**
@@ -268,6 +269,14 @@ Planlagte tiltak kan samles til **oppdrag** og sendes til en utfører, for eksem
   2. Trykk «Lag oppdrag». Velger du flere tiltakstyper, lages ett oppdrag per type.
   3. Oppdragene nummereres O-år-løpenummer, for eksempel O-2026-01.
   - Et tiltak kan bare ligge i ett aktivt oppdrag (utkast, bestilt eller pågår). Utførte tiltak kan ikke velges.
+- **Velge tiltak til oppdrag** (felles logikk i `js/oppdrag-utvalg.js` for Felt og fullversjonen). Tre innganger fyller samme utvalg:
+  - **Trykk på bestand i kartet.** Har bestandet et ledig planlagt tiltak av typen, velges det. Ellers lages et nytt tiltak for hele bestandet. Et nytt trykk tar bestandet ut igjen, og et tiltak som ble laget i utvalget, slettes da.
+  - **«✎ Tegn flate»** når bare en del skal med. Flaten kan gå over flere bestand og deles på dem. Hvert bestand får tiltaket med sin del av flaten og arealet, eller hele bestandet når over 95 % er dekket. Biter under 0,1 daa tas ikke med. Et eksisterende planlagt tiltak gjenbrukes, så det blir aldri dobbelttiltak.
+  - **Listen** med avkryssing, som før.
+  - Bestand med ledige tiltak av typen er stiplet oransje i kartet, og valgte bestand er fylt oransje. En linje viser antall bestand, areal og anslått kostnad. Bestand der tiltaket allerede ligger i et annet aktivt oppdrag, kan ikke velges.
+  - «↶ Angre» tar ett steg tilbake. «Avbryt» fjerner nye tiltak og tegnede flater fra utvalget. Først «Lag oppdrag» gjør endringene varige.
+  - I fullversjonen velger du typen i valglinjen («Velg i kartet») etter «Velg til oppdrag». I Felt er kartet standardvisning, og «☰ Liste» viser alle planlagte tiltak.
+  - Oppdragets areal er summen av tiltakenes areal (tegnet del eller hele bestandet).
 - **Én oppdragstype per tiltakstype** (`OPPDRAGSTYPER` i `js/oppdrag.js`), med egne felt og egen sjekkliste:
   - Sluttavvirkning, tynning og lukket hogst har felt for tømmerkjøper, driftsmetode, sortiment, velteplass, uttak og foryngelse.
   - Planting og suppleringsplanting har felt for treslag, plantetall, proveniens og plantetype.

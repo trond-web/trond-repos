@@ -208,7 +208,7 @@ export function linjer(S, o) {
 // Mengder for oppdraget. okonomi(tiltak med bestand) → { m3, netto } brukes for hogst og kostnad.
 export function sammendrag(S, o, okonomi = () => ({ m3: 0, netto: 0 })) {
   const ls = linjer(S, o);
-  const areal = ls.reduce((s, l) => s + (l.bestand.areal || 0), 0);
+  const areal = ls.reduce((s, l) => s + (l.tiltak.arealDaa ?? l.bestand.areal ?? 0), 0);
   let m3 = 0; let netto = 0;
   for (const l of ls) { const ok = okonomi({ ...l.tiltak, bestand: l.bestand }); m3 += ok.m3 || 0; netto += ok.netto || 0; }
   const per = Number(o.felt?.planter ?? o.felt?.trar) || 0;

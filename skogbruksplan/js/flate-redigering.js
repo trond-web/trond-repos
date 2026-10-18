@@ -25,12 +25,14 @@ const ll = ([x, y]) => { const [lon, lat] = tilGeoPunkt([x, y]); return [lat, lo
 const fraLl = (p) => tilUtmPunkt([p.lng, p.lat]);
 const OP_TEKST = { 'legg-til': 'Tegn området som skal legges til', fjern: 'Tegn området som skal fjernes', ny: 'Tegn den nye flaten' };
 
-export function startFlateRedigering({ L, kart, PC, start = null, bestand, tittel = '', plassering = 'felt', vedFerdig, vedAvbryt = () => {} }) {
+// omrade: hva flaten klippes mot («bestandet», eller f.eks. «eiendommen» når et oppdrag tegnes over flere bestand).
+// startTegning: begynn rett i tegning av ny flate. zoom: false beholder kartutsnittet.
+export function startFlateRedigering({ L, kart, PC, start = null, bestand, tittel = '', plassering = 'felt', omrade = 'bestandet', startTegning = false, zoom = true, vedFerdig, vedAvbryt = () => {} }) {
   if (!document.getElementById('flate-redigering-stil')) { const s = document.createElement('style'); s.id = 'flate-redigering-stil'; s.textContent = STIL; document.head.appendChild(s); }
   let mp = forenkleForRedigering(fraGeometri(start));
   const forenklet = start && antallPunkter(fraGeometri(start)) > antallPunkter(mp);
   let valgt = null; // { p, r, i }
-  let tegning = null; // { op, punkter: [UTM] }
+  let tegning = startTegning && !start ? { op: 'ny', punkter: [] } : null; // { op, punkter: [UTM] }
   const angreStabel = [];
   const lag = L.layerGroup().addTo(kart);
   const bestandLag = L.geoJSON(bestand.geometri, { style: { color: '#ffd400', weight: 3, fill: false, dashArray: '6 4' }, interactive: false }).addTo(kart);
@@ -88,9 +90,9 @@ export function startFlateRedigering({ L, kart, PC, start = null, bestand, titte
         <div class="fv-rad"><button type="button" data-fv="angre-punkt" ${n ? '' : 'disabled'}>Angre</button><button type="button" data-fv="avbryt-tegning">Avbryt</button><button type="button" class="primar" data-fv="bruk-tegning" ${n >= 3 ? '' : 'disabled'}>Bruk</button></div>`;
       return;
     }
-    el.innerHTML = `<div><b>Endre flate${tittel ? ` · ${tittel}` : ''}</b> · ${dk(k.daa)} daa (${Math.round(k.andel * 100)} % av bestandet)</div>
-      <div class="fv-hint">${mp.length ? 'Dra hjørnene. Dra eller trykk de små kantpunktene for nye hjørner. Trykk et hjørne for å slette det.' : 'Ingen flate ennå – tegn en ny, eller start med hele bestandet.'}${forenklet ? ' Flaten er forenklet for redigering.' : ''}</div>
-      <div class="fv-rad"><button type="button" data-fv="legg-til">＋ Legg til område</button><button type="button" data-fv="fjern" ${mp.length ? '' : 'disabled'}>− Fjern område</button><button type="button" data-fv="ny">Tegn på nytt</button><button type="button" data-fv="hele">Hele bestandet</button></div>
+    el.innerHTML = `<div><b>Endre flate${tittel ? ` · ${tittel}` : ''}</b> · ${dk(k.daa)} daa (${Math.round(k.andel * 100)} % av ${omrade})</div>
+      <div class="fv-hint">${mp.length ? 'Dra hjørnene. Dra eller trykk de små kantpunktene for nye hjørner. Trykk et hjørne for å slette det.' : `Ingen flate ennå – tegn en ny, eller start med hele ${omrade}.`}${forenklet ? ' Flaten er forenklet for redigering.' : ''}</div>
+      <div class="fv-rad"><button type="button" data-fv="legg-til">＋ Legg til område</button><button type="button" data-fv="fjern" ${mp.length ? '' : 'disabled'}>− Fjern område</button><button type="button" data-fv="ny">Tegn på nytt</button><button type="button" data-fv="hele">Hele ${omrade}</button></div>
       <div class="fv-rad"><button type="button" data-fv="slett-punkt" ${valgt ? '' : 'disabled'}>Slett punkt</button><button type="button" data-fv="angre" ${angreStabel.length ? '' : 'disabled'}>Angre</button><button type="button" data-fv="avbryt">Avbryt</button><button type="button" class="primar" data-fv="ferdig">Ferdig</button></div>`;
   }
   function slettPunkt() {
@@ -108,7 +110,7 @@ export function startFlateRedigering({ L, kart, PC, start = null, bestand, titte
     if (['legg-til', 'fjern', 'ny'].includes(h)) { tegning = { op: h, punkter: [] }; valgt = null; tegn(); return; }
     if (h === 'hele') { lagre(); mp = forenkleForRedigering(fraGeometri(bestand.geometri)); valgt = null; tegn(); return; }
     if (h === 'angre-punkt') { tegning.punkter.pop(); tegn(); return; }
-    if (h === 'avbryt-tegning') { tegning = null; tegn(); return; }
+    if (h === 'avbryt-tegning') { tegning = null; if (startTegning && !mp.length && !angreStabel.length) { avslutt(); vedAvbryt(); return; } tegn(); return; }
     if (h === 'bruk-tegning') {
       lagre();
       try { mp = forenkleForRedigering(kombiner(mp, tegning.punkter, tegning.op, PC), { maks: 220 }); } catch { /* ugyldig omriss */ }
@@ -128,7 +130,7 @@ export function startFlateRedigering({ L, kart, PC, start = null, bestand, titte
   let aktiv = true;
   tegn();
   const bb = (mp.length ? L.polygon(mp.map((p) => p.map((r) => r.map(ll)))) : bestandLag).getBounds();
-  if (bb.isValid()) kart.fitBounds(bb, { padding: [40, 40], paddingTopLeft: [40, 220], maxZoom: 18 });
+  if (zoom && bb.isValid()) kart.fitBounds(bb, { padding: [40, 40], paddingTopLeft: [40, 220], maxZoom: 18 });
   return {
     aktiv: () => aktiv,
     // Kartklikk fra verten: legger til et punkt når man tegner, ellers fjernes valget av hjørne.
