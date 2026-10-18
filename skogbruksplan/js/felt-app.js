@@ -13,10 +13,11 @@ import { initOppdragFelt } from './oppdrag-felt.js';
 import { ledig as oppdragLedig } from './oppdrag.js';
 import { synligeTiltaksflater, treffVed, tiltakStil, tiltakNavn, tiltakLinje, tiltakDetaljer } from './treff.js';
 import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
-import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16 } from './ungskog.js';
+import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
+import { endringer as motorEndringer, oppdaterBestand as motorOppdater, merkKjort } from './tiltaksmotor.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -169,6 +170,13 @@ function tetthetRad(b, h) {
     <div class="chips">${['a', 'b'].map((k) => `<button type="button" class="chip" data-tetthet="${k}" aria-pressed="${b.tetthetsklasse === k}" title="${esc(tetthetNavn(h, k))}">${k}</button>`).join('')}${b.tetthetsklasse ? '<button type="button" class="chip" data-tetthet="">Tøm</button>' : ''}</div></div>
     ${t.kilde !== 'registrert' && (t.hint || t.forklaring) ? `<p class="hint" style="margin-top:2px">${esc(t.hint || t.forklaring)}</p>` : ''}`;
 }
+// Tiltaksmotoren: når bestandet er endret (målinger, utført tiltak), vises forslaget her med «Oppdater tiltak».
+function motorEndring(b) { try { return P?.motor ? motorEndringer(P, { iAar: IAAR, bestandIder: [b.id] }).find((x) => x.leggTil.length || x.fjern.length) : null; } catch { return null; } }
+function motorBanner(b) {
+  const e = motorEndring(b); if (!e) return '';
+  const tekst = [...e.leggTil.map((f) => `+ ${TILTAKSTYPER[f.type]?.navn || f.type} ${f.aar}${f.arealDaa ? ` (${fmt(f.arealDaa, 1)} daa)` : ''}`), ...e.fjern.map((t) => `− ${TILTAKSTYPER[t.type]?.navn || t.type} ${t.aar}`)].join(' · ');
+  return `<div class="motor-forslag"><div><b>Bestandet er endret.</b> Tiltaksmotoren foreslår: ${esc(tekst)}</div><div class="knapper"><button type="button" class="knapp primar" data-h="motor-oppdater">Oppdater tiltak</button><button type="button" class="knapp" data-h="motor-behold">Behold</button></div></div>`;
+}
 function visBestand(id, { zoom = false } = {}) {
   const b = finn(id); if (!b) return;
   if (ungskogRed !== id) ungskogRed = null;
@@ -186,12 +194,13 @@ function visBestand(id, { zoom = false } = {}) {
       <div class="tall"><b>${fmt(s.volumDaa, 1)}</b><span>m³/daa</span></div>
       <div class="tall"><b>${fmt(s.volumDaa * (b.areal || 0))}</b><span>m³ totalt</span></div>
       ${(() => { if (!erUngskog(b, inn()) || (!fraSr16(b) && b.ungskog?.treantallFor == null)) return `<div class="tall"><b>${fmt(b.treantall)}</b><span>trær/daa</span></div>`; const t = ungskogData(b, { inn: inn() }).treantallFor; return `<div class="tall"><b>${fmt(t.verdi)}</b><span>trær/daa${t.kilde === 'registrert' ? ' (målt)' : t.kilde === 'beregnet' ? ' (modell)' : ''}</span></div>`; })()}
-      <div class="tall"><b>${fmt(b.hoyde, 1)}</b><span>m høyde</span></div>
+      ${(() => { const mh = middelhoyde(b, { inn: inn() }); return `<div class="tall"><b>${fmt(mh.verdi, 1)}</b><span>m høyde${mh.kilde === 'registrert' ? ' (snitt bar/lauv)' : ''}</span></div>`; })()}
     </div>
     ${b.vegetasjon?.kode ? `<p class="hint">Vegetasjonstype ${esc(b.vegetasjon.kode)} ${esc(b.vegetasjon.navn || '')}</p>` : ''}
     ${b.merknad ? `<p class="hint">${esc(b.merknad)}</p>` : ''}
     ${ungskogSeksjon(b)}
     <h3>Planlagte tiltak</h3>
+    ${motorBanner(b)}
     <div class="liste">${tiltak.slice(0, 6).map((t) => tiltakRad(b, t)).join('') || '<div class="tom">Ingen planlagte tiltak.</div>'}</div>
     ${utfortNylig(b).length ? `<h3>Utført siste år</h3><div class="liste">${utfortNylig(b).map((t) => tiltakRad(b, t)).join('')}</div>` : ''}
     ${regs.length ? `<h3>Registreringer (${regs.length})</h3><div class="liste">${regs.map(regRad).join('')}</div>` : ''}
@@ -569,6 +578,11 @@ function kobleHendelser() {
     if (h === 'slett-tiltak') slettEndring();
     if (h === 'avbryt-endring') tilbakeFraEndring();
     if (h === 'sporlogg') spor.visStart();
+    if ((h === 'motor-oppdater' || h === 'motor-behold') && valgtId) {
+      const b = finn(valgtId); const e = motorEndring(b);
+      if (e) { if (h === 'motor-oppdater') motorOppdater(P, e); else merkKjort(b, P.motor?.prinsipp || 'balansert'); await lagrePlanen(); tegnTiltaksflater(); }
+      visBestand(b.id); melding(h === 'motor-oppdater' ? 'Tiltakene er oppdatert.' : 'Tiltakene beholdes.');
+    }
     if (h === 'ungskog-reg' || h === 'ungskog-ferdig') { const top = $('#arkInnhold').scrollTop; ungskogRed = h === 'ungskog-reg' ? valgtId : null; visBestand(valgtId); $('#arkInnhold').scrollTop = top; if (ungskogRed) document.querySelector('[data-ungskog]')?.focus(); }
     if (h === 'effekt-tiltak') {
       const b = finn(valgtId); if (!b) return;

@@ -1483,5 +1483,24 @@ test('Ungskog på hogd flate (Nannestad 29/2, bestand 1-19): alder fra målt hø
   assert.ok(US.effektUngskogpleie(b, { iAar: 2026, vInn: { ...STANDARD_VERDI, tilskuddUngskogpleie: 40 } }).gevinst > 0);
 });
 
+test('Delvis ungskogpleie: resten foreslås fullført, middelhøyde = snitt av registrert bar og lauv', () => {
+  const b = { id: 'x', nr: '1-19', treslag: 'G', bonitet: 11, alder: 0, volumDaa: 1, treantall: 20, hoyde: 1.1, areal: 48.5, ekstra: { KILDE: 'Tidligere skogbruksplan (NIBIO) + SR16' },
+    tiltak: [{ id: 'u', type: 'ungskogpleie', status: 'utfort', utfortDato: '2026-10-17', aar: 2026, arealDaa: 6.2 }], ungskog: { treantallFor: 900, treantallEtter: 180, hoydeBar: 2 } };
+  const p = US.pleieDekning(b); assert.equal(p.daa, 6.2); assert.equal(p.rest, 42.3); assert.ok(!p.helt);
+  assert.equal(US.ungskogData(b).pleid, null); assert.equal(US.ungskogData(b).delvis.rest, 42.3);
+  const f = motorTiltak({ bestand: [b] }, { iAar: 2026, balanser: false });
+  assert.equal(f.length, 1); assert.equal(f[0].type, 'ungskogpleie'); assert.equal(f[0].arealDaa, 42.3); assert.equal(f[0].aar, 2026); assert.match(f[0].kommentar, /Fullfør ungskogpleien på resterende 42,3 daa/);
+  const e = US.effektFor(b, { iAar: 2026 });
+  assert.equal(e.arealDaa, 42.3); assert.ok(e.delvis); assert.equal(e.alt.naa.navn, 'Fullfør resten nå');
+  assert.match(effektHtml(e), /Fullfør ungskogpleien.*6,2 av 48,5 daa/); assert.ok(e.andre[0].tekst.includes('bare utført på 6,2 av 48,5 daa'));
+  // Hele bestandet pleiet: ingen nye forslag
+  const hel = { ...b, tiltak: [{ ...b.tiltak[0], arealDaa: 46 }] };
+  assert.ok(US.pleieDekning(hel).helt); assert.ok(!motorTiltak({ bestand: [hel] }, { iAar: 2026, balanser: false }).some((x) => x.type === 'ungskogpleie'));
+  // Middelhøyde: registrerte høyder (lauv beregnet når den ikke er målt), og bestandsdataene følger med
+  const m = US.middelhoyde(b); assert.equal(m.kilde, 'registrert'); assert.ok(m.verdi > 2 && m.verdi < 2.6, String(m.verdi));
+  US.settUngskog(b, 'hoydeLauv', '3'); assert.equal(US.middelhoyde(b).verdi, 2.5); assert.equal(b.hoyde, 2.5);
+  assert.equal(US.middelhoyde({ ...b, ungskog: undefined }).verdi, 2.5); // bestandsdataene er oppdatert
+});
+
 await Promise.all(venter);
 console.log(`\n${ok} tester bestått`);

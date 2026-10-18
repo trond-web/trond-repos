@@ -2,7 +2,7 @@
 // Fokus: flatehogst, lukket hogst, tynning, planting, markberedning og ungskogpleie. Reglene bygger på forskrift,
 // forskning og fagråd (se KILDER). Ingen DOM – kan testes i Node.
 import { tetthet } from './tetthet.js';
-import { ungskogData } from './ungskog.js';
+import { ungskogData, pleieDekning } from './ungskog.js';
 import { STANDARD_INNSTILLINGER, startTilstand, laavesteHogstalder, beregnetHogstklasse, hogstklasseFor, foryngelse, arligTilvekstDaa, hogstAndel, hogstNettoPerM3, tiltakKostnad, nyId, TILTAKSTYPER, hkGrenser } from './model.js';
 import { pefcAlder, avstand } from './pefc.js';
 import { bestandsverdi, STANDARD_VERDI } from './verdi.js';
@@ -205,7 +205,9 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
 
     // 2. Ungskogpleie
     if (hk === 2 || (s.alder > 0 && h < 8 && hk <= 3)) {
-      const gjort = utfort(b, 'ungskogpleie').length;
+      // Delvis utført ungskogpleie (under 90 % av arealet): foreslå å fullføre resten.
+      const dekning = pleieDekning(b);
+      const gjort = dekning?.helt;
       if (!gjort && !planlagt(b, ['ungskogpleie'])) {
         const maal = maalTetthet(ts, bo, storm);
         // Registrert treantall før regulering går foran takst; SR16 (bare trær over 5 cm) erstattes av treantallsmodellen.
@@ -214,6 +216,9 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
         if (tett) {
           const om = h >= 1 ? 0 : aarTilHoyde(1.5, bo, s.alder);
           const sen = h > 6;
+          if (dekning) {
+            legg(b, 'ungskogpleie', iAar, 1, `Fullfør ungskogpleien på resterende ${String(dekning.rest).replace('.', ',')} daa – ned til ca. ${maal} trær/daa (nå ${tre}). ${String(dekning.daa).replace('.', ',')} daa ble pleiet ${dekning.dato}.`, `Bare ${Math.round(dekning.andel * 100)} % av bestandet er pleiet. Resten står tett med lauv som konkurrerer med bartrærne; pleien er billigst og gir størst effekt mens trærne er 1–5 m.`, ['ungskogpleie'], { regel: 'ungskogpleie-rest', maalTetthet: maal, arealDaa: dekning.rest });
+          } else
           legg(b, 'ungskogpleie', iAar + om, sen ? 1 : 2, `Ungskogpleie ned til ca. ${maal} trær/daa${tre ? ` (nå ${tre})` : ''}`, `${sen ? 'Bestandet er over 6 m – ungskogpleie haster for å unngå tynne, ustabile trær. ' : `Høyde ca. ${h.toFixed(1)} m – riktig fase for ungskogpleie (1–5 m). `}Målt treantall ${storm ? '100–140 trær/daa fordi bestandet er stormutsatt' : '150–250 trær/daa'} gir stabile trær med god diametertilvekst; behold ca. 10 % lauv.`, storm ? ['ungskogpleie', 'storm'] : ['ungskogpleie'], { regel: 'ungskogpleie', maalTetthet: maal });
         }
       }
