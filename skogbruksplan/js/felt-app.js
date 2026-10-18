@@ -12,6 +12,9 @@ import { initOppdragFelt } from './oppdrag-felt.js';
 import { ledig as oppdragLedig } from './oppdrag.js';
 import { synligeTiltaksflater, treffVed, tiltakStil, tiltakNavn, tiltakLinje, tiltakDetaljer } from './treff.js';
 import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
+import { erUngskog, ungskogData, effektFor, settUngskog } from './ungskog.js';
+import { ungskogHtml, effektHtml } from './effekt-html.js';
+import { STANDARD_VERDI } from './verdi.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -30,6 +33,7 @@ let valgtId = null; let visning = 'kart';
 let gps = { watch: null, pos: null, folg: false, markor: null, sirkel: null };
 let installHendelse = null; let spor = null; let flate = null;
 let oppdrag = null; let uthevOppdrag = new Set(); // bestand i oppdraget som er åpent
+let ungskogRed = null; // bestand der ungskogfeltene er åpne for registrering
 let tiltaksflateLag = null; let valgtTiltak = null; let treffMarkor = null; // tiltak som er valgt i kartet, og markør for trykkpunktet
 
 // ---------- hjelpere ----------
@@ -39,6 +43,7 @@ const inn = () => ({ ...STANDARD_INNSTILLINGER, ...(P?.innstillinger || {}) });
 const hk = (b) => hkFor(b, inn());
 const finn = (id) => P?.bestand.find((b) => b.id === id);
 const bestandVed = (lat, lon) => P?.bestand.find((b) => b.geometri && punktIGeometri([lon, lat], b.geometri)) || null;
+const effekt = (b, t = null) => effektFor(b, { inn: inn(), vInn: { ...STANDARD_VERDI, ...(P?.verdi || {}) }, iAar: IAAR, tiltak: t });
 const planBb = () => (P ? bbox([...(P.bestand || []).map((b) => b.geometri), P.eiendom?.grense].filter(Boolean)) : null);
 
 async function lagrePlanen() {
@@ -144,8 +149,20 @@ function tiltakRad(b, t, medBestand = false) {
   return `<div class="rad"><div class="rad-tekst" data-tiltakkort="${esc(b.id)}|${esc(t.id)}" role="button" tabindex="0"><div class="tittel">${t.dekning ? '<span class="flate-merke" aria-hidden="true"></span>' : ''}${esc(TILTAKSTYPER[t.type]?.navn || t.type)} ${t.aar ? `· ${t.aar}` : ''}</div><div class="under">${medBestand ? `Bestand ${esc(b.nr)} · ` : ''}${esc(t.kommentar || '')}${ferdig && t.utfortDato ? ` · utført ${esc(t.utfortDato)}` : ''}</div></div>
     <div class="rad-knapper"><button type="button" class="avkryss endre" data-endre="${esc(b.id)}|${esc(t.id)}" aria-label="Endre eller slett tiltaket">✎</button><button type="button" class="avkryss ${ferdig ? 'ferdig' : ''}" data-utfort="${esc(b.id)}|${esc(t.id)}" aria-label="${ferdig ? 'Angre utført' : 'Merk som utført'}">${ferdig ? '✓' : ''}</button></div></div>`;
 }
+// Ungskog (HK I–II): treantall før/etter regulering og høyder, med beregnede verdier der ingenting er registrert,
+// og økonomisk effekt av å gjennomføre eller ikke gjennomføre ungskogpleie (eller planting).
+function ungskogSeksjon(b) {
+  if (!erUngskog(b, inn())) return '';
+  const red = ungskogRed === b.id; const e = effekt(b);
+  const planlagt = e && (b.tiltak || []).some((t) => t.type === e.type && t.status !== 'utfort');
+  return `<h3>Ungskog</h3>${ungskogHtml(ungskogData(b, { inn: inn() }), { inputs: red })}
+    <div class="knapper">${red ? '<button type="button" class="knapp primar" data-h="ungskog-ferdig">Ferdig</button>' : '<button type="button" class="knapp" data-h="ungskog-reg">✎ Registrer målte verdier</button>'}</div>
+    ${e ? `<h3>Effekt av ${e.type === 'ungskogpleie' ? 'ungskogpleie' : 'planting'}</h3>${effektHtml(e, { kompakt: true })}
+      ${planlagt ? '' : `<div class="knapper"><button type="button" class="knapp" data-h="effekt-tiltak" data-type="${e.type}">+ Planlegg ${e.type === 'ungskogpleie' ? 'ungskogpleie' : 'planting'} ${IAAR}</button></div>`}` : ''}`;
+}
 function visBestand(id, { zoom = false } = {}) {
   const b = finn(id); if (!b) return;
+  if (ungskogRed !== id) ungskogRed = null;
   valgtId = id; oppdaterStiler();
   if (zoom) { const l = lagPerBestand.get(id); if (l) kart.fitBounds(l.getBounds(), { maxZoom: 16, padding: [40, 40], paddingBottomRight: [40, window.innerHeight * 0.45] }); }
   const s = startTilstand(b); const h = hk(b);
@@ -163,6 +180,7 @@ function visBestand(id, { zoom = false } = {}) {
     </div>
     ${b.vegetasjon?.kode ? `<p class="hint">Vegetasjonstype ${esc(b.vegetasjon.kode)} ${esc(b.vegetasjon.navn || '')}</p>` : ''}
     ${b.merknad ? `<p class="hint">${esc(b.merknad)}</p>` : ''}
+    ${ungskogSeksjon(b)}
     <h3>Planlagte tiltak</h3>
     <div class="liste">${tiltak.slice(0, 6).map((t) => tiltakRad(b, t)).join('') || '<div class="tom">Ingen planlagte tiltak.</div>'}</div>
     ${utfortNylig(b).length ? `<h3>Utført siste år</h3><div class="liste">${utfortNylig(b).map((t) => tiltakRad(b, t)).join('')}</div>` : ''}
@@ -225,6 +243,7 @@ function visTiltakKort(bid, tid, { zoom = false } = {}) {
     <div><span class="merke" style="${utfort ? '' : 'background:#e3ecf8;color:#1d4f91'}">${utfort ? 'Utført' : 'Planlagt'}</span>${t.dekning ? '<span class="merke">Flate i kartet</span>' : ''}${t.oppdragId && (P.oppdrag || []).some((o) => o.id === t.oppdragId) ? `<span class="merke lenke" data-oppdrag="${esc(t.oppdragId)}">Oppdrag ${esc((P.oppdrag || []).find((o) => o.id === t.oppdragId).nr)}</span>` : ''}</div>
     <dl class="kort-liste">${tiltakDetaljer(b, t).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
     ${t.kommentar ? `<p>${esc(t.kommentar)}</p>` : ''}
+    ${!utfort && ['ungskogpleie', 'planting'].includes(t.type) && effekt(b, t) ? `<h3>Effekt av å gjennomføre</h3>${effektHtml(effekt(b, t), { kompakt: true })}` : ''}
     <div class="knapper"><button type="button" class="knapp" data-kort="utfort">${utfort ? 'Angre utført' : '✓ Merk utført'}</button><button type="button" class="knapp primar" data-kort="endre">✎ Endre</button></div>
     <div class="knapper"><button type="button" class="knapp" data-kort="flate">${t.dekning ? 'Endre flate' : 'Tegn flate'}</button><button type="button" class="knapp" data-kort="bestand">Bestand ${esc(b.nr)}</button>${t.dekning ? '<button type="button" class="knapp" data-kort="zoom">Vis i kart</button>' : ''}</div>
     ${oppdragLedig(t, P.oppdrag) ? '<div class="knapper"><button type="button" class="knapp" data-kort="oppdrag">+ Legg i oppdrag</button></div>' : ''}`);
@@ -520,6 +539,13 @@ function kobleHendelser() {
     if (h === 'slett-tiltak') slettEndring();
     if (h === 'avbryt-endring') tilbakeFraEndring();
     if (h === 'sporlogg') spor.visStart();
+    if (h === 'ungskog-reg' || h === 'ungskog-ferdig') { const top = $('#arkInnhold').scrollTop; ungskogRed = h === 'ungskog-reg' ? valgtId : null; visBestand(valgtId); $('#arkInnhold').scrollTop = top; if (ungskogRed) document.querySelector('[data-ungskog]')?.focus(); }
+    if (h === 'effekt-tiltak') {
+      const b = finn(valgtId); if (!b) return;
+      b.tiltak = b.tiltak || [];
+      b.tiltak.push({ id: nyId('t'), type: e.target.closest('[data-type]').dataset.type, aar: IAAR, prioritet: 1, status: 'planlagt', kommentar: 'Lagt til fra effektberegningen' });
+      await lagrePlanen(); visBestand(b.id); melding('Tiltaket er lagt til i planen.');
+    }
     if (h === 'installer' && installHendelse) { installHendelse.prompt(); const v = await installHendelse.userChoice; installHendelse = null; if (v.outcome === 'accepted') melding('SkogIQ Felt er installert.'); visMer(); }
   });
   ark.addEventListener('change', async (e) => {
@@ -528,6 +554,11 @@ function kobleHendelser() {
       regPagar.tekst = $('#regTekst').value;
       try { regPagar.bilde = await skalerBilde(e.target.files[0]); } catch { melding('Kunne ikke lese bildet.'); }
       tegnRegSkjema();
+    }
+    if (e.target.dataset?.ungskog && valgtId) {
+      const b = finn(valgtId); const top = $('#arkInnhold').scrollTop;
+      if (!settUngskog(b, e.target.dataset.ungskog, e.target.value.trim())) { melding('Ugyldig verdi.'); return; }
+      await lagrePlanen(); visBestand(b.id); $('#arkInnhold').scrollTop = top; return;
     }
     if (e.target.dataset?.tf === 'helt' && endring) { endring.utkast = lesEndring(); visEndreTiltak(endring.bid, endring.tid); return; }
     if (e.target.id === 'startFelt') { ls.set(LS.start, e.target.checked ? '1' : null); melding(e.target.checked ? 'Appen åpner nå i mobilversjonen.' : 'Appen åpner i fullversjonen.'); }

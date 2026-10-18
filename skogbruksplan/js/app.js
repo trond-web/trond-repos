@@ -40,6 +40,8 @@ import { initKsl } from './ksl-ui.js';
 import { initKarbon } from './karbon-ui.js';
 import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, typeFor as oppdragstype } from './oppdrag.js';
 import { KRAVPUNKTER } from './pefc.js';
+import { erUngskog, ungskogData, effektFor, settUngskog } from './ungskog.js';
+import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
 const VEIKLASSER_NAVN = (k) => (VEIKLASSER[k] || VEIKLASSER[0]).navn;
@@ -761,6 +763,7 @@ function visDetalj() {
       <label class="hel">Merknad <textarea name="merknad" rows="2">${esc(b.merknad)}</textarea></label>
     </form>
     ${ekstra.length ? `<details class="ekstra"><summary>Andre felt fra importen (${ekstra.length})</summary>${ekstra.map(([k, v]) => `<div><b>${esc(k)}</b>: ${esc(v)}</div>`).join('')}</details>` : ''}
+    ${ungskogSeksjonHtml(b)}
     <h3 style="margin-top:14px">Tiltak for bestandet</h3>
     <div id="motorBanner">${motorBannerHtml(b)}</div>
     <div>${(b.tiltak || []).sort((x, y) => x.aar - y.aar).map((t) => tiltakRadHtml({ ...t, bestand: b })).join('') || '<div class="tom">Ingen tiltak registrert.</div>'}</div>
@@ -781,8 +784,14 @@ function visDetalj() {
     endret({ kart: false });
     if (navn === 'treslag') visDetalj();
     // Tiltaksmotoren sjekker om endringen gir nye eller utgåtte tiltak.
-    clearTimeout(visDetalj.motorT); visDetalj.motorT = setTimeout(() => { const el = $('#motorBanner'); if (el && valgtId === b.id) el.innerHTML = motorBannerHtml(b); }, 500);
+    clearTimeout(visDetalj.motorT); visDetalj.motorT = setTimeout(() => {
+      const el = $('#motorBanner'); if (!el || valgtId !== b.id) return;
+      el.innerHTML = motorBannerHtml(b);
+      const us = $('#ungskogSeksjon'); const ny = ungskogSeksjonHtml(b);
+      if (!!us !== !!ny) visDetalj(); else if (us && !us.contains(document.activeElement)) us.outerHTML = ny, kobleUngskog(b);
+    }, 500);
   });
+  kobleUngskog(b);
   $('#nyttTiltakSkjema').addEventListener('submit', (e) => {
     e.preventDefault();
     const d = new FormData(e.target);
@@ -803,6 +812,34 @@ function visDetalj() {
     S.bestand = S.bestand.filter((x) => x.id !== b.id); valgtId = null; avsluttGrenseRedigering();
     endret({ kart: true });
   };
+}
+
+// Ungskogfelt (HK I–II) og økonomisk effekt av å gjennomføre eller ikke gjennomføre ungskogpleie/planting.
+function ungskogSeksjonHtml(b) {
+  if (!erUngskog(b, inn())) return '';
+  const e = effektFor(b, { inn: inn(), vInn: { ...STANDARD_VERDI, ...S.verdi }, iAar: IAAR });
+  const planlagt = e && (b.tiltak || []).some((t) => t.type === e.type && t.status !== 'utfort');
+  return `<div id="ungskogSeksjon" class="ungskog-seksjon">
+    <h3 style="margin-top:14px">Ungskog (hogstklasse ${HK_ROMERTALL[hk(b)]})</h3>
+    <p class="hint" style="margin:0">Tomme felt viser beregnet verdi. Skriv inn målte verdier for å overstyre – de brukes av tiltaksmotoren og effektberegningen.</p>
+    ${ungskogHtml(ungskogData(b, { inn: inn() }), { inputs: true })}
+    ${e ? `<h3 style="margin-top:10px">Effekt av ${e.type === 'ungskogpleie' ? 'ungskogpleie' : 'planting'}</h3>${effektHtml(e)}
+      ${planlagt ? '' : `<div class="knapperad"><button class="knapp liten primar" type="button" data-handling="effekt-tiltak" data-type="${e.type}">Legg til ${e.type === 'ungskogpleie' ? 'ungskogpleie' : 'planting'} ${IAAR}</button></div>`}` : ''}
+  </div>`;
+}
+
+function kobleUngskog(b) {
+  const us = $('#ungskogSeksjon'); if (!us) return;
+  us.addEventListener('change', (e) => {
+    const f = e.target.closest('[data-ungskog]'); if (!f) return;
+    if (!settUngskog(b, f.dataset.ungskog, f.value.trim())) { melding('Ugyldig verdi.'); f.focus(); return; }
+    endret(); visDetalj();
+  });
+  us.querySelector('[data-handling="effekt-tiltak"]')?.addEventListener('click', (e) => {
+    b.tiltak = b.tiltak || [];
+    b.tiltak.push({ id: nyId('t'), type: e.currentTarget.dataset.type, aar: IAAR, prioritet: 1, status: 'planlagt', kommentar: 'Lagt til fra effektberegningen' });
+    endret(); visDetalj();
+  });
 }
 
 // ---------------------------------------------------------------- tiltak

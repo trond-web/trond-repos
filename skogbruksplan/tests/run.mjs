@@ -39,6 +39,9 @@ import * as SPOR from '../js/sporlogg.js';
 import * as TE from '../js/tiltak-endring.js';
 import * as FG from '../js/flate-geometri.js';
 import * as TR from '../js/treff.js';
+import * as US from '../js/ungskog.js';
+import { ungskogHtml, effektHtml } from '../js/effekt-html.js';
+import { genererTiltak as motorTiltak } from '../js/tiltaksmotor.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
 import { lengdeM, avstandTilLinje, terrengtransport, foreslaaVedlikehold, fordelKostnad, wktTilGeo, nyVeiKostnad, STANDARD_VEIINNSTILLINGER, kjedeSammen, hentTraktorveierOgStier, slaaInnFkb, tomtVeiregister } from '../js/veier.js';
 
@@ -1277,6 +1280,56 @@ test('Identifisering i kartet: tiltaksflater og bestand i et punkt, synlighet og
   const d = Object.fromEntries(TR.tiltakDetaljer(b, b.tiltak[0]));
   assert.match(d.Areal, /4,0 daa \(\d+ % av bestandet\)/); assert.equal(d.Registrert, 'Tegnet');
   assert.equal(TR.tiltakStil(b.tiltak[1], true).color, '#ffd400'); assert.ok(TR.tiltakStil(b.tiltak[1]).dashArray);
+});
+
+test('Ungskog: felt for HK I–II – registrert, fra data eller beregnet', () => {
+  const b = { id: 'u1', nr: '9', treslag: 'G', bonitet: 17, alder: 8, areal: 10, hogstklasse: 2, tiltak: [] };
+  assert.ok(US.erUngskog(b)); assert.ok(!US.erUngskog({ ...b, hogstklasse: 4 }));
+  let d = US.ungskogData(b);
+  assert.equal(d.treantallFor.kilde, 'beregnet'); assert.ok(d.treantallFor.verdi > 300, `${d.treantallFor.verdi}`);
+  assert.equal(d.treantallEtter.verdi, null); assert.match(d.treantallEtter.forklaring, /Ikke regulert/);
+  assert.equal(d.hoydeBar.kilde, 'beregnet'); assert.ok(d.hoydeLauv.verdi > d.hoydeBar.verdi);
+  b.treantall = 520; b.hoyde = 2.4;
+  d = US.ungskogData(b);
+  assert.equal(d.treantallFor.kilde, 'data'); assert.equal(d.treantallFor.verdi, 520); assert.equal(d.hoydeBar.verdi, 2.4); assert.equal(d.hoydeLauv.kilde, 'beregnet');
+  // Registrering: komma godtas, ugyldig avvises, tom verdi fjerner
+  assert.ok(US.settUngskog(b, 'hoydeLauv', '3,46')); assert.equal(b.ungskog.hoydeLauv, 3.5);
+  assert.ok(US.settUngskog(b, 'treantallFor', '640')); assert.ok(!US.settUngskog(b, 'treantallFor', 'mange')); assert.ok(!US.settUngskog(b, 'hoydeBar', '-1')); assert.ok(!US.settUngskog(b, 'tull', '1'));
+  d = US.ungskogData(b);
+  assert.equal(d.treantallFor.kilde, 'registrert'); assert.equal(d.treantallFor.verdi, 640); assert.equal(d.hoydeLauv.verdi, 3.5);
+  // Motoren bruker registrert treantall før regulering
+  assert.ok(motorTiltak({ bestand: [b] }, { iAar: 2026, balanser: false }).some((f) => f.type === 'ungskogpleie' && /640/.test(f.kommentar)));
+  // Etter utført pleie
+  b.tiltak.push({ id: 't', type: 'ungskogpleie', status: 'utfort', utfortDato: '2025-06-01', aar: 2025 });
+  d = US.ungskogData({ ...b, ungskog: undefined, treantall: 200 });
+  assert.equal(d.treantallEtter.kilde, 'beregnet'); assert.equal(d.treantallEtter.verdi, 200); assert.equal(d.treantallFor.kilde, 'beregnet');
+  US.settUngskog(b, 'treantallFor', ''); US.settUngskog(b, 'hoydeLauv', ''); assert.equal(b.ungskog, undefined);
+  const html = ungskogHtml(US.ungskogData(b), { inputs: true });
+  assert.equal((html.match(/data-ungskog=/g) || []).length, 4);
+});
+
+test('Ungskog: økonomisk effekt av å gjennomføre, utsette eller ikke gjennomføre', () => {
+  const b = { id: 'u2', nr: '9', treslag: 'G', bonitet: 17, alder: 10, areal: 12, hogstklasse: 2, treantall: 450, hoyde: 3, tiltak: [] };
+  const e = US.effektUngskogpleie(b, { iAar: 2026 });
+  assert.equal(e.type, 'ungskogpleie'); assert.ok(e.behov);
+  assert.ok(e.alt.naa.nv > e.alt.utsett.nv && e.alt.utsett.nv > e.alt.uten.nv, JSON.stringify(Object.values(e.alt).map((a) => Math.round(a.nv))));
+  assert.ok(e.gevinstTotal > 0 && Math.abs(e.gevinstTotal - e.gevinst * 12) < 1e-6);
+  assert.ok(e.alt.uten.hogstAar > e.alt.naa.hogstAar);
+  // Lauv over bar gir større tap uten pleie
+  const lauv = US.effektUngskogpleie({ ...b, ungskog: { hoydeLauv: 5 } }, { iAar: 2026 });
+  assert.ok(lauv.lauvOver && lauv.gevinst > e.gevinst); assert.ok(lauv.andre.some((x) => x.type === 'advarsel' && /Lauvet/.test(x.tekst)));
+  // Høyere trær gir dyrere pleie
+  assert.ok(US.pleieKostPerDaa(6, 800) > US.pleieKostPerDaa(2, 400));
+  // Planting på snaumark
+  const s = { id: 'u3', nr: '8', treslag: 'G', bonitet: 20, alder: 0, areal: 5, hogstklasse: 1, tiltak: [] };
+  const p = US.effektFor(s, { iAar: 2026 });
+  assert.equal(p.type, 'planting'); assert.ok(p.alt.naa.nv > p.alt.uten.nv);
+  // Ungskogpleie prioriteres når den er planlagt
+  assert.equal(US.effektFor({ ...s, tiltak: [{ id: 'x', type: 'ungskogpleie', status: 'planlagt', aar: 2028 }] }, { iAar: 2026 }).type, 'ungskogpleie');
+  assert.equal(US.effektFor({ ...b, hogstklasse: 4 }, { iAar: 2026 }), null);
+  const html = effektHtml(e);
+  assert.match(html, /Gjennomfør nå/); assert.match(html, /effekt-best/); assert.match(html, /Utsetter du 5 år/);
+  assert.doesNotMatch(effektHtml(e, { kompakt: true }), /Forutsetninger/);
 });
 
 await Promise.all(venter);
