@@ -46,6 +46,7 @@ import * as DR from '../js/drone.js';
 import * as SK from '../js/skog3d-data.js';
 import * as SV from '../js/skog3d-veg.js';
 import * as SO from '../js/skog3d-omgivelser.js';
+import * as AR from '../js/ar-data.js';
 import { lagRelay, KODE_GYLDIG_MS } from '../kontroller-relay.js';
 import { tolkTetthet, alderFraHoyde, startTilstand as startT2, hogstklasseFor, foryngelse, vurderLiteVolum, rettFeilHogd, minForyngelse } from '../js/model.js';
 import { ungskogHtml, effektHtml } from '../js/effekt-html.js';
@@ -1672,6 +1673,39 @@ test('Virtuell skog: framtidsskog i ungskog – hogstmoden med og uten ungskogpl
   assert.ok(snitt(hU(fram)) > snitt(hU(idag)) * 3); // hogstmoden mot ungskog
   assert.equal(fram.traer.filter((t) => t.bid === 'n').length, idag.traer.filter((t) => t.bid === 'n').length);
   assert.equal(fram.bestand.find((x) => x.b.id === 'u').hk, 5);
+});
+
+test('AR i felt: grenser, stier, miljø, kulturminner, retning og varsler', async () => {
+  const { tilGeoPunkt } = await import('../js/flate-geometri.js');
+  const o = [600000, 6700000]; const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => tilGeoPunkt([o[0] + x, o[1] + y]));
+  const P = {
+    eiendom: { grense: { type: 'Polygon', coordinates: [ring(-200, -200, 200, 200)] } },
+    bestand: [{ id: 'b1', nr: '7', treslag: 'G', bonitet: 17, hogstklasse: 3, areal: 12, geometri: { type: 'Polygon', coordinates: [ring(-50, -50, 50, 50)] } }, { id: 'b2', nr: '8', treslag: 'F', geometri: { type: 'Polygon', coordinates: [ring(3000, 3000, 3100, 3100)] } }],
+    veier: { veier: [{ klasse: 3, navn: 'Skogsbilvei', geometri: { type: 'LineString', coordinates: [tilGeoPunkt([o[0] - 100, o[1] + 60]), tilGeoPunkt([o[0] + 100, o[1] + 60])] } }, { klasse: 7, status: 'planlagt', geometri: { type: 'LineString', coordinates: [tilGeoPunkt(o), tilGeoPunkt([o[0] + 10, o[1]])] } }] },
+    pefc: { objekter: [{ type: 'kulturminne', navn: 'Kulturminne 123: Kullgrop', kildeId: 'ra-123', geometri: { type: 'Polygon', coordinates: [ring(80, -10, 90, 0)] } }, { type: 'noekkelbiotop', navn: 'Nøkkelbiotop (MiS 9)', kildeId: 'mis-9', geometri: { type: 'Polygon', coordinates: [ring(-40, -40, -20, -20)] } }] },
+    registreringer: [{ lat: tilGeoPunkt([o[0] + 5, o[1] + 5])[1], lon: tilGeoPunkt([o[0] + 5, o[1] + 5])[0], kategori: 'Barkbille', tekst: 'Angrep' }],
+  };
+  const inn = AR.arInnhold(P, o, { R: 500, ekstraMiljo: [{ type: 'kulturminne', navn: 'dublett', kildeId: 'ra-123', geometri: P.pefc.objekter[0].geometri }], ruter: [{ linje: [tilGeoPunkt([o[0], o[1] - 100]), tilGeoPunkt([o[0], o[1] + 100])], folger: 'ST', navn: 'Kultursti' }] });
+  const typer = (l) => l.map((x) => x.type);
+  assert.ok(typer(inn.linjer).includes('bestand') && typer(inn.linjer).includes('eiendom') && typer(inn.linjer).includes('vei') && typer(inn.linjer).includes('sti'));
+  assert.equal(inn.linjer.filter((l) => l.type === 'kulturminne').length, 1); // dubletten er fjernet
+  assert.ok(!typer(inn.linjer).includes('traktor')); // planlagt vei vises ikke
+  assert.equal(inn.punkter.filter((p) => p.type === 'bestand').length, 1); // bestand 8 er utenfor R
+  assert.ok(inn.punkter.some((p) => p.type === 'registrering' && p.tittel === 'Barkbille'));
+  const b = inn.punkter.find((p) => p.type === 'bestand'); assert.equal(b.under, 'G17 · HK III · 12 daa');
+  assert.ok(Math.abs(inn.linjer.find((l) => l.type === 'bestand').punkter[0][0] + 50) < 0.5); // lokale meter
+  // Hvor er jeg, nærmeste og varsler
+  assert.equal(AR.hvorEr(inn, 0, 0).bestand.nr, '7'); assert.equal(AR.hvorEr(inn, -30, -30).miljo[0].type, 'noekkelbiotop');
+  const n = AR.naermeste(inn, 0, 0, { kurs: 90 }); assert.ok(n[0].avstand < n.at(-1).avstand);
+  const km = AR.naermeste(inn, 0, 0, { lag: new Set(['kultur']), kurs: 90 })[0]; assert.equal(km.kompass, 'Ø'); assert.ok(Math.abs(km.relativ) < 10);
+  assert.equal(AR.varsler(inn, 85, -5)[0].niva, 'stopp'); assert.equal(AR.varsler(inn, 70, -5)[0].niva, 'advarsel'); assert.equal(AR.varsler(inn, 0, 0).length, 0);
+  assert.ok(AR.varsler(inn, -30, -30).some((v) => /nøkkelbiotop/.test(v.tekst)));
+  assert.ok(Math.abs(AR.avstandTilFlate(100, -5, inn.flater.find((f) => f.type === 'kulturminne').mp) - 10) < 0.01);
+  // Kompass: iPhone (webkitCompassHeading) og Android (absolutt alpha), med misvisning
+  assert.equal(AR.kursFraOrientering({ webkitCompassHeading: 90 }, { deklinasjon: 4 }), 94);
+  assert.equal(AR.kursFraOrientering({ alpha: 270, absolute: true }, { deklinasjon: 0 }), 90);
+  assert.equal(AR.kursFraOrientering({ alpha: 10 }), null);
+  assert.equal(AR.glattVinkel(350, 10, 0.5), 0); assert.equal(AR.peiling(0, 0, 0, 10).retning, 0); assert.equal(AR.kompassTekst(225), 'SV');
 });
 
 await Promise.all(venter);

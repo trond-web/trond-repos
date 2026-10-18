@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.29.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.30.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -260,6 +260,39 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
 - Øverst til venstre vises dataene for bestandet du står i: treslag, bonitet, hogstklasse med tetthet, alder, høyde, treantall og volum, og vegetasjonstypen.
 
 Dette er en tolkning av dataene, ikke en skanning. Enkelttrær fra laserdata kan legges inn senere.
+
+## AR i felt – grenser, stier, miljø og kulturminner i terrenget (beta, SkogIQ Felt)
+
+Trykk AR-knappen i kartet (eller **Mer → 🥽 Start AR**). Det du trenger å se, legges over kamerabildet eller over virkeligheten i AR-briller. Koden ligger i `js/felt-ar.js` (visning) og `js/ar-data.js` (data, kan testes i Node).
+
+**Dette vises:**
+
+| Lag | Innhold | Slik ser det ut |
+|---|---|---|
+| Bestand | Bestandsgrenser og eiendomsgrense | Gult gjerde (1,1 m) med stolper og skilt med bestandsnummer, treslag/bonitet, hogstklasse og areal. Eiendomsgrensen er rød (1,8 m). |
+| Stier og veier | Planens veiregister og Kartverkets turrutebase (merkede stier og traktorveier) | Stripe på bakken: grå skogsbilvei, brun traktorvei, oransje sti. Planlagte veier vises ikke. |
+| Miljø | Planens miljødata (PEFC-fanen), og miljødata hentet for området rundt deg når du har nett: nøkkelbiotoper, naturtyper, verneområder, artsområder og friluftsområder | Lavt gjerde i farge etter type, med skilt |
+| Kulturminner | Sikringssoner fra Riksantikvaren. De hentes først, så de kommer raskt. | Lilla gjerde rundt sikringssonen og en høy stang med skilt («ikke kjør over») |
+| Registreringer | Feltregistreringer med posisjon | Blått skilt med kategori og tekst |
+
+**Mens du går:**
+- **Infoboksen** øverst viser bestandet du står i, GPS-nøyaktigheten og miljøflatene du er inne i. Den viser også de nærmeste skiltene med avstand, kompassretning og en pil i forhold til der du ser.
+- **Varsel:** Rødt varsel når du står i sikringssonen til et kulturminne. Oransje varsel innen 15 m fra sonen og i nøkkelbiotoper, verneområder og artsområder.
+- **Lagene** kan slås av og på hver for seg. Kompasskursen vises nederst.
+- **Høyden** på grenser og skilt følger terrenget (Kartverkets høydedata) når du har nett. Uten nett regnes bakken som flat.
+
+**Posisjon og retning:**
+- **Telefon og nettbrett (iPhone og Android):**
+  - Kamerabildet vises bak. Retningen kommer fra kompass og gyro, med misvisning på 4° øst, og posisjonen fra GPS med utjevning.
+  - iPhone spør om tilgang til bevegelse og retning når du trykker på knappen.
+  - Bommer grensene litt i retning (kompasset påvirkes av metall og magnetfelt), dreier du dem med ◀ ▶. Hvor mye du har justert, vises.
+- **Briller (🥽 Briller):**
+  - WebXR «immersive-ar» i Meta Quest 3/3S med gjennomsyn, og på Android-telefoner med ARCore.
+  - Brillene sporer bevegelsen selv. Ved start legges kartet der GPS-en sier du er, og dreies etter kompasset.
+  - GPS-målinger med nøyaktighet bedre enn 15 m drar grensene sakte på plass over tid.
+  - Har brillene ikke GPS og kompass (Quest), brukes midten av kartet som startpunkt. Høyre stikke dreier grensene, og venstre stikke flytter dem til de stemmer med terrenget.
+- **Uten nett:** Plandataene og 3D-biblioteket ligger i bufferen etter første bruk. Miljødata hentet for området utenfor planen, terreng og turruter krever nett.
+- **Nøyaktighet:** GPS i skog er ofte ±3–10 m, og grensene kan derfor ligge noen meter feil. AR er et hjelpemiddel og erstatter ikke oppmåling av eiendomsgrenser.
 
 ## Droneoppdrag – ortofoto med DJI Enterprise (beta, SkogIQ Felt)
 
