@@ -96,8 +96,9 @@ export function lagTreLag(THREE, scene, traer, { naer = 60 } = {}) {
   const matKrone = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
   const n = traer.length; const mStamme = new Float32Array(n * 16); const mKrone = new Float32Array(n * 16); const farge = new Float32Array(n * 3);
   const m = new THREE.Matrix4(); const q = new THREE.Quaternion(); const p = new THREE.Vector3(); const s = new THREE.Vector3(); const e = new THREE.Euler();
+  // tykkelse (valgfri): grove trær i pleiet framtidsskog, tynne i upleiet
   traer.forEach((t, i) => {
-    const d = Math.max(0.03, t.h * (t.art === 'L' ? 0.009 : 0.012)); const ks = t.h * t.kroneStart; const kh = t.h - ks; const kr = Math.max(0.15, t.h * t.kroneBredde);
+    const d = Math.max(0.03, t.h * (t.art === 'L' ? 0.009 : 0.012) * (t.tykkelse ?? 1)); const ks = t.h * t.kroneStart; const kh = t.h - ks; const kr = Math.max(0.15, t.h * t.kroneBredde);
     q.setFromEuler(e.set(0, hash(i, 1, 2) * Math.PI * 2, 0));
     m.compose(p.set(t.x, t.y - 0.05, t.z), q, s.set(d, t.h * (t.art === 'G' ? 0.97 : 0.9), d)).toArray(mStamme, i * 16);
     m.compose(p.set(t.x, t.y + ks, t.z), q, s.set(kr, kh, kr)).toArray(mKrone, i * 16);

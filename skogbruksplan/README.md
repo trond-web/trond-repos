@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.28.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.29.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -245,6 +245,13 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
   - **Trær og planter** står ikke på veier, stier, i vann eller ved bygninger.
   - **Infoboksen** viser hva du står på: bestand, markslag fra AR5, eller skog utenfor planen. Den viser også veinavn når du står på en vei, og om du er ved vann eller en bygning.
   - **Demoeiendommen** har nå en eiendomsgrense. Den ligger på et ekte sted i Løten, så veier, bygninger og markslag rundt er ekte.
+
+**Framtidsskog i ungskog (HK II):** Når du står i et bestand i hogstklasse II, kommer valget **🔮 Framtidsskog** fram: **I dag**, **Hogstmoden med ungskogpleie** eller **Hogstmoden uten pleie**. Bytt med F på tastaturet, eller med A (neste) og B (i dag) på høyre kontroller i VR. I VR vises valget på en tavle foran deg.
+- **Tallene** (hogstår, volum, pris og nåverdi per daa) kommer fra samme modell som effektvisningen i bestandet (`effektUngskogpleie`).
+- **Infoboksen** viser begge alternativene og forskjellen i nåverdi, per daa og for hele bestandet.
+- **Med pleie:** hogst etter omløpstiden. Ca. 38 % av måltettheten står igjen ved hogst (50–110 trær/daa), med ca. 10 % lauv. Trærne er 25 % grovere enn normalt og har lange, brede kroner. Bakken får mer lys.
+- **Uten pleie:** hogst 5–8 år senere. Det står 130–260 trær/daa, og lauvandelen følger treantallsmodellen (40–70 % bar). Trærne er tynne, med korte og smale kroner, og 8 % lavere høyde. I tillegg kommer et undertrykt sjikt, og bakken får mindre lys.
+- **Høyden** ved hogst tas fra høydekurven (bonitet og alder). Bare det valgte bestandet endres. Resten av skogen er som i dag.
 
 **Styring:**
 - **PC:** Klikk i bildet og se rundt med musa. Gå med W A S D eller piltastene, og hold Shift for å løpe.
