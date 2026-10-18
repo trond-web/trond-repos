@@ -228,3 +228,6 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .skjema-felt input[type=range] { width: 100%; accent-color: #7b2ff7; }
 .drone-steg { padding-left: 20px; margin: 4px 0; font-size: 14px; } .drone-steg li { margin: 4px 0; }
 .leaflet-tooltip.drone-start { background: #ff3d7f; color: #fff; border: 0; font-weight: 700; font-size: 11px; padding: 1px 6px; }
+.kontroller-boks { background: #f1ebff; border-radius: 12px; padding: 10px 12px; margin: 6px 0 8px; }
+.kontroller-boks p { margin: 4px 0; font-size: 13.5px; }
+.kode-rad { display: flex; gap: 8px; margin-top: 6px; } .kode-rad input { flex: 1; min-width: 0; font: 700 20px/1 ui-monospace, Menlo, monospace; letter-spacing: 3px; text-transform: uppercase; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); }

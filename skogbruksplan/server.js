@@ -6,6 +6,7 @@ import { stat } from 'node:fs/promises';
 import { createGzip } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { lagRelay, kontrollerApi } from './kontroller-relay.js';
 
 const ROT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8080;
@@ -25,7 +26,7 @@ const TYPER = {
   '.sos': 'text/plain; charset=utf-8',
 };
 // Mapper og filer som ikke skal publiseres.
-const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|package(-lock)?\.json|railway\.json)$|\/\./;
+const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|package(-lock)?\.json|railway\.json)$|\/\./;
 const KOMPRIMER = /^(text\/|application\/(json|geo\+json|manifest\+json)|image\/svg)/;
 
 const SIKKERHET = {
@@ -57,15 +58,20 @@ async function nve(sti, res) {
   } catch (e) { svar(res, 504, `NVE svarte ikke: ${e.message}`); }
 }
 
+// Overføring av droneoppdrag til fjernkontrollen (se kontroller-relay.js).
+const relay = lagRelay({ fil: process.env.KONTROLLER_FIL || null });
+
 function svar(res, status, tekst) {
   res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', ...SIKKERHET });
   res.end(tekst);
 }
 
 const server = http.createServer(async (req, res) => {
-  if (req.method !== 'GET' && req.method !== 'HEAD') return svar(res, 405, 'Metoden er ikke tillatt');
   let sti;
   try { sti = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { return svar(res, 400, 'Ugyldig adresse'); }
+  if (kontrollerApi(relay, req, res, sti, SIKKERHET)) return;
+  if (req.method !== 'GET' && req.method !== 'HEAD') return svar(res, 405, 'Metoden er ikke tillatt');
+  if (sti === '/k' || sti === '/kontroller') { res.writeHead(302, { Location: '/kontroller.html', ...SIKKERHET }); return res.end(); }
   if (sti === '/healthz') return svar(res, 200, 'ok');
   if (sti.startsWith('/api/nve/')) return nve(sti, res);
   if (sti.endsWith('/')) sti += 'index.html';

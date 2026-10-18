@@ -6,8 +6,23 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const fmt = (v, d = 0) => (v == null || Number.isNaN(v) ? '–' : Number(v).toLocaleString('nb-NO', { maximumFractionDigits: d, minimumFractionDigits: d }));
 const filnavn = (s) => String(s || 'droneoppdrag').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_|_$/g, '').slice(0, 60) || 'droneoppdrag';
 
+// Overføring til fjernkontrollen (kontroller.html via kontroller-relay.js på serveren). GitHub Pages-utgaven bruker
+// serveren på Railway.
+const API = location.hostname.endsWith('github.io') ? 'https://skogiq-production.up.railway.app' : '';
+const LS_KONTROLLER = 'skogiq-kontroller';
+const kontroller = { get: () => { try { return JSON.parse(localStorage.getItem(LS_KONTROLLER)) || null; } catch { return null; } }, set: (v) => { try { if (v) localStorage.setItem(LS_KONTROLLER, JSON.stringify(v)); else localStorage.removeItem(LS_KONTROLLER); } catch { /* privat modus */ } } };
+async function api(sti, opt = {}) {
+  const r = await fetch(API + sti, { ...opt, headers: { 'Content-Type': 'application/json' } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.feil || `Feil ${r.status}`), { status: r.status });
+  return j;
+}
+const tilBase64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
+const STATUS_TEKST = { sendt: 'sendt – venter på kontrolleren', hentet: 'lastet ned på kontrolleren', importert: 'importert i DJI Pilot 2', flydd: 'flydd' };
+
 export function initDroneFelt({ L, kart, plan, aapneArk, lagrePlanen, melding, nyId, tegnFlateGeo, iAar = new Date().getFullYear() }) {
   let aapent = null; // id for oppdraget som vises
+  let kobler = false; // viser feltet for koblingskode
   let visning = 'plan'; // 'plan' | 'start'
   let lag = null; let terreng = new Map(); // oppdrag-id → terrengvurdering
   const P = () => plan();
@@ -85,14 +100,16 @@ export function initDroneFelt({ L, kart, plan, aapneArk, lagrePlanen, melding, n
 
   // ---------- start: sjekkliste, nedlasting og veiledning ----------
   function visStart(o, p) {
+    setTimeout(() => hentStatus(o), 50);
     const s = o.sjekk || {}; const ok = SJEKKLISTE.filter((k) => s[k.id]).length;
     aapneArk(`<h2>Start: ${esc(o.navn)}</h2>
       <p class="hint">${fmt(p.arealDaa, 1)} daa · ${fmt(p.hoyde)} m · ${fmt(p.gsd, 1)} cm/px · ca. ${fmt(p.flytid)} min · ${p.batterier} batteri${p.batterier > 1 ? 'er' : ''} · ${fmt(p.bilder)} bilder</p>
       <h3>Før du flyr (${ok}/${SJEKKLISTE.length})</h3>
       <div class="sjekkliste">${SJEKKLISTE.map((k) => `<label class="sjekk"><input type="checkbox" data-d-sjekk="${k.id}" ${s[k.id] ? 'checked' : ''}><span>${esc(k.tekst)}</span></label>`).join('')}</div>
-      <h3>1. Hent ruten</h3>
-      <div class="knapper"><button type="button" class="knapp primar" data-d="kmz">⬇ Last ned rute (KMZ for DJI Pilot 2)</button>${navigator.canShare ? '<button type="button" class="knapp" data-d="del">Del …</button>' : ''}</div>
-      <p class="hint">Enklest: åpne SkogIQ Felt i nettleseren på fjernkontrollen (DJI RC Plus / RC Pro Enterprise) og last ned der. Ellers: overfør filen med USB-kabel eller minnekort, eller last den opp i DJI FlightHub 2. <a href="#" data-d="kml">Bare området som KML</a></p>
+      <h3>1. Send ruten til fjernkontrollen</h3>
+      ${kontrollerHtml(o)}
+      <div class="knapper"><button type="button" class="knapp" data-d="kmz">⬇ Last ned KMZ</button>${navigator.canShare ? '<button type="button" class="knapp" data-d="del">Del …</button>' : ''}</div>
+      <p class="hint">Uten kobling: overfør KMZ-filen med USB-kabel eller minnekort, eller last den opp i DJI FlightHub 2. <a href="#" data-d="kml">Bare området som KML</a></p>
       <h3>2. Åpne i DJI Pilot 2</h3>
       <ol class="drone-steg">
         <li><b>Ruter</b> (Flight Route) → <b>Importer rute</b> (ikonet øverst til høyre) → velg <i>${esc(filnavn(o.navn))}.kmz</i>.</li>
@@ -102,6 +119,49 @@ export function initDroneFelt({ L, kart, plan, aapneArk, lagrePlanen, melding, n
       <h3>3. Etterpå</h3>
       <p class="hint">Bildene ligger på minnekortet med posisjon. Lag ortofoto i DJI Terra, Pix4D, Agisoft Metashape eller WebODM (gratis). Opplasting av ortofoto til SkogIQ kommer.</p>
       <div class="knapper"><button type="button" class="knapp" data-d="tilbake-plan">‹ Endre planen</button><button type="button" class="knapp ${o.status === 'flydd' ? '' : 'primar'}" data-d="flydd">${o.status === 'flydd' ? `✓ Flydd ${esc(o.flydd || '')} – angre` : '✓ Marker som flydd'}</button></div>`, { hoy: true });
+  }
+
+  // Kobling og sending til kontrolleren.
+  function kontrollerHtml(o) {
+    const kt = kontroller.get();
+    if (!kt || kobler) {
+      return `<div class="kontroller-boks"><p><b>Koble til fjernkontrollen</b> (én gang): åpne <b>${esc(location.host)}/k</b> i nettleseren på DJI-kontrolleren og skriv inn koden som vises der.</p>
+        <div class="kode-rad"><input type="text" id="kontrollerKode" inputmode="text" autocapitalize="characters" autocomplete="off" maxlength="7" placeholder="ABC 123"><button type="button" class="knapp primar" data-d="kobl">Koble til</button></div>
+        ${kt ? '<p class="hint"><a href="#" data-d="avbryt-kobling">Avbryt</a></p>' : ''}</div>`;
+    }
+    const st = o.sendtKontroller;
+    return `<div class="kontroller-boks"><div class="knapper"><button type="button" class="knapp primar" data-d="send">📡 ${st ? 'Send på nytt' : 'Send til kontrolleren'}</button></div>
+      <p class="hint">${st ? `Sendt ${esc(new Date(st.tid).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' }))} – <b id="kontrollerStatus">${esc(STATUS_TEKST[st.status] || st.status || 'sendt')}</b>. ` : ''}Ruten dukker opp på kontrolleren automatisk. Der trykker du «Last ned rute» og importerer den i DJI Pilot 2. <a href="#" data-d="ny-kobling">Koble til en annen kontroller</a></p></div>`;
+  }
+  async function send(o) {
+    const kt = kontroller.get(); if (!kt) { kobler = true; visOppdrag(o.id); return; }
+    if (!navigator.onLine) { melding('Du må være på nett for å sende til kontrolleren.'); return; }
+    const p = beregn(o); if (!p) return;
+    const info = { arealDaa: p.arealDaa, hoyde: p.hoyde, gsd: p.gsd, flytid: p.flytid, batterier: p.batterier, bilder: p.bilder, drone: DRONER[p.drone]?.navn, plan: P()?.eiendom?.navn || '' };
+    try {
+      const r = await api(`/api/kontroller/${kt.id}/oppdrag`, { method: 'POST', body: JSON.stringify({ navn: o.navn, info, kmz: tilBase64(lagKmz(p)) }) });
+      o.sendtKontroller = { oid: r.oid, tid: Date.now(), status: 'sendt' }; await lagrePlanen();
+      melding('Sendt til kontrolleren. Den dukker opp der i løpet av noen sekunder.', 4500);
+    } catch (e) {
+      if (e.status === 404) { kontroller.set(null); kobler = true; melding('Kontrolleren er ikke kjent lenger – koble til på nytt.', 5000); } else melding(`Kunne ikke sende: ${e.message}`, 5000);
+    }
+    visOppdrag(o.id);
+  }
+  async function kobl(o) {
+    const kode = (document.getElementById('kontrollerKode')?.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (kode.length !== 6) { melding('Koden har 6 tegn – se skjermen på kontrolleren.'); return; }
+    try { const r = await api('/api/kobling', { method: 'POST', body: JSON.stringify({ kode }) }); kontroller.set({ id: r.id, koblet: new Date().toISOString().slice(0, 10) }); kobler = false; melding('Koblet til kontrolleren.'); await send(o); }
+    catch (e) { melding(e.message, 5000); }
+  }
+  // Status fra kontrolleren (lastet ned / importert / flydd) – «flydd» merkes også i SkogIQ.
+  async function hentStatus(o) {
+    const kt = kontroller.get(); if (!kt || !o.sendtKontroller || !navigator.onLine) return;
+    try {
+      const l = await api(`/api/kontroller/${kt.id}/oppdrag`); const x = l.find((y) => y.oid === o.sendtKontroller.oid); if (!x) return;
+      const endret = x.status !== o.sendtKontroller.status; o.sendtKontroller.status = x.status;
+      if (x.status === 'flydd' && o.status !== 'flydd') { o.status = 'flydd'; o.flydd = new Date().toISOString().slice(0, 10); }
+      if (endret) { await lagrePlanen(); const el = document.getElementById('kontrollerStatus'); if (el) el.textContent = STATUS_TEKST[x.status] || x.status; }
+    } catch { /* uten kontakt */ }
   }
 
   function lastNed(navn, data, type) {
@@ -145,6 +205,10 @@ export function initDroneFelt({ L, kart, plan, aapneArk, lagrePlanen, melding, n
       lastNed(`${navn}.kmz`, kmz, 'application/vnd.google-earth.kmz'); o.lastetNed = new Date().toISOString().slice(0, 10); await lagrePlanen();
       melding('Ruten er lastet ned. Importer den i DJI Pilot 2 (Ruter → Importer).', 5000);
     }
+    if (h === 'send' && o) await send(o);
+    if (h === 'kobl' && o) await kobl(o);
+    if (h === 'ny-kobling' && o) { kobler = true; visOppdrag(o.id); }
+    if (h === 'avbryt-kobling' && o) { kobler = false; visOppdrag(o.id); }
     if (h === 'flydd' && o) { if (o.status === 'flydd') { o.status = 'planlagt'; delete o.flydd; } else { o.status = 'flydd'; o.flydd = new Date().toISOString().slice(0, 10); } await lagrePlanen(); visOppdrag(o.id); }
     return true;
   }

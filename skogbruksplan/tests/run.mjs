@@ -43,6 +43,7 @@ import * as US from '../js/ungskog.js';
 import * as OU from '../js/oppdrag-utvalg.js';
 import * as TT from '../js/tetthet.js';
 import * as DR from '../js/drone.js';
+import { lagRelay, KODE_GYLDIG_MS } from '../kontroller-relay.js';
 import { tolkTetthet, alderFraHoyde, startTilstand as startT2, hogstklasseFor, foryngelse, vurderLiteVolum, rettFeilHogd, minForyngelse } from '../js/model.js';
 import { ungskogHtml, effektHtml } from '../js/effekt-html.js';
 import { genererTiltak as motorTiltak } from '../js/tiltaksmotor.js';
@@ -1531,6 +1532,27 @@ test('Droneoppdrag: flylinjer over området, GSD/overlapp/flytid og DJI WPML-rut
   assert.match(wl, /<wpml:gimbalPitchRotateAngle>-90</);
   assert.match(DR.lagOmradeKml(p, 'Test & co'), /<name>Test &amp; co<\/name>/);
   assert.ok(DR.SJEKKLISTE.length >= 8);
+});
+
+test('Kontroller-overføring: kobling med kode, sending av KMZ, nedlasting og status', () => {
+  let t = 1_000_000; const r = lagRelay({ naa: () => t });
+  const k = r.registrer(); assert.match(k.id, /^[a-f0-9]{32}$/); assert.match(k.kode, /^[A-HJ-NP-Z2-9]{6}$/);
+  assert.equal(r.kobl('FEIL12'), null);
+  assert.deepEqual(r.kobl(`${k.kode.slice(0, 3)} ${k.kode.slice(3).toLowerCase()}`), { id: k.id }); // mellomrom og små bokstaver går fint
+  assert.equal(r.kobl(k.kode), null); // bare én gang
+  const k2 = r.registrer(k.id); assert.equal(k2.id, k.id); assert.equal(k2.telefoner, 1);
+  t += KODE_GYLDIG_MS + 1; assert.equal(r.kobl(k2.kode), null); // utløpt
+  const S = lagDemo(2026); const p = DR.planlegg(S.bestand[0].geometri, {});
+  const kmz = Buffer.from(DR.lagKmz(p)).toString('base64');
+  assert.equal(r.send(k.id, { navn: 'x', kmz: Buffer.from('ikke zip').toString('base64') }).status, 400);
+  assert.equal(r.send('0'.repeat(32), { navn: 'x', kmz }).status, 404);
+  const { oid } = r.send(k.id, { navn: 'Ortofoto bestand 1', info: { gsd: 2.7 }, kmz });
+  let l = r.liste(k.id); assert.equal(l.length, 1); assert.equal(l[0].status, 'sendt'); assert.equal(l[0].info.gsd, 2.7); assert.equal(l[0].kmz, undefined);
+  const f = r.hent(k.id, oid); assert.equal(f.data[0], 0x50); assert.equal(f.data.length, Buffer.from(kmz, 'base64').length);
+  assert.equal(r.liste(k.id)[0].status, 'hentet');
+  assert.ok(r.status(k.id, oid, 'flydd')); assert.ok(!r.status(k.id, oid, 'tull')); assert.equal(r.liste(k.id)[0].status, 'flydd');
+  assert.ok(r.slett(k.id, oid)); assert.equal(r.liste(k.id).length, 0);
+  assert.equal(r.liste('ugyldig'), null);
 });
 
 await Promise.all(venter);
