@@ -208,3 +208,8 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .o-sum .knapp { flex: 0 0 auto; }
 .o-verktoy { display: flex; gap: 6px; margin: 6px 0; } .o-verktoy .knapp { flex: 1 1 0; padding-left: 6px; padding-right: 6px; white-space: nowrap; }
 .o-ny { font-size: 10.5px; font-weight: 700; color: #fff; background: #ff6a00; border-radius: 99px; padding: 1px 6px; vertical-align: 1px; }
+
+/* Tetthetsklasse */
+.tetthet-rad { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 14px; }
+.tetthet-rad span { color: var(--muted, #6f7d75); } .tetthet-rad small { color: var(--muted, #6f7d75); font-size: 11.5px; }
+.tetthet-rad .chips { margin: 0; flex: 0 0 auto; } .tetthet-rad .chip { min-width: 44px; }

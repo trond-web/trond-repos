@@ -41,6 +41,8 @@ import * as FG from '../js/flate-geometri.js';
 import * as TR from '../js/treff.js';
 import * as US from '../js/ungskog.js';
 import * as OU from '../js/oppdrag-utvalg.js';
+import * as TT from '../js/tetthet.js';
+import { tolkTetthet } from '../js/model.js';
 import { ungskogHtml, effektHtml } from '../js/effekt-html.js';
 import { genererTiltak as motorTiltak } from '../js/tiltaksmotor.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
@@ -1378,6 +1380,36 @@ test('Oppdrag: utvalg fra liste, trykk i kartet og tegnet flate – med angre og
   // Sammendraget i oppdraget bruker tiltakets areal
   const o = { linjer: [{ bestandId: by('2').id, tiltakId: 'p2' }], type: 'ungskogpleie' }; t2.arealDaa = 1.5;
   assert.equal(OPP.sammendrag(S, o).areal, 1.5);
+});
+
+test('Tetthetsklasse: SOSI SP_HKL og SP_-felt, «2A»/«II b», beregning for HK II, hint for III–V og supplering', () => {
+  for (const [v, h, k] of [['21', 2, 'a'], ['22', 2, 'b'], ['52', 5, 'b'], ['2A', 2, 'a'], ['II b', 2, 'b'], ['2 B', 2, 'b'], ['IIa', 2, 'a'], ['4', 4, null], ['IV', 4, null]]) {
+    assert.equal(tolkHogstklasse(v), h, v); assert.equal(tolkTetthet(v), k, v);
+  }
+  // Planfirmaenes SOSI med SP_-navn og grupper (..SP_BSKRIV / ...SP_HKL)
+  const sos = SOSI.replace(/\.\.BESTANDNR 12\n\.\.TRESLAG 1\n\.\.BONITET 17\n\.\.HOGSTKLASSE 5\n\.\.ALDER 95\n\.\.VOLUM_DAA 32,5\n\.\.TILTAK "Sluttavvirkning"\n/,
+    '..SP_BESTAND\n...SP_BESTNR 7\n..SP_BSKRIV\n...SP_HKL 22\n...SP_ALDER 9\n...SP_TREFREG 420\n...SP_TREEREG 80\n...SP_HBAR 2,5\n...SP_HLAUV 3,1\n..SP_AKLASS\n...SP_AGJBON 17\n...SP_ABONTRE 1\n');
+  const b = lesSosi(new TextEncoder().encode(sos).buffer, 'auto', 2026).bestand[0];
+  assert.equal(b.nr, '7'); assert.equal(b.hogstklasse, 2); assert.equal(b.tetthetsklasse, 'b'); assert.equal(b.bonitet, 17); assert.equal(b.treslag, 'G'); assert.equal(b.alder, 9);
+  assert.deepEqual(b.ungskog, { treantallFor: 420, treantallEtter: 80, hoydeBar: 2.5, hoydeLauv: 3.1, kilde: 'import' });
+  assert.equal(US.ungskogData(b).treantallEtter.forklaring, 'Fra importert skogbruksplan');
+  assert.equal(TT.hkTekst(b), 'II b'); assert.equal(TT.sosiHkl(b), 22);
+  assert.equal(TT.tetthet(b).kilde, 'registrert');
+  // Motoren foreslår supplering i II b (registrert)
+  assert.ok(motorTiltak({ bestand: [b] }, { iAar: 2026, balanser: false }).some((f) => f.type === 'suppleringsplanting'));
+  // Beregnet for HK II fra målt treantall; ikke supplering når treantallet bare er fra SR16/takst
+  const c = { id: 'c', nr: '8', treslag: 'G', bonitet: 17, alder: 6, hogstklasse: 2, areal: 3, tiltak: [], ungskog: { treantallEtter: 70 } };
+  assert.deepEqual([TT.tetthet(c).klasse, TT.tetthet(c).kilde, TT.tetthet(c).grunnlag], ['b', 'beregnet', 'ungskog']);
+  assert.ok(motorTiltak({ bestand: [c] }, { iAar: 2026, balanser: false }).some((f) => f.type === 'suppleringsplanting'));
+  const d = { ...c, ungskog: undefined, treantall: 70 };
+  assert.equal(TT.tetthet(d).grunnlag, 'data');
+  assert.ok(!motorTiltak({ bestand: [d] }, { iAar: 2026, balanser: false }).some((f) => f.type === 'suppleringsplanting'));
+  assert.equal(TT.tetthet({ ...c, ungskog: { treantallEtter: 200 } }).klasse, 'a');
+  // HK III–V: ikke beregnet, men hint
+  const e = { id: 'e', nr: '9', treslag: 'G', bonitet: 14, alder: 80, volumDaa: 9, hogstklasse: 4, areal: 5, tiltak: [] };
+  const te = TT.tetthet(e); assert.equal(te.klasse, null); assert.match(te.hint, /kan tyde på mindre tilfredsstillende/);
+  assert.equal(TT.hkTekst(e), 'IV');
+  assert.equal(TT.tetthetNavn(1, 'b'), 'ikke tilfredsstillende ryddet');
 });
 
 await Promise.all(venter);
