@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.32.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.33.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -475,23 +475,29 @@ Planlagte tiltak kan samles til **oppdrag** og sendes til en utfører, for eksem
   - Tiltak i et oppdrag får et merke med oppdragsnummer og status i tiltakslisten. Bestandene i oppdraget som er åpent, utheves med oransje i kartet.
 - **Arbeidsordre:** «Skriv ut arbeidsordre» lager en side for utskrift eller PDF. Den har utfører, periode og omfang, de oppdragsspesifikke feltene og instruksen. Den har også kart med bestandene i oppdraget, bilvei, traktorvei, sti og velteplasser, en bestandstabell, sjekklisten og felt for kvittering.
 
-## SR16 eller takst – hvilken kilde setter premisset?
+## Takst eller SR16 – urørt eller endret siden taksten?
 
-Når en plan lages fra gårds- og bruksnummer, sammenlignes året SR16 er målt (fjernmålingsåret, medianen for eiendommen) med året bestandet i den gamle skogbruksplanen ble registrert:
+Når en plan lages fra gårds- og bruksnummer, vurderes hvert bestand fra den gamle skogbruksplanen (`js/generator.js`, steg 5a).
+- **Taksten** gir grenser, alder i takståret, bonitet, treslag og hogstklasse, men ikke volum. NIBIOs `alder_korr` er alderen skrevet fram til i dag.
+- **SR16** gir volum, høyde, treantall og alder i målingsåret. Medianen for eiendommen brukes.
 
-- **SR16 er nyere enn taksten:**
-  - SR16-flatene blir bestandene, og de gir alder, volum, treantall, høyde, treslag og bonitet. Hogstklasse og tilvekst følger av dette.
-  - Den gamle planen brukes som referanse. Bestandene får nummeret fra den gamle planen; deles et gammelt bestand i flere SR16-flater, får de bokstav (12a, 12b …).
-  - Planens bonitet og treslag brukes bare der SR16 mangler dem.
-  - Deler av gamle bestand som SR16 ikke dekker, beholdes med planens data og merkes.
-- **Taksten er nyere enn SR16:** Planens bestandsgrenser og alder beholdes. SR16-volumet skrives fram fra målingsåret til takståret.
-- **Alt skrives fram til i dag:** Alder og volum gjelder for dataåret og skrives fram til i år med vekstmodellen (`framskrivTilAar`). Hogstklasse, hogstmodenhet, tilvekst og tiltak stemmer da med dagens skog. Bestand som trolig er hogd etter taksten, skrives ikke fram og må kontrolleres i felt.
-- **SR16-alderen kontrolleres mot høyden:** SR16-alderen er usikker i ung og glissen skog. Avviker den mer enn 15 år (eller 40 %) fra alderen høydekurven gir for SR16-høyden og boniteten, brukes alderen fra høyden. Det står i merknaden.
-- **Eksempel Nannestad 29/2:** Planen er fra 2013, og SR16 er målt 2013–2015 (median 2015).
-  - Bestandene: 126 SR16-bestand mot 80 bestand fra planen før.
-  - Alder og volum er skrevet fram 11 år.
-  - Hogstklasse II gikk fra 350 til 14 daa, fordi ungskogen fra 2013 nå er hogstklasse III–IV.
-  - SR16-alderen er erstattet med alderen fra høyden i 13 bestand.
+**Er SR16 målt etter taksten, sammenlignes SR16 med det bestandet skulle vært i målingsåret.** Planens alder skrives fram til målingsåret, og høydekurven gir forventet høyde.
+
+- **Urørt siden taksten:** Grenser, alder og bonitet kommer fra taksten, og alderen skrives fram til i dag. Volumet fra SR16 gjelder målingsåret og skrives fram til i dag med vekstmodellen, sammen med alderen. Tilveksten følger av dette.
+- **Gjort noe med siden taksten:** Beregningen skjer fra SR16. Alder, treslag og volum i målingsåret skrives fram til i dag.
+  - **Hogd:** Under 3 m³/daa og få eller lave trær, mot HK IV–V i taksten. Bestandet beregnes fra SR16-året, og det står at foryngelsen må kontrolleres i felt.
+  - **Hogd og forynget:** SR16-høyden er under halvparten av forventet høyde, der forventet høyde er over 8 m. Alderen tas fra SR16 og kontrolleres mot høyden.
+- **Bare en del er hogd:** Er minst 2 daa og 15–70 % av bestandet hogstflate i SR16, skilles den delen ut. Den hogde delen blir eget bestand (12b, beregnet fra SR16), og resten er urørt (12a). Er over 70 % hogd, beregnes hele bestandet fra SR16.
+- **Frøtrær over ungskog:** I ungskog fra taksten (HK I–II) viser SR16 ofte 9–13 m høyde, men bare 5–8 m³/daa. SR16 måler de høyeste trærne over 5 cm, og det tyder på frø- eller livsløpstrær. Taksten beholdes, og bestandet får en merknad.
+- **SR16 eldre enn taksten:** Taksten gjelder. Volumet fra SR16 skrives fram fra målingsåret.
+- **SR16-flater utenfor taksten:** Disse beregnes fra SR16 og skrives fram. Avviker SR16-alderen mye fra høyden og boniteten, brukes alderen fra høyden.
+- **Vekstmodellen:**
+  - Ligger volumet langt over kurven for alderen (over 1,5 ganger), følges kurven fra punktet med samme volum. Det hindrer urimelig høy tilvekst når alderen er for lav.
+  - I svært ung skog legges veksten langs kurven til det målte volumet.
+- **Eksempel Nannestad 29/2** (takst 2013, SR16 2013–2015, median 2015):
+  - 69 bestand er urørt, og 11 er gjort noe med (hogd, eller hogd og forynget). To av dem er delvis hogde bestand der den hogde delen er skilt ut.
+  - Stående volum i dag er 17 946 m³, mot 11 937 da 2015-volumet ble brukt som dagens. Tilveksten er 689 m³/år (0,60 m³/daa).
+  - 27 ungskogbestand har merknad om frøtrær.
 
 ## Markslag og uproduktiv mark (AR5)
 

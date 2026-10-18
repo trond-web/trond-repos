@@ -377,8 +377,8 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   try {
     ar5 = await hentAr5(eiendom.geometry, { hent, boksTreff, klipp: (g) => klipp(g)?.geometry || null, logg: (t) => logg('markslag', 'aktiv', t) });
   } catch (e) { ar5Feil = e.message; }
-  // AR5 kan være flere tiår gammel (mye er feltkartlagt rundt 1990). Grøftet og tilplantet myr eller gjengrodd mark
-  // står da fortsatt som impediment, myr eller åpen fastmark. Viser nyere data produktiv skog på mesteparten av
+  // AR5 kan være flere tiår gammel (mye er feltkartlagt rundt 1990). Gjengrodd mark står da fortsatt som impediment
+  // eller åpen fastmark (myr overstyres ikke – den skilles alltid ut). Viser nyere data produktiv skog på mesteparten av
   // figuren – SR16 med volum og bonitet, eller en skogbruksplan registrert etter AR5 – regnes figuren som produktiv.
   const overstyrt = [];
   const olap = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
@@ -436,17 +436,9 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   const overlapper = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
   // NIBIO lagrer noen bestand som flere separate flater med samme bestandsnummer. Like data → slås sammen.
   const likeData = (a, b) => ['hogstkl_verdi', 'bonitet_beskrivelse', 'bontre_beskrivelse', 'alder_korr', 'alder'].every((f) => (a[f] ?? '') === (b[f] ?? ''));
-  // Hvilken kilde setter premisset? Er SR16 målt etter at bestandet ble taksert, er SR16 nyest: da bestemmer SR16
-  // bestandsgrensene, alderen (og dermed hogstklassen), volumet og tilveksten. Den gamle planen brukes bare som
-  // referanse (bestandsnummer, og bonitet/treslag der SR16 mangler). Areal i den gamle planen uten SR16-dekning
-  // beholdes fra planen. Er planen nyere enn SR16, beholdes planens grenser og alder som før.
-  const sr16Ar = sr16Aar?.median || null;
-  const planAarFor = (a) => Number(String(a?.regaar_korr || '').slice(0, 4)) || null;
-  const sr16Nyere = (a) => !!(sr16Ar && sr16Data.length && (!planAarFor(a) || sr16Ar > planAarFor(a)));
-  const foreldet = plan.filter((p) => p.klipp && sr16Nyere(p.attr)).map((p) => ({ g: p.klipp, attr: p.attr || {}, bb: T.bbox(p.klipp) }));
   const perNr = new Map();
   for (const p of plan) {
-    if (!p.klipp || sr16Nyere(p.attr)) continue;
+    if (!p.klipp) continue;
     const a = p.attr || {}; const nr = a.teig_best_nr;
     const finnes = nr && (perNr.get(nr) || []).find((x) => likeData(x.attr, a));
     if (finnes) { finnes.deler.push(p.klipp); continue; }
@@ -463,17 +455,7 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     // Trekk fra bare planbestand som kan overlappe – i én operasjon, med én og én som reserve.
     const her = planKand.filter((p) => overlapper(s.bbox, p.bb));
     if (rest && her.length) rest = minusAlle(rest, her.map((p) => p.g));
-    if (!rest || arealM2(rest) / 1000 < minDaa) continue;
-    // Referanse: bestandet i den gamle planen som dekker mest av flaten.
-    let ref = null; let refA = 0; const rb = T.bbox(rest);
-    for (const f of foreldet) { if (!overlapper(rb, f.bb)) continue; const a = arealM2(snitt(rest, f.g)); if (a > refA) { refA = a; ref = f; } }
-    kandidater.push({ kilde: 'sr16', g: rest, attr: {}, ref: ref && refA > 0.3 * arealM2(rest) ? ref.attr : null, sr16Premiss: !!foreldet.length });
-  }
-  // Deler av gamle bestand som SR16 ikke dekker, beholdes med planens data.
-  for (const f of foreldet) {
-    const her = sr16Data.filter((sd) => sd.klipp && overlapper(f.bb, sd.bbox));
-    const rest = her.length ? minusAlle(f.g, her.map((sd) => sd.klipp)) : f.g;
-    if (rest && arealM2(rest) / 1000 >= minDaa) kandidater.push({ kilde: 'plan', g: rest, attr: f.attr, bb: T.bbox(rest), utenSr16: true });
+    if (rest && arealM2(rest) / 1000 >= minDaa) kandidater.push({ kilde: 'sr16', g: rest, attr: {} });
   }
 
   // Uproduktiv mark trekkes ut av bestandene, slik at det ikke beregnes volum der. Små rester (< 0,3 daa) fjernes.
@@ -499,12 +481,44 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     if (sum > 500) k.uproduktiv = Object.entries(trukket).filter(([, v]) => v > 100).map(([kat, v]) => `${(v / 1000).toFixed(1).replace('.', ',')} daa ${MARKSLAG[kat].kort.toLowerCase()}`).join(', ');
   }
 
+  // 5a. Er bestandet gjort noe med siden taksten? Taksten gir grenser og alder (alder i takståret; alder_korr er
+  // alderen skrevet fram til i dag), men ikke volum. SR16 er målt et bestemt år. Er SR16 målt etter taksten,
+  // sammenlignes SR16 med det bestandet skulle vært det året: forventet høyde fra planens alder og bonitet.
+  //   Urørt: planens grenser og alder, skrevet fram til i dag; volumet fra SR16 skrives fram fra målingsåret.
+  //   Gjort noe med (hogd, eller hogd og forynget): beregningen skjer fra SR16 (alder, volum, treslag), skrevet fram.
+  //   Bare en del hogd: delen (SR16-flatene med hogstflate) skilles ut som eget bestand (12b), resten er urørt (12a).
+  const sr16Ar = sr16Aar?.median || null;
+  const planAarFor = (a) => Number(String(a?.regaar_korr || a?.regdato || '').slice(0, 4)) || null;
+  const alderIDag = (a) => { const al = tall(a?.alder); const pa = planAarFor(a); if (al !== null && pa) return al + (iAar - pa); return tall(a?.alder_korr); };
+  // Høyde for alder og bonitet (samme høydekurve som alderFraHoyde i model.js, snudd).
+  const hFraAlder = (alder, h40, ts = 'G') => { if (!(alder > 0) || !h40) return null; const tilBrh = Math.max(4, 14 - h40 * 0.4) * (ts === 'L' ? 0.6 : 1); return alder <= tilBrh ? 1.3 * (alder / tilBrh) : 1.3 + 0.85 * h40 * ((alder - tilBrh) / 40) ** 0.75; };
+  const srTall = (attr, felt) => { const v = tall(attr?.[felt]); return v === null ? null : v * 0.1; };
+  // En SR16-flate ser ut som hogstflate når volumet er nesten borte og det står få trær eller bare lave trær igjen.
+  const hogstflate = (attr, hForventet) => { const v = srTall(attr, 'srvolub'); const n = srTall(attr, 'srtrean'); const h = srTall(attr, 'srhoydem'); return v !== null && v < 3 && (n === null || n < 30 || (h !== null && h < 0.4 * hForventet)); };
+  const forventning = (a) => {
+    const pa = planAarFor(a); const idag = alderIDag(a); if (!sr16Ar || !pa || sr16Ar <= pa || idag === null) return null;
+    const h40 = tall((a.bonitet_beskrivelse || '').replace('Bonitet', '')); const ts = PLAN_TRESLAG[a.bontre_beskrivelse] || 'G';
+    const alderSr = idag - (iAar - sr16Ar); return { alderSr, h: hFraAlder(alderSr, h40, ts), planAar: pa };
+  };
+  const utskilt = [];
+  for (const k of kandidater) {
+    if (k.kilde !== 'plan' || !k.g) continue;
+    const f = forventning(k.attr); if (!f || !(f.h >= 8)) continue; // ung skog (under ca. 8 m) kan ikke vurderes slik
+    const bb = T.bbox(k.g); const tot = arealM2(k.g); const hogde = [];
+    for (const sd of sr16Data) { if (!overlapper(bb, sd.bbox) || !hogstflate(sd.attr, f.h)) continue; const i = snitt(feat(sd.geometry), k.g); if (i && arealM2(i) > 50) hogde.push(i); }
+    const hogdA = hogde.reduce((x, g) => x + arealM2(g), 0); const andel = hogdA / tot;
+    if (andel >= 0.7) { k.endret = 'hogd'; continue; }
+    if (hogdA >= 2000 && andel >= 0.15) {
+      const hg = utenSmaa(forening(hogde)); const rest = hg ? utenSmaa(minus(k.g, hg)) : null;
+      if (!hg || !rest) continue;
+      k.g = rest; k.nrTillegg = `${k.nrTillegg || ''}a`; k.delvisHogd = hogdA / 1000;
+      utskilt.push({ kilde: 'plan', g: hg, attr: k.attr, nrTillegg: `${k.nrTillegg.slice(0, -1)}b`, endret: 'hogd', utskiltFra: arealM2(rest) / 1000 });
+    }
+  }
+  kandidater.push(...utskilt);
+
   const bestand = [];
-  let lopenr = 0; const sr16Nr = new Map();
-  // Bestandsnummer for SR16-bestand: nummeret fra den gamle planen der flaten ligger; deles det gamle bestandet i
-  // flere SR16-flater, får de bokstav etter nummeret (12a, 12b …).
-  const refAntall = new Map();
-  for (const k of kandidater) { const n = k.kilde === 'sr16' ? k.ref?.teig_best_nr : k.utenSr16 ? k.attr.teig_best_nr : null; if (n) refAntall.set(n, (refAntall.get(n) || 0) + 1); }
+  let lopenr = 0;
   for (const k of kandidater) {
     if (!k.g) continue;
     const areal = arealM2(k.g);
@@ -537,25 +551,19 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
 
     let nr; let bonitet; let planTs = null; let alder; let hkPlan = null; let regaar = null;
     let dataAar = null; // året alder og volum gjelder for – skrives fram til i år med vekstmodellen
+    let status = null; // planbestand: 'urort' eller 'endret'
     if (k.kilde === 'plan') {
       nr = k.attr.teig_best_nr ? `${k.attr.teig_best_nr}${k.nrTillegg || ''}` : `P${bestand.length + 1}`;
       bonitet = tall((k.attr.bonitet_beskrivelse || '').replace('Bonitet', '')) ?? (srBon ? Math.round(srBon) : null);
       planTs = PLAN_TRESLAG[k.attr.bontre_beskrivelse] || null;
-      alder = tall(k.attr.alder_korr) ?? tall(k.attr.alder);
+      alder = alderIDag(k.attr); // alder i dag (takstens alder skrevet fram)
       hkPlan = tall(k.attr.hogstkl_verdi);
       regaar = k.attr.regaar_korr || null;
-      dataAar = planAarFor(k.attr) || sr16Ar || null;
     } else {
-      // SR16 setter premisset: alder, volum og (via alderen) hogstklasse fra SR16, gjeldende for målingsåret.
-      const ref = k.ref;
-      const refNr = ref?.teig_best_nr || null;
-      if (refNr) { const n = (sr16Nr.get(refNr) || 0) + 1; sr16Nr.set(refNr, n); nr = refAntall.get(refNr) > 1 ? (n <= 26 ? `${refNr}${String.fromCharCode(96 + n)}` : `${refNr}.${n}`) : refNr; } else { lopenr += 1; nr = `S${lopenr}`; }
-      bonitet = srBon ? Math.round(srBon) : ref ? tall((ref.bonitet_beskrivelse || '').replace('Bonitet', '')) : null;
-      planTs = ref ? PLAN_TRESLAG[ref.bontre_beskrivelse] || null : null;
-      hkPlan = ref ? tall(ref.hogstkl_verdi) : null;
-      regaar = ref?.regaar_korr || null;
-      const refAlder = ref ? tall(ref.alder_korr) ?? tall(ref.alder) : null;
-      alder = srAlder ? Math.round(srAlder) : refAlder !== null && planAarFor(ref) && sr16Ar ? refAlder + (sr16Ar - planAarFor(ref)) : null;
+      lopenr += 1;
+      nr = `S${lopenr}`;
+      bonitet = srBon ? Math.round(srBon) : null;
+      alder = srAlder ? Math.round(srAlder) : null;
       dataAar = sr16Ar;
     }
     // SR16 mangler ofte bonitet på gammel skog med lite volum. Da brukes skogboniteten i AR5 (lav, middels, høy,
@@ -569,31 +577,36 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     }
     const treslag = srTreslag && dekning > 0.5 ? srTreslag : (planTs || srTreslag || 'G');
     const merknader = [];
-    // SR16-alderen er usikker (særlig i ung og glissen skog). Stemmer den dårlig med SR16-høyden og boniteten,
-    // brukes alderen høydekurven gir for den målte høyden.
-    let alderMerknad = null;
-    if (k.kilde === 'sr16' && alder !== null && hoydeM) {
-      const aH = alderFraHoyde(hoydeM, bonitet, treslag);
-      if (aH !== null && Math.abs(alder - aH) > Math.max(15, 0.4 * aH)) { alderMerknad = `SR16-alderen (${alder} år) stemmer ikke med høyden ${komma(hoydeM)} m – alder ${aH} år fra høyden og boniteten`; alder = aH; }
-    }
-    if (k.kilde === 'sr16' && k.ref) merknader.push(`SR16 (målt ${sr16Ar}) er nyere enn planen (${regaar || 'ukjent år'}) og setter grenser, alder, volum og hogstklasse – tidligere bestand ${k.ref.teig_best_nr || '?'}`);
-    else if (k.kilde === 'sr16' && k.sr16Premiss) merknader.push(`Grenser, alder og volum fra SR16 (målt ${sr16Ar})`);
-    else if (k.kilde === 'sr16') merknader.push('Ikke med i tidligere plan – data fra SR16');
-    if (k.utenSr16) merknader.push(`Ikke dekket av SR16 – grenser og alder fra planen (${regaar || 'ukjent år'})`);
-    if (alderMerknad) merknader.push(alderMerknad);
+    if (k.kilde === 'sr16') merknader.push('Ikke med i tidligere plan – data fra SR16');
     if (bonitetFraAr5) merknader.push(`Bonitet anslått fra AR5 (${String(bonitetFraAr5).toLowerCase()} bonitet) – kontroller i felt`);
     // Lite volum mot HK IV–V i planen: hogd bare når SR16 også viser få trær over 5 cm – ellers glissen skog eller gjenvekst.
-    const liteVolum = hkPlan >= 4 && volub !== null && volub < 3 && dekning > 0.5 ? vurderLiteVolum({ treantall: trean, hoyde: hoydeM, srAlder }) : null;
-    if (liteVolum === 'hogd') {
-      merknader.push(`Mulig hogd etter ${regaar}: SR16 viser ${komma(volub)} m³/daa mot HK ${hkPlan} i planen – kontroller`);
-      alder = 0;
-    } else if (liteVolum === 'gjenvekst') {
-      merknader.push(`Hogd etter ${regaar} og forynget: SR16 viser ${Math.round(trean)} trær/daa over 5 cm og ${komma(hoydeM)} m høyde`);
-      alder = srAlder ? Math.round(srAlder) : alder;
-    } else if (liteVolum === 'glissen') {
-      merknader.push(`Glissen skog: SR16 viser ${komma(volub)} m³/daa, men ${Math.round(trean)} trær/daa over 5 cm og ${komma(hoydeM)} m høyde – ikke hogd (HK ${hkPlan} i planen ${regaar}), kontroller`);
-    } else if (hkPlan >= 4 && volub !== null && hoydeM !== null && volub < 8 && hoydeM < 10 && dekning > 0.5) {
-      merknader.push(`Avvik: HK ${hkPlan} i planen (${regaar}), men SR16 viser ${komma(volub)} m³/daa og ${komma(hoydeM)} m høyde – trolig hogd eller glissen, kontroller`);
+    const liteVolum = k.kilde === 'plan' && hkPlan >= 4 && volub !== null && volub < 3 && dekning > 0.5 ? vurderLiteVolum({ treantall: trean, hoyde: hoydeM, srAlder }) : null;
+    // Vurdering: urørt siden taksten, eller gjort noe med? (se 5a)
+    const fv = k.kilde === 'plan' ? forventning(k.attr) : null;
+    const forLav = fv && fv.h >= 8 && hoydeM !== null && dekning > 0.5 && hoydeM < 0.5 * fv.h;
+    // SR16 viser høyere skog enn taksten tilsier, men lite volum: typisk frø- eller livsløpstrær over ungskog
+    // (SR16 måler de høyeste trærne over 5 cm). Taksten beholdes.
+    const overstandere = fv && fv.h !== null && hoydeM !== null && dekning > 0.5 && hoydeM > 1.6 * fv.h + 3;
+    if (k.kilde === 'plan') status = k.endret || liteVolum === 'hogd' || liteVolum === 'gjenvekst' || forLav ? 'endret' : 'urort';
+    if (k.kilde === 'plan' && status === 'endret') {
+      // Beregningen skjer fra SR16: alder (kontrollert mot høyden), treslag og volum i målingsåret, skrevet fram.
+      const hogd = k.endret === 'hogd' || liteVolum === 'hogd' || (forLav && (trean === null || trean < 30));
+      let aSr = hogd ? 0 : srAlder ? Math.round(srAlder) : alderFraHoyde(hoydeM, bonitet, srTreslag || planTs || 'G');
+      if (!hogd && aSr !== null && hoydeM) { const aH = alderFraHoyde(hoydeM, bonitet, srTreslag || planTs || 'G'); if (aH !== null && Math.abs(aSr - aH) > Math.max(15, 0.4 * aH)) aSr = aH; }
+      alder = aSr; dataAar = sr16Ar;
+      if (k.utskiltFra) merknader.push(`Del av bestand ${k.attr.teig_best_nr || ''} som er hogd etter taksten (${regaar}): SR16 (${sr16Ar}) viser hogstflate her – resten (${komma(k.utskiltFra)} daa) er urørt`);
+      else merknader.push(hogd ? `Hogd etter taksten (${regaar}): SR16 (${sr16Ar}) viser ${komma(volub ?? 0)} m³/daa${trean !== null ? ` og ${Math.round(trean)} trær/daa` : ''} – beregnet fra SR16, kontroller foryngelse i felt` : `Endret etter taksten (${regaar}): SR16 (${sr16Ar}) viser ${hoydeM !== null ? `${komma(hoydeM)} m høyde` : ''}${fv?.h ? ` mot ventet ${komma(fv.h)} m` : ''} – trolig hogd og forynget, beregnet fra SR16`);
+      if (planTs && srTreslag && dekning > 0.5) planTs = null; // treslaget følger SR16
+    } else if (k.kilde === 'plan') {
+      if (k.delvisHogd) merknader.push(`${komma(k.delvisHogd)} daa er hogd etter taksten og skilt ut som eget bestand – resten er urørt`);
+      if (overstandere) merknader.push(`SR16 (${sr16Ar}) viser ${komma(hoydeM)} m høyde og ${komma(volub ?? 0)} m³/daa – trolig frø- eller livsløpstrær over ungskogen; taksten (HK ${hkPlan}, ${regaar}) er beholdt`);
+      if (liteVolum === 'glissen') merknader.push(`Glissen skog: SR16 viser ${komma(volub)} m³/daa, men ${Math.round(trean)} trær/daa over 5 cm og ${komma(hoydeM)} m høyde – ikke hogd (HK ${hkPlan} i planen ${regaar}), kontroller`);
+      // Urørt: alder fra taksten; volumet fra SR16 gjelder målingsåret og skrives fram sammen med alderen.
+      dataAar = volub !== null && sr16Ar ? sr16Ar : null;
+    }
+    if (k.kilde === 'sr16' && alder !== null && hoydeM) {
+      const aH = alderFraHoyde(hoydeM, bonitet, srTreslag || 'G');
+      if (aH !== null && Math.abs(alder - aH) > Math.max(15, 0.4 * aH)) { merknader.push(`SR16-alderen (${alder} år) stemmer ikke med høyden ${komma(hoydeM)} m – alder ${aH} år fra høyden og boniteten`); alder = aH; }
     }
     if (planTs && srTreslag && planTs !== srTreslag && dekning > 0.5) merknader.push(`Treslag: plan ${planTs}, SR16 ${srTreslag}`);
     const miljoSnitt = misUnion && overlapper(bb, misBb) ? arealM2(snitt(k.g, misUnion)) : 0;
@@ -631,16 +644,13 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     };
     const b = normaliserBestand(props, k.g.geometry, areal / 1000, iAar);
     b.hogstklasse = null; // beregnes av appen fra dagens alder; planens HK ligger i ekstra
-    // Alder og volum gjelder for dataåret (SR16-målingen eller takståret) – skriv fram til i år med vekstmodellen,
-    // så hogstklasse, volum og tilvekst stemmer i dag. Planbestand der SR16 er eldre enn planen: volumet skrives
-    // først fram fra SR16-året til planåret.
-    if (k.kilde === 'plan' && sr16Ar && dataAar && dataAar > sr16Ar && b.volumDaa != null && b.alder != null) {
-      const tmp = { ...b, alder: Math.max(0, b.alder - (dataAar - sr16Ar)), takstAar: sr16Ar };
-      framskrivTilAar(tmp, dataAar); b.volumDaa = tmp.volumDaa;
-    }
-    if (dataAar && dataAar < iAar && liteVolum !== 'hogd') {
+    if (status) b.ekstra = { ...b.ekstra, VURDERING: status === 'urort' ? 'Urørt siden taksten' : 'Endret siden taksten – fra SR16' };
+    // Skriv fram fra dataåret til i dag. Urørt planbestand: alderen er allerede dagens, så den settes tilbake til
+    // målingsåret først, og volum og alder skrives fram sammen.
+    if (dataAar && dataAar < iAar && b.alder !== null && b.alder !== undefined) {
+      if (status === 'urort') b.alder = Math.max(0, b.alder - (iAar - dataAar));
       b.takstAar = dataAar; const n = framskrivTilAar(b, iAar);
-      if (n) { b.ekstra = { ...b.ekstra, DATAAAR: dataAar, FRAMSKREVET_AAR: n }; b.merknad = [b.merknad, `Alder og volum skrevet fram ${n} år fra ${dataAar} til ${iAar}`].filter(Boolean).join('; '); }
+      if (n) { b.ekstra = { ...b.ekstra, DATAAAR: dataAar }; if (status !== 'urort') b.merknad = [b.merknad, `Alder og volum fra SR16 skrevet fram ${n} år fra ${dataAar} til ${iAar}`].filter(Boolean).join('; '); else b.merknad = [b.merknad, `Volum fra SR16 (${dataAar}) skrevet fram ${n} år til ${iAar}`].filter(Boolean).join('; '); }
     }
     bestand.push(b);
   }

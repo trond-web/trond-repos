@@ -1766,5 +1766,19 @@ test('Plan fra PC til mobil: relé, pakking, fletting og synkronisering begge ve
   assert.equal(PS.lenkeMedKode('ABC123', 'https://x.no/skog/index.html'), 'https://x.no/skog/felt.html?kode=ABC123');
 });
 
+test('Framskriving: ung skog med mer volum enn kurven vokser rimelig, og målt volum følges', async () => {
+  const M = await import('../js/model.js');
+  // Volum langt over kurven for alderen (f.eks. for lav alder): følger kurven fra samme volum, ikke ganget opp
+  const a = { treslag: 'G', bonitet: 20, alder: 7, volumDaa: 6.8, takstAar: 2015 }; M.framskrivTilAar(a, 2026);
+  assert.equal(a.alder, 18); assert.ok(a.volumDaa > 6.8 && a.volumDaa < 35, `volum ${a.volumDaa}`);
+  // Svært ung skog: veksten langs kurven legges til målt volum
+  const b = { treslag: 'L', bonitet: 17, alder: 3, volumDaa: 4.7, takstAar: 2015 }; M.framskrivTilAar(b, 2026);
+  assert.ok(b.volumDaa > 4.7, `volum ${b.volumDaa}`);
+  // Vanlig produksjonsskog: proporsjonal vekst langs kurven som før
+  const c = { treslag: 'G', bonitet: 17, alder: 48, volumDaa: 20.1, takstAar: 2015 }; const f0 = M.volumKurve(48, 17, 'G'); const f1 = M.volumKurve(59, 17, 'G'); M.framskrivTilAar(c, 2026);
+  assert.ok(Math.abs(c.volumDaa - 20.1 * (f1 / f0)) < 0.2);
+  assert.ok(M.arligTilvekstDaa({ treslag: 'G', bonitet: 20, alder: 18, volumDaa: 60 }) < 3); // ingen urimelig tilvekst
+});
+
 await Promise.all(venter);
 console.log(`\n${ok} tester bestått`);

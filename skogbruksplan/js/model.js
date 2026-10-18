@@ -406,9 +406,13 @@ export function startTilstand(b) {
 function vekst(volumDaa, alder, h40, treslag, aar) {
   const f0 = volumKurve(alder, h40, treslag);
   const f1 = volumKurve(alder + aar, h40, treslag);
+  // Ligger volumet langt over kurven for alderen (f.eks. når alderen er for lav), følges kurven fra det punktet der
+  // den har samme volum – ellers ville veksten blitt urimelig høy.
+  if (volumDaa > 0 && f0 > 0.5 && volumDaa > 1.5 * f0) { const ae = estimerAlder(volumDaa, h40, treslag); if (!ae || ae >= 250) return volumDaa; const g0 = volumKurve(ae, h40, treslag); return g0 > 0 ? volumDaa * (volumKurve(ae + aar, h40, treslag) / g0) : volumDaa; }
   if (volumDaa > 0 && f0 > 0.5) return volumDaa * (f1 / f0);
-  // Svært unge bestand eller manglende volum: følg kurven direkte.
-  return Math.max(volumDaa, f1);
+  // Svært unge bestand eller manglende volum: legg veksten langs kurven til det målte volumet (følg kurven når
+  // den ligger høyere).
+  return Math.max((volumDaa || 0) + Math.max(0, f1 - f0), f1);
 }
 
 // Skriver alder og volum frem fra bestandets takstår til iAar med vekstmodellen, slik at hogstklasse, hogstmodenhet og
