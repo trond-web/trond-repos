@@ -49,6 +49,24 @@ async function arcgis(hent, tjeneste, bb, where = '1=1') {
   return ut;
 }
 
+// Kulturminner (sikringssoner) fra Riksantikvaren i boksen bb = [minLon, minLat, maxLon, maxLat]. Brukes også av AR i felt.
+export async function hentKulturminner(bb, { hent = fetch } = {}) {
+  const alle = [];
+  let url = `https://api.ra.no/LokaliteterEnkeltminnerOgSikringssoner/collections/sikringssoner/items?f=json&limit=500&bbox=${bb.join(',')}`;
+  for (let side = 0; url && side < 20; side++) {
+    const d = await hentJson(hent, url);
+    alle.push(...(d.features || []));
+    url = (d.links || []).find((l) => l.rel === 'next')?.href || null;
+  }
+  return alle.filter((f) => f.geometry).map((f) => {
+    const p = f.properties;
+    // Beskrivelsen starter ofte med en lokal kode som «R01.1:»; den fjernes, og første setning brukes som navn.
+    const tekst = (p.informasjon || '').replace(/^\s*[A-ZÆØÅ]?\d+(\.\d+)?\s*[:.]\s*/, '').trim();
+    const kort = tekst.split(/(?<=[a-zæøå)])[.:]\s/)[0].slice(0, 60);
+    return { type: 'kulturminne', navn: `Kulturminne ${p.kulturminneId}${kort ? `: ${kort}` : ''}`, geometri: f.geometry, kildeId: `ra-${p.kulturminneId}`, beskrivelse: p.informasjon, lenke: `https://www.kulturminnesok.no/sok/?q=${p.kulturminneId}`, dato: p.oppdateringsdato, kilde: 'offentlig' };
+  });
+}
+
 export async function hentMiljodata(grense, { hent = fetch, logg = () => {} } = {}) {
   const bb = bboxAv(grense);
   const ut = [];
@@ -110,20 +128,7 @@ export async function hentMiljodata(grense, { hent = fetch, logg = () => {} } = 
     }
   });
   await steg('kultur', 'Kulturminner (sikringssoner)', 'Riksantikvaren', async () => {
-    const alle = [];
-    let url = `https://api.ra.no/LokaliteterEnkeltminnerOgSikringssoner/collections/sikringssoner/items?f=json&limit=500&bbox=${bb.join(',')}`;
-    for (let side = 0; url && side < 20; side++) {
-      const d = await hentJson(hent, url);
-      alle.push(...(d.features || []));
-      url = (d.links || []).find((l) => l.rel === 'next')?.href || null;
-    }
-    for (const f of alle) {
-      const p = f.properties;
-      // Beskrivelsen starter ofte med en lokal kode som «R01.1:»; den fjernes, og første setning brukes som navn.
-      const tekst = (p.informasjon || '').replace(/^\s*[A-ZÆØÅ]?\d+(\.\d+)?\s*[:.]\s*/, '').trim();
-      const kort = tekst.split(/(?<=[a-zæøå)])[.:]\s/)[0].slice(0, 60);
-      legg('kulturminne', `Kulturminne ${p.kulturminneId}${kort ? `: ${kort}` : ''}`, f.geometry, { kildeId: `ra-${p.kulturminneId}`, beskrivelse: p.informasjon, lenke: `https://www.kulturminnesok.no/sok/?q=${p.kulturminneId}` }, p.oppdateringsdato);
-    }
+    for (const k of await hentKulturminner(bb, { hent })) legg('kulturminne', k.navn, k.geometri, { kildeId: k.kildeId, beskrivelse: k.beskrivelse, lenke: k.lenke }, k.dato);
   });
   logg(`Ferdig: ${ut.length} miljøobjekter på eiendommen${feil.length ? `, ${feil.length} kilder svarte ikke` : ''}.`);
   return { objekter: ut, feil, kilder };

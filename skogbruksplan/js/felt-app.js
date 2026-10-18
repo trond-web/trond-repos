@@ -360,6 +360,18 @@ async function slettEndring() {
   melding('Tiltaket er slettet.'); tilbakeFraEndring();
 }
 
+// ---------- AR ----------
+let arModul = null;
+async function startAR() {
+  if (!P) { melding('Velg en plan først.'); return; }
+  // Kompasstillatelsen på iPhone må bes om direkte i trykket – før modulen lastes.
+  const tillatelse = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function' ? DeviceOrientationEvent.requestPermission().catch(() => 'denied') : null;
+  lukkArk();
+  try { arModul = arModul || await import('./felt-ar.js'); } catch { melding('AR kunne ikke lastes. Åpne den én gang med nett.'); return; }
+  const c = kart.getCenter(); const fersk = gps.pos && Date.now() - gps.pos.tid < 60000;
+  arModul.aapneAR({ P, melding, tillatelse, startPos: fersk ? { lat: gps.pos.lat, lon: gps.pos.lon } : { lat: c.lat, lon: c.lng } });
+}
+
 // ---------- registreringer ----------
 let regPagar = null; // { kategori, tekst, bilde, bestandId }
 function regRad(r) {
@@ -488,6 +500,9 @@ function visMer() {
     <p class="hint">${P ? (offline ? `Topografisk kart for ${esc(P.eiendom?.navn)} ble lastet ned ${esc(offline)}.` : `Kartet for ${esc(P.eiendom?.navn)} er ikke lastet ned.`) : 'Velg en plan først.'} Flyfoto krever nett.</p>
     <div class="framdrift" id="offlineFramdrift" hidden><span></span></div><p class="hint" id="offlineStatus"></p>
     <div class="knapper"><button type="button" class="knapp primar" data-h="offline" ${P ? '' : 'disabled'}>${offline ? 'Oppdater offline-kart' : 'Last ned kart for offline'}</button></div>
+    <h3>AR – grenser og miljø i terrenget <span class="beta">beta</span></h3>
+    <p class="hint">Se bestandsgrenser, eiendomsgrense, stier, miljøinformasjon og kulturminner lagt over kamerabildet – eller i AR-briller (Meta Quest 3). Bruker GPS og kompass.</p>
+    <div class="knapper"><button type="button" class="knapp" data-h="ar" ${P ? '' : 'disabled'}>🥽 Start AR</button></div>
     <h3>Droneoppdrag <span class="beta">beta</span></h3>
     <p class="hint">Tegn et område og lag en flyrute for ortofoto med DJI Enterprise-droner – åpnes i DJI Pilot 2.</p>
     <div class="knapper"><button type="button" class="knapp" data-h="drone" ${P ? '' : 'disabled'}>✈ Droneoppdrag${(P?.droneoppdrag || []).length ? ` (${P.droneoppdrag.length})` : ''}</button></div>
@@ -540,6 +555,7 @@ function kobleHendelser() {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#ark').hidden) lukkArk(); });
   $('#melding').addEventListener('click', () => { $('#melding').hidden = true; });
   $('#gpsBtn').addEventListener('click', veksleGps);
+  $('#arBtn').addEventListener('click', startAR);
   $('#zoomPlanBtn').addEventListener('click', zoomPlan);
   $('#nyRegBtn').addEventListener('click', () => startReg());
   $('#sporBtn').addEventListener('click', () => spor.visStart());
@@ -588,6 +604,7 @@ function kobleHendelser() {
     if (h === 'slett-tiltak') slettEndring();
     if (h === 'avbryt-endring') tilbakeFraEndring();
     if (h === 'sporlogg') spor.visStart();
+    if (h === 'ar') startAR();
     if (h === 'drone') drone.visListe();
     if (h === 'drone-bestand' && valgtId) drone.fraBestand(finn(valgtId));
     if ((h === 'motor-oppdater' || h === 'motor-behold') && valgtId) {

@@ -1,13 +1,13 @@
 // Service worker: appen og besøkte/nedlastede kartfliser fungerer uten nett.
-const APP = 'skogiq-app-v58';
+const APP = 'skogiq-app-v59';
 const FLISER = 'kartfliser-v1';
 const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'ikon-180.png', 'ikon-192.png', 'ikon-512.png', 'ikon-maskerbar-512.png',
-  'felt.html', 'felt.css', 'felt.webmanifest', 'js/felt-app.js', 'js/offline-kart.js', 'js/sporlogg.js', 'js/sporlogg-ui.js', 'js/tiltak-endring.js', 'js/flate-geometri.js', 'js/flate-redigering.js', 'js/treff.js', 'js/oppdrag-felt.js', 'js/ungskog.js', 'js/effekt-html.js', 'js/oppdrag-utvalg.js', 'js/tetthet.js', 'js/drone.js', 'js/drone-felt.js', 'js/skog3d.js', 'js/skog3d-data.js', 'js/skog3d-traer.js', 'js/skog3d-veg.js', 'js/skog3d-bunn.js', 'js/skog3d-omgivelser.js', 'js/skog3d-objekter.js',
+  'felt.html', 'felt.css', 'felt.webmanifest', 'js/felt-app.js', 'js/offline-kart.js', 'js/sporlogg.js', 'js/sporlogg-ui.js', 'js/tiltak-endring.js', 'js/flate-geometri.js', 'js/flate-redigering.js', 'js/treff.js', 'js/oppdrag-felt.js', 'js/ungskog.js', 'js/effekt-html.js', 'js/oppdrag-utvalg.js', 'js/tetthet.js', 'js/drone.js', 'js/drone-felt.js', 'js/skog3d.js', 'js/skog3d-data.js', 'js/skog3d-traer.js', 'js/skog3d-veg.js', 'js/skog3d-bunn.js', 'js/skog3d-omgivelser.js', 'js/skog3d-objekter.js', 'js/felt-ar.js', 'js/ar-data.js',
   'js/app.js', 'js/model.js', 'js/proj.js', 'js/sosi.js', 'js/importers.js', 'js/store.js', 'js/charts.js', 'js/demo.js', 'js/generator.js', 'js/kommuneanalyse.js', 'js/kommune-ui.js', 'js/veier.js', 'js/veier-ui.js', 'js/innsikt.js', 'js/kommando.js', 'js/pefc.js', 'js/pefc-data.js', 'js/pefc-ui.js', 'js/verdi.js', 'js/verdi-ui.js', 'js/datagrunnlag.js', 'js/del.js', 'js/assistent.js', 'js/skade.js', 'js/skade-data.js', 'js/skogbrand-ui.js', 'js/rapporter.js', 'js/markslag.js', 'js/tiltaksmotor.js', 'js/skifteplan.js', 'js/skifteplan-ui.js', 'js/versjon.js', 'js/driftsforhold.js', 'js/miljokart.js', 'js/kml.js', 'js/vegetasjon.js', 'js/kartutsnitt.js', 'js/oppdrag.js', 'js/oppdrag-ui.js', 'js/ksl.js', 'js/ksl-ui.js', 'js/ksl-standard.js', 'js/karbon.js', 'js/karbon-ui.js', 'js/flere-eiendommer.js', 'js/ai-kontekst.js',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
 
-// Biblioteker som lastes ved behov (planlaging, deling av bestand). Bufres hvis mulig, men stopper ikke installasjonen.
-const VALGFRITT = ['https://unpkg.com/@turf/turf@7.2.0/turf.min.js', 'https://unpkg.com/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js'];
+// Biblioteker som lastes ved behov (planlaging, deling av bestand, 3D/AR). Bufres hvis mulig, men stopper ikke installasjonen.
+const VALGFRITT = ['https://unpkg.com/three@0.160.0/build/three.module.js', 'https://unpkg.com/@turf/turf@7.2.0/turf.min.js', 'https://unpkg.com/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(APP).then(async (c) => {
