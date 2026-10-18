@@ -42,6 +42,7 @@ import * as TR from '../js/treff.js';
 import * as US from '../js/ungskog.js';
 import * as OU from '../js/oppdrag-utvalg.js';
 import * as TT from '../js/tetthet.js';
+import * as DR from '../js/drone.js';
 import { tolkTetthet, alderFraHoyde, startTilstand as startT2, hogstklasseFor, foryngelse, vurderLiteVolum, rettFeilHogd, minForyngelse } from '../js/model.js';
 import { ungskogHtml, effektHtml } from '../js/effekt-html.js';
 import { genererTiltak as motorTiltak } from '../js/tiltaksmotor.js';
@@ -1500,6 +1501,36 @@ test('Delvis ungskogpleie: resten foreslås fullført, middelhøyde = snitt av r
   const m = US.middelhoyde(b); assert.equal(m.kilde, 'registrert'); assert.ok(m.verdi > 2 && m.verdi < 2.6, String(m.verdi));
   US.settUngskog(b, 'hoydeLauv', '3'); assert.equal(US.middelhoyde(b).verdi, 2.5); assert.equal(b.hoyde, 2.5);
   assert.equal(US.middelhoyde({ ...b, ungskog: undefined }).verdi, 2.5); // bestandsdataene er oppdatert
+});
+
+test('Droneoppdrag: flylinjer over området, GSD/overlapp/flytid og DJI WPML-rute (KMZ)', () => {
+  const S = lagDemo(2026); const b = S.bestand.find((x) => x.nr === '17');
+  // GSD for Mavic 3 Enterprise: ca. 2,7 cm/px på 100 m, og høyden for 3 cm/px er ca. 113 m
+  const k = DR.kamera('m3e', 100); assert.ok(Math.abs(k.gsd - 2.67) < 0.05, String(k.gsd)); assert.ok(Math.abs(DR.hoydeForGsd('m3e', 3) - 112.6) < 1);
+  const p = DR.planlegg(b.geometri, { hoyde: 100, overlappFram: 80, overlappSide: 80 });
+  assert.ok(Math.abs(p.linjeavstand - k.bredde * 0.2) < 0.01); assert.ok(Math.abs(p.bildeavstand - k.lengde * 0.2) < 0.01);
+  assert.ok(Math.abs(p.arealDaa - b.areal) / b.areal < 0.02, `${p.arealDaa} ${b.areal}`);
+  assert.ok(p.linjer.length >= 4 && p.bilder > 50 && p.flytid > 3 && p.flytid < 20 && p.batterier === 1, JSON.stringify([p.linjer.length, p.bilder, p.flytid]));
+  // Linjene dekker hele området: antall linjer × linjeavstand ≥ bredden på tvers av flyretningen
+  const a = ((90 - p.retning) * Math.PI) / 180; const ys = p.linjer.flat().map(([x, y]) => -x * Math.sin(a) + y * Math.cos(a));
+  assert.ok(Math.max(...ys) - Math.min(...ys) + p.linjeavstand >= 0.9 * p.linjeavstand * p.linjer.length);
+  assert.ok(p.intervall >= 1 - 1e-9 && p.fart <= 12);
+  // Lavere høyde → flere linjer og bilder; fast retning brukes
+  const lav = DR.planlegg(b.geometri, { hoyde: 60, retning: 0 }); assert.ok(lav.bilder > p.bilder); assert.equal(lav.retning, 0);
+  assert.equal(DR.planlegg(b.geometri, { hoyde: 400 }).hoyde, 120);
+  // Terreng
+  assert.equal(DR.terrengVurdering([200, 205, 210], p).niva, 'ok'); assert.equal(DR.terrengVurdering([200, 260, 270], p).niva, 'fare');
+  // KMZ: ZIP med wpmz/template.kml (mapping2d) og wpmz/waylines.wpml (fotografering per avstand)
+  const z = DR.lagKmz(p, { naa: 1 }); const tekst = new TextDecoder().decode(z);
+  assert.equal(z[0], 0x50); assert.equal(z[1], 0x4b); assert.ok(tekst.includes('wpmz/template.kml') && tekst.includes('wpmz/waylines.wpml'));
+  const tpl = DR.lagTemplateKml(p, { naa: 1 }); const wl = DR.lagWaylinesWpml(p);
+  assert.match(tpl, /<wpml:templateType>mapping2d<\/wpml:templateType>/); assert.match(tpl, /<wpml:orthoCameraOverlapH>80</); assert.match(tpl, /<wpml:droneEnumValue>77</); assert.match(tpl, /<wpml:payloadEnumValue>66</);
+  assert.match(tpl, /<Polygon><outerBoundaryIs><LinearRing><coordinates>[\d.]+,[\d.]+,0 /);
+  assert.equal((wl.match(/<Placemark>/g) || []).length, p.linjer.length * 2);
+  assert.match(wl, new RegExp(`<wpml:actionTriggerType>multipleDistance</wpml:actionTriggerType><wpml:actionTriggerParam>${p.bildeavstand.toFixed(1).replace(/\.0$/, '')}<`));
+  assert.match(wl, /<wpml:gimbalPitchRotateAngle>-90</);
+  assert.match(DR.lagOmradeKml(p, 'Test & co'), /<name>Test &amp; co<\/name>/);
+  assert.ok(DR.SJEKKLISTE.length >= 8);
 });
 
 await Promise.all(venter);

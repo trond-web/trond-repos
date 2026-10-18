@@ -10,6 +10,7 @@ import { initSporlogg, lastPC } from './sporlogg-ui.js';
 import { mpTilUtm, mpTilGeo, fordelPaaBestand } from './sporlogg.js';
 import { startFlateRedigering } from './flate-redigering.js';
 import { initOppdragFelt } from './oppdrag-felt.js';
+import { initDroneFelt } from './drone-felt.js';
 import { ledig as oppdragLedig } from './oppdrag.js';
 import { synligeTiltaksflater, treffVed, tiltakStil, tiltakNavn, tiltakLinje, tiltakDetaljer } from './treff.js';
 import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
@@ -35,7 +36,7 @@ const lagPerBestand = new Map(); let bestandLag; let grenseLag; let regLag; let 
 let valgtId = null; let visning = 'kart';
 let gps = { watch: null, pos: null, folg: false, markor: null, sirkel: null };
 let installHendelse = null; let spor = null; let flate = null;
-let oppdrag = null; let uthevOppdrag = new Set(); let kandidatOppdrag = new Set(); // bestand i oppdraget som er åpent, og bestand som kan velges
+let drone = null; let oppdrag = null; let uthevOppdrag = new Set(); let kandidatOppdrag = new Set(); // bestand i oppdraget som er åpent, og bestand som kan velges
 let ungskogRed = null; // bestand der ungskogfeltene er åpne for registrering
 let tiltaksflateLag = null; let valgtTiltak = null; let treffMarkor = null; // tiltak som er valgt i kartet, og markør for trykkpunktet
 
@@ -75,7 +76,7 @@ function initKart() {
   kart.on('zoomend', etiketter); etiketter();
   kart.on('dragstart', () => { if (gps.folg) { gps.folg = false; oppdaterGpsKnapp(); } });
   // Trykk i kartet utenfor arket lukker det – men ikke midt i et skjema (registrering, endring, sporlogg).
-  kart.on('click', (e) => { if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (!$('#ark').hidden && !regPagar && !endring && !spor?.harResultat() && !spor?.tegner() && !oppdrag?.velgerIKart()) lukkArk(); });
+  kart.on('click', (e) => { if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (!$('#ark').hidden && !regPagar && !endring && !spor?.harResultat() && !spor?.tegner() && !oppdrag?.velgerIKart() && !drone?.aktiv()) lukkArk(); });
 }
 
 function stil(b) {
@@ -128,7 +129,7 @@ function lukkArk(fraHistorikk = false) {
   endring = null;
   if (valgtId) { valgtId = null; oppdaterStiler(); }
   if (valgtTiltak) { valgtTiltak = null; tegnTiltaksflater(); }
-  oppdrag?.nullstill();
+  oppdrag?.nullstill(); drone?.nullstill();
   if (uthevOppdrag.size || kandidatOppdrag.size) { uthevOppdrag = new Set(); kandidatOppdrag = new Set(); oppdaterStiler(); }
   treffMarkor?.remove(); treffMarkor = null;
   settVisning('kart', false);
@@ -204,7 +205,7 @@ function visBestand(id, { zoom = false } = {}) {
     <div class="liste">${tiltak.slice(0, 6).map((t) => tiltakRad(b, t)).join('') || '<div class="tom">Ingen planlagte tiltak.</div>'}</div>
     ${utfortNylig(b).length ? `<h3>Utført siste år</h3><div class="liste">${utfortNylig(b).map((t) => tiltakRad(b, t)).join('')}</div>` : ''}
     ${regs.length ? `<h3>Registreringer (${regs.length})</h3><div class="liste">${regs.map(regRad).join('')}</div>` : ''}
-    <div class="knapper"><button type="button" class="knapp primar" data-h="reg-her">+ Registrering i bestandet</button></div>`);
+    <div class="knapper"><button type="button" class="knapp primar" data-h="reg-her">+ Registrering i bestandet</button><button type="button" class="knapp" data-h="drone-bestand">✈ Droneoppdrag</button></div>`);
 }
 
 // ---------- tiltak ----------
@@ -276,6 +277,11 @@ function zoomTilTiltak(bid, tid) {
 // Tegn en flate over ett eller flere bestand når et oppdrag lages. Arket skjules mens man tegner (utvalget beholdes),
 // og flaten fordeles på bestandene. Gir [{ b, daa, andel, geometri }] eller null ved avbryt.
 async function tegnOppdragsflate(tittel) {
+  const r = await tegnFlateGeo(tittel);
+  return r ? (r.geometri ? fordelPaaBestand(mpTilUtm(r.geometri), P.bestand, r.PC) : []) : null;
+}
+// Tegn (eller endre) en flate klippet mot eiendommen. Arket skjules mens man tegner. Gir { geometri, PC } eller null.
+async function tegnFlateGeo(tittel, { start = null } = {}) {
   let PC; try { PC = await lastPC(); } catch (e) { melding(e.message, 6000); return null; }
   const deler = P.bestand.filter((b) => b.geometri).map((b) => mpTilUtm(b.geometri));
   let omriss; try { omriss = P.eiendom?.grense ? mpTilUtm(P.eiendom.grense) : PC.union(...deler); } catch { omriss = deler.flat(); }
@@ -283,8 +289,8 @@ async function tegnOppdragsflate(tittel) {
   return new Promise((ferdig) => {
     const slutt = (svar) => { flate = null; document.body.classList.remove('flate-aktiv'); $('#ark').hidden = false; ferdig(svar); };
     flate = startFlateRedigering({
-      L, kart, PC, bestand: { geometri: { type: 'MultiPolygon', coordinates: mpTilGeo(omriss) } }, tittel, plassering: 'felt', omrade: 'eiendommen', startTegning: true, zoom: false,
-      vedFerdig: ({ geometri }) => slutt(geometri ? fordelPaaBestand(mpTilUtm(geometri), P.bestand, PC) : []),
+      L, kart, PC, start, bestand: { geometri: { type: 'MultiPolygon', coordinates: mpTilGeo(omriss) } }, tittel, plassering: 'felt', omrade: 'eiendommen', startTegning: !start, zoom: !!start,
+      vedFerdig: ({ geometri }) => slutt({ geometri, PC }),
       vedAvbryt: () => slutt(null),
     });
   });
@@ -482,6 +488,9 @@ function visMer() {
     <p class="hint">${P ? (offline ? `Topografisk kart for ${esc(P.eiendom?.navn)} ble lastet ned ${esc(offline)}.` : `Kartet for ${esc(P.eiendom?.navn)} er ikke lastet ned.`) : 'Velg en plan først.'} Flyfoto krever nett.</p>
     <div class="framdrift" id="offlineFramdrift" hidden><span></span></div><p class="hint" id="offlineStatus"></p>
     <div class="knapper"><button type="button" class="knapp primar" data-h="offline" ${P ? '' : 'disabled'}>${offline ? 'Oppdater offline-kart' : 'Last ned kart for offline'}</button></div>
+    <h3>Droneoppdrag <span class="beta">beta</span></h3>
+    <p class="hint">Tegn et område og lag en flyrute for ortofoto med DJI Enterprise-droner – åpnes i DJI Pilot 2.</p>
+    <div class="knapper"><button type="button" class="knapp" data-h="drone" ${P ? '' : 'disabled'}>✈ Droneoppdrag${(P?.droneoppdrag || []).length ? ` (${P.droneoppdrag.length})` : ''}</button></div>
     <h3>Installer</h3>
     ${installert ? '<p>✓ SkogIQ Felt er installert på enheten.</p>' : installHendelse ? '<div class="knapper"><button type="button" class="knapp primar" data-h="installer">Installer SkogIQ Felt</button></div><p class="hint">Appen legges på hjemskjermen og åpnes i fullskjerm.</p>' : ios ? '<p>Trykk på <b>Del</b> <span aria-hidden="true">⬆︎</span> i Safari og velg <b>Legg til på Hjem-skjerm</b>.</p>' : '<p class="hint">Bruk «Installer app» / «Legg til på startskjermen» i nettleserens meny.</p>'}
     <h3>Innstillinger</h3>
@@ -544,6 +553,7 @@ function kobleHendelser() {
   const ark = $('#arkInnhold');
   ark.addEventListener('click', async (e) => {
     if (await oppdrag.klikk(e)) return;
+    if (await drone.klikk(e)) return;
     const tkl = e.target.closest('[data-tetthet]');
     if (tkl && valgtId) { const b = finn(valgtId); const top = $('#arkInnhold').scrollTop; if (tkl.dataset.tetthet) b.tetthetsklasse = tkl.dataset.tetthet; else delete b.tetthetsklasse; await lagrePlanen(); visBestand(b.id); $('#arkInnhold').scrollTop = top; melding(tkl.dataset.tetthet ? `Bestand ${b.nr}: HK ${hkTekst(b, { inn: inn() })}` : 'Tetthetsklassen er fjernet.', 1800); return; }
     const plan = e.target.closest('[data-plan]'); if (plan) { await velgPlan(plan.dataset.plan); lukkArk(); return; }
@@ -578,6 +588,8 @@ function kobleHendelser() {
     if (h === 'slett-tiltak') slettEndring();
     if (h === 'avbryt-endring') tilbakeFraEndring();
     if (h === 'sporlogg') spor.visStart();
+    if (h === 'drone') drone.visListe();
+    if (h === 'drone-bestand' && valgtId) drone.fraBestand(finn(valgtId));
     if ((h === 'motor-oppdater' || h === 'motor-behold') && valgtId) {
       const b = finn(valgtId); const e = motorEndring(b);
       if (e) { if (h === 'motor-oppdater') motorOppdater(P, e); else merkKjort(b, P.motor?.prinsipp || 'balansert'); await lagrePlanen(); tegnTiltaksflater(); }
@@ -594,6 +606,7 @@ function kobleHendelser() {
   });
   ark.addEventListener('change', async (e) => {
     if (await oppdrag.endring(e)) return;
+    if (await drone.endring(e)) return;
     if (e.target.id === 'regBilde' && e.target.files[0] && regPagar) {
       regPagar.tekst = $('#regTekst').value;
       try { regPagar.bilde = await skalerBilde(e.target.files[0]); } catch { melding('Kunne ikke lese bildet.'); }
@@ -607,7 +620,7 @@ function kobleHendelser() {
     if (e.target.dataset?.tf === 'helt' && endring) { endring.utkast = lesEndring(); visEndreTiltak(endring.bid, endring.tid); return; }
     if (e.target.id === 'startFelt') { ls.set(LS.start, e.target.checked ? '1' : null); melding(e.target.checked ? 'Appen åpner nå i mobilversjonen.' : 'Appen åpner i fullversjonen.'); }
   });
-  ark.addEventListener('input', (e) => { if (e.target.id === 'regTekst' && regPagar) regPagar.tekst = e.target.value; });
+  ark.addEventListener('input', (e) => { if (drone.input(e)) return; if (e.target.id === 'regTekst' && regPagar) regPagar.tekst = e.target.value; });
   // Sveip ned for å lukke: fra håndtaket/toppen, eller fra innholdet når det er rullet helt til toppen.
   const arkEl = $('#ark'); let dra = null;
   arkEl.addEventListener('touchstart', (e) => {
@@ -635,6 +648,7 @@ function kobleHendelser() {
 async function start() {
   initKart();
   spor = initSporlogg({ L, kart, plan: () => P, lagrePlanen, aapneArk, lukkArk, melding, tegnPlan: () => tegnPlan(false), nyId, tegnFlater: () => tegnTiltaksflater(), settStatus: (paa) => document.body.classList.toggle('spor-aktiv', paa) });
+  drone = initDroneFelt({ L, kart, plan: () => P, aapneArk, lagrePlanen, melding, nyId, tegnFlateGeo, iAar: IAAR });
   oppdrag = initOppdragFelt({
     plan: () => P, aapneArk, lagrePlanen, melding, nyId, iAar: IAAR, visTiltakKort,
     settUtfort: (bid, tid, tilbake) => settUtfort(bid, tid, tilbake),
