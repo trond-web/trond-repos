@@ -131,6 +131,8 @@ export function lagBunnLag(THREE, scene, bestand, { hoyde = () => 0, inn = STAND
     oppdater,
     antall: () => antall,
     perType: () => Object.fromEntries(Object.entries(mesh).map(([t, m]) => [t, m.count])),
+    // Skjul plantetyper (f.eks. under snø); de andre vises.
+    skjul(typer = []) { const sett = new Set(typer); for (const [t, m] of Object.entries(mesh)) m.visible = !sett.has(t); },
     profil: (s) => profil(s),
     dispose() { for (const m of Object.values(mesh)) { scene.remove(m); m.geometry.dispose(); m.dispose?.(); } mat.dispose(); ruter.clear(); },
   };

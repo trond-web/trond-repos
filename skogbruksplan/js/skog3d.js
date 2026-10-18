@@ -5,6 +5,10 @@
 // stikke = gå, høyre stikke = snu 30°. Three.js lastes fra unpkg første gang visningen åpnes.
 import { lagSkog, terrengPunkter, lagTerreng, iPolygon, framtidsskog, MAKS_TRAER } from './skog3d-data.js';
 import { STANDARD_VERDI } from './verdi.js';
+import { hentVaer, tolkMet, forhandsvaer, vaerScene, vaerTekst, solposisjon, tidFor, VAER_VALG, TID_VALG } from './skog3d-vaer.js';
+import { lagVaerLag } from './skog3d-vaerlag.js';
+import { API as SERVER_API } from './plan-synk.js';
+import { utmTilGeo } from './proj.js';
 import { hentOmgivelser, naboBestand, lagHinder, lagOppslag, hentHoyder, terrengOppløsning, iBygning } from './skog3d-omgivelser.js';
 import { lagOmgivelserLag } from './skog3d-objekter.js';
 import { MARKSLAG } from './markslag.js';
@@ -26,6 +30,13 @@ const STIL = `
 .skog3d .s3-knapper { position: absolute; right: 14px; top: 14px; display: flex; gap: 8px; }
 .skog3d .s3-knapper button { border: 0; border-radius: 12px; padding: 10px 14px; font: 700 14px/1 inherit; background: #fbfcfa; color: #10241c; box-shadow: 0 4px 14px rgba(0,0,0,.2); cursor: pointer; }
 .skog3d .s3-knapper .vr { background: #7b2ff7; color: #fff; }
+.skog3d .s3-vaer { position: absolute; right: 14px; top: 64px; width: min(330px, calc(100% - 28px)); background: rgba(251,252,250,.95); border-radius: 14px; padding: 10px 12px; box-shadow: 0 6px 20px rgba(0,0,0,.2); display: grid; gap: 8px; }
+.skog3d .s3-vaer .rad { display: flex; flex-wrap: wrap; gap: 5px; }
+.skog3d .s3-vaer button { border: 1.5px solid #d4ddd6; border-radius: 10px; padding: 7px 9px; font: 650 13px/1.1 'Schibsted Grotesk', system-ui, sans-serif; background: #fff; color: #10241c; cursor: pointer; }
+.skog3d .s3-vaer button[aria-pressed="true"] { background: #1f6b45; border-color: #1f6b45; color: #fff; }
+.skog3d .s3-vaer small { color: #43544b; }
+.skog3d .s3-vaerinfo { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: rgba(16,36,28,.78); color: #f1f6f2; border-radius: 12px; padding: 7px 12px; font-size: 13px; pointer-events: none; max-width: calc(100% - 28px); text-align: center; }
+@media (max-width: 760px) { .skog3d .s3-vaerinfo { top: auto; bottom: 130px; } }
 .skog3d .s3-framtid { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); display: flex; gap: 4px; align-items: center; background: rgba(251,252,250,.94); border-radius: 14px; padding: 5px; box-shadow: 0 6px 20px rgba(0,0,0,.18); max-width: calc(100% - 28px); flex-wrap: wrap; justify-content: center; }
 .skog3d .s3-framtid span { font-weight: 700; font-size: 13px; padding: 0 6px; }
 .skog3d .s3-framtid button { border: 0; border-radius: 10px; padding: 8px 11px; font: 700 13px/1.1 'Schibsted Grotesk', system-ui, sans-serif; background: transparent; color: #10241c; cursor: pointer; }
@@ -42,7 +53,15 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   if (!document.getElementById('skog3d-stil')) { const st = document.createElement('style'); st.id = 'skog3d-stil'; st.textContent = STIL; document.head.appendChild(st); }
   const rot = document.createElement('div'); rot.className = 'skog3d';
   rot.innerHTML = `<div class="s3-laster">Bygger skogen …</div><div class="s3-hud" id="s3hud"></div>
-    <div class="s3-knapper"><button type="button" class="vr" data-s3="vr" hidden>🥽 VR</button><button type="button" data-s3="lukk">Lukk ✕</button></div>
+    <div class="s3-knapper"><button type="button" class="vr" data-s3="vr" hidden>🥽 VR</button><button type="button" data-s3="vaer" aria-expanded="false">🌦 Vær</button><button type="button" data-s3="lukk">Lukk ✕</button></div>
+    <div class="s3-vaer" hidden>
+      <b>Vær i skogen</b>
+      <div class="rad" data-gruppe="vaer">${Object.entries(VAER_VALG).map(([k, v]) => `<button type="button" data-vaer="${k}" aria-pressed="${k === 'av'}">${v.ikon} ${v.navn}</button>`).join('')}</div>
+      <div class="rad" data-gruppe="tid">${Object.entries(TID_VALG).map(([k, v]) => `<button type="button" data-tid="${k}" aria-pressed="${k === 'naa'}">${v}</button>`).join('')}</div>
+      <div class="rad"><button type="button" data-lyd aria-pressed="false">🔊 Lyd av regn og vind</button></div>
+      <small data-vaerstatus>Dagens vær hentes fra MET (yr) for stedet, snødybden fra seNorge (NVE).</small>
+    </div>
+    <div class="s3-vaerinfo" hidden></div>
     <div class="s3-framtid" hidden><span>🔮 Framtidsskog</span><button type="button" data-fs="naa" aria-pressed="true">I dag</button><button type="button" data-fs="pleid" aria-pressed="false">Hogstmoden med ungskogpleie</button><button type="button" data-fs="upleid" aria-pressed="false">Hogstmoden uten pleie</button></div>
     <div class="s3-stikke" id="s3stikke"></div>
     <div class="s3-hjelp">Klikk i bildet og se med musa · W A S D / piltaster for å gå · Shift for å løpe · Esc slipper musa</div>`;
@@ -84,7 +103,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   rot.insertBefore(renderer.domElement, rot.firstChild);
   const scene = new THREE.Scene();
   const himmel = new THREE.Color(0x9cc3e6); scene.background = himmel; scene.fog = new THREE.Fog(himmel, 40, Math.max(120, R * 0.9));
-  scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x5d6b3a, 1.7)); scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+  const halvkule = new THREE.HemisphereLight(0xeaf4ff, 0x5d6b3a, 1.7); scene.add(halvkule); const omgivelse = new THREE.AmbientLight(0xffffff, 0.35); scene.add(omgivelse);
   const sol = new THREE.DirectionalLight(0xfff2d8, 1.3); sol.position.set(-60, 120, 40); scene.add(sol);
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2000);
   const dolly = new THREE.Group(); dolly.add(camera); scene.add(dolly);
@@ -124,6 +143,8 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   treLag.oppdater(0, 0, { tvang: true });
   // Bakkevegetasjon (feltsjiktet) rundt deg ut fra vegetasjonstypen (skog3d-bunn.js)
   let bunnLag = lagBunnLag(THREE, scene, flater, { hoyde, inn, grense: R, hinder });
+  // Vær (skog3d-vaer.js og skog3d-vaerlag.js): dagens vær fra MET og snødybde fra seNorge, eller faste værtyper.
+  const vaerLag = lagVaerLag(THREE, scene, { halvkule, omgivelse, sol, bakke, bunnLag: () => bunnLag });
   bunnLag.oppdater(0, 0, { tvang: true });
 
   // ---------- bevegelse ----------
@@ -131,7 +152,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   camera.position.set(0, OYEHOYDE, 0);
   let yaw = 0; let pitch = 0; const taster = new Set(); let stikke = null; let se = null;
   const lerret = renderer.domElement;
-  const tast = (e, ned) => { if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'].includes(e.code)) { if (ned) taster.add(e.code); else taster.delete(e.code); e.preventDefault(); } if (ned && e.code === 'Escape' && !document.pointerLockElement) lukk(); if (ned && e.code === 'KeyF' && !e.repeat) nesteFramtid(); };
+  const tast = (e, ned) => { if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'].includes(e.code)) { if (ned) taster.add(e.code); else taster.delete(e.code); e.preventDefault(); } if (ned && e.code === 'Escape' && !document.pointerLockElement) lukk(); if (ned && e.code === 'KeyF' && !e.repeat) nesteFramtid(); if (ned && e.code === 'KeyV' && !e.repeat) nesteVaer(); };
   const ned = (e) => tast(e, true); const opp = (e) => tast(e, false);
   const mus = (e) => { if (document.pointerLockElement !== lerret) return; yaw -= e.movementX * 0.0025; pitch = Math.max(-1.3, Math.min(1.3, pitch - e.movementY * 0.0025)); };
   window.addEventListener('keydown', ned); window.addEventListener('keyup', opp); document.addEventListener('mousemove', mus);
@@ -172,7 +193,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     treLag.dispose(); treLag = lagTreLag(THREE, scene, treData(ny.traer)); treLag.oppdater(dolly.position.x, dolly.position.z, { tvang: true, avstand: renderer.xr.isPresenting ? 45 : 60 });
     // Bakkevegetasjonen etter lyset i framtidsskogen
     const fl = flater.map((x) => (framtid && x.b?.id === framtid.bid ? { ...x, profil: vegProfil({ ...x.b, alder: framtid.f.alder, hogstklasse: 5, treantall: framtid.f.treantall, ungskog: null }, { inn }) } : x));
-    bunnLag.dispose(); bunnLag = lagBunnLag(THREE, scene, fl, { hoyde, inn, grense: R, hinder }); bunnLag.oppdater(dolly.position.x, -dolly.position.z, { tvang: true, radius: renderer.xr.isPresenting ? 25 : 35 });
+    bunnLag.dispose(); bunnLag = lagBunnLag(THREE, scene, fl, { hoyde, inn, grense: R, hinder }); bunnLag.oppdater(dolly.position.x, -dolly.position.z, { tvang: true, radius: renderer.xr.isPresenting ? 25 : 35 }); vaerLag.paaNytt();
     hudBid = null; oppdaterHud(dolly.position.x, -dolly.position.z); visFramtidValg();
     const f = framtid?.f;
     vrTavle(f ? [`Hogstmoden ${f.hogstAar} – ${scenario === 'pleid' ? 'med pleie' : 'uten pleie'}`, `${Math.round(f.volum)} m³/daa · nåverdi ${kr(f.nv)}/daa`, 'A: neste · B: i dag'] : ['I dag', 'A: vis framtidsskogen']);
@@ -210,7 +231,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   }
 
   // VR: venstre stikke går (i blikkretningen), høyre stikke snur 30°.
-  let snudd = false; let knappA = false; let knappB = false;
+  let snudd = false; let knappA = false; let knappB = false; let knappX = false; let knappY = false;
   function vrStyring(dt) {
     const okt = renderer.xr.getSession(); if (!okt) return;
     for (const kilde of okt.inputSources) {
@@ -221,6 +242,11 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
         const hoyre = new THREE.Vector3(-dir.z, 0, dir.x); const fart = (gp.buttons[0]?.pressed ? 4 : 1.5) * dt;
         dolly.position.addScaledVector(dir, -ay * fart).addScaledVector(hoyre, ax * fart);
       }
+      if (kilde.handedness === 'left') {
+        // X = neste værtype, Y = neste tid på døgnet
+        const x = !!gp.buttons[4]?.pressed; const yk = !!gp.buttons[5]?.pressed;
+        if (x && !knappX) nesteVaer(); if (yk && !knappY) nesteTid(); knappX = x; knappY = yk;
+      }
       if (kilde.handedness === 'right') {
         if (Math.abs(ax) > 0.7 && !snudd) { dolly.rotation.y -= Math.sign(ax) * (Math.PI / 6); snudd = true; } if (Math.abs(ax) < 0.3) snudd = false;
         // A = neste framtidsskog, B = tilbake til i dag
@@ -230,7 +256,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     }
   }
 
-  let sist = performance.now();
+  let sist = performance.now(); const kameraPos = new THREE.Vector3();
   renderer.setAnimationLoop((t) => {
     const dt = Math.min(0.1, (t - sist) / 1000); sist = t;
     const forrige = [dolly.position.x, dolly.position.z];
@@ -249,11 +275,51 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     if (iBygning(omg, dolly.position.x, -dolly.position.z)) { dolly.position.x = forrige[0]; dolly.position.z = forrige[1]; } // ikke gjennom vegger
     const x = dolly.position.x; const y = -dolly.position.z; dolly.position.y = hoyde(x, y);
     if (t - hudTid > 250) { hudTid = t; oppdaterHud(x, y); treLag.oppdater(dolly.position.x, dolly.position.z, { avstand: renderer.xr.isPresenting ? 45 : 60 }); bunnLag.oppdater(x, y, { radius: renderer.xr.isPresenting ? 25 : 35 }); }
+    camera.getWorldPosition(kameraPos); vaerLag.oppdater(dt, [kameraPos.x, kameraPos.y, kameraPos.z]);
     renderer.render(scene, camera);
   });
   laster?.remove();
   const a = omgLag.antall; const deler = [a.veier && `${a.veier} vei/sti`, a.bygg && `${a.bygg} bygg`, (a.bekker || a.innsjoer) && `${a.bekker + a.innsjoer} vann/bekk`, omg.ar5.length && 'markslag', a.grensemerker && 'eiendomsgrense'].filter(Boolean);
-  rot.querySelector('.s3-hjelp').textContent = `${skog.traer.length.toLocaleString('nb-NO')} trær i ${planBestand.length} bestand innenfor ${Math.round(R)} m${deler.length ? ` · ${deler.join(', ')}` : ''} · Klikk og se med musa · W A S D / piltaster · Shift for å løpe${ungIder.size ? ' · F: framtidsskog i ungskog' : ''}${matchMedia('(pointer: coarse)').matches ? ' · Venstre halvdel: gå · høyre: se rundt' : ''}`;
+  rot.querySelector('.s3-hjelp').textContent = `${skog.traer.length.toLocaleString('nb-NO')} trær i ${planBestand.length} bestand innenfor ${Math.round(R)} m${deler.length ? ` · ${deler.join(', ')}` : ''} · Klikk og se med musa · W A S D / piltaster · Shift for å løpe · V: vær${ungIder.size ? ' · F: framtidsskog i ungskog' : ''}${matchMedia('(pointer: coarse)').matches ? ' · Venstre halvdel: gå · høyre: se rundt' : ''}`;
+
+  // ---------- vær ----------
+  const [vLon, vLat] = utmTilGeo(skog.senter[0], skog.senter[1], 33);
+  const vaerPanel = rot.querySelector('.s3-vaer'); const vaerInfo = rot.querySelector('.s3-vaerinfo'); const vaerStatus = rot.querySelector('[data-vaerstatus]');
+  let vaerValg = 'av'; let tidValg = 'naa'; let dagensVaer = null; let lydValgt = false;
+  const hentDagens = () => (dagensVaer ||= hentVaer(skog.senter, { nveBase: `${SERVER_API}/api/nve` }).catch(() => null));
+  hentDagens(); // hentes i bakgrunnen, så valget går raskt
+  async function settVaer(valg = vaerValg, tid = tidValg) {
+    vaerValg = valg; tidValg = tid;
+    for (const k of rot.querySelectorAll('[data-vaer]')) k.setAttribute('aria-pressed', String(k.dataset.vaer === valg));
+    for (const k of rot.querySelectorAll('[data-tid]')) k.setAttribute('aria-pressed', String(k.dataset.tid === tid));
+    if (valg === 'av') { vaerLag.nullstill(); vaerInfo.hidden = true; vaerStatus.textContent = 'Standard lys og klart vær.'; vrTavle(['Vær: standard', 'X: neste vær · Y: tid på døgnet']); return; }
+    const tidspunkt = tidFor(tid, vLat, vLon);
+    let v;
+    if (valg === 'dagens') {
+      vaerStatus.textContent = 'Henter dagens vær fra MET …';
+      const d = await hentDagens();
+      if (vaerValg !== valg || tidValg !== tid) return; // brukeren har valgt noe annet i mellomtiden
+      if (!d?.raa) { vaerStatus.textContent = 'Fikk ikke kontakt med MET – viser overskyet vær i stedet.'; v = forhandsvaer('overskyet'); } else v = { ...tolkMet(d.raa, tidspunkt), snodybde: d.snodybde };
+    } else v = forhandsvaer(valg);
+    const sol = solposisjon(tidspunkt, vLat, vLon);
+    const sc = vaerScene(v, sol, { R }); vaerLag.sett(sc);
+    if (!lydValgt && valg !== 'av') { lydValgt = true; settLyd(true); } // første gang: slå på lyden (valget er et trykk)
+    const tekst = `${VAER_VALG[valg].ikon} ${valg === 'dagens' ? `MET ${new Date(v.tid || tidspunkt).toLocaleString('nb-NO', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}: ` : `${VAER_VALG[valg].navn}: `}${vaerTekst(v)} · ${sol.hoyde > 0 ? `sola ${Math.round(sol.hoyde)}° over horisonten` : sol.hoyde > -6 ? 'skumring' : 'natt – sola er under horisonten'}`;
+    vaerInfo.textContent = tekst; vaerInfo.hidden = false;
+    vaerStatus.textContent = valg === 'dagens' ? `Kilde: MET Locationforecast (yr) for ${vLat.toFixed(3)} N, ${vLon.toFixed(3)} Ø${v.snodybde != null ? ', snødybde fra seNorge (NVE)' : ''}. ${TID_VALG[tid]}.` : `${TID_VALG[tid]} · fast værtype`;
+    vrTavle([`${VAER_VALG[valg].ikon} ${VAER_VALG[valg].navn} · ${TID_VALG[tid]}`, vaerTekst(v), 'X: neste vær · Y: tid på døgnet']);
+  }
+  function settLyd(paa) { const p = vaerLag.lyd(paa); rot.querySelector('[data-lyd]').setAttribute('aria-pressed', String(p)); }
+  const VAER_REKKE = Object.keys(VAER_VALG); const TID_REKKE = Object.keys(TID_VALG);
+  const nesteVaer = () => settVaer(VAER_REKKE[(VAER_REKKE.indexOf(vaerValg) + 1) % VAER_REKKE.length], tidValg);
+  const nesteTid = () => settVaer(vaerValg === 'av' ? 'dagens' : vaerValg, TID_REKKE[(TID_REKKE.indexOf(tidValg) + 1) % TID_REKKE.length]);
+  rot.querySelector('[data-s3="vaer"]').onclick = (e) => { e.stopPropagation(); vaerPanel.hidden = !vaerPanel.hidden; e.currentTarget.setAttribute('aria-expanded', String(!vaerPanel.hidden)); };
+  vaerPanel.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const v = e.target.closest('[data-vaer]'); if (v) { settVaer(v.dataset.vaer, tidValg); return; }
+    const t = e.target.closest('[data-tid]'); if (t) { settVaer(vaerValg === 'av' ? 'dagens' : vaerValg, t.dataset.tid); return; }
+    if (e.target.closest('[data-lyd]')) { lydValgt = true; settLyd(!vaerLag.harLyd()); }
+  });
 
   // VR-knapp når nettleseren og brillene støtter det
   const vrKnapp = rot.querySelector('[data-s3="vr"]');
@@ -274,10 +340,10 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     renderer.setAnimationLoop(null); renderer.xr.getSession()?.end();
     window.removeEventListener('keydown', ned); window.removeEventListener('keyup', opp); document.removeEventListener('mousemove', mus); window.removeEventListener('resize', vindu);
     if (document.pointerLockElement) document.exitPointerLock();
-    treLag.dispose(); bunnLag.dispose(); omgLag.dispose(); tavleTekstur.dispose(); scene.traverse((o) => { o.material?.dispose?.(); }); bakke.dispose(); renderer.dispose(); rot.remove();
+    treLag.dispose(); bunnLag.dispose(); omgLag.dispose(); tavleTekstur.dispose(); vaerLag.dispose(); scene.traverse((o) => { o.material?.dispose?.(); }); bakke.dispose(); renderer.dispose(); rot.remove();
   }
   rot.querySelector('[data-s3="lukk"]').onclick = lukk;
-  const api = { lukk, framtid: (sc) => settFramtid(sc), gaaTil: (x2, y2, retning = yaw) => { dolly.position.set(x2, hoyde(x2, y2), -y2); yaw = retning; }, omg: () => omg, antall: skog.traer.length, planter: () => bunnLag.perType(), omgivelser: () => ({ ...omgLag.antall, ar5: omg.ar5.length, status: omg.status }), radius: R, posisjon: () => ({ x: dolly.position.x, y: -dolly.position.z }), hud: () => hud.textContent };
+  const api = { lukk, framtid: (sc) => settFramtid(sc), vaer: (valg, tid) => settVaer(valg, tid), vaerData: () => ({ valg: vaerValg, tid: tidValg, scene: vaerLag.aktiv(), partikler: vaerLag.antallPartikler(), lyd: vaerLag.harLyd() }), gaaTil: (x2, y2, retning = yaw) => { dolly.position.set(x2, hoyde(x2, y2), -y2); yaw = retning; }, omg: () => omg, antall: skog.traer.length, planter: () => bunnLag.perType(), omgivelser: () => ({ ...omgLag.antall, ar5: omg.ar5.length, status: omg.status }), radius: R, posisjon: () => ({ x: dolly.position.x, y: -dolly.position.z }), hud: () => hud.textContent };
   rot.skog3d = api; // for feilsøking og tester
   return api;
 }

@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.33.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.34.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -281,6 +281,21 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
 - **Med pleie:** hogst etter omløpstiden. Ca. 38 % av måltettheten står igjen ved hogst (50–110 trær/daa), med ca. 10 % lauv. Trærne er 25 % grovere enn normalt og har lange, brede kroner. Bakken får mer lys.
 - **Uten pleie:** hogst 5–8 år senere. Det står 130–260 trær/daa, og lauvandelen følger treantallsmodellen (40–70 % bar). Trærne er tynne, med korte og smale kroner, og 8 % lavere høyde. I tillegg kommer et undertrykt sjikt, og bakken får mindre lys.
 - **Høyden** ved hogst tas fra høydekurven (bonitet og alder). Bare det valgte bestandet endres. Resten av skogen er som i dag.
+
+**Vær i skogen (🌦 Vær):** Velg værtype og tid på døgnet. Du kan bytte med V på tastaturet, eller med X (neste vær) og Y (tid på døgnet) på venstre kontroller i VR. I brillene vises valget på tavla.
+- **Dagens vær:**
+  - Varselet hentes fra MET Locationforecast (det samme som yr) for stedet: temperatur, skydekke, regn, sludd, snø, torden, tåke og vind. Nærmeste time til valgt tid brukes.
+  - Snødybden hentes fra seNorge (NVE) gjennom serverens mellomledd `/api/nve`.
+  - Uten nett vises overskyet vær.
+- **Faste værtyper:** sol, overskyet, regn, snøvær (45 cm snø), tåke og tordenbyger.
+- **Tid:** nå, midt på dagen, kveld (når sola står 3° over horisonten) eller natt. Solens høyde og retning regnes ut for stedet og tidspunktet.
+- **Slik ser det ut** (`js/skog3d-vaer.js` for data og `js/skog3d-vaerlag.js` for effekter):
+  - **Himmel og lys:** Fargen følger skydekke, tid på døgnet (med kvelds- og morgenrødt) og natt. Sola står riktig og er svakere når det er skyet. Lyset dempes fra dagslys ned mot månelys.
+  - **Sikt:** Tåke og dis begrenser sikten, fra over 200 m i klarvær ned til 35 m i tett tåke. Regn og snø gir kortere sikt.
+  - **Nedbør:** Regn og sludd faller som striper, og snø som fnugg som daler og driver med vinden. Nedbøren følger deg i en boks på 34 × 34 m.
+  - **Torden:** Lynglimt med 6–20 sekunders mellomrom, og torden etter.
+  - **Snø på bakken:** Bakken blir hvit etter snødybden. Planter forsvinner under snøen: mose og lav ved 10 cm, lyng og bær ved 25 cm, gras, urter og bregner ved 45 cm.
+  - **Lyd:** Regn og vind (med vindkast) lages med støy i Web Audio, uten lydfiler. Lyden slås på første gang du velger vær og kan slås av.
 
 **Styring:**
 - **PC:** Klikk i bildet og se rundt med musa. Gå med W A S D eller piltastene, og hold Shift for å løpe.
