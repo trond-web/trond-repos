@@ -13,7 +13,7 @@ import { initOppdragFelt } from './oppdrag-felt.js';
 import { ledig as oppdragLedig } from './oppdrag.js';
 import { synligeTiltaksflater, treffVed, tiltakStil, tiltakNavn, tiltakLinje, tiltakDetaljer } from './treff.js';
 import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
-import { erUngskog, ungskogData, effektFor, settUngskog } from './ungskog.js';
+import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16 } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
@@ -185,7 +185,7 @@ function visBestand(id, { zoom = false } = {}) {
       <div class="tall"><b>${fmt(s.alder)}</b><span>år</span></div>
       <div class="tall"><b>${fmt(s.volumDaa, 1)}</b><span>m³/daa</span></div>
       <div class="tall"><b>${fmt(s.volumDaa * (b.areal || 0))}</b><span>m³ totalt</span></div>
-      <div class="tall"><b>${fmt(b.treantall)}</b><span>trær/daa</span></div>
+      ${fraSr16(b) && erUngskog(b, inn()) ? `<div class="tall"><b>${fmt(ungskogData(b, { inn: inn() }).treantallFor.verdi)}</b><span>trær/daa (modell)</span></div>` : `<div class="tall"><b>${fmt(b.treantall)}</b><span>trær/daa</span></div>`}
       <div class="tall"><b>${fmt(b.hoyde, 1)}</b><span>m høyde</span></div>
     </div>
     ${b.vegetasjon?.kode ? `<p class="hint">Vegetasjonstype ${esc(b.vegetasjon.kode)} ${esc(b.vegetasjon.navn || '')}</p>` : ''}

@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.17.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.18.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -78,6 +78,15 @@ For bestand i hogstklasse I og II viser bestandet (fullversjonen og SkogIQ Felt)
 - *registrert*: målte verdier skrevet inn i feltet (i Felt: «✎ Registrer målte verdier»). Tøm feltet for å gå tilbake til beregnet verdi.
 
 Registrert treantall og høyder brukes av tiltaksmotoren (behov for ungskogpleie, høyde om x år).
+
+**Treantall i ungskog og SR16.** SR16 teller bare trær som er over 5 cm i brysthøyde ([produktarket](https://nibio.no/tema/skog/kart-over-skogressurser/skogressurskart-sr16)). I hogstklasse II mangler derfor de fleste stammene, og på Flå 22/1 viste SR16 49–128 trær/daa. For bestand med treantall fra SR16 (`KILDE` inneholder «SR16») bruker appen derfor en treantallsmodell for alle stammer (`treantallModell` i `js/ungskog.js`). SR16-tallet brukes bare som nedre grense.
+
+Modellen:
+- **Bar:** plantet antall × 85 % overlevelse. Antallet er registrert plantetall eller tilrådd plantetall for bonitet. Furu på lav bonitet regnes som naturlig foryngelse, ca. 250 per daa.
+- **Lauv:** naturlig oppslag på 120–700 per daa etter bonitet, med mest på høy bonitet. Oppslaget bygges opp over de første ca. 6 årene.
+- **Selvtynning:** over ca. 6 m høyde (høydekurven) tas 8 % bort per meter, ned til halvparten.
+
+Modellen gir Flå 22/1 en median på ca. 205 trær/daa i HK II, mot ca. 70 i SR16. På G17–G23 gir den 400–700. Tiltaksmotoren, tetthetsklassen og effektberegningen bruker modellen, og bestandskortet viser «trær/daa (modell)». Takserte treantall og målte verdier i ungskogfeltene går alltid foran. Nivåene er anslag, så mål gjerne i felt.
 
 **Effekt av tiltaket** (ungskogpleie prioriteres, ellers planting i HK I) sammenligner tre alternativer med nåverdi per daa og for bestandet: *gjennomfør nå*, *utsett 5 år* og *ikke gjennomfør*. Nåverdien er hogstinntekt (rotnetto) og jordverdi etter hogst (Faustmann) minus kostnaden, med kalkulasjonsrenten fra Verdi.
 

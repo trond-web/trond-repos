@@ -27,6 +27,34 @@ export const erUngskog = (b, inn = STANDARD_INNSTILLINGER) => [1, 2].includes(hk
 const utfort = (b, type) => (b.tiltak || []).filter((t) => t.type === type && t.status === 'utfort').sort((x, y) => String(y.utfortDato || y.aar).localeCompare(String(x.utfortDato || x.aar)))[0] || null;
 const r1 = (v) => (v == null ? null : Math.round(v * 10) / 10);
 
+// Treantallet i bestandsdataene kommer fra SR16 (laserdata) – generatoren merker kilden. SR16 teller trær over 5 cm i
+// brysthøyde (produktarket for SR16), så i hogstklasse II mangler de fleste stammene.
+export const fraSr16 = (b) => b.treantall != null && /SR16/.test(String(b.ekstra?.KILDE || b.ekstra?.kilde || ''));
+
+// Modell for alle levende stammer per daa i ungskog før regulering (bar + lauv, også de tynne):
+//   bar:  plantet antall (registrert eller tilrådd plantetall) × 85 % overlevelse; furu på lav bonitet og lauvbestand
+//         forynges naturlig
+//   lauv: naturlig oppslag av bjørk, osp, rogn og selje – mer på høy bonitet (120–700 per daa), bygges opp de første
+//         ca. 6 årene
+//   selvtynning: over ca. 6 m høyde (høydekurven for bonitet og alder) dør undertrykte stammer (−8 % per meter, ned til
+//         halvparten)
+// Nivåene er anslag fra skogkulturveiledningene (150–250 trær/daa etter pleie, ofte to–fire ganger så mange før) – mål i felt.
+export function treantallModell(b, { plantet = undefined } = {}) {
+  const s = startTilstand(b); const ts = b.treslag || 'G'; const bo = s.h40 || 11; const alder = Math.max(0, s.alder || 0);
+  const p = plantet === undefined ? utfort(b, 'planting') : plantet;
+  const lauvBase = bo >= 23 ? 700 : bo >= 20 ? 550 : bo >= 17 ? 400 : bo >= 14 ? 280 : bo >= 11 ? 180 : 120;
+  let bar; let barTekst;
+  if (ts === 'L') { bar = 0; barTekst = ''; } else if (!p && alder < 2) { bar = 0; barTekst = 'ikke plantet ennå'; } else if (p?.plantetall) { bar = p.plantetall * 0.85; barTekst = `plantet ${p.plantetall}/daa × 85 %`; } else if (ts === 'F' && bo <= 14 && !p) { bar = 250; barTekst = 'naturlig furuforyngelse ca. 250/daa'; } else { const pt = plantetall(ts, bo).anbefalt; bar = pt * 0.85; barTekst = `tilrådd plantetall ${pt}/daa × 85 %`; }
+  const lauvFull = ts === 'L' ? lauvBase * 1.3 + 100 : lauvBase;
+  const opp = Math.min(1, Math.max(0.25, alder / 6));
+  const H = hoydeOm({ ...b, hoyde: null, ungskog: b.ungskog?.hoydeBar != null ? { hoydeBar: b.ungskog.hoydeBar } : undefined }, 0);
+  const tynn = H > 6 ? Math.max(0.5, 1 - (H - 6) * 0.08) : 1;
+  const lauv = lauvFull * opp;
+  const verdi = Math.round((bar + lauv) * tynn);
+  const deler = [barTekst, `ca. ${Math.round(lauv)} lauvtrær/daa (bonitet ${bo}${opp < 1 ? `, ${alder} år` : ''})`].filter(Boolean);
+  return { verdi, bar: Math.round(bar * tynn), lauv: Math.round(lauv * tynn), forklaring: `Modell: ${deler.join(' + ')}${tynn < 1 ? `, minus selvtynning ved ${String(Math.round(H * 10) / 10).replace('.', ',')} m (${Math.round((1 - tynn) * 100)} %)` : ''}` };
+}
+
 // Verdiene for ungskogfeltene: registrert (b.ungskog) eller beregnet fra dataene, med forklaring.
 export function ungskogData(b, { inn = STANDARD_INNSTILLINGER } = {}) {
   const u = b.ungskog || {}; const s = startTilstand(b); const ts = b.treslag || 'G'; const bo = s.h40;
@@ -34,18 +62,15 @@ export function ungskogData(b, { inn = STANDARD_INNSTILLINGER } = {}) {
   const reg = u.kilde === 'import' ? 'Fra importert skogbruksplan' : 'Registrert';
   const maal = maalTetthet(ts, bo);
   const v = (felt, verdi, kilde, forklaring) => ({ felt, verdi: verdi == null ? null : Math.round(verdi * (felt.startsWith('hoyde') ? 10 : 1)) / (felt.startsWith('hoyde') ? 10 : 1), kilde, forklaring });
-  // Treantall før regulering
+  // Treantall før regulering. SR16 teller bare trær over 5 cm i brysthøyde – i ungskog er det en nedre grense.
   let tf;
+  const sr = fraSr16(b);
   if (u.treantallFor != null) tf = v('treantallFor', u.treantallFor, 'registrert', reg);
-  else if (b.treantall != null && !pleid) tf = v('treantallFor', b.treantall, 'data', 'Treantall i bestandsdataene');
+  else if (b.treantall != null && !pleid && !sr) tf = v('treantallFor', b.treantall, 'data', 'Treantall i bestandsdataene (takst)');
   else {
-    const vekst = Math.min(1, Math.max(0.3, (s.alder || 1) / 8));
-    const lauvInn = (bo >= 17 ? 260 : bo >= 11 ? 180 : 110) * vekst;
-    if (ts === 'L') tf = v('treantallFor', 450 * vekst + 100, 'beregnet', 'Anslag for naturlig lauvforyngelse etter bonitet og alder');
-    else {
-      const planter = plantet?.plantetall ?? plantetall(ts, bo).anbefalt;
-      tf = v('treantallFor', planter * 0.85 + lauvInn, 'beregnet', `${plantet?.plantetall ? 'Plantet' : 'Tilrådd plantetall'} ${planter}/daa × 85 % overlevelse + ca. ${Math.round(lauvInn)} naturlige lauvtrær/daa`);
-    }
+    const m = treantallModell(b, { plantet });
+    const N = sr ? Math.max(m.verdi, b.treantall) : m.verdi;
+    tf = v('treantallFor', N, 'beregnet', `${m.forklaring}${sr ? `. SR16 viser ${Math.round(b.treantall)}/daa, men teller bare trær over 5 cm i brysthøyde` : ''}`);
   }
   // Treantall etter regulering
   let te;

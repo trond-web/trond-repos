@@ -44,7 +44,7 @@ import { KRAVPUNKTER } from './pefc.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
 import { nyttUtvalg, kanLageTiltak, kandidater as utvalgKandidater, bestandStatus, trykkBestand, brukFlate, settValgt, angre as angreUtvalg, harEndringer, rullTilbake, bekreft as bekreftUtvalg, oppsummer as oppsummerUtvalg } from './oppdrag-utvalg.js';
 import { mpTilUtm, mpTilGeo, fordelPaaBestand } from './sporlogg.js';
-import { erUngskog, ungskogData, effektFor, settUngskog } from './ungskog.js';
+import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16 } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
@@ -766,7 +766,7 @@ function visDetalj() {
       ${tetthetFeltHtml(b)}
       <label>Alder (år) <input name="alder" type="number" value="${b.alder ?? ''}"></label>
       <label>Volum (m³/daa) <input name="volumDaa" type="number" step="0.1" value="${b.volumDaa ?? ''}"></label>
-      <label>Treantall (per daa) <input name="treantall" type="number" value="${b.treantall ?? ''}"></label>
+      <label>Treantall (per daa) <input name="treantall" type="number" value="${b.treantall ?? ''}">${fraSr16(b) && erUngskog(b, inn()) ? `<span class="hint" style="font-weight:400">SR16 teller bare trær over 5 cm. Modell for alle stammer: ca. ${fmt(ungskogData(b, { inn: inn() }).treantallFor.verdi)}/daa (se Ungskog).</span>` : ''}</label>
       <label>Middelhøyde (m) <input name="hoyde" type="number" step="0.1" value="${b.hoyde ?? ''}"></label>
       <label>Vegetasjonstype <select name="vegetasjon"><option value="">–</option>${opsjoner([...new Set([...SKOGTYPER, b.vegetasjon?.kode].filter(Boolean))].map((k) => [k, `${k} ${VEG_TYPER[k]?.navn || b.vegetasjon?.navn || ''}`]), b.vegetasjon?.kode)}</select>${vegKildeHtml(b)}</label>
       <label class="avkrysning" style="flex-direction:row;align-items:center;margin-top:18px"><input type="checkbox" name="miljo" ${b.miljo ? 'checked' : ''}> Miljøfigur / nøkkelbiotop</label>

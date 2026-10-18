@@ -1412,5 +1412,26 @@ test('Tetthetsklasse: SOSI SP_HKL og SP_-felt, «2A»/«II b», beregning for HK
   assert.equal(TT.tetthetNavn(1, 'b'), 'ikke tilfredsstillende ryddet');
 });
 
+test('Ungskog: treantallsmodell for alle stammer – SR16 (bare trær over 5 cm) er bare en nedre grense', () => {
+  const sr = { id: 's', nr: '1-4', treslag: 'G', bonitet: 14, alder: 15, hogstklasse: 2, areal: 5, treantall: 92, tiltak: [], ekstra: { KILDE: 'Tidligere skogbruksplan (NIBIO) + SR16' } };
+  assert.ok(US.fraSr16(sr)); assert.ok(!US.fraSr16({ ...sr, ekstra: {} }));
+  const m = US.treantallModell(sr);
+  assert.ok(m.verdi > 350 && m.verdi < 500, `${m.verdi}`); assert.ok(m.lauv > m.bar);
+  const d = US.ungskogData(sr).treantallFor;
+  assert.equal(d.kilde, 'beregnet'); assert.equal(d.verdi, m.verdi); assert.match(d.forklaring, /SR16 viser 92\/daa/);
+  // Høyere bonitet gir mer lauv; høyere og eldre bestand gir selvtynning
+  assert.ok(US.treantallModell({ ...sr, bonitet: 23 }).verdi > m.verdi);
+  assert.ok(US.treantallModell({ ...sr, alder: 35 }).verdi < m.verdi);
+  // Takst (ikke SR16) brukes som den er
+  assert.equal(US.ungskogData({ ...sr, ekstra: {} }).treantallFor.verdi, 92);
+  // SR16 høyere enn modellen: SR16 brukes
+  assert.equal(US.ungskogData({ ...sr, treantall: 900 }).treantallFor.verdi, 900);
+  // Hogstflate uten planting: ingen bartrær
+  assert.match(US.treantallModell({ ...sr, alder: 0, hogstklasse: 1 }).forklaring, /ikke plantet/);
+  // Tiltaksmotoren ser bestandet som tett og foreslår ungskogpleie; tetthetsklassen bruker modellen
+  assert.ok(motorTiltak({ bestand: [sr] }, { iAar: 2026, balanser: false }).some((f) => f.type === 'ungskogpleie'));
+  assert.deepEqual([TT.tetthet(sr).klasse, TT.tetthet(sr).grunnlag], ['a', 'modell']);
+});
+
 await Promise.all(venter);
 console.log(`\n${ok} tester bestått`);

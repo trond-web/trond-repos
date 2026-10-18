@@ -2,6 +2,7 @@
 // Fokus: flatehogst, lukket hogst, tynning, planting, markberedning og ungskogpleie. Reglene bygger på forskrift,
 // forskning og fagråd (se KILDER). Ingen DOM – kan testes i Node.
 import { tetthet } from './tetthet.js';
+import { ungskogData } from './ungskog.js';
 import { STANDARD_INNSTILLINGER, startTilstand, laavesteHogstalder, beregnetHogstklasse, arligTilvekstDaa, hogstAndel, hogstNettoPerM3, tiltakKostnad, nyId, TILTAKSTYPER, hkGrenser } from './model.js';
 import { pefcAlder, avstand } from './pefc.js';
 import { bestandsverdi, STANDARD_VERDI } from './verdi.js';
@@ -200,8 +201,8 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
       const gjort = utfort(b, 'ungskogpleie').length;
       if (!gjort && !planlagt(b, ['ungskogpleie'])) {
         const maal = maalTetthet(ts, bo, storm);
-        // Registrert treantall før regulering (ungskogfeltene) går foran treantallet fra takst/SR16.
-        const tre = b.ungskog?.treantallFor ?? b.treantall;
+        // Registrert treantall før regulering går foran takst; SR16 (bare trær over 5 cm) erstattes av treantallsmodellen.
+        const tre = ungskogData(b).treantallFor.verdi;
         const tett = tre == null || tre > maal * 1.3;
         if (tett) {
           const om = h >= 1 ? 0 : aarTilHoyde(1.5, bo, s.alder);
