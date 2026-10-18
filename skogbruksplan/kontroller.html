@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="Trond Harald Sand">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkogIQ Kontroller</title>
+<meta name="description" content="SkogIQ på fjernkontrollen: droneoppdrag fra SkogIQ Felt kommer hit automatisk og importeres i DJI Pilot 2.">
+<meta name="theme-color" content="#10241c">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root { --bg: #10241c; --kort: #183428; --kort2: #21443a; --tekst: #f1f6f2; --dempet: #a9bdb1; --aksent: #7fd1a4; --lilla: #b38cff; --rosa: #ff3d7f; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--tekst); font: 17px/1.45 'Schibsted Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+header { display: flex; align-items: center; gap: 14px; padding: 14px 22px; border-bottom: 1px solid rgba(255,255,255,.08); }
+header .logo { font-size: 22px; font-weight: 800; } header .logo b { color: #ff6b8a; }
+header .tag { font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; background: #7b2ff7; border-radius: 99px; padding: 2px 9px; }
+header .status { margin-left: auto; color: var(--dempet); font-size: 14px; }
+header .status::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--aksent); margin-right: 7px; }
+header .status.av::before { background: #f0a14a; }
+main { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 22px; padding: 20px 22px 40px; max-width: 1400px; margin: 0 auto; }
+@media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+h1 { font-size: 24px; margin: 0 0 12px; } h2 { font-size: 15px; letter-spacing: .5px; text-transform: uppercase; color: var(--dempet); margin: 0 0 10px; }
+.kort { background: var(--kort); border-radius: 18px; padding: 18px 20px; }
+.kode { font: 800 64px/1 ui-monospace, 'SFMono-Regular', Menlo, monospace; letter-spacing: 10px; color: var(--aksent); margin: 10px 0; }
+.kode.liten { font-size: 30px; letter-spacing: 5px; margin: 4px 0; }
+.dempet { color: var(--dempet); font-size: 15px; }
+ol { padding-left: 22px; margin: 8px 0; } li { margin: 6px 0; }
+.oppdrag { display: grid; gap: 12px; }
+.o { background: var(--kort); border-radius: 18px; padding: 16px 18px; border: 2px solid transparent; }
+.o.ny { border-color: var(--lilla); }
+.o .tittel { display: flex; gap: 10px; align-items: baseline; font-size: 21px; font-weight: 700; }
+.o .merke { font-size: 12px; font-weight: 700; border-radius: 99px; padding: 2px 9px; background: var(--kort2); color: var(--dempet); }
+.o .merke.ny { background: var(--lilla); color: #1b0a33; } .o .merke.flydd { background: var(--aksent); color: #0c2a1c; }
+.tall { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 8px 0 12px; color: var(--dempet); font-size: 15px; } .tall b { color: var(--tekst); font-size: 18px; }
+.knapper { display: flex; flex-wrap: wrap; gap: 10px; }
+.knapp { appearance: none; border: 0; border-radius: 14px; padding: 16px 22px; font-family: inherit; font-weight: 700; font-size: 18px; line-height: 1; background: var(--kort2); color: var(--tekst); text-decoration: none; display: inline-flex; align-items: center; gap: 8px; min-height: 56px; cursor: pointer; }
+.knapp.primar { background: var(--aksent); color: #0c2a1c; } .knapp.fare { background: transparent; color: #ff9aa9; }
+.steg { margin-top: 12px; padding: 12px 14px; background: rgba(127, 209, 164, .1); border-radius: 12px; font-size: 16px; }
+.tom { color: var(--dempet); padding: 30px 10px; text-align: center; font-size: 18px; }
+</style>
+</head>
+<body>
+<header><span class="logo">Skog<b>IQ</b></span><span class="tag">Kontroller · beta</span><span class="status" id="status">Kobler til …</span></header>
+<main>
+  <section>
+    <h1>Droneoppdrag</h1>
+    <div class="oppdrag" id="liste"><div class="tom">Henter …</div></div>
+  </section>
+  <aside class="kort" id="kobling"></aside>
+</main>
+<script type="module" src="js/kontroller.js"></script>
+</body>
+</html>

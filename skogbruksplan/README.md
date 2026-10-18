@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.23.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.24.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -216,6 +216,17 @@ Feltappen lager flyruter for ortofoto som åpnes i **DJI Pilot 2**. Logikken lig
    - **Del:** «Del …» bruker telefonens delingsmeny.
 5. **I DJI Pilot 2:** Velg **Ruter → Importer rute**, kontroller ruten og trykk **Start**. Enklest er å åpne SkogIQ Felt i nettleseren på fjernkontrollen (RC Plus / RC Pro Enterprise). Du kan også overføre filen med USB, minnekort eller FlightHub 2.
 6. Til slutt merker du oppdraget som flydd. Ortofotoet lages i DJI Terra, Pix4D, Metashape eller WebODM. Opplasting til SkogIQ kommer senere.
+
+**Send til kontrolleren (uten kabel):**
+- **Koble til én gang:** Åpne **/k** (`kontroller.html`) i nettleseren på DJI-fjernkontrolleren (RC Plus / RC Pro Enterprise, Android). Siden viser en kode på 6 tegn. Skriv koden inn i SkogIQ Felt på telefonen under «Start oppdraget → Send til kontrolleren». Kontrolleren husker koblingen, så neste gang trykker du bare **📡 Send til kontrolleren**.
+- **Mottak:** Kontrollersiden henter nye oppdrag hvert 5. sekund og viser areal, høyde, GSD, flytid, batterier og bilder. Trykk **⬇ Last ned rute**. Deretter velger du i DJI Pilot 2 **Ruter → Importer rute → Nedlastinger**.
+- **Status tilbake:** «Importert» og «Flydd» på kontrolleren vises på telefonen, og «Flydd» merker oppdraget i SkogIQ.
+- **Teknisk:** Serveren (`kontroller-relay.js`) er et mellomlager for overføring:
+  - Kontrolleren identifiseres med en hemmelig id på 128 bit. Koden gjelder i 15 minutter og kan brukes én gang.
+  - En rute kan være opptil 3 MB, og hver kontroller kan ha 30 oppdrag. Oppdrag slettes etter 14 dager.
+  - Data ligger i minnet, eller i fil når `KONTROLLER_FIL` er satt. Starter serveren på nytt uten fil, må kontrolleren kobles til på nytt.
+  - API: `POST /api/kontroller`, `POST /api/kobling`, `GET|POST /api/kontroller/{id}/oppdrag`, `GET …/{oid}.kmz`, `POST …/{oid}/status`, `DELETE …/{oid}`. CORS er åpnet for Railway-domenet, GitHub Pages og localhost.
+- **Planlagt app på kontrolleren:** En egen Android-app med DJI Mobile SDK v5 kan laste ruten rett inn i dronen og starte med ett trykk. Det krever en app-nøkkel fra DJI-utviklerkontoen og må testes på drone. Appen kan bruke det samme API-et.
 
 **Støttede droner** (kodene fra WPML): Mavic 3 Enterprise, Multispectral og Thermal, Matrice 3D, M30 og M350 RTK med H20. Kameraparametrene (sensor, oppløsning, brennvidde) ligger i `DRONER`. Zenmuse P1/L2 og Matrice 4E mangler i WPML-dokumentasjonen og er ikke med ennå.
 
