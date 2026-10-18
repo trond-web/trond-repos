@@ -45,6 +45,7 @@ import * as TT from '../js/tetthet.js';
 import * as DR from '../js/drone.js';
 import * as SK from '../js/skog3d-data.js';
 import * as SV from '../js/skog3d-veg.js';
+import * as SO from '../js/skog3d-omgivelser.js';
 import { lagRelay, KODE_GYLDIG_MS } from '../kontroller-relay.js';
 import { tolkTetthet, alderFraHoyde, startTilstand as startT2, hogstklasseFor, foryngelse, vurderLiteVolum, rettFeilHogd, minForyngelse } from '../js/model.js';
 import { ungskogHtml, effektHtml } from '../js/effekt-html.js';
@@ -1605,6 +1606,50 @@ test('Virtuell skog: bakkevegetasjon etter vegetasjonstypen', () => {
   const forventet = blab.elementer.reduce((s, e) => s + e.tetthet, 0) * 25;
   assert.ok(Math.abs(r1.length - forventet) <= forventet * 0.1 + 3, `${r1.length} vs ${forventet}`);
   assert.notDeepEqual(SV.vegRute(15, 20, 5, blab, 'v').map((p) => p.x - 5), r1.map((p) => p.x));
+});
+
+test('Virtuell skog: omgivelser – bygninger, stier, veier, hindre og skog utenfor planen', async () => {
+  const { tilGeoPunkt } = await import('../js/flate-geometri.js');
+  // Matrikkelen bygningspunkt (GML) og turrutebasen
+  const byggXml = `<wfs:FeatureCollection><wfs:member><app:Bygning><app:bygningsnummer>1</app:bygningsnummer><app:bygningsstatus>TB</app:bygningsstatus><app:bygningstype>111</app:bygningstype><gml:Point><gml:pos>60.2 11.0</gml:pos></gml:Point></app:Bygning></wfs:member>
+    <wfs:member><app:Bygning><app:bygningsnummer>2</app:bygningsnummer><app:bygningsstatus>RA</app:bygningsstatus><app:bygningstype>241</app:bygningstype><gml:Point><gml:pos>60.21 11.01</gml:pos></gml:Point></app:Bygning></wfs:member></wfs:FeatureCollection>`;
+  const bygg = SO.parseBygninger(byggXml);
+  assert.equal(bygg.length, 1); assert.deepEqual([bygg[0].lon, bygg[0].lat, bygg[0].type], [11, 60.2, 111]); // rammetillatelse (RA) er ikke bygd
+  const ruter = SO.parseRuter('<wfs:member><app:Fotrute><app:ruteFølger>TR</app:ruteFølger><gml:posList>60.1 11.1 60.2 11.2</gml:posList></app:Fotrute></wfs:member>');
+  assert.deepEqual(ruter[0], { linje: [[11.1, 60.1], [11.2, 60.2]], folger: 'TR', navn: null });
+  const nv = SO.parseNvdbVeier([{ type: 'HOVED', topologinivå: 'Vegtrase', typeVeg: 'Enkel bilveg', geometri: { wkt: 'LINESTRING Z (100 200 5, 110 210 6)' }, vegsystemreferanse: { vegsystem: { vegkategori: 'F' } }, adresse: { navn: 'Testvegen' } }, { type: 'HOVED', topologinivå: 'Kjørebane', geometri: { wkt: 'LINESTRING (0 0, 1 1)' } }]);
+  assert.equal(nv.length, 1); assert.deepEqual(nv[0].linje, [[100, 200], [110, 210]]); assert.equal(nv[0].navn, 'Testvegen');
+  assert.equal(SO.veiProfil({ kat: 'F' }).flate, 'asfalt'); assert.equal(SO.veiProfil({ kat: 'P' }).flate, 'grus'); assert.equal(SO.veiProfil({ klasse: 7 }).flate, 'traktor');
+  // Bygningsmal etter type, fast for samme nummer
+  assert.equal(SO.byggMal(111, 'a').navn, 'Bolig'); assert.equal(SO.byggMal(241, 'a').navn, 'Driftsbygning (låve/fjøs)'); assert.equal(SO.byggMal(161, 'a').navn, 'Fritidsbolig');
+  assert.deepEqual(SO.byggMal(111, 'x'), SO.byggMal(111, 'x')); assert.ok(SO.byggMal(241, 'x').l > SO.byggMal(181, 'x').l);
+  // Hindre: vei, sti, bekk, bygning og innsjø
+  const omg = { veier: [{ linje: [[-50, 0], [50, 0]], bredde: 4, flate: 'grus' }, { linje: [[0, 20], [0, 60]], bredde: 0.7, flate: 'sti' }], bekker: [{ linje: [[-50, -30], [50, -30]], bredde: 1.4 }], innsjoer: [{ mp: [[[[60, 60], [90, 60], [90, 90], [60, 90], [60, 60]]]] }], bygg: [{ x: 30, y: 30, rot: 0, mal: { l: 10, b: 8 } }] };
+  const h = SO.lagHinder(omg);
+  assert.equal(h(10, 1), 'vei'); assert.equal(h(10, 5), null); assert.equal(h(0.2, 40), 'sti'); assert.equal(h(0, -30.3), 'vann'); assert.equal(h(75, 75), 'vann'); assert.equal(h(30, 31), 'bygg'); assert.equal(h(-40, 40), null);
+  assert.ok(SO.iBygning(omg, 33, 31)); assert.equal(SO.iBygning(omg, 36, 31), null);
+  assert.equal(SO.avstandTilLinje(5, 3, [[0, 0], [10, 0]]), 3);
+  const opp = SO.lagOppslag([{ id: 'a', mp: [[[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]]] }]); assert.equal(opp(5, 5).id, 'a'); assert.equal(opp(15, 5), null);
+  // Skog utenfor planen fra AR5, og at planens bestand går foran
+  const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => tilGeoPunkt([x, y]));
+  const plan = { id: 'p', nr: '1', treslag: 'G', bonitet: 14, alder: 70, hogstklasse: 4, treantall: 100, hoyde: 18, areal: 10, tiltak: [], geometri: { type: 'Polygon', coordinates: [ring(600000, 6700000, 600100, 6700100)] } };
+  const nabo = SO.naboBestand({ ar5: [{ id: 9, kategori: 'produktiv', treslag: 'L', bonitet: 14, beskrivelse: 'Skog', geometri: { type: 'Polygon', coordinates: [ring(599900, 6699900, 600200, 6700200)] } }, { id: 8, kategori: 'jordbruk', geometri: { type: 'Polygon', coordinates: [ring(0, 0, 1, 1)] } }] });
+  assert.equal(nabo.length, 1); assert.ok(nabo[0].nabo && nabo[0].treslag === 'L');
+  const start = tilGeoPunkt([600050, 6700050]);
+  const skog = SK.lagSkog({ bestand: [plan, ...nabo] }, { start, radius: 140, fri: (x, y) => Math.abs(y) > 3 });
+  const iPlan = (t) => Math.abs(t.x) < 50 && Math.abs(t.y) < 50;
+  assert.ok(skog.traer.filter((t) => t.bid === 'ar5-9').every((t) => !iPlan(t))); // nabotrær bare utenfor planen
+  assert.ok(skog.traer.some((t) => t.bid === 'ar5-9') && skog.traer.some((t) => t.bid === 'p'));
+  assert.ok(skog.traer.every((t) => Math.abs(t.y) > 3)); // ingen trær der fri() sier nei (vei)
+  assert.equal(SV.markProfil('jordbruk').beskrivelse, 'eng og beite'); assert.equal(SV.markProfil('produktiv'), null);
+  // Henting: hver kilde kan feile alene
+  const svar = (u) => (u.includes('bygningspunkt') ? byggXml : u.includes('turogfriluft') ? '' : u.includes('Elvenett') ? JSON.stringify({ features: [{ geometry: { type: 'LineString', coordinates: [[10.0, 60.0], [10.001, 60.0]] }, properties: { elvenavn: null } }] }) : u.includes('Innsjo') ? JSON.stringify({ features: [] }) : null);
+  const hent = async (u) => { const t = svar(u); if (t == null) { const f = new Error('nede'); f.status = 503; throw f; } return { ok: true, text: async () => t, json: async () => JSON.parse(t) }; };
+  const senter = [586000, 6655000];
+  const o = await SO.hentOmgivelser(senter, 200, { hent, maksTid: 3000, S: { eiendom: { grense: { type: 'Polygon', coordinates: [ring(585900, 6654900, 586100, 6655100)] } } } });
+  assert.equal(o.status.veier, 'feil'); assert.equal(o.status.markslag, 'feil'); assert.equal(o.status.bygninger, 1);
+  assert.equal(o.grense.length, 1); assert.ok(Math.abs(o.grense[0][0][0] + 100) < 0.5);
+  assert.ok(SO.terrengOppløsning(250) > 10 && SO.terrengOppløsning(250) <= 41);
 });
 
 await Promise.all(venter);
