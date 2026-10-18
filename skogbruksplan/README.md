@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.14.0** (2026-10-13) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.15.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -68,6 +68,24 @@ Store eiendommer støttes:
 - **Rask geometri:** polygonklipping gjøres med `polygon-clipping`, med Turf som reserve.
 - **Delte bestand:** bestand som NIBIO har lagret som flere flater med samme nummer, slås sammen. Har delene ulike data, får de bokstav etter nummeret (f.eks. 1-45a og 1-45b).
 - **Eksempel:** Flå 22/1 (12 teiger, 11 455 daa) gir 563 bestand på 9 822 daa skog.
+
+## Ungskog (HK I–II) og effekt av tiltak
+
+For bestand i hogstklasse I og II viser bestandet (fullversjonen og SkogIQ Felt) fire felt: **treantall før regulering**, **treantall etter regulering**, **høyde bar** og **høyde lauv**. Tomme felt viser en beregnet verdi med kilde:
+
+- *fra data*: treantall/middelhøyde i bestandsdataene.
+- *beregnet*: plantetall × 85 % overlevelse + naturlige lauvtrær (etter bonitet og alder), høydekurve for bonitet og alder, lauv × 1,5 (under 10 år) / 1,25 (under 20 år) av barhøyden, og målet for ungskogpleie etter utført pleie.
+- *registrert*: målte verdier skrevet inn i feltet (i Felt: «✎ Registrer målte verdier»). Tøm feltet for å gå tilbake til beregnet verdi.
+
+Registrert treantall og høyder brukes av tiltaksmotoren (behov for ungskogpleie, høyde om x år).
+
+**Effekt av tiltaket** (ungskogpleie prioriteres, ellers planting i HK I) sammenligner tre alternativer med nåverdi per daa og for bestandet: *gjennomfør nå*, *utsett 5 år* og *ikke gjennomfør*. Nåverdien er hogstinntekt (rotnetto) og jordverdi etter hogst (Faustmann) minus kostnaden, med kalkulasjonsrenten fra Verdi.
+
+- Uten ungskogpleie: 10–35 % lavere barvolum (mer når bestandet er tett eller lauvet er høyere enn baret), 8 % lavere pris og hogst 5 år senere.
+- Utsatt pleie: 40 % av tapet, og høyere kostnad fordi trærne er høyere.
+- Naturlig foryngelse i stedet for planting: 5–10 år senere etablering, 20–35 % lavere produksjon, lavere pris og forventet suppleringsplanting.
+
+Kortet viser også andre effekter (riktig høydefase, lauv som skygger, stabilitet, PEFC-hensyn) og en knapp for å legge tiltaket i planen. Tallene er anslag. Logikken ligger i `js/ungskog.js` og visningen i `js/effekt-html.js`.
 
 ## Endre og slette tiltak
 

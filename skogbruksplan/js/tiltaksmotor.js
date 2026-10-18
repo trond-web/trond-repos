@@ -59,8 +59,10 @@ const modellH = (alder, h40) => (alder <= 0 ? 0 : Math.min(1.6, (alder / 40) ** 
 export function hoydeOm(b, aar) {
   const s = startTilstand(b);
   const naa = modellH(s.alder, s.h40);
-  const f = b.hoyde && naa > 0.5 ? b.hoyde / naa : 1;
-  return (b.hoyde && aar === 0) ? b.hoyde : modellH(s.alder + aar, s.h40) * f;
+  // Registrert høyde for hovedtreslaget i ungskogfeltene går foran middelhøyden.
+  const reg = ((b.treslag || 'G') === 'L' ? b.ungskog?.hoydeLauv : b.ungskog?.hoydeBar) ?? b.hoyde;
+  const f = reg && naa > 0.5 ? reg / naa : 1;
+  return (reg && aar === 0) ? reg : modellH(s.alder + aar, s.h40) * f;
 }
 // År til bestandet når høyde H (fra en gitt alder; brukes også for ny generasjon fra alder 0).
 export function aarTilHoyde(H, h40, fraAlder = 0) { for (let a = fraAlder; a < fraAlder + 120; a++) if (modellH(a, h40) >= H) return a - fraAlder; return 120; }
@@ -197,11 +199,13 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
       const gjort = utfort(b, 'ungskogpleie').length;
       if (!gjort && !planlagt(b, ['ungskogpleie'])) {
         const maal = maalTetthet(ts, bo, storm);
-        const tett = b.treantall == null || b.treantall > maal * 1.3;
+        // Registrert treantall før regulering (ungskogfeltene) går foran treantallet fra takst/SR16.
+        const tre = b.ungskog?.treantallFor ?? b.treantall;
+        const tett = tre == null || tre > maal * 1.3;
         if (tett) {
           const om = h >= 1 ? 0 : aarTilHoyde(1.5, bo, s.alder);
           const sen = h > 6;
-          legg(b, 'ungskogpleie', iAar + om, sen ? 1 : 2, `Ungskogpleie ned til ca. ${maal} trær/daa${b.treantall ? ` (nå ${b.treantall})` : ''}`, `${sen ? 'Bestandet er over 6 m – ungskogpleie haster for å unngå tynne, ustabile trær. ' : `Høyde ca. ${h.toFixed(1)} m – riktig fase for ungskogpleie (1–5 m). `}Målt treantall ${storm ? '100–140 trær/daa fordi bestandet er stormutsatt' : '150–250 trær/daa'} gir stabile trær med god diametertilvekst; behold ca. 10 % lauv.`, storm ? ['ungskogpleie', 'storm'] : ['ungskogpleie'], { regel: 'ungskogpleie', maalTetthet: maal });
+          legg(b, 'ungskogpleie', iAar + om, sen ? 1 : 2, `Ungskogpleie ned til ca. ${maal} trær/daa${tre ? ` (nå ${tre})` : ''}`, `${sen ? 'Bestandet er over 6 m – ungskogpleie haster for å unngå tynne, ustabile trær. ' : `Høyde ca. ${h.toFixed(1)} m – riktig fase for ungskogpleie (1–5 m). `}Målt treantall ${storm ? '100–140 trær/daa fordi bestandet er stormutsatt' : '150–250 trær/daa'} gir stabile trær med god diametertilvekst; behold ca. 10 % lauv.`, storm ? ['ungskogpleie', 'storm'] : ['ungskogpleie'], { regel: 'ungskogpleie', maalTetthet: maal });
         }
       }
     }
@@ -294,7 +298,7 @@ export function oppsummer(forslag, S) {
 // Signatur over det som påvirker tiltakene. Når den endres etter at motoren har kjørt, foreslås nye tiltak.
 export function signatur(b) {
   const s = startTilstand(b);
-  return JSON.stringify([b.treslag, b.bonitet, Math.round(s.alder / 3), Math.round(s.volumDaa), b.treantall, b.hoyde ? Math.round(b.hoyde) : null, b.hogstklasse, Math.round((b.areal || 0) * 2), !!b.miljo,
+  return JSON.stringify([b.treslag, b.bonitet, Math.round(s.alder / 3), Math.round(s.volumDaa), b.ungskog?.treantallFor ?? b.treantall, b.hoyde ? Math.round(b.hoyde) : null, b.hogstklasse, Math.round((b.areal || 0) * 2), !!b.miljo,
     (b.tiltak || []).filter((t) => t.status === 'utfort').map((t) => `${t.type}:${t.aar}`).sort().join(',')]);
 }
 export function merkKjort(b, prinsipp) { b.motor = { signatur: signatur(b), kjort: new Date().toISOString().slice(0, 10), prinsipp, versjon: MOTOR_VERSJON }; }
