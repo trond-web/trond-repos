@@ -1652,5 +1652,27 @@ test('Virtuell skog: omgivelser – bygninger, stier, veier, hindre og skog uten
   assert.ok(SO.terrengOppløsning(250) > 10 && SO.terrengOppløsning(250) <= 41);
 });
 
+test('Virtuell skog: framtidsskog i ungskog – hogstmoden med og uten ungskogpleie', () => {
+  const ung = { id: 'u', nr: 'U', treslag: 'G', bonitet: 17, alder: 12, hogstklasse: 2, areal: 4, tiltak: [], ungskog: { treantallFor: 600, hoydeBar: 3, hoydeLauv: 4 } };
+  const med = SK.framtidsskog(ung, 'pleid', { iAar: 2026 }); const uten = SK.framtidsskog(ung, 'upleid', { iAar: 2026 });
+  const N = (f) => f.arter.reduce((s, a) => s + a.N, 0); const lauv = (f) => f.arter.filter((a) => a.art === 'L').reduce((s, a) => s + a.N, 0) / N(f);
+  assert.equal(med.hk, 5); assert.ok(med.hogstAar < uten.hogstAar); // hogst senere uten pleie
+  assert.ok(med.volum > uten.volum && med.nv > uten.nv);
+  assert.ok(N(med) < N(uten)); assert.ok(lauv(med) <= 0.2 && lauv(uten) > lauv(med));
+  assert.ok(med.arter[0].tykkelse > 1 && uten.arter[0].tykkelse < 1); // grove mot tynne trær
+  assert.ok(med.arter[0].kroneStart < uten.arter[0].kroneStart && med.arter[0].kroneBredde > uten.arter[0].kroneBredde);
+  assert.ok(med.hoyde > 15 && med.hoyde < 30);
+  // lagSkog med overstyring bytter bare trærne i det ene bestandet
+  const b2 = { id: 'n', nr: 'N', treslag: 'G', bonitet: 14, alder: 70, hogstklasse: 4, treantall: 100, hoyde: 18, areal: 4, tiltak: [] };
+  const geo = (x0) => ({ type: 'Polygon', coordinates: [[[x0, 0], [x0 + 100, 0], [x0 + 100, 100], [x0, 100], [x0, 0]].map(([x, y]) => SK.terrengPunkter([600000 + x + 50, 6700000 + y + 50], 50, 2)[0])] });
+  const S2 = { bestand: [{ ...ung, geometri: geo(0) }, { ...b2, geometri: geo(100) }] };
+  const start = SK.terrengPunkter([600150, 6700100], 50, 2)[0];
+  const idag = SK.lagSkog(S2, { start, radius: 200 }); const fram = SK.lagSkog(S2, { start, radius: 200, overstyr: { u: med } });
+  const hU = (x) => x.traer.filter((t) => t.bid === 'u'); const snitt = (l) => l.reduce((s, t) => s + t.h, 0) / l.length;
+  assert.ok(snitt(hU(fram)) > snitt(hU(idag)) * 3); // hogstmoden mot ungskog
+  assert.equal(fram.traer.filter((t) => t.bid === 'n').length, idag.traer.filter((t) => t.bid === 'n').length);
+  assert.equal(fram.bestand.find((x) => x.b.id === 'u').hk, 5);
+});
+
 await Promise.all(venter);
 console.log(`\n${ok} tester bestått`);

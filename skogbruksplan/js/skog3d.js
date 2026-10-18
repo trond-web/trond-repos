@@ -3,7 +3,8 @@
 // stier, bekker, vann, bygninger, markslag og eiendomsgrensen hentes fra åpne kilder (skog3d-omgivelser.js).
 // Styring: mus + WASD/piltaster (Shift = løpe), berøring (venstre halvdel går, høyre ser), og i VR venstre
 // stikke = gå, høyre stikke = snu 30°. Three.js lastes fra unpkg første gang visningen åpnes.
-import { lagSkog, terrengPunkter, lagTerreng, iPolygon } from './skog3d-data.js';
+import { lagSkog, terrengPunkter, lagTerreng, iPolygon, framtidsskog, MAKS_TRAER } from './skog3d-data.js';
+import { STANDARD_VERDI } from './verdi.js';
 import { hentOmgivelser, naboBestand, lagHinder, lagOppslag, hentHoyder, terrengOppløsning, iBygning } from './skog3d-omgivelser.js';
 import { lagOmgivelserLag } from './skog3d-objekter.js';
 import { MARKSLAG } from './markslag.js';
@@ -25,6 +26,12 @@ const STIL = `
 .skog3d .s3-knapper { position: absolute; right: 14px; top: 14px; display: flex; gap: 8px; }
 .skog3d .s3-knapper button { border: 0; border-radius: 12px; padding: 10px 14px; font: 700 14px/1 inherit; background: #fbfcfa; color: #10241c; box-shadow: 0 4px 14px rgba(0,0,0,.2); cursor: pointer; }
 .skog3d .s3-knapper .vr { background: #7b2ff7; color: #fff; }
+.skog3d .s3-framtid { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); display: flex; gap: 4px; align-items: center; background: rgba(251,252,250,.94); border-radius: 14px; padding: 5px; box-shadow: 0 6px 20px rgba(0,0,0,.18); max-width: calc(100% - 28px); flex-wrap: wrap; justify-content: center; }
+.skog3d .s3-framtid span { font-weight: 700; font-size: 13px; padding: 0 6px; }
+.skog3d .s3-framtid button { border: 0; border-radius: 10px; padding: 8px 11px; font: 700 13px/1.1 'Schibsted Grotesk', system-ui, sans-serif; background: transparent; color: #10241c; cursor: pointer; }
+.skog3d .s3-framtid button[aria-pressed="true"] { background: #1f6b45; color: #fff; }
+.skog3d .s3-framtid button:disabled { opacity: .5; cursor: progress; }
+@media (max-width: 760px) { .skog3d .s3-framtid { bottom: 84px; } }
 .skog3d .s3-hjelp { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: rgba(16,36,28,.82); color: #f1f6f2; border-radius: 12px; padding: 8px 14px; font-size: 13px; text-align: center; pointer-events: none; max-width: calc(100% - 28px); }
 .skog3d .s3-laster { position: absolute; inset: 0; display: grid; place-items: center; font-size: 18px; font-weight: 700; color: #10241c; background: rgba(156,195,230,.85); }
 .skog3d .s3-stikke { position: absolute; left: 24px; bottom: 70px; width: 110px; height: 110px; border-radius: 50%; background: rgba(255,255,255,.25); border: 2px solid rgba(255,255,255,.6); display: none; }
@@ -36,6 +43,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   const rot = document.createElement('div'); rot.className = 'skog3d';
   rot.innerHTML = `<div class="s3-laster">Bygger skogen …</div><div class="s3-hud" id="s3hud"></div>
     <div class="s3-knapper"><button type="button" class="vr" data-s3="vr" hidden>🥽 VR</button><button type="button" data-s3="lukk">Lukk ✕</button></div>
+    <div class="s3-framtid" hidden><span>🔮 Framtidsskog</span><button type="button" data-fs="naa" aria-pressed="true">I dag</button><button type="button" data-fs="pleid" aria-pressed="false">Hogstmoden med ungskogpleie</button><button type="button" data-fs="upleid" aria-pressed="false">Hogstmoden uten pleie</button></div>
     <div class="s3-stikke" id="s3stikke"></div>
     <div class="s3-hjelp">Klikk i bildet og se med musa · W A S D / piltaster for å gå · Shift for å løpe · Esc slipper musa</div>`;
   document.body.appendChild(rot);
@@ -60,7 +68,8 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   vis('Bygger skogen …');
   const hinder = lagHinder(omg);
   // Trærne: planens bestand + skog utenfor planen (AR5), ikke på veier, i vann eller ved bygninger (stier får 1 m klaring).
-  const skog = lagSkog({ ...S, bestand: [...S.bestand, ...naboBestand(omg)] }, { start, inn, radius: R, fri: (x, y) => !hinder(x, y) });
+  const alleBestand = { ...S, bestand: [...S.bestand, ...naboBestand(omg)] }; const fri = (x, y) => !hinder(x, y);
+  const skog = lagSkog(alleBestand, { start, inn, radius: R, fri });
   // Markslag uten skog (jordbruk, åpen fastmark, bebygd, samferdsel). Impediment og myr får glisne trær via naboBestand.
   const mark = omg.ar5.filter((f) => !['produktiv', 'impediment', 'myr'].includes(f.kategori)).map((f) => ({ id: `m-${f.id}`, mp: f.mp, kategori: f.kategori, beskrivelse: f.beskrivelse, profil: markProfil(f.kategori) })).filter((f) => f.profil);
   const planBestand = skog.bestand.filter((s) => !s.b.nabo); const naboer = skog.bestand.filter((s) => s.b.nabo);
@@ -110,10 +119,11 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   }
 
   // Trær: gran, furu og bjørk med detaljerte modeller nær deg og enkle former lenger unna (skog3d-traer.js).
-  const treLag = lagTreLag(THREE, scene, skog.traer.map((t) => { const [x, y, z] = tilScene(t.x, t.y); return { x, y, z, h: t.h, kroneStart: t.kroneStart, kroneBredde: t.kroneBredde, art: t.art }; }));
+  const treData = (traer) => traer.map((t) => { const [x, y, z] = tilScene(t.x, t.y); return { x, y, z, h: t.h, kroneStart: t.kroneStart, kroneBredde: t.kroneBredde, art: t.art, tykkelse: t.tykkelse }; });
+  let treLag = lagTreLag(THREE, scene, treData(skog.traer));
   treLag.oppdater(0, 0, { tvang: true });
   // Bakkevegetasjon (feltsjiktet) rundt deg ut fra vegetasjonstypen (skog3d-bunn.js)
-  const bunnLag = lagBunnLag(THREE, scene, flater, { hoyde, inn, grense: R, hinder });
+  let bunnLag = lagBunnLag(THREE, scene, flater, { hoyde, inn, grense: R, hinder });
   bunnLag.oppdater(0, 0, { tvang: true });
 
   // ---------- bevegelse ----------
@@ -121,7 +131,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   camera.position.set(0, OYEHOYDE, 0);
   let yaw = 0; let pitch = 0; const taster = new Set(); let stikke = null; let se = null;
   const lerret = renderer.domElement;
-  const tast = (e, ned) => { if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'].includes(e.code)) { if (ned) taster.add(e.code); else taster.delete(e.code); e.preventDefault(); } if (ned && e.code === 'Escape' && !document.pointerLockElement) lukk(); };
+  const tast = (e, ned) => { if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'].includes(e.code)) { if (ned) taster.add(e.code); else taster.delete(e.code); e.preventDefault(); } if (ned && e.code === 'Escape' && !document.pointerLockElement) lukk(); if (ned && e.code === 'KeyF' && !e.repeat) nesteFramtid(); };
   const ned = (e) => tast(e, true); const opp = (e) => tast(e, false);
   const mus = (e) => { if (document.pointerLockElement !== lerret) return; yaw -= e.movementX * 0.0025; pitch = Math.max(-1.3, Math.min(1.3, pitch - e.movementY * 0.0025)); };
   window.addEventListener('keydown', ned); window.addEventListener('keyup', opp); document.addEventListener('mousemove', mus);
@@ -131,15 +141,68 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   lerret.addEventListener('touchmove', (e) => { for (const t of e.changedTouches) { if (stikke?.id === t.identifier) { stikke.dx = Math.max(-1, Math.min(1, (t.clientX - stikke.x0) / 50)); stikke.dy = Math.max(-1, Math.min(1, (t.clientY - stikke.y0) / 50)); } if (se?.id === t.identifier) { yaw -= (t.clientX - se.x) * 0.005; pitch = Math.max(-1.3, Math.min(1.3, pitch - (t.clientY - se.y) * 0.005)); se.x = t.clientX; se.y = t.clientY; } } }, { passive: true });
   lerret.addEventListener('touchend', (e) => { for (const t of e.changedTouches) { if (stikke?.id === t.identifier) stikke = null; if (se?.id === t.identifier) se = null; } });
 
-  const hud = rot.querySelector('#s3hud'); let hudBid = null; let hudTid = 0;
+  const hud = rot.querySelector('#s3hud'); let hudBid = null; let hudTid = 0; let herBid = null;
+
+  // ---------- framtidsskog for ungskog (HK II): hogstmoden med og uten ungskogpleie ----------
+  const vInn = { ...STANDARD_VERDI, ...(S.verdi || {}) }; const IAAR = new Date().getFullYear();
+  const ungIder = new Set(planBestand.filter((x) => x.hk === 2).map((x) => x.b.id));
+  let framtid = null; // { bid, scenario, f }
+  const fsPanel = rot.querySelector('.s3-framtid');
+  const kr = (v) => `${Math.round(v).toLocaleString('nb-NO')} kr`; const komma = (v, d = 1) => String(Math.round(v * 10 ** d) / 10 ** d).replace('.', ',');
+  function framtidHud(b2) {
+    const f = framtid.f; const andre = framtidsskog(b2, f.scenario === 'pleid' ? 'upleid' : 'pleid', { inn, vInn, iAar: IAAR });
+    const med = f.scenario === 'pleid' ? f : andre; const uten = f.scenario === 'pleid' ? andre : f;
+    return `<b>Bestand ${b2.nr} · 🔮 hogstmoden ${f.hogstAar}</b> · ${f.scenario === 'pleid' ? 'med ungskogpleie nå' : 'uten ungskogpleie'}
+      <small>${f.treantall} trær/daa · ${komma(f.hoyde)} m · ${Math.round(f.volum)} m³/daa · ${Math.round(f.pris)} kr/m³ · nåverdi ${kr(f.nv)}/daa</small>
+      <small>${f.scenario === 'pleid' ? `Uten pleie: hogst ${uten.hogstAar}, ${Math.round(uten.volum)} m³/daa, ${kr(uten.nv)}/daa` : `Med pleie nå: hogst ${med.hogstAar}, ${Math.round(med.volum)} m³/daa, ${kr(med.nv)}/daa`} · forskjell ${kr(med.nv - uten.nv)}/daa${b2.areal ? ` (${kr((med.nv - uten.nv) * b2.areal)} for ${komma(b2.areal)} daa)` : ''}</small>
+      <small>${f.scenario === 'pleid' ? 'Grove, stabile bartrær med lange kroner og ca. 10 % lauv.' : 'Tett, lauvrik skog med tynne trær, korte kroner og undertrykte trær – mer massevirke og høyere risiko for snøbrekk.'}</small>`;
+  }
+  function visFramtidValg() {
+    const vis = !!framtid || ungIder.has(herBid);
+    fsPanel.hidden = !vis;
+    for (const k of fsPanel.querySelectorAll('[data-fs]')) k.setAttribute('aria-pressed', String((framtid?.scenario || 'naa') === k.dataset.fs));
+    if (ungIder.has(herBid) && !framtid) vrTavle(['Ungskog (HK II)', 'A: vis framtidsskogen']);
+  }
+  function settFramtid(scenario) {
+    const bid = scenario === 'naa' ? null : (ungIder.has(herBid) ? herBid : framtid?.bid);
+    if (scenario !== 'naa' && !bid) return;
+    const s2 = bid && planBestand.find((x) => x.b.id === bid);
+    framtid = s2 ? { bid, scenario, f: framtidsskog(s2.b, scenario, { inn, vInn, iAar: IAAR }) } : null;
+    const ny = lagSkog(alleBestand, { start, inn, radius: R, maks: MAKS_TRAER * 1.5, fri, overstyr: framtid ? { [bid]: framtid.f } : {} });
+    treLag.dispose(); treLag = lagTreLag(THREE, scene, treData(ny.traer)); treLag.oppdater(dolly.position.x, dolly.position.z, { tvang: true, avstand: renderer.xr.isPresenting ? 45 : 60 });
+    // Bakkevegetasjonen etter lyset i framtidsskogen
+    const fl = flater.map((x) => (framtid && x.b?.id === framtid.bid ? { ...x, profil: vegProfil({ ...x.b, alder: framtid.f.alder, hogstklasse: 5, treantall: framtid.f.treantall, ungskog: null }, { inn }) } : x));
+    bunnLag.dispose(); bunnLag = lagBunnLag(THREE, scene, fl, { hoyde, inn, grense: R, hinder }); bunnLag.oppdater(dolly.position.x, -dolly.position.z, { tvang: true, radius: renderer.xr.isPresenting ? 25 : 35 });
+    hudBid = null; oppdaterHud(dolly.position.x, -dolly.position.z); visFramtidValg();
+    const f = framtid?.f;
+    vrTavle(f ? [`Hogstmoden ${f.hogstAar} – ${scenario === 'pleid' ? 'med pleie' : 'uten pleie'}`, `${Math.round(f.volum)} m³/daa · nåverdi ${kr(f.nv)}/daa`, 'A: neste · B: i dag'] : ['I dag', 'A: vis framtidsskogen']);
+  }
+  const SCEN = ['naa', 'pleid', 'upleid'];
+  const nesteFramtid = () => { if (!framtid && !ungIder.has(herBid)) return; settFramtid(SCEN[(SCEN.indexOf(framtid?.scenario || 'naa') + 1) % SCEN.length]); };
+  for (const k of fsPanel.querySelectorAll('[data-fs]')) k.onclick = (e) => { e.stopPropagation(); settFramtid(k.dataset.fs); };
+
+  // Tavle i VR (HTML-en vises ikke i brillene): tekst foran deg i noen sekunder.
+  const tavleLerret = document.createElement('canvas'); tavleLerret.width = 768; tavleLerret.height = 220;
+  const tavleTekstur = new THREE.CanvasTexture(tavleLerret);
+  const tavle = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.18), new THREE.MeshBasicMaterial({ map: tavleTekstur, transparent: true, depthTest: false }));
+  tavle.position.set(0, -0.18, -0.8); tavle.renderOrder = 999; tavle.visible = false; camera.add(tavle); let tavleTil = 0;
+  function vrTavle(linjer, sek = 6) {
+    const c = tavleLerret.getContext('2d'); if (!c) return;
+    c.clearRect(0, 0, 768, 220); c.fillStyle = 'rgba(16,36,28,.86)'; c.beginPath(); c.roundRect?.(0, 0, 768, 220, 28); c.fill();
+    c.fillStyle = '#f1f6f2'; linjer.slice(0, 3).forEach((l, i) => { c.font = `${i === 0 ? 700 : 500} ${i === 0 ? 46 : 36}px system-ui, sans-serif`; c.fillText(l, 30, 66 + i * 62, 708); });
+    tavleTekstur.needsUpdate = true; tavle.visible = renderer.xr.isPresenting; tavleTil = performance.now() + sek * 1000;
+  }
+
   const NAER = (x, y) => { const h = hinder(x, y); if (h === 'vei' || h === 'sti') { let best = null; let bd = 8; for (const v of omg.veier) for (let i = 0; i < v.linje.length - 1; i++) { const [x0, y0] = v.linje[i]; const [x1, y1] = v.linje[i + 1]; const dx = x1 - x0; const dy = y1 - y0; const t = Math.max(0, Math.min(1, ((x - x0) * dx + (y - y0) * dy) / (dx * dx + dy * dy || 1))); const d = Math.hypot(x - x0 - t * dx, y - y0 - t * dy); if (d < bd) { bd = d; best = v; } } return best ? `🛤️ ${best.navn}${best.kilde ? ` (${best.kilde})` : ''}` : ''; } return h === 'vann' ? '💧 Vann/bekk' : h === 'bygg' ? '🏠 Ved bygning' : ''; };
   function oppdaterHud(x, y) {
-    const s = finnFlate(x, y); const ekstra = NAER(x, y); const bid = `${s?.b?.id || s?.id || '-'}|${ekstra}`;
+    const s = finnFlate(x, y); const ekstra = NAER(x, y); const bid = `${s?.b?.id || s?.id || '-'}|${ekstra}|${framtid?.scenario || ''}`;
+    const nyttBestand = (s?.b?.id || null) !== herBid; herBid = s?.b?.id || null; if (nyttBestand) visFramtidValg();
     if (bid === hudBid) return; hudBid = bid;
     const ek = ekstra ? `<small>${ekstra}</small>` : '';
     if (!s) { hud.innerHTML = `<b>Utenfor bestand</b><small>Gå inn i et bestand for å se dataene.</small>${ek}`; return; }
     if (!s.b) { hud.innerHTML = `<b>${MARKSLAG[s.kategori]?.navn || s.kategori}</b><small>AR5: ${s.beskrivelse || ''}</small><small>🌿 ${s.profil.navn}</small>${ek}`; return; }
     if (s.b.nabo) { hud.innerHTML = `<b>${s.b.ar5Kategori === 'produktiv' ? 'Skog utenfor planen' : MARKSLAG[s.b.ar5Kategori]?.navn || 'Utenfor planen'}</b><small>AR5: ${s.b.ar5Beskrivelse || ''} · trærne er et generelt anslag</small>${ek}`; return; }
+    if (framtid && s.b.id === framtid.bid) { hud.innerHTML = framtidHud(s.b) + ek; return; }
     const x2 = s.b; const st = startTilstand(x2); const mh = middelhoyde(x2, { inn }).verdi; const N = erUngskog(x2, inn) ? ungskogData(x2, { inn }).treantallFor.verdi : x2.treantall; const vg = vegFor(s);
     hud.innerHTML = `<b>Bestand ${x2.nr}</b> · ${TRESLAG[x2.treslag] || ''} ${x2.treslag || ''}${x2.bonitet ?? ''} · HK ${hkTekst(x2, { inn }) || HK_ROMERTALL[s.hk] || ''}
       <small>${s.beskrivelse} · ${Math.round(st.alder)} år${mh ? ` · ${String(Math.round(mh * 10) / 10).replace('.', ',')} m` : ''}${N ? ` · ${Math.round(N)} trær/daa` : ''} · ${Math.round(st.volumDaa)} m³/daa</small>
@@ -147,7 +210,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   }
 
   // VR: venstre stikke går (i blikkretningen), høyre stikke snur 30°.
-  let snudd = false;
+  let snudd = false; let knappA = false; let knappB = false;
   function vrStyring(dt) {
     const okt = renderer.xr.getSession(); if (!okt) return;
     for (const kilde of okt.inputSources) {
@@ -158,7 +221,12 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
         const hoyre = new THREE.Vector3(-dir.z, 0, dir.x); const fart = (gp.buttons[0]?.pressed ? 4 : 1.5) * dt;
         dolly.position.addScaledVector(dir, -ay * fart).addScaledVector(hoyre, ax * fart);
       }
-      if (kilde.handedness === 'right') { if (Math.abs(ax) > 0.7 && !snudd) { dolly.rotation.y -= Math.sign(ax) * (Math.PI / 6); snudd = true; } if (Math.abs(ax) < 0.3) snudd = false; }
+      if (kilde.handedness === 'right') {
+        if (Math.abs(ax) > 0.7 && !snudd) { dolly.rotation.y -= Math.sign(ax) * (Math.PI / 6); snudd = true; } if (Math.abs(ax) < 0.3) snudd = false;
+        // A = neste framtidsskog, B = tilbake til i dag
+        const a = !!gp.buttons[4]?.pressed; const bk = !!gp.buttons[5]?.pressed;
+        if (a && !knappA) nesteFramtid(); if (bk && !knappB && framtid) settFramtid('naa'); knappA = a; knappB = bk;
+      }
     }
   }
 
@@ -166,6 +234,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   renderer.setAnimationLoop((t) => {
     const dt = Math.min(0.1, (t - sist) / 1000); sist = t;
     const forrige = [dolly.position.x, dolly.position.z];
+    if (tavle.visible && performance.now() > tavleTil) tavle.visible = false;
     if (renderer.xr.isPresenting) vrStyring(dt);
     else {
       camera.rotation.set(pitch, yaw, 0, 'YXZ');
@@ -184,7 +253,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   });
   laster?.remove();
   const a = omgLag.antall; const deler = [a.veier && `${a.veier} vei/sti`, a.bygg && `${a.bygg} bygg`, (a.bekker || a.innsjoer) && `${a.bekker + a.innsjoer} vann/bekk`, omg.ar5.length && 'markslag', a.grensemerker && 'eiendomsgrense'].filter(Boolean);
-  rot.querySelector('.s3-hjelp').textContent = `${skog.traer.length.toLocaleString('nb-NO')} trær i ${planBestand.length} bestand innenfor ${Math.round(R)} m${deler.length ? ` · ${deler.join(', ')}` : ''} · Klikk og se med musa · W A S D / piltaster · Shift for å løpe${matchMedia('(pointer: coarse)').matches ? ' · Venstre halvdel: gå · høyre: se rundt' : ''}`;
+  rot.querySelector('.s3-hjelp').textContent = `${skog.traer.length.toLocaleString('nb-NO')} trær i ${planBestand.length} bestand innenfor ${Math.round(R)} m${deler.length ? ` · ${deler.join(', ')}` : ''} · Klikk og se med musa · W A S D / piltaster · Shift for å løpe${ungIder.size ? ' · F: framtidsskog i ungskog' : ''}${matchMedia('(pointer: coarse)').matches ? ' · Venstre halvdel: gå · høyre: se rundt' : ''}`;
 
   // VR-knapp når nettleseren og brillene støtter det
   const vrKnapp = rot.querySelector('[data-s3="vr"]');
@@ -205,10 +274,10 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     renderer.setAnimationLoop(null); renderer.xr.getSession()?.end();
     window.removeEventListener('keydown', ned); window.removeEventListener('keyup', opp); document.removeEventListener('mousemove', mus); window.removeEventListener('resize', vindu);
     if (document.pointerLockElement) document.exitPointerLock();
-    treLag.dispose(); bunnLag.dispose(); omgLag.dispose(); scene.traverse((o) => { o.material?.dispose?.(); }); bakke.dispose(); renderer.dispose(); rot.remove();
+    treLag.dispose(); bunnLag.dispose(); omgLag.dispose(); tavleTekstur.dispose(); scene.traverse((o) => { o.material?.dispose?.(); }); bakke.dispose(); renderer.dispose(); rot.remove();
   }
   rot.querySelector('[data-s3="lukk"]').onclick = lukk;
-  const api = { lukk, gaaTil: (x2, y2, retning = yaw) => { dolly.position.set(x2, hoyde(x2, y2), -y2); yaw = retning; }, omg: () => omg, antall: skog.traer.length, planter: () => bunnLag.perType(), omgivelser: () => ({ ...omgLag.antall, ar5: omg.ar5.length, status: omg.status }), radius: R, posisjon: () => ({ x: dolly.position.x, y: -dolly.position.z }), hud: () => hud.textContent };
+  const api = { lukk, framtid: (sc) => settFramtid(sc), gaaTil: (x2, y2, retning = yaw) => { dolly.position.set(x2, hoyde(x2, y2), -y2); yaw = retning; }, omg: () => omg, antall: skog.traer.length, planter: () => bunnLag.perType(), omgivelser: () => ({ ...omgLag.antall, ar5: omg.ar5.length, status: omg.status }), radius: R, posisjon: () => ({ x: dolly.position.x, y: -dolly.position.z }), hud: () => hud.textContent };
   rot.skog3d = api; // for feilsøking og tester
   return api;
 }

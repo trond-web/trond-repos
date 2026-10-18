@@ -3,7 +3,7 @@
 // (men faste per bestand), mens tetthet, høyde og treslagsblanding følger planen. Ingen DOM – kan testes i Node.
 import { STANDARD_INNSTILLINGER, startTilstand, hogstklasseFor, foryngelse } from './model.js';
 import { hoydeOm, plantetall } from './tiltaksmotor.js';
-import { ungskogData, treantallModell, fraSr16, pleieDekning } from './ungskog.js';
+import { ungskogData, treantallModell, fraSr16, pleieDekning, effektUngskogpleie } from './ungskog.js';
 import { tetthet } from './tetthet.js';
 import { tilUtmPunkt, tilGeoPunkt } from './flate-geometri.js';
 
@@ -52,6 +52,36 @@ export function bestandTraer(b, { inn = STANDARD_INNSTILLINGER } = {}) {
   return { hk, arter: blanding(N, H, true), beskrivelse: hk === 3 ? 'Yngre produksjonsskog' : hk === 4 ? 'Eldre produksjonsskog' : 'Hogstmoden skog', sr16: fraSr16(b) };
 }
 
+// Framtidsskogen for ungskog (HK II): hogstmoden skog med ungskogpleie nå ('pleid') eller uten ('upleid'). Tall
+// (hogstår, volum, nåverdi) fra effektUngskogpleie – samme modell som effektvisningen i bestandet.
+//   Med pleie:  bartrær med ca. 10 % lauv, færre og grovere trær med lange, brede kroner.
+//   Uten pleie: tett og lauvrik skog, tynne trær med korte, smale kroner, og et undertrykt sjikt.
+export function framtidsskog(b, scenario, { inn = STANDARD_INNSTILLINGER, vInn, iAar = new Date().getFullYear() } = {}) {
+  const e = effektUngskogpleie(b, { inn, vInn, iAar }); const d = e.data; const f = e.forutsetninger;
+  const ts = d.treslag || b.treslag || 'G'; const bar = ts === 'L' ? 'G' : ts; const naa = Math.max(0, d.alder);
+  const m = treantallModell(b); const N0 = d.treantallFor.verdi ?? m.verdi ?? 400;
+  const KRONE = { G: [0.3, 0.14], F: [0.6, 0.13], L: [0.5, 0.16] };
+  // Høyden ved hogst fra høydekurven (bonitet og alder); dagens registrerte høyde sier lite om høyden om 50 år.
+  const hFram = (aar) => hoydeOm({ ...b, ungskog: null, hoyde: null }, aar);
+  const art = (a, N, H, { start = 0, bredde = 1, tykkelse = 1 } = {}) => ({ art: a, N, H: Math.max(1, H), kroneStart: Math.min(0.8, KRONE[a][0] + start), kroneBredde: KRONE[a][1] * bredde, tykkelse });
+  if (scenario === 'pleid') {
+    const a = e.alt.naa; const aar = a.hogstAar - iAar; const H = hFram(aar);
+    const N = Math.round(Math.min(110, Math.max(50, (d.maal || 220) * 0.38)));
+    const arter = ts === 'L' ? [art('L', N * 0.8, H, { bredde: 1.15, tykkelse: 1.2 }), art('G', N * 0.2, H * 0.95, { tykkelse: 1.15 })]
+      : [art(bar, N * 0.9, H, { start: -0.06, bredde: 1.2, tykkelse: 1.25 }), art('L', N * 0.1, H * 0.85, { bredde: 1.1, tykkelse: 1.1 })];
+    return { hk: 5, arter, scenario, beskrivelse: `Hogstmoden ${a.hogstAar} – med ungskogpleie`, alder: naa + aar, hogstAar: a.hogstAar, volum: a.volum, nv: a.nv, treantall: N, hoyde: H, pris: a.pris };
+  }
+  const a = e.alt.uten; const aar = a.hogstAar - iAar; const H = hFram(aar) * 0.92;
+  const barAndel = ts === 'L' ? 0.25 : Math.min(0.7, Math.max(0.4, m.verdi ? m.bar / m.verdi : 0.55));
+  const N = Math.round(Math.min(260, Math.max(130, N0 * 0.28)));
+  const arter = [
+    art(bar, N * barAndel, H, { start: 0.15, bredde: 0.72, tykkelse: 0.72 }),
+    art('L', N * (1 - barAndel), H * 0.82, { start: 0.18, bredde: 0.7, tykkelse: 0.7 }),
+    art(bar, N * 0.25, H * 0.45, { start: 0.2, bredde: 0.6, tykkelse: 0.5 }), // undertrykte trær
+  ];
+  return { hk: 5, arter, scenario, beskrivelse: `Hogstmoden ${a.hogstAar} – uten ungskogpleie`, alder: naa + aar, hogstAar: a.hogstAar, volum: a.volum, nv: a.nv, treantall: Math.round(N * 1.25), hoyde: H, pris: a.pris, dode: Math.round(N * 0.08), forsinkelse: f.forsinkelse };
+}
+
 // Polygon(er) i lokale meter rundt senteret (x øst, y nord).
 const lokal = (geom, [cx, cy]) => (geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates).map((p) => p.map((r) => r.map((q) => { const [x, y] = tilUtmPunkt(q); return [x - cx, y - cy]; })));
 function iRing(x, y, r) { let inne = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i]; const [xj, yj] = r[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inne = !inne; } return inne; }
@@ -61,10 +91,10 @@ const bbox = (mp) => { const xs = mp.flat(2).map((q) => q[0]); const ys = mp.fla
 // Lager trærne i en sirkel rundt startpunktet. Radien krympes til antall trær er under maks (tett ungskog gir mindre
 // område). Gir { senter (UTM), radius, traer: [{ x, y, art, h, kroneStart, kroneBredde, bid }], bestand: [{ b, mp }] }.
 // Bestand med nabo: true (skog utenfor planen, fra AR5) får bare trær utenfor planens bestand. fri(x, y) = false
-// fjerner trær (veier, vann, bygninger).
-export function lagSkog(S, { start, radius = 250, maks = MAKS_TRAER, inn = STANDARD_INNSTILLINGER, fri = null } = {}) {
+// fjerner trær (veier, vann, bygninger). overstyr[bid] = { hk, arter, beskrivelse } erstatter bestandets trær (framtidsskog).
+export function lagSkog(S, { start, radius = 250, maks = MAKS_TRAER, inn = STANDARD_INNSTILLINGER, fri = null, overstyr = {} } = {}) {
   const senter = tilUtmPunkt(start);
-  const alle = S.bestand.filter((b) => b.geometri).map((b) => ({ b, mp: lokal(b.geometri, senter), p: bestandTraer(b, { inn }) }));
+  const alle = S.bestand.filter((b) => b.geometri).map((b) => ({ b, mp: lokal(b.geometri, senter), p: overstyr[b.id] || bestandTraer(b, { inn }) }));
   const plan = alle.filter((x) => !x.b.nabo).map((x) => ({ mp: x.mp, bb: bbox(x.mp) }));
   const iPlan = (px, py) => plan.some((q) => px >= q.bb[0] && px <= q.bb[2] && py >= q.bb[1] && py <= q.bb[3] && iPolygon(px, py, q.mp));
   const mange = (R) => alle.reduce((sum, x) => {
@@ -87,7 +117,7 @@ export function lagSkog(S, { start, radius = 250, maks = MAKS_TRAER, inn = STAND
           const px = gx + (r() - 0.5) * avst * 0.9; const py = gy + (r() - 0.5) * avst * 0.9;
           if (px * px + py * py > R * R || !iPolygon(px, py, x.mp) || (x.b.nabo && iPlan(px, py)) || (fri && !fri(px, py))) continue;
           const v = 0.75 + r() * 0.5; // høydevariasjon ±25 %
-          traer.push({ x: px, y: py, art: a.art, h: a.H * v, kroneStart: a.kroneStart * (0.85 + r() * 0.3), kroneBredde: a.kroneBredde * (0.8 + r() * 0.4), bid: x.b.id });
+          traer.push({ x: px, y: py, art: a.art, h: a.H * v, kroneStart: a.kroneStart * (0.85 + r() * 0.3), kroneBredde: a.kroneBredde * (0.8 + r() * 0.4), tykkelse: a.tykkelse ?? 1, bid: x.b.id });
         }
       }
     }
