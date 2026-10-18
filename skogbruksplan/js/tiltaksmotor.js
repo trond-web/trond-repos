@@ -49,12 +49,19 @@ export function plantetall(treslag, bonitet) {
   if (treslag === 'F') return bo >= 17 ? { anbefalt: 250, min: 150, intervall: '190–340' } : bo >= 11 ? { anbefalt: 180, min: 100, intervall: '120–240' } : { anbefalt: 100, min: 50, intervall: '80–130' };
   return bo >= 20 ? { anbefalt: 220, min: 150, intervall: '150–300' } : bo >= 14 ? { anbefalt: 180, min: 100, intervall: '130–230' } : { anbefalt: 100, min: 50, intervall: '60–140' };
 }
-// Treantall etter ungskogpleie.
+// Treantall etter regulering (ungskogpleie), etter bonitet. Standarden for ungskogpleie (Hedmark/Oppland 2015) gir
+// 150–250 stammer/daa; Skogkurs anbefaler den øvre delen på høy bonitet (250 ved 4–6 m på G23) og minst 200
+// framtidsstammer der det er mulig. Furu holdes litt tettere for kvaliteten. Lauvbestand og stormutsatt skog: 120.
+const MAAL_GRAN = { 6: 150, 8: 150, 11: 160, 14: 180, 17: 200, 20: 220, 23: 240, 26: 250 };
+const MAAL_FURU = { 6: 150, 8: 160, 11: 180, 14: 200, 17: 220, 20: 240, 23: 240, 26: 240 };
 export function maalTetthet(treslag, bonitet, stormutsatt = false) {
   if (stormutsatt && treslag !== 'L') return 120;
   if (treslag === 'L') return 120;
-  if (treslag === 'F') return (bonitet || 11) >= 14 ? 220 : 200;
-  return (bonitet || 11) >= 17 ? 200 : (bonitet || 11) >= 14 ? 180 : 150;
+  const tab = treslag === 'F' ? MAAL_FURU : MAAL_GRAN;
+  const bo = Number(bonitet) || 11;
+  const trinn = Object.keys(tab).map(Number);
+  const naer = trinn.reduce((a, t) => (Math.abs(t - bo) < Math.abs(a - bo) ? t : a), trinn[0]);
+  return tab[naer];
 }
 // Middelhøyde etter alder (samme enkle høydekurve som Skogbrand-modulen), skalert til registrert høyde.
 const modellH = (alder, h40) => (alder <= 0 ? 0 : Math.min(1.6, (alder / 40) ** 0.75) * h40 * 0.85);

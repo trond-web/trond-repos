@@ -76,7 +76,7 @@ export function ungskogData(b, { inn = STANDARD_INNSTILLINGER } = {}) {
   let te;
   if (u.treantallEtter != null) te = v('treantallEtter', u.treantallEtter, 'registrert', reg);
   else if (pleid) te = v('treantallEtter', b.treantall && b.treantall <= maal * 1.4 ? b.treantall : maal, 'beregnet', `Ungskogpleie utført ${pleid.utfortDato || pleid.aar} – målet er ${maal} trær/daa`);
-  else te = v('treantallEtter', null, null, `Ikke regulert ennå – mål ${maal} trær/daa`);
+  else te = v('treantallEtter', maal, 'beregnet', `Anbefalt etter regulering for ${ts}${bo} (150–250 trær/daa, høyere på høy bonitet) – ikke regulert ennå`);
   // Høyder
   const hModell = hoydeOm(b, 0);
   let hb;
