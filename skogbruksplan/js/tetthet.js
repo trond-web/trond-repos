@@ -2,12 +2,14 @@
 //   HK I:      a = tilfredsstillende ryddet, b = ikke tilfredsstillende ryddet
 //   HK II–V:   a = tilfredsstillende tetthet, b = mindre tilfredsstillende tetthet
 // Registrert klasse (import eller manuelt) brukes alltid. Ellers beregnes den der dataene holder:
-//   HK II:     treantall (etter regulering, før regulering eller i bestandsdataene) mot minste plantetall i forskriften § 7
+//   HK II:     treantall (etter regulering, før regulering, takst eller treantallsmodellen) mot minste plantetall i
+//              forskriften § 7
 //   HK III–V:  beregnes ikke – volum mot vekstmodellen er for usikkert (SR16 i fjellskog ligger ofte på 30–40 % av
 //              modellen). Andelen vises som et hint, og klassen registreres fra planen eller i felt.
 // Ingen DOM – kan testes i Node.
 import { STANDARD_INNSTILLINGER, HK_ROMERTALL, startTilstand, volumKurve, beregnetHogstklasse, laavesteHogstalder, hkGrenser } from './model.js';
 import { plantetall } from './tiltaksmotor.js';
+import { fraSr16, treantallModell } from './ungskog.js';
 
 export const TETTHET_NAVN = { a: 'tilfredsstillende tetthet', b: 'mindre tilfredsstillende tetthet' };
 export const RYDDING_NAVN = { a: 'tilfredsstillende ryddet', b: 'ikke tilfredsstillende ryddet' };
@@ -18,7 +20,8 @@ const hkFor = (b, inn) => { const s = startTilstand(b); return b.hogstklasse || 
 const minTreantall = (ts, bo) => (ts === 'L' ? 100 : plantetall(ts, bo).min);
 
 // { klasse: 'a' | 'b' | null, kilde: 'registrert' | 'beregnet' | null, grunnlag ('ungskog' = målte ungskogfelt,
-// 'data' = treantall fra takst/SR16), forklaring, hint (HK III–V) }
+// 'data' = treantall fra takst, 'modell' = treantallsmodellen i ungskog.js når SR16 bare har trær over 5 cm),
+// forklaring, hint (HK III–V) }
 export function tetthet(b, { inn = STANDARD_INNSTILLINGER, hk = null } = {}) {
   const h = hk ?? hkFor(b, inn);
   if (b.tetthetsklasse === 'a' || b.tetthetsklasse === 'b') return { klasse: b.tetthetsklasse, kilde: 'registrert', forklaring: tetthetNavn(h, b.tetthetsklasse) };
@@ -26,7 +29,7 @@ export function tetthet(b, { inn = STANDARD_INNSTILLINGER, hk = null } = {}) {
   const s = startTilstand(b); const ts = b.treslag || 'G'; const bo = s.h40;
   if (h === 2) {
     const u = b.ungskog || {};
-    const [N, hva, grunnlag] = u.treantallEtter != null ? [u.treantallEtter, 'etter regulering', 'ungskog'] : u.treantallFor != null ? [u.treantallFor, 'før regulering', 'ungskog'] : b.treantall != null ? [b.treantall, 'i bestandsdataene', 'data'] : [null, '', null];
+    const [N, hva, grunnlag] = u.treantallEtter != null ? [u.treantallEtter, 'etter regulering', 'ungskog'] : u.treantallFor != null ? [u.treantallFor, 'før regulering', 'ungskog'] : fraSr16(b) || b.treantall == null ? [Math.max(treantallModell(b).verdi, b.treantall || 0), 'beregnet (modell for alle stammer)', 'modell'] : [b.treantall, 'i bestandsdataene', 'data'];
     if (N == null) return { klasse: null, kilde: null, forklaring: 'Mangler treantall' };
     const min = minTreantall(ts, bo);
     const k = N >= min ? 'a' : 'b';
