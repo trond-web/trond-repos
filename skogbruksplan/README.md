@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.31.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.32.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -475,16 +475,34 @@ Planlagte tiltak kan samles til **oppdrag** og sendes til en utfører, for eksem
   - Tiltak i et oppdrag får et merke med oppdragsnummer og status i tiltakslisten. Bestandene i oppdraget som er åpent, utheves med oransje i kartet.
 - **Arbeidsordre:** «Skriv ut arbeidsordre» lager en side for utskrift eller PDF. Den har utfører, periode og omfang, de oppdragsspesifikke feltene og instruksen. Den har også kart med bestandene i oppdraget, bilvei, traktorvei, sti og velteplasser, en bestandstabell, sjekklisten og felt for kvittering.
 
+## SR16 eller takst – hvilken kilde setter premisset?
+
+Når en plan lages fra gårds- og bruksnummer, sammenlignes året SR16 er målt (fjernmålingsåret, medianen for eiendommen) med året bestandet i den gamle skogbruksplanen ble registrert:
+
+- **SR16 er nyere enn taksten:**
+  - SR16-flatene blir bestandene, og de gir alder, volum, treantall, høyde, treslag og bonitet. Hogstklasse og tilvekst følger av dette.
+  - Den gamle planen brukes som referanse. Bestandene får nummeret fra den gamle planen; deles et gammelt bestand i flere SR16-flater, får de bokstav (12a, 12b …).
+  - Planens bonitet og treslag brukes bare der SR16 mangler dem.
+  - Deler av gamle bestand som SR16 ikke dekker, beholdes med planens data og merkes.
+- **Taksten er nyere enn SR16:** Planens bestandsgrenser og alder beholdes. SR16-volumet skrives fram fra målingsåret til takståret.
+- **Alt skrives fram til i dag:** Alder og volum gjelder for dataåret og skrives fram til i år med vekstmodellen (`framskrivTilAar`). Hogstklasse, hogstmodenhet, tilvekst og tiltak stemmer da med dagens skog. Bestand som trolig er hogd etter taksten, skrives ikke fram og må kontrolleres i felt.
+- **SR16-alderen kontrolleres mot høyden:** SR16-alderen er usikker i ung og glissen skog. Avviker den mer enn 15 år (eller 40 %) fra alderen høydekurven gir for SR16-høyden og boniteten, brukes alderen fra høyden. Det står i merknaden.
+- **Eksempel Nannestad 29/2:** Planen er fra 2013, og SR16 er målt 2013–2015 (median 2015).
+  - Bestandene: 126 SR16-bestand mot 80 bestand fra planen før.
+  - Alder og volum er skrevet fram 11 år.
+  - Hogstklasse II gikk fra 350 til 14 daa, fordi ungskogen fra 2013 nå er hogstklasse III–IV.
+  - SR16-alderen er erstattet med alderen fra høyden i 13 bestand.
+
 ## Markslag og uproduktiv mark (AR5)
 
 Når planen lages, hentes markslag fra NIBIOs arealressurskart AR5 (`js/markslag.js`).
 
 - **Kategorier:**
   - produktiv skog (skogbonitet lav–særs høy)
-  - uproduktiv skog (impediment) og myr
+  - uproduktiv skog (impediment) og myr. Myr skilles alltid ut, også skogkledd myr med produktiv bonitet, og regnes ikke som produktiv skog.
   - åpen fastmark, jordbruk, bebyggelse, samferdsel, vann og snø/is
 - **Ingen volum på uproduktiv mark:** alt som ikke er produktiv skog, trekkes ut av bestandene før volum beregnes. Merknaden på bestandet sier hvor mye som er trukket ut.
-- **Utdatert AR5 overstyres:** Mye av AR5 er feltkartlagt rundt 1990. Grøftet og tilplantet myr eller gjengrodd mark kan derfor fortsatt stå som impediment, myr eller åpen fastmark. En slik figur regnes som produktiv skog når nyere data viser skog på minst halvparten av den, og trekkes da ikke ut av bestandene. Nyere data betyr enten SR16 med minst 5 m³/daa og bonitet 8 eller høyere, eller en skogbruksplan registrert etter AR5-kartleggingen. Bestandet får en merknad om hvorfor, og loggen viser antall figurer og areal.
+- **Utdatert AR5 overstyres:** Mye av AR5 er feltkartlagt rundt 1990. Gjengrodd mark kan derfor fortsatt stå som impediment eller åpen fastmark. En slik figur regnes som produktiv skog når nyere data viser skog på minst halvparten av den, og trekkes da ikke ut av bestandene. Nyere data betyr enten SR16 med minst 5 m³/daa og bonitet 8 eller høyere, eller en skogbruksplan registrert etter AR5-kartleggingen. Bestandet får en merknad om hvorfor, og loggen viser antall figurer og areal.
 - **Kantsoner og hull ved grensene:** SR16-flatene følger ikke grensene i den gamle planen og eiendommen nøyaktig. Det gir smale striper og flekker uten data. Etter at bestandene er satt sammen, ryddes dette opp (`ryddKanterOgHull` i `js/generator.js`):
   - **Smale SR16-rester (kantsoner):** Har resten middelbredde under 15 m, eller er den under 2 daa og under 20 m bred, slås den sammen med nabobestandet den deler lengst grense med. Bestand fra den gamle planen foretrekkes. Grenser stripa bare mot åker, vei eller eiendomsgrensen, blir den markslagsfiguren *Kantsone* i stedet for et eget bestand.
   - **Hull i dekningen:** Dette er arealer innenfor eiendommen som verken er bestand eller markslag. Små eller smale flekker legges til naboen med lengst felles grense. Store og brede flater (minst 2 daa og 20 m middelbredde) blir et eget bestand. Treslag og bonitet hentes da fra AR5, og bestandet får en merknad om registrering i felt.

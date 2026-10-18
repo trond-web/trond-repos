@@ -572,7 +572,7 @@ test('Markslag: klassifisering av AR5, figurer og arealfordeling', () => {
   assert.equal(klassifiserMarkslag({ artype: '30', arskogbon: '13' }), 'produktiv');
   assert.equal(klassifiserMarkslag({ artype: '30', arskogbon: '11' }), 'impediment');
   assert.equal(klassifiserMarkslag({ artype: '60', arskogbon: '11' }), 'myr');
-  assert.equal(klassifiserMarkslag({ artype: '60', arskogbon: '12' }), 'produktiv', 'skog på myr med bonitet er produktiv');
+  assert.equal(klassifiserMarkslag({ artype: '60', arskogbon: '12' }), 'myr', 'myr skilles alltid ut, også skogkledd myr med bonitet');
   assert.equal(klassifiserMarkslag({ artype: '50' }), 'apen');
   assert.equal(klassifiserMarkslag({ artype: '22' }), 'jordbruk');
   assert.equal(klassifiserMarkslag({ artype: '81' }), 'vann');
