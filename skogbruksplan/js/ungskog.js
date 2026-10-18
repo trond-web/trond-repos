@@ -117,20 +117,43 @@ export function effektUngskogpleie(b, { inn = STANDARD_INNSTILLINGER, vInn = STA
   const lauvOver = lauvHoyere && d.hoydeLauv.kilde !== 'beregnet';
   const Hn = d.hoydeBar.verdi ?? 0; const H5 = hoydeOm(b, 5);
   const behov = !d.pleid && ratio > 1.3;
-  // Tap uten pleie: 10–35 % lavere volum av bartrær, ca. 8 % lavere nettopris (mindre sagtømmer), hogst ca. 5 år senere.
-  const tapUten = Math.min(0.35, 0.1 + Math.max(0, ratio - 1.3) * 0.08 + (lauvOver ? 0.08 : lauvHoyere ? 0.04 : 0));
-  const kvalitet = 0.08; const forsinkelse = 5;
+  // Uten pleie (kalibrert mot Bergseng 2016 i Skogtiltaksfondets rapport om ungskogpleie: rotnettoen blir om lag
+  // halvert når lauvet ikke ryddes, både på G17 og G11): 10–40 % lavere barvolum, 8–12 % lavere pris (mindre
+  // sagtømmer, mer lauv/massevirke) og hogst 5–8 år senere.
+  const tapUten = Math.min(0.4, 0.1 + Math.max(0, ratio - 1.3) * 0.08 + (lauvOver ? 0.12 : lauvHoyere ? 0.06 : 0));
+  const kvalitet = lauvHoyere || ratio > 2 ? 0.12 : 0.08; const forsinkelse = lauvOver ? 8 : 5;
   const tapUtsatt = tapUten * 0.4; // utsatt 5 år: deler av effekten tapt, mer når trærne er høye
-  const { T, lev } = omlop(ts, h40, inn, vInn);
   const alder = Math.max(0, d.alder);
-  const tilHogst = Math.max(1, T - alder);
-  const V = volumKurve(T, h40, ts); const Vsen = volumKurve(T + forsinkelse, h40, ts);
-  const K0 = pleieKostPerDaa(Hn, N, inn); const K5 = pleieKostPerDaa(H5, N * 1.05, inn);
-  const nv = (inntekt, aar) => inntekt / (1 + r) ** aar;
+  // Kostnad etter tilskudd (NMSK, varierer per kommune) og skattefordel ved bruk av skogfond (85 % skattefritt).
+  const tilskudd = Math.min(100, Math.max(0, vInn.tilskuddUngskogpleie ?? 0)) / 100;
+  const skatt = Math.min(60, Math.max(0, vInn.skogfondSkatt ?? 22)) / 100;
+  const netKost = (k) => k * (1 - tilskudd) * (1 - 0.85 * skatt);
+  const Kbrutto0 = pleieKostPerDaa(Hn, N, inn); const Kbrutto5 = pleieKostPerDaa(H5, N * 1.05, inn);
+  const K0 = netKost(Kbrutto0); const K5 = netKost(Kbrutto5);
+  // Nåverdi ved rente r (jordverdien etter hogst kan ikke være negativ – eieren må ikke forynge med tap).
+  const beregn = (rente) => {
+    const r = rente / 100; const { T, lev: levR } = omlop(ts, h40, inn, { ...vInn, rente }); const lev = Math.max(0, levR);
+    const tilHogst = Math.max(1, T - alder);
+    const V = volumKurve(T, h40, ts); const Vsen = volumKurve(T + forsinkelse, h40, ts);
+    const nv = (inntekt, aar) => inntekt / (1 + r) ** aar;
+    return { T, lev, tilHogst, V, Vsen,
+      naa: nv(V * netto + lev, tilHogst) - K0,
+      utsett: nv(V * (1 - tapUtsatt) * netto + lev, tilHogst) - nv(K5, 5),
+      uten: nv(Vsen * (1 - tapUten) * netto * (1 - kvalitet) + lev, tilHogst + forsinkelse) };
+  };
+  const rente = vInn.rente ?? 3;
+  const v = beregn(rente); const { T, lev, tilHogst, V, Vsen } = v;
+  // Internrente: renten der ungskogpleie nå og ingen pleie gir samme nåverdi.
+  let internrente = null;
+  if (!d.pleid) {
+    const g = (x) => { const y = beregn(x); return y.naa - y.uten; };
+    let lo = 0.5; let hi = 12;
+    if (g(lo) > 0 && g(hi) < 0) { for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (g(m) > 0) lo = m; else hi = m; } internrente = Math.round(((lo + hi) / 2) * 10) / 10; } else if (g(hi) >= 0) internrente = hi;
+  }
   const alt = {
-    naa: { navn: 'Gjennomfør nå', kost: K0, hogstAar: iAar + tilHogst, volum: V, pris: netto, nv: nv(V * netto + lev, tilHogst) - K0 },
-    utsett: { navn: 'Utsett 5 år', kost: K5, hogstAar: iAar + tilHogst, volum: V * (1 - tapUtsatt), pris: netto, nv: nv(V * (1 - tapUtsatt) * netto + lev, tilHogst) - nv(K5, 5) },
-    uten: { navn: 'Ikke gjennomfør', kost: 0, hogstAar: iAar + tilHogst + forsinkelse, volum: Vsen * (1 - tapUten), pris: netto * (1 - kvalitet), nv: nv(Vsen * (1 - tapUten) * netto * (1 - kvalitet) + lev, tilHogst + forsinkelse) },
+    naa: { navn: 'Gjennomfør nå', kost: K0, kostBrutto: Kbrutto0, hogstAar: iAar + tilHogst, volum: V, pris: netto, nv: v.naa },
+    utsett: { navn: 'Utsett 5 år', kost: K5, kostBrutto: Kbrutto5, hogstAar: iAar + tilHogst, volum: V * (1 - tapUtsatt), pris: netto, nv: v.utsett },
+    uten: { navn: 'Ikke gjennomfør', kost: 0, kostBrutto: 0, hogstAar: iAar + tilHogst + forsinkelse, volum: Vsen * (1 - tapUten), pris: netto * (1 - kvalitet), nv: v.uten },
   };
   for (const a of Object.values(alt)) { a.nvTotal = a.nv * A; a.volumTotal = a.volum * A; a.kostTotal = a.kost * A; }
   const gevinst = alt.naa.nv - alt.uten.nv; const tapVedUtsettelse = alt.naa.nv - alt.utsett.nv;
@@ -144,14 +167,14 @@ export function effektUngskogpleie(b, { inn = STANDARD_INNSTILLINGER, vInn = STA
   andre.push({ type: 'god', tekst: 'Med pleie: grovere og mer stabile trær, mer sagtømmer, tynning blir lønnsom tidligere.' });
   andre.push({ type: 'info', tekst: 'Behold ca. 10 % lauv og noen trær rundt stubber, bekker og myrkanter – det er viktig for artsmangfold og krav i PEFC.' });
   andre.push({ type: 'advarsel', tekst: 'Uten pleie: tett og lauvdominert skog, mer massevirke, senere og dyrere tynning og høyere risiko for snøbrekk.' });
-  return { type: 'ungskogpleie', data: d, arealDaa: A, rente: vInn.rente ?? 3, alt, gevinst, gevinstTotal: gevinst * A, tapVedUtsettelse, tapVedUtsettelseTotal: tapVedUtsettelse * A, behov, lauvOver, tapUten, forutsetninger: { T, tilHogst, netto, tapUten, kvalitet, forsinkelse, tapUtsatt, lev }, andre };
+  return { type: 'ungskogpleie', data: d, arealDaa: A, rente, alt, gevinst, gevinstTotal: gevinst * A, tapVedUtsettelse, tapVedUtsettelseTotal: tapVedUtsettelse * A, behov, lauvOver, tapUten, internrente, forutsetninger: { T, tilHogst, netto, tapUten, kvalitet, forsinkelse, tapUtsatt, lev, tilskudd, skatt }, andre };
 }
 
 // Effekt av planting (foryngelse) på snaumark: plante nå, utsette 5 år, eller naturlig foryngelse.
 export function effektPlanting(b, { inn = STANDARD_INNSTILLINGER, vInn = STANDARD_VERDI, iAar = new Date().getFullYear(), arealDaa = null } = {}) {
   const s = startTilstand(b); const ts = b.treslag === 'F' ? 'F' : 'G'; const h40 = s.h40; const A = arealDaa ?? b.areal ?? 0;
   const r = (vInn.rente ?? 3) / 100; const netto = rotnettoPerM3(ts, inn);
-  const { T, lev } = omlop(ts, h40, inn, vInn);
+  const { T, lev: levR } = omlop(ts, h40, inn, vInn); const lev = Math.max(0, levR);
   const kost = (inn.kostPerDaa?.planting ?? 1900) + (h40 >= 11 ? (inn.kostPerDaa?.markberedning ?? 450) : 0);
   const V = volumKurve(T, h40, ts);
   // Naturlig foryngelse: senere etablering og lavere produksjon (ujevn tetthet, mer lauv) – mest på høy bonitet, der

@@ -30,6 +30,8 @@ export function initVerdi({ hentPlan, endret, melding, hentSsb, visBestand, iAar
       ${felt('horisont', 'Horisont for tiltaksplanen (år)', 1)}
       ${felt('annenInntekt', 'Andre inntekter (kr/år)', 1000, 'Jakt, fiske, utleie, festeavgift')}
       ${felt('fasteKostnader', 'Faste kostnader (kr/år)', 1000, 'Forsikring, adm., eiendomsskatt')}
+      ${felt('tilskuddUngskogpleie', 'Tilskudd til ungskogpleie (%)', 5, 'NMSK – sjekk kommunens satser')}
+      ${felt('skogfondSkatt', 'Skattesats for skogfond (%)', 1, '22 % alminnelig inntekt, høyere med personinntekt')}
       <label class="hel avkryss"><input type="checkbox" data-v="medVeivedlikehold" ${v.medVeivedlikehold ? 'checked' : ''}> Trekk fra planlagt veivedlikehold (snitt neste 5 år)</label>`;
   }
 

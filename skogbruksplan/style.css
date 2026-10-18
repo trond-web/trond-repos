@@ -926,6 +926,7 @@ progress { accent-color: var(--accent); height: 8px; }
 .effekt-hoved { padding: 10px 12px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
 .effekt-hoved.pluss { background: #dfeee4; color: #10241c; }
 .effekt-hoved.minus { background: #fbf0dd; color: #5c4210; }
+.effekt-hoved.noytral { background: #e8f0e9; color: #10241c; border-left: 4px solid #1f8f5a; }
 .effekt-alt { display: grid; gap: 8px; }
 .effekt-rad { display: grid; grid-template-columns: minmax(96px, 1.2fr) 2fr auto; gap: 4px 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--surface-2, #eff3ee); }
 .effekt-rad.best { outline: 2px solid #1f8f5a; }
