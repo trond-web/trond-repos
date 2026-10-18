@@ -4,6 +4,8 @@
 // stikke = gå, høyre stikke = snu 30°. Three.js lastes fra unpkg første gang visningen åpnes.
 import { lagSkog, terrengPunkter, lagTerreng, iPolygon } from './skog3d-data.js';
 import { lagTreLag } from './skog3d-traer.js';
+import { lagBunnLag } from './skog3d-bunn.js';
+import { vegProfil } from './skog3d-veg.js';
 import { TRESLAG, HK_ROMERTALL, startTilstand } from './model.js';
 import { hkTekst } from './tetthet.js';
 import { middelhoyde, ungskogData, erUngskog } from './ungskog.js';
@@ -66,13 +68,16 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   const tilScene = (x, y) => [x, hoyde(x, y), -y];
 
   // Bakke med høydedata og litt fargevariasjon
+  const vegCache = new Map(); const vegFor = (s) => { if (!vegCache.has(s.b.id)) vegCache.set(s.b.id, vegProfil(s.b, { inn })); return vegCache.get(s.b.id); };
   const seg = 80; const bakke = new THREE.PlaneGeometry(2 * R, 2 * R, seg, seg); bakke.rotateX(-Math.PI / 2);
   const pos = bakke.attributes.position; const farger = new Float32Array(pos.count * 3);
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i); const y = -pos.getZ(i); pos.setY(i, hoyde(x, y));
     const v = 0.85 + ((Math.sin(x * 0.37) * Math.cos(y * 0.29) + 1) / 2) * 0.25;
     const iSkog = skog.bestand.find((s) => iPolygon(x, y, s.mp));
-    const [r, g, bl] = iSkog?.hk === 1 ? [0.55, 0.52, 0.32] : iSkog ? [0.3, 0.38, 0.2] : [0.45, 0.5, 0.3];
+    // Bunnsjiktet etter vegetasjonstypen (lav, lyng, mose, torv …); hogstflater litt lysere og mer gulgrønne
+    let [r, g, bl] = iSkog ? vegFor(iSkog).bakke : [0.45, 0.5, 0.3];
+    if (iSkog?.hk === 1) [r, g, bl] = [r * 0.6 + 0.55 * 0.4, g * 0.6 + 0.52 * 0.4, bl * 0.6 + 0.3 * 0.4];
     farger.set([r * v, g * v, bl * v], i * 3);
   }
   bakke.setAttribute('color', new THREE.BufferAttribute(farger, 3)); bakke.computeVertexNormals();
@@ -88,6 +93,9 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   // Trær: gran, furu og bjørk med detaljerte modeller nær deg og enkle former lenger unna (skog3d-traer.js).
   const treLag = lagTreLag(THREE, scene, skog.traer.map((t) => { const [x, y, z] = tilScene(t.x, t.y); return { x, y, z, h: t.h, kroneStart: t.kroneStart, kroneBredde: t.kroneBredde, art: t.art }; }));
   treLag.oppdater(0, 0, { tvang: true });
+  // Bakkevegetasjon (feltsjiktet) rundt deg ut fra vegetasjonstypen (skog3d-bunn.js)
+  const bunnLag = lagBunnLag(THREE, scene, skog.bestand, { hoyde, inn, grense: R });
+  bunnLag.oppdater(0, 0, { tvang: true });
 
   // ---------- bevegelse ----------
   const startX = 0; const startY = 0; dolly.position.set(startX, hoyde(startX, startY), -startY);
@@ -109,9 +117,10 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     const s = skog.bestand.find((z) => iPolygon(x, y, z.mp)); const bid = s?.b.id || null;
     if (bid === hudBid) return; hudBid = bid;
     if (!s) { hud.innerHTML = '<b>Utenfor bestand</b><small>Gå inn i et bestand for å se dataene.</small>'; return; }
-    const x2 = s.b; const st = startTilstand(x2); const mh = middelhoyde(x2, { inn }).verdi; const N = erUngskog(x2, inn) ? ungskogData(x2, { inn }).treantallFor.verdi : x2.treantall;
+    const x2 = s.b; const st = startTilstand(x2); const mh = middelhoyde(x2, { inn }).verdi; const N = erUngskog(x2, inn) ? ungskogData(x2, { inn }).treantallFor.verdi : x2.treantall; const vg = vegFor(s);
     hud.innerHTML = `<b>Bestand ${x2.nr}</b> · ${TRESLAG[x2.treslag] || ''} ${x2.treslag || ''}${x2.bonitet ?? ''} · HK ${hkTekst(x2, { inn }) || HK_ROMERTALL[s.hk] || ''}
-      <small>${s.beskrivelse} · ${Math.round(st.alder)} år${mh ? ` · ${String(Math.round(mh * 10) / 10).replace('.', ',')} m` : ''}${N ? ` · ${Math.round(N)} trær/daa` : ''} · ${Math.round(st.volumDaa)} m³/daa</small>`;
+      <small>${s.beskrivelse} · ${Math.round(st.alder)} år${mh ? ` · ${String(Math.round(mh * 10) / 10).replace('.', ',')} m` : ''}${N ? ` · ${Math.round(N)} trær/daa` : ''} · ${Math.round(st.volumDaa)} m³/daa</small>
+      <small>🌿 ${vg.kode} ${vg.navn}${vg.anslaatt ? ' (anslått)' : ''} – ${vg.beskrivelse}</small>`;
   }
 
   // VR: venstre stikke går (i blikkretningen), høyre stikke snur 30°.
@@ -145,7 +154,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     // Hold deg innenfor området og på bakken
     const r = Math.hypot(dolly.position.x, dolly.position.z); if (r > R - 2) { dolly.position.x *= (R - 2) / r; dolly.position.z *= (R - 2) / r; }
     const x = dolly.position.x; const y = -dolly.position.z; dolly.position.y = hoyde(x, y);
-    if (t - hudTid > 250) { hudTid = t; oppdaterHud(x, y); treLag.oppdater(dolly.position.x, dolly.position.z, { avstand: renderer.xr.isPresenting ? 45 : 60 }); }
+    if (t - hudTid > 250) { hudTid = t; oppdaterHud(x, y); treLag.oppdater(dolly.position.x, dolly.position.z, { avstand: renderer.xr.isPresenting ? 45 : 60 }); bunnLag.oppdater(x, y, { radius: renderer.xr.isPresenting ? 25 : 35 }); }
     renderer.render(scene, camera);
   });
   rot.querySelector('.s3-laster').remove();
@@ -170,8 +179,8 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     renderer.setAnimationLoop(null); renderer.xr.getSession()?.end();
     window.removeEventListener('keydown', ned); window.removeEventListener('keyup', opp); document.removeEventListener('mousemove', mus); window.removeEventListener('resize', vindu);
     if (document.pointerLockElement) document.exitPointerLock();
-    treLag.dispose(); scene.traverse((o) => { o.material?.dispose?.(); }); bakke.dispose(); renderer.dispose(); rot.remove();
+    treLag.dispose(); bunnLag.dispose(); scene.traverse((o) => { o.material?.dispose?.(); }); bakke.dispose(); renderer.dispose(); rot.remove();
   }
   rot.querySelector('[data-s3="lukk"]').onclick = lukk;
-  return { lukk, antall: skog.traer.length, radius: R, posisjon: () => ({ x: dolly.position.x, y: -dolly.position.z }), hud: () => hud.textContent };
+  return { lukk, antall: skog.traer.length, planter: () => bunnLag.perType(), radius: R, posisjon: () => ({ x: dolly.position.x, y: -dolly.position.z }), hud: () => hud.textContent };
 }
