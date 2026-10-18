@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.19.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.20.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -479,7 +479,26 @@ Hogstklassen beregnes fra dagens alder, treslag og bonitet (H40) med nedre alder
 
 Grensene er kalibrert mot NIBIOs skogbruksplandata (2 790 takserte bestand i hogstklasse II–V): beregnet klasse er lik
 takstmannens i 99,9 % av bestandene (før: 97,1 %), og stemmer med Landsskogtakseringen (III fra 15–55 år; G20: III 20, IV 45,
-V 70). Hogstklasse I er alder under 3 år eller hogd flate.
+V 70).
+
+**Hogstklasse I** er skog under fornying, altså areal som ennå ikke er tilfredsstillende forynget, uavhengig av alder ([SNL](https://snl.no/hogstklasser), SOSI `SP_HKL` 11/12). Et plantet eller tilstrekkelig naturlig forynget areal går over i hogstklasse II samme dag. Appen bestemmer det slik (`hogstklasseFor` og `foryngelse` i `js/model.js`):
+
+- **Plantet eller supplert etter siste hogst:** HK II, også når alderen er 0.
+- **Treantall mot minste plantetall i forskriften § 7:**
+  - Grensene er gran 50/100/150 og furu 50/100/150 etter bonitet, og lauv 100.
+  - Appen bruker treantall i ungskogfeltene eller fra takst. Ligger tallet under minimum, blir bestandet HK I. Ligger det på eller over, blir det HK II.
+  - SR16 teller bare trær over 5 cm og brukes bare når det alene viser nok trær.
+- **Hogd uten registrert foryngelse:** HK I, selv om alderen tilsier II.
+- **Ellers:** alder under 3 år gir HK I.
+- Registrert hogstklasse fra planen eller manuelt går alltid foran.
+
+**Lite volum er ikke det samme som hogd.** Generatoren satte tidligere «Mulig hogd» og alder 0 når SR16 viste under 3 m³/daa mot HK IV–V i en eldre plan. I glissen fjellskog står det likevel mange trær over 5 cm og høy skog. På Flå 22/1 gjaldt det 22 bestand med 40–95 trær/daa og 6–11 m høyde. Nå avgjør SR16-treantallet:
+
+- **Hogd:** under 30 trær/daa over 5 cm.
+- **Hogd og forynget:** over 30 trær/daa, under 6 m høyde og SR16-alder under 30 år.
+- **Glissen skog:** resten. Appen beholder alderen og hogstklassen og legger inn merknaden «Glissen skog … – ikke hogd».
+
+Eldre genererte planer rettes automatisk når de åpnes. Alderen settes da til SR16-alderen, og appen gir beskjed om hvor mange bestand som er rettet.
 
 - Bonitet som mangler i SR16 anslås fra AR5-skogbonitet (laveste H40 i klassen), ellers fra nærmeste nabobestand innenfor 300 m
   – med merknad på bestandet.

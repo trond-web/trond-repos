@@ -7,7 +7,7 @@
 //   HK III–V:  beregnes ikke – volum mot vekstmodellen er for usikkert (SR16 i fjellskog ligger ofte på 30–40 % av
 //              modellen). Andelen vises som et hint, og klassen registreres fra planen eller i felt.
 // Ingen DOM – kan testes i Node.
-import { STANDARD_INNSTILLINGER, HK_ROMERTALL, startTilstand, volumKurve, beregnetHogstklasse, laavesteHogstalder, hkGrenser } from './model.js';
+import { STANDARD_INNSTILLINGER, HK_ROMERTALL, startTilstand, volumKurve, beregnetHogstklasse, hogstklasseFor, laavesteHogstalder, hkGrenser } from './model.js';
 import { plantetall } from './tiltaksmotor.js';
 import { fraSr16, treantallModell } from './ungskog.js';
 
@@ -16,7 +16,7 @@ export const RYDDING_NAVN = { a: 'tilfredsstillende ryddet', b: 'ikke tilfredsst
 export const VOLUM_HINT = 0.5;
 export const tetthetNavn = (hk, k) => (hk === 1 ? RYDDING_NAVN : TETTHET_NAVN)[k] || '';
 
-const hkFor = (b, inn) => { const s = startTilstand(b); return b.hogstklasse || beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn), s.volumDaa, hkGrenser(b, inn)); };
+const hkFor = (b, inn) => hogstklasseFor(b, inn);
 const minTreantall = (ts, bo) => (ts === 'L' ? 100 : plantetall(ts, bo).min);
 
 // { klasse: 'a' | 'b' | null, kilde: 'registrert' | 'beregnet' | null, grunnlag ('ungskog' = målte ungskogfelt,

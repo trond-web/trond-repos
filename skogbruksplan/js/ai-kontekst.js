@@ -1,6 +1,6 @@
 // Lager en kompakt tekstversjon av skogbruksplanen som AI-assistenten får som grunnlag. Ingen DOM.
 import {
-  TRESLAG, HK_NAVN, TILTAKSTYPER, startTilstand, arligTilvekstDaa, laavesteHogstalder, beregnetHogstklasse,
+  TRESLAG, HK_NAVN, TILTAKSTYPER, startTilstand, arligTilvekstDaa, laavesteHogstalder, beregnetHogstklasse, hogstklasseFor,
   rotnettoPerM3, sammendrag, framskriv, hkGrenser,
 } from './model.js';
 import { KRAVPUNKTER, OBJEKTTYPER } from './pefc.js';
@@ -44,7 +44,7 @@ export function lagKontekst(S, { iAar = new Date().getFullYear(), pefcFunn = [],
   for (const b of S.bestand) {
     const st = startTilstand(b);
     const min = laavesteHogstalder(b, inn);
-    const hk = b.hogstklasse || beregnetHogstklasse(st.alder, min, st.volumDaa, hkGrenser(b, inn));
+    const hk = hogstklasseFor(b, inn);
     const a = b.areal || 0;
     const planl = (b.tiltak || []).filter((t) => t.status !== 'utfort').map((t) => `${TILTAKSTYPER[t.type]?.navn || t.type} ${t.aar}`).join(' + ');
     const utf = (b.tiltak || []).filter((t) => t.status === 'utfort').map((t) => `${TILTAKSTYPER[t.type]?.navn || t.type} ${t.aar}`).join(' + ');

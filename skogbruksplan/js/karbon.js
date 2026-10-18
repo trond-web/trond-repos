@@ -9,7 +9,7 @@
 // flatehogst og planting). Prosjektbanen er tiltaksplanen slik den er, eller motoren med prinsippet «Karbon og klima».
 // Lageret regnes fra stående volum med omregningsfaktorer per treslag (levende biomasse over og under bakken).
 // Dødt trevirke, jord og treprodukter er holdt utenfor (konservativt, som de fleste standarder krever for IFM).
-import { STANDARD_INNSTILLINGER, startTilstand, framskriv, laavesteHogstalder, beregnetHogstklasse, hkGrenser, nyId, HOGSTTYPER } from './model.js';
+import { STANDARD_INNSTILLINGER, startTilstand, framskriv, laavesteHogstalder, beregnetHogstklasse, hogstklasseFor, hkGrenser, nyId, HOGSTTYPER } from './model.js';
 import { genererTiltak, tilTiltak, iKarbonprosjekt, organiskJord } from './tiltaksmotor.js';
 import { risikoPerBestand } from './skade.js';
 import { avstand } from './pefc.js';
@@ -246,7 +246,7 @@ export function egnethet(S, { iAar = new Date().getFullYear(), risiko = null } =
   legg('data', 'Datagrunnlag for karbonlageret', andelData >= 0.95 ? (snittUsikker && snittUsikker > 25 ? 'delvis' : 'ok') : andelData >= 0.7 ? 'delvis' : 'mangler',
     `${Math.round(andelData * 100)} % av arealet har alder, volum og bonitet${takst ? ` (takst ${takst})` : ''}.${snittUsikker ? ` SR16 oppgir ca. ${Math.round(snittUsikker)} % usikkerhet i volum per bestand – en felttakst med prøveflater gir lavere fradrag.` : ''}`);
   // Alderssammensetning – potensial i forlenget omløp
-  const hk5 = S.bestand.filter((b) => { const s = startTilstand(b); const min = laavesteHogstalder(b, inn); return (b.hogstklasse || beregnetHogstklasse(s.alder, min, s.volumDaa, hkGrenser(b, inn))) >= 4; });
+  const hk5 = S.bestand.filter((b) => { const s = startTilstand(b); const min = laavesteHogstalder(b, inn); return hogstklasseFor(b, inn) >= 4; });
   const andelGammel = prod ? hk5.reduce((s, b) => s + (b.areal || 0), 0) / prod : 0;
   legg('potensial', 'Eldre og hogstmoden skog (hogstklasse IV–V)', andelGammel >= 0.3 ? 'ok' : andelGammel >= 0.15 ? 'delvis' : 'mangler',
     `${Math.round(andelGammel * 100)} % av arealet. Forlenget omløp og redusert hogst i eldre skog gir størst merlager de første tiårene. Med mye ungskog er potensialet lavt de første 20–30 årene.`);
