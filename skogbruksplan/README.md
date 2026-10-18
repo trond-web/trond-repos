@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.21.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.22.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -82,7 +82,16 @@ For bestand i hogstklasse I og II viser bestandet (fullversjonen og SkogIQ Felt)
   - Samme mål brukes av tiltaksmotoren («Ungskogpleie ned til ca. … trær/daa») og effektberegningen.
 - *registrert*: målte verdier skrevet inn i feltet (i Felt: «✎ Registrer målte verdier»). Tøm feltet for å gå tilbake til beregnet verdi.
 
-Registrert treantall og høyder brukes av tiltaksmotoren (behov for ungskogpleie, høyde om x år). Har en hogd flate (alder 0) fått målt høyde, regnes alderen ut fra høyden (`alderFraHoyde`: år til brysthøyde + høydekurven; 2 m på G11 ≈ 11 år). Et bestand som er forynget, får ikke forslag om planting og markberedning.
+Registrert treantall og høyder brukes av tiltaksmotoren (behov for ungskogpleie, høyde om x år).
+
+**Middelhøyde i ungskog:** Registrerte høyder er riktige. Bestandets middelhøyde er snittet av høyde bar og høyde lauv. Er bare den ene målt, fyller appen inn den andre som beregnet verdi. Når du registrerer høyde bar, oppdateres middelhøyden i bestandsdataene. Den nye høyden vises i bestandskortet i feltappen («m høyde (snitt bar/lauv)»), i bestandsskjemaet og i rapportene.
+
+**Delvis ungskogpleie:** Appen summerer arealet av utførte ungskogpleier etter siste hogst (`pleieDekning`).
+- Under 90 % av bestandet regnes som delvis.
+- Tiltaksmotoren foreslår da «Fullfør ungskogpleien på resterende X daa» med prioritet 1 samme år, med arealet som tiltaksareal.
+- Effektkortet regner på resten av arealet («Fullfør resten nå / Utsett resten 5 år / La resten stå») og har overskriften «Fullfør ungskogpleien – bare Y av Z daa er pleiet».
+- I SkogIQ Felt viser bestandskortet tiltaksmotorens forslag når bestandet er endret, med knappene «Oppdater tiltak» og «Behold». Det gjelder for eksempel etter at du har målt verdier eller registrert et utført tiltak.
+- Merket «best» på et alternativ vises bare når forskjellen er over 5 % av nåverdien. Har en hogd flate (alder 0) fått målt høyde, regnes alderen ut fra høyden (`alderFraHoyde`: år til brysthøyde + høydekurven; 2 m på G11 ≈ 11 år). Et bestand som er forynget, får ikke forslag om planting og markberedning.
 
 **Treantall i ungskog og SR16.** SR16 teller bare trær som er over 5 cm i brysthøyde ([produktarket](https://nibio.no/tema/skog/kart-over-skogressurser/skogressurskart-sr16)). I hogstklasse II mangler derfor de fleste stammene, og på Flå 22/1 viste SR16 49–128 trær/daa. For bestand med treantall fra SR16 (`KILDE` inneholder «SR16») bruker appen derfor en treantallsmodell for alle stammer (`treantallModell` i `js/ungskog.js`). SR16-tallet brukes bare som nedre grense.
 

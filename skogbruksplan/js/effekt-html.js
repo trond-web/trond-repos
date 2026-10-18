@@ -27,13 +27,19 @@ export function effektHtml(e, { kompakt = false } = {}) {
   if (!e) return '';
   const alt = Object.entries(e.alt);
   const maks = Math.max(...alt.map(([, a]) => Math.abs(a.nvTotal)), 1);
-  const best = alt.reduce((x, y) => (y[1].nv > x[1].nv ? y : x))[0];
+  // «Best» bare når forskjellen er tydelig (over 5 % av nåverdien) – ellers er alternativene like innenfor usikkerheten.
+  const sortert = [...alt].sort((x, y) => y[1].nv - x[1].nv);
+  const best = sortert.length > 1 && sortert[0][1].nv - sortert[1][1].nv > Math.abs(sortert[0][1].nv) * 0.05 ? sortert[0][0] : null;
   const g = e.gevinstTotal; const u = e.tapVedUtsettelseTotal;
   const ir = e.internrente != null ? ` Internrente ca. ${tall(e.internrente, 1)} %.` : '';
   const utsett = u > 0 ? ` Utsetter du 5 år, taper du ca. <b>${kr(u)}</b>.` : '';
   const d = e.data;
   let hoved; let klasse;
-  if (g > 0) {
+  const rest = e.delvis ? `${tall(e.delvis.rest, 1)} daa` : '';
+  if (e.delvis && e.behov) {
+    // Delvis utført: motiver til å fullføre resten.
+    hoved = `<b>Fullfør ungskogpleien</b> – bare ${tall(e.delvis.daa, 1)} av ${tall(e.delvis.daa + e.delvis.rest, 1)} daa er pleiet. De resterende ${rest} er fortsatt tette (${tall(d?.treantallFor?.verdi)} trær/daa mot mål ${tall(d?.maal)})${g > 0 ? ` og gir ca. <b>${kr(g)}</b> mer i nåverdi når de pleies` : ''}.${utsett}${ir}`; klasse = 'noytral';
+  } else if (g > 0) {
     hoved = `<b>${esc(e.alt.naa.navn)}</b> gir ca. <b>${kr(g)}</b> mer i nåverdi enn «${esc(e.alt.uten.navn.toLowerCase())}» (${kr(e.gevinst)}/daa).${utsett}${ir}`; klasse = 'pluss';
   } else if (e.type === 'ungskogpleie' && e.behov) {
     // Skogfaglig behov (tett/lauvdominert), men økonomisk nær null – typisk lav bonitet med lang tid til hogst.

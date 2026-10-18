@@ -55,10 +55,38 @@ export function treantallModell(b, { plantet = undefined } = {}) {
   return { verdi, bar: Math.round(bar * tynn), lauv: Math.round(lauv * tynn), forklaring: `Modell: ${deler.join(' + ')}${tynn < 1 ? `, minus selvtynning ved ${String(Math.round(H * 10) / 10).replace('.', ',')} m (${Math.round((1 - tynn) * 100)} %)` : ''}` };
 }
 
+// Hvor mye av bestandet er ungskogpleiet (utførte ungskogpleier etter siste sluttavvirkning)?
+// Gir { daa, andel, rest, dato, helt } eller null. Under 90 % regnes som delvis – resten bør fullføres.
+export const PLEIE_HELT = 0.9;
+export function pleieDekning(b) {
+  const hogd = (b.tiltak || []).filter((t) => t.type === 'sluttavvirkning' && t.status === 'utfort').map((t) => String(t.utfortDato || t.aar)).sort().at(-1) || '';
+  const liste = (b.tiltak || []).filter((t) => t.type === 'ungskogpleie' && t.status === 'utfort' && String(t.utfortDato || t.aar) >= hogd);
+  if (!liste.length) return null;
+  const areal = b.areal || 0;
+  const daa = Math.min(areal || Infinity, liste.reduce((sum, t) => sum + (t.arealDaa ?? (t.helt === false ? 0 : areal)), 0));
+  const andel = areal ? Math.min(1, daa / areal) : 1;
+  const dato = liste.map((t) => String(t.utfortDato || t.aar)).sort().at(-1);
+  return { daa: Math.round(daa * 10) / 10, andel, rest: Math.round(Math.max(0, areal - daa) * 10) / 10, dato, helt: andel >= PLEIE_HELT };
+}
+
+// Middelhøyde for ungskog: registrerte høyder er riktige. Snitt av bar og lauv (beregnet lauv/bar fyller inn
+// når bare den ene er målt). Gir { verdi, kilde: 'registrert' | 'data', forklaring } – uten registrerte høyder:
+// høyden i bestandsdataene.
+export function middelhoyde(b, { inn = STANDARD_INNSTILLINGER } = {}) {
+  const u = b.ungskog || {};
+  if (u.hoydeBar == null && u.hoydeLauv == null) return { verdi: b.hoyde ?? null, kilde: b.hoyde != null ? 'data' : null, forklaring: 'Middelhøyde i bestandsdataene' };
+  const d = ungskogData(b, { inn });
+  const h = [d.hoydeBar.verdi, d.hoydeLauv.verdi].filter((x) => x != null);
+  const verdi = h.length ? Math.round((h.reduce((x, y) => x + y, 0) / h.length) * 10) / 10 : null;
+  return { verdi, kilde: 'registrert', forklaring: `Snitt av høyde bar (${String(d.hoydeBar.verdi).replace('.', ',')} m) og lauv (${String(d.hoydeLauv.verdi).replace('.', ',')} m${d.hoydeLauv.kilde === 'beregnet' ? ', beregnet' : ''})` };
+}
+
 // Verdiene for ungskogfeltene: registrert (b.ungskog) eller beregnet fra dataene, med forklaring.
 export function ungskogData(b, { inn = STANDARD_INNSTILLINGER } = {}) {
   const u = b.ungskog || {}; const s = startTilstand(b); const ts = b.treslag || 'G'; const bo = s.h40;
-  const pleid = utfort(b, 'ungskogpleie'); const plantet = utfort(b, 'planting');
+  const dekning = pleieDekning(b);
+  const pleid = dekning?.helt ? utfort(b, 'ungskogpleie') : null; const plantet = utfort(b, 'planting');
+  const delvis = dekning && !dekning.helt ? dekning : null;
   const reg = u.kilde === 'import' ? 'Fra importert skogbruksplan' : 'Registrert';
   const maal = maalTetthet(ts, bo);
   const v = (felt, verdi, kilde, forklaring) => ({ felt, verdi: verdi == null ? null : Math.round(verdi * (felt.startsWith('hoyde') ? 10 : 1)) / (felt.startsWith('hoyde') ? 10 : 1), kilde, forklaring });
@@ -91,7 +119,7 @@ export function ungskogData(b, { inn = STANDARD_INNSTILLINGER } = {}) {
     const f = s.alder < 10 ? 1.5 : s.alder < 20 ? 1.25 : 1.05;
     hl = v('hoydeLauv', ts === 'L' ? hModell : (hb.verdi || hModell) * f, 'beregnet', ts === 'L' ? `Høydekurve for bonitet ${bo}` : `Lauv vokser raskere de første årene: bar × ${String(f).replace('.', ',')}`);
   }
-  return { treantallFor: tf, treantallEtter: te, hoydeBar: hb, hoydeLauv: hl, maal, pleid, alder: s.alder, h40: bo, treslag: ts };
+  return { treantallFor: tf, treantallEtter: te, hoydeBar: hb, hoydeLauv: hl, maal, pleid, delvis, alder: s.alder, h40: bo, treslag: ts };
 }
 
 // Kostnad per daa for ungskogpleie ved høyde H (m) og treantall N: dyrere når trærne er høye og mange.
@@ -108,7 +136,7 @@ function omlop(ts, h40, inn, vInn) { const j = jordverdi(ts, h40, inn, vInn); re
 // Effekt av ungskogpleie. Gir tre alternativer med nåverdi per daa og totalt, og andre effekter.
 export function effektUngskogpleie(b, { inn = STANDARD_INNSTILLINGER, vInn = STANDARD_VERDI, iAar = new Date().getFullYear(), arealDaa = null } = {}) {
   const d = ungskogData(b, { inn });
-  const ts = d.treslag === 'L' ? 'L' : d.treslag; const h40 = d.h40; const A = arealDaa ?? b.areal ?? 0;
+  const ts = d.treslag === 'L' ? 'L' : d.treslag; const h40 = d.h40; const A = arealDaa ?? (d.delvis ? d.delvis.rest : b.areal) ?? 0;
   const r = (vInn.rente ?? 3) / 100; const netto = rotnettoPerM3(ts, inn);
   const N = d.treantallFor.verdi;
   const ratio = N && d.maal ? N / d.maal : 1;
@@ -155,10 +183,12 @@ export function effektUngskogpleie(b, { inn = STANDARD_INNSTILLINGER, vInn = STA
     utsett: { navn: 'Utsett 5 år', kost: K5, kostBrutto: Kbrutto5, hogstAar: iAar + tilHogst, volum: V * (1 - tapUtsatt), pris: netto, nv: v.utsett },
     uten: { navn: 'Ikke gjennomfør', kost: 0, kostBrutto: 0, hogstAar: iAar + tilHogst + forsinkelse, volum: Vsen * (1 - tapUten), pris: netto * (1 - kvalitet), nv: v.uten },
   };
+  if (d.delvis) { alt.naa.navn = 'Fullfør resten nå'; alt.utsett.navn = 'Utsett resten 5 år'; alt.uten.navn = 'La resten stå'; }
   for (const a of Object.values(alt)) { a.nvTotal = a.nv * A; a.volumTotal = a.volum * A; a.kostTotal = a.kost * A; }
   const gevinst = alt.naa.nv - alt.uten.nv; const tapVedUtsettelse = alt.naa.nv - alt.utsett.nv;
   const andre = [];
   if (d.pleid) andre.push({ type: 'info', tekst: `Ungskogpleie er utført ${d.pleid.utfortDato || d.pleid.aar}. Beregningen viser hva den har betydd.` });
+  else if (d.delvis) andre.unshift({ type: 'advarsel', tekst: `Ungskogpleie er bare utført på ${String(d.delvis.daa).replace('.', ',')} av ${String(b.areal).replace('.', ',')} daa (${Math.round(d.delvis.andel * 100)} %, ${d.delvis.dato}). De resterende ${String(d.delvis.rest).replace('.', ',')} daa står fortsatt tett – fullfør mens trærne er lave og pleien er billig.` });
   else if (!behov) andre.push({ type: 'info', tekst: `Treantallet (${N ?? '?'}/daa) er nær målet (${d.maal}/daa) – lite behov for regulering nå.` });
   if (lauvOver) andre.push({ type: 'advarsel', tekst: `Lauvet (${r1(d.hoydeLauv.verdi)} m) er høyere enn bartrærne (${r1(d.hoydeBar.verdi)} m) og skygger dem ned. Uten pleie tapes mye av barproduksjonen.` });
   if (d.pleid) { /* høydefasen er ikke lenger aktuell */ } else if (Hn > 6) andre.push({ type: 'advarsel', tekst: `Bestandet er over 6 m – pleien haster. Kostnaden stiger, og tynne, ustabile trær gir snø- og stormskader.` });
@@ -167,7 +197,7 @@ export function effektUngskogpleie(b, { inn = STANDARD_INNSTILLINGER, vInn = STA
   andre.push({ type: 'god', tekst: 'Med pleie: grovere og mer stabile trær, mer sagtømmer, tynning blir lønnsom tidligere.' });
   andre.push({ type: 'info', tekst: 'Behold ca. 10 % lauv og noen trær rundt stubber, bekker og myrkanter – det er viktig for artsmangfold og krav i PEFC.' });
   andre.push({ type: 'advarsel', tekst: 'Uten pleie: tett og lauvdominert skog, mer massevirke, senere og dyrere tynning og høyere risiko for snøbrekk.' });
-  return { type: 'ungskogpleie', data: d, arealDaa: A, rente, alt, gevinst, gevinstTotal: gevinst * A, tapVedUtsettelse, tapVedUtsettelseTotal: tapVedUtsettelse * A, behov, lauvOver, tapUten, internrente, forutsetninger: { T, tilHogst, netto, tapUten, kvalitet, forsinkelse, tapUtsatt, lev, tilskudd, skatt }, andre };
+  return { type: 'ungskogpleie', data: d, delvis: d.delvis, arealDaa: A, rente, alt, gevinst, gevinstTotal: gevinst * A, tapVedUtsettelse, tapVedUtsettelseTotal: tapVedUtsettelse * A, behov, lauvOver, tapUten, internrente, forutsetninger: { T, tilHogst, netto, tapUten, kvalitet, forsinkelse, tapUtsatt, lev, tilskudd, skatt }, andre };
 }
 
 // Effekt av planting (foryngelse) på snaumark: plante nå, utsette 5 år, eller naturlig foryngelse.
@@ -215,6 +245,8 @@ export function settUngskog(b, felt, verdi, { idag = new Date().toISOString().sl
   b.ungskog = { ...(b.ungskog || {}) }; delete b.ungskog.kilde;
   if (n == null) delete b.ungskog[felt]; else b.ungskog[felt] = felt.startsWith('treantall') ? Math.round(n) : Math.round(n * 10) / 10;
   b.ungskog.dato = idag;
+  // Registrerte høyder er riktige: middelhøyden i bestandsdataene følger snittet av bar og lauv.
+  if (felt.startsWith('hoyde') && ((b.treslag || 'G') === 'L' ? b.ungskog.hoydeLauv != null : b.ungskog.hoydeBar != null)) b.hoyde = middelhoyde(b).verdi;
   if (!Object.keys(b.ungskog).some((k) => UNGSKOG_FELT[k])) delete b.ungskog;
   return true;
 }

@@ -8,6 +8,7 @@ import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling } from '.
 import { KRAVPUNKTER, TEMA, OBJEKTTYPER, KLARERING, HOGSTFORMER, FORYNGELSE, arealDaa, klareringStatus } from './pefc.js';
 import { signatur } from './versjon.js';
 import { tetthet } from './tetthet.js';
+import { middelhoyde } from './ungskog.js';
 import { MIS, misMonster, misFigurer } from './miljokart.js';
 
 export const RAPPORTER = {
@@ -221,7 +222,7 @@ function bestandRader(S, iAar) {
   return [...S.bestand].sort((a, b) => sr(a) - sr(b) || sortNr(a.teig || '', b.teig || '') || sortNr(a.nr, b.nr)).map((b) => {
     const st = startTilstand(b); const a = b.areal || 0; const tv = arligTilvekstDaa(b) * a;
     const tiltak = (b.tiltak || []).filter((t) => t.status !== 'utfort').sort((x, y) => x.aar - y.aar);
-    return { b, teig: b.teig || (String(b.nr).includes('-') ? String(b.nr).split('-')[0] : /^S\d/.test(b.nr) ? 'SR16' : ''), nr: b.nr, areal: a, hk: hkFor(b, inn), tetthet: hkFor(b, inn) ? tetthet(b, { inn, hk: hkFor(b, inn) }).klasse : null, treslag: b.treslag, bonitet: b.bonitet, alder: Math.round(st.alder), hoyde: b.hoyde, treantall: b.treantall, volumDaa: st.volumDaa, volum: st.volumDaa * a, tilvekst: tv, tilvekstPst: st.volumDaa * a ? (tv / (st.volumDaa * a)) * 100 : null, tiltak, miljo: b.miljo, merknad: b.merknad || '' };
+    return { b, teig: b.teig || (String(b.nr).includes('-') ? String(b.nr).split('-')[0] : /^S\d/.test(b.nr) ? 'SR16' : ''), nr: b.nr, areal: a, hk: hkFor(b, inn), tetthet: hkFor(b, inn) ? tetthet(b, { inn, hk: hkFor(b, inn) }).klasse : null, treslag: b.treslag, bonitet: b.bonitet, alder: Math.round(st.alder), hoyde: middelhoyde(b, { inn }).verdi, treantall: b.treantall, volumDaa: st.volumDaa, volum: st.volumDaa * a, tilvekst: tv, tilvekstPst: st.volumDaa * a ? (tv / (st.volumDaa * a)) * 100 : null, tiltak, miljo: b.miljo, merknad: b.merknad || '' };
   });
 }
 function bestandslisteHtml(S, { iAar }) {
