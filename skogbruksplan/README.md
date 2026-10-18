@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.18.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.19.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -75,6 +75,11 @@ For bestand i hogstklasse I og II viser bestandet (fullversjonen og SkogIQ Felt)
 
 - *fra data*: treantall/middelhøyde i bestandsdataene.
 - *beregnet*: plantetall × 85 % overlevelse + naturlige lauvtrær (etter bonitet og alder), høydekurve for bonitet og alder, lauv × 1,5 (under 10 år) / 1,25 (under 20 år) av barhøyden, og målet for ungskogpleie etter utført pleie.
+- *Treantall etter regulering* beregnes alltid etter bonitet når det ikke er registrert (`maalTetthet` i `js/tiltaksmotor.js`).
+  - Grunnlaget er standarden for ungskogpleie (150–250 stammer/daa) og Skogkurs, som anbefaler den øvre delen på høy bonitet.
+  - Gran: G6–8 150, G11 160, G14 180, G17 200, G20 220, G23 240 og G26 250 trær/daa.
+  - Furu holdes 20 trær/daa tettere, opp til 240. Lauvbestand og stormutsatt skog får 120.
+  - Samme mål brukes av tiltaksmotoren («Ungskogpleie ned til ca. … trær/daa») og effektberegningen.
 - *registrert*: målte verdier skrevet inn i feltet (i Felt: «✎ Registrer målte verdier»). Tøm feltet for å gå tilbake til beregnet verdi.
 
 Registrert treantall og høyder brukes av tiltaksmotoren (behov for ungskogpleie, høyde om x år).

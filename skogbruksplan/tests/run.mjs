@@ -585,6 +585,9 @@ test('Markslag: klassifisering av AR5, figurer og arealfordeling', () => {
 test('Tiltaksmotor: biologi, bærekraft og økonomi – kort og lang sikt, endringer', () => {
   assert.deepEqual([plantetall('G', 20).anbefalt, plantetall('G', 17).min, plantetall('F', 8).intervall], [220, 100, '80–130']);
   assert.equal(maalTetthet('G', 17), 200); assert.equal(maalTetthet('G', 17, true), 120);
+  // Etter regulering etter bonitet: 150–250, høyere på høy bonitet; furu litt tettere
+  assert.deepEqual([6, 11, 14, 17, 20, 23, 26].map((bo) => maalTetthet('G', bo)), [150, 160, 180, 200, 220, 240, 250]);
+  assert.ok(maalTetthet('F', 14) > maalTetthet('G', 14)); assert.equal(maalTetthet('L', 23), 120); assert.equal(maalTetthet('G', 18), 200);
   const lag = (props) => normaliserBestand({ areal: 20, ...props }, null, props.areal || 20, 2026);
   const hogstmoden = lag({ nr: '1', treslag: 'G', bonitet: 20, alder: 80, volumDaa: 45, hoyde: 24 });
   const gammelLav = lag({ nr: '2', treslag: 'G', bonitet: 11, alder: 125, volumDaa: 18 });
@@ -1290,7 +1293,7 @@ test('Ungskog: felt for HK I–II – registrert, fra data eller beregnet', () =
   assert.ok(US.erUngskog(b)); assert.ok(!US.erUngskog({ ...b, hogstklasse: 4 }));
   let d = US.ungskogData(b);
   assert.equal(d.treantallFor.kilde, 'beregnet'); assert.ok(d.treantallFor.verdi > 300, `${d.treantallFor.verdi}`);
-  assert.equal(d.treantallEtter.verdi, null); assert.match(d.treantallEtter.forklaring, /Ikke regulert/);
+  assert.equal(d.treantallEtter.verdi, 200); assert.equal(d.treantallEtter.kilde, 'beregnet'); assert.match(d.treantallEtter.forklaring, /G17.*ikke regulert ennå/);
   assert.equal(d.hoydeBar.kilde, 'beregnet'); assert.ok(d.hoydeLauv.verdi > d.hoydeBar.verdi);
   b.treantall = 520; b.hoyde = 2.4;
   d = US.ungskogData(b);
