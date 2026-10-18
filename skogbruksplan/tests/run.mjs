@@ -40,6 +40,7 @@ import * as TE from '../js/tiltak-endring.js';
 import * as FG from '../js/flate-geometri.js';
 import * as TR from '../js/treff.js';
 import * as US from '../js/ungskog.js';
+import * as OU from '../js/oppdrag-utvalg.js';
 import { ungskogHtml, effektHtml } from '../js/effekt-html.js';
 import { genererTiltak as motorTiltak } from '../js/tiltaksmotor.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
@@ -1330,6 +1331,53 @@ test('Ungskog: økonomisk effekt av å gjennomføre, utsette eller ikke gjennomf
   const html = effektHtml(e);
   assert.match(html, /Gjennomfør nå/); assert.match(html, /effekt-best/); assert.match(html, /Utsetter du 5 år/);
   assert.doesNotMatch(effektHtml(e, { kompakt: true }), /Forutsetninger/);
+});
+
+test('Oppdrag: utvalg fra liste, trykk i kartet og tegnet flate – med angre og tilbakerulling', () => {
+  const S = lagDemo(2026); S.oppdrag = [];
+  let n = 0; const nyId = (p) => `${p}${++n}`;
+  const by = (nr) => S.bestand.find((x) => x.nr === nr);
+  for (const b of S.bestand) b.tiltak = (b.tiltak || []).filter((t) => t.type !== 'ungskogpleie');
+  by('2').tiltak.push({ id: 'p2', type: 'ungskogpleie', aar: 2027, status: 'planlagt' });
+  by('3').tiltak.push({ id: 'p3', type: 'ungskogpleie', aar: 2026, status: 'planlagt' });
+  const u = OU.nyttUtvalg({ type: 'ungskogpleie' });
+  assert.deepEqual(OU.kandidater(S, 'ungskogpleie').map(({ t }) => t.id), ['p3', 'p2']);
+  assert.equal(OU.bestandStatus(S, u, by('2')), 'kandidat'); assert.equal(OU.bestandStatus(S, u, by('4')), 'tom');
+  // Trykk: velger eksisterende, lager nytt, tar ut igjen
+  assert.equal(OU.trykkBestand(S, u, by('2'), { nyId, iAar: 2026 }).handling, 'valgt');
+  const ant4 = by('4').tiltak.length;
+  const r = OU.trykkBestand(S, u, by('4'), { nyId, iAar: 2026 });
+  assert.equal(r.handling, 'nytt'); assert.equal(by('4').tiltak.length, ant4 + 1); assert.equal(OU.bestandStatus(S, u, by('4')), 'valgt');
+  assert.equal(OU.trykkBestand(S, u, by('4'), { nyId, iAar: 2026 }).handling, 'fjernet'); assert.equal(by('4').tiltak.length, ant4);
+  assert.ok(OU.angre(u)); assert.equal(by('4').tiltak.length, ant4 + 1); assert.equal(OU.bestandStatus(S, u, by('4')), 'valgt');
+  // Liste
+  OU.settValgt(u, 'p3', true);
+  assert.equal(OU.oppsummer(S, u).tiltak, 3);
+  // Tegnet flate: delvis i 2, nesten hele 3, liten kant i 5 (tas ikke med), nytt i 6
+  const g = (b) => b.geometri;
+  const fordeling = [{ b: by('2'), daa: 1.5, andel: 0.2, geometri: g(by('2')) }, { b: by('3'), daa: by('3').areal, andel: 0.99, geometri: g(by('3')) }, { b: by('5'), daa: 0.05, andel: 0.01, geometri: g(by('5')) }, { b: by('6'), daa: 2, andel: 0.3, geometri: g(by('6')) }];
+  const f = OU.brukFlate(S, u, fordeling, { nyId, iAar: 2026 });
+  assert.equal(f.antall, 3); assert.equal(f.nye, 1);
+  const t2 = by('2').tiltak.find((t) => t.id === 'p2'); assert.equal(t2.arealDaa, 1.5); assert.ok(t2.dekning);
+  assert.equal(by('3').tiltak.find((t) => t.id === 'p3').dekning, undefined);
+  assert.ok(Math.abs(OU.oppsummer(S, u).daa - (1.5 + by('3').areal + by('4').areal + 2)) < 1e-9);
+  assert.ok(OU.oppsummer(S, u).kost > 0);
+  // Angre flaten
+  OU.angre(u); assert.equal(t2.arealDaa, undefined); assert.equal(t2.dekning, undefined); assert.equal(OU.bestandStatus(S, u, by('6')), 'tom');
+  // Opptatt i et annet oppdrag
+  const lag = (S2) => { const v = OU.valgteLinjer(S2, u); return v; };
+  assert.equal(lag(S).length, 3);
+  assert.ok(OU.harEndringer(u));
+  // Avbryt: alt rulles tilbake
+  OU.rullTilbake(u); assert.equal(by('4').tiltak.length, ant4); assert.equal(u.valgte.size, 0);
+  // Opptatt
+  const u2 = OU.nyttUtvalg({ type: 'ungskogpleie' }); OU.trykkBestand(S, u2, by('2'), { nyId });
+  S.oppdrag.push({ id: 'o1', nr: 'O-2026-01', status: 'bestilt', type: 'ungskogpleie', linjer: [] }); by('3').tiltak.find((t) => t.id === 'p3').oppdragId = 'o1';
+  assert.equal(OU.trykkBestand(S, u2, by('3'), { nyId }).handling, 'opptatt');
+  assert.equal(OU.trykkBestand(S, OU.nyttUtvalg({ type: 'annet' }), by('7'), { nyId }).handling, 'ugyldig');
+  // Sammendraget i oppdraget bruker tiltakets areal
+  const o = { linjer: [{ bestandId: by('2').id, tiltakId: 'p2' }], type: 'ungskogpleie' }; t2.arealDaa = 1.5;
+  assert.equal(OPP.sammendrag(S, o).areal, 1.5);
 });
 
 await Promise.all(venter);
