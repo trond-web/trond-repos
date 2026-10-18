@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.34.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.35.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -520,10 +520,11 @@ Når planen lages, hentes markslag fra NIBIOs arealressurskart AR5 (`js/markslag
 
 - **Kategorier:**
   - produktiv skog (skogbonitet lav–særs høy)
-  - uproduktiv skog (impediment) og myr. Myr skilles alltid ut, også skogkledd myr med produktiv bonitet, og regnes ikke som produktiv skog.
+  - uproduktiv skog (impediment) og myr
+- **Myr:** Hadde forrige takst skog der (et bestand), følges taksten, og den delen regnes som skog. Bestandet får merknaden «AR5 viser myr her, men forrige takst hadde skog her». Der taksten ikke hadde skog, er det fortsatt myr, også om SR16 viser trær. Dekker taksten bare en del av myrfiguren, er resten fortsatt myr. Det gjelder også skogkledd myr med produktiv bonitet i AR5.
   - åpen fastmark, jordbruk, bebyggelse, samferdsel, vann og snø/is
 - **Ingen volum på uproduktiv mark:** alt som ikke er produktiv skog, trekkes ut av bestandene før volum beregnes. Merknaden på bestandet sier hvor mye som er trukket ut.
-- **Utdatert AR5 overstyres:** Mye av AR5 er feltkartlagt rundt 1990. Gjengrodd mark kan derfor fortsatt stå som impediment eller åpen fastmark. En slik figur regnes som produktiv skog når nyere data viser skog på minst halvparten av den, og trekkes da ikke ut av bestandene. Nyere data betyr enten SR16 med minst 5 m³/daa og bonitet 8 eller høyere, eller en skogbruksplan registrert etter AR5-kartleggingen. Bestandet får en merknad om hvorfor, og loggen viser antall figurer og areal.
+- **Utdatert AR5 overstyres:** Mye av AR5 er feltkartlagt rundt 1990. Gjengrodd mark kan derfor fortsatt stå som impediment eller åpen fastmark (myr: se over). En slik figur regnes som produktiv skog når nyere data viser skog på minst halvparten av den, og trekkes da ikke ut av bestandene. Nyere data betyr enten SR16 med minst 5 m³/daa og bonitet 8 eller høyere, eller en skogbruksplan registrert etter AR5-kartleggingen. Bestandet får en merknad om hvorfor, og loggen viser antall figurer og areal.
 - **Kantsoner og hull ved grensene:** SR16-flatene følger ikke grensene i den gamle planen og eiendommen nøyaktig. Det gir smale striper og flekker uten data. Etter at bestandene er satt sammen, ryddes dette opp (`ryddKanterOgHull` i `js/generator.js`):
   - **Smale SR16-rester (kantsoner):** Har resten middelbredde under 15 m, eller er den under 2 daa og under 20 m bred, slås den sammen med nabobestandet den deler lengst grense med. Bestand fra den gamle planen foretrekkes. Grenser stripa bare mot åker, vei eller eiendomsgrensen, blir den markslagsfiguren *Kantsone* i stedet for et eget bestand.
   - **Hull i dekningen:** Dette er arealer innenfor eiendommen som verken er bestand eller markslag. Små eller smale flekker legges til naboen med lengst felles grense. Store og brede flater (minst 2 daa og 20 m middelbredde) blir et eget bestand. Treslag og bonitet hentes da fra AR5, og bestandet får en merknad om registrering i felt.

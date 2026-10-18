@@ -378,14 +378,33 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     ar5 = await hentAr5(eiendom.geometry, { hent, boksTreff, klipp: (g) => klipp(g)?.geometry || null, logg: (t) => logg('markslag', 'aktiv', t) });
   } catch (e) { ar5Feil = e.message; }
   // AR5 kan være flere tiår gammel (mye er feltkartlagt rundt 1990). Gjengrodd mark står da fortsatt som impediment
-  // eller åpen fastmark (myr overstyres ikke – den skilles alltid ut). Viser nyere data produktiv skog på mesteparten av
-  // figuren – SR16 med volum og bonitet, eller en skogbruksplan registrert etter AR5 – regnes figuren som produktiv.
+  // eller åpen fastmark. Viser nyere data produktiv skog på mesteparten av figuren – SR16 med volum og bonitet, eller en
+  // skogbruksplan registrert etter AR5 – regnes figuren som produktiv.
+  // Myr: Hadde forrige takst skog der (et bestand), følges taksten – den delen er skog. Hadde den ikke skog der, er det
+  // fortsatt myr, også om SR16 viser trær.
   const overstyrt = [];
   const olap = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
   for (const f of ar5) {
-    if (!OVERSTYRBAR.includes(f.kategori)) continue;
+    if (!OVERSTYRBAR.includes(f.kategori) && f.kategori !== 'myr') continue;
     const ff = feat(f.geometri); const bb = T.bbox(ff); const tot = arealM2(f.geometri);
     if (tot < 500) continue;
+    if (f.kategori === 'myr') {
+      const deler = []; let beste = null; let bestA = 0;
+      for (const pl of plan) {
+        if (!pl.klipp || !pl.attr) continue;
+        if (!pl.bb) pl.bb = T.bbox(pl.klipp);
+        if (!olap(bb, pl.bb)) continue;
+        const i = snitt(ff, pl.klipp); const a = arealM2(i); if (a < 1) continue;
+        deler.push(i); if (a > bestA) { bestA = a; beste = pl.attr; }
+      }
+      const skogA = deler.reduce((x, g) => x + arealM2(g), 0);
+      if (skogA < 500) continue; // ingen skog i taksten her: fortsatt myr
+      const skogDel = forening(deler); const rest = minus(ff, skogDel); const restA = rest ? arealM2(rest) : 0;
+      const ar5Aar = Number(String(f.ar5?.datafangst || '').slice(-4)) || null; const tAar = Number(String(beste?.regaar_korr || '').slice(0, 4)) || null;
+      overstyrt.push({ fra: 'myr', aar: ar5Aar, areal: skogA / 1000, grunn: `forrige takst${tAar ? ` (${tAar})` : ''} hadde skog her`, f: skogDel, bb: T.bbox(skogDel) });
+      if (restA < 500) f.kategori = 'produktiv'; else { f.geometri = rest.geometry; f.areal = Math.round(restA / 100) / 10; } // resten er fortsatt myr
+      continue;
+    }
     let srDekket = 0; let vol = 0; let bon = 0; let bonVekt = 0;
     for (const sd of sr16Data) {
       if (!olap(bb, sd.bbox)) continue;
