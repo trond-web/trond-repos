@@ -41,6 +41,7 @@ import { initKarbon } from './karbon-ui.js';
 import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, OPPDRAGSTYPER, typeFor as oppdragstype } from './oppdrag.js';
 const oppdragstypeNokkel = (t) => (OPPDRAGSTYPER[t] ? t : 'annet');
 import { KRAVPUNKTER } from './pefc.js';
+import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
 import { nyttUtvalg, kanLageTiltak, kandidater as utvalgKandidater, bestandStatus, trykkBestand, brukFlate, settValgt, angre as angreUtvalg, harEndringer, rullTilbake, bekreft as bekreftUtvalg, oppsummer as oppsummerUtvalg } from './oppdrag-utvalg.js';
 import { mpTilUtm, mpTilGeo, fordelPaaBestand } from './sporlogg.js';
 import { erUngskog, ungskogData, effektFor, settUngskog } from './ungskog.js';
@@ -380,7 +381,8 @@ function oppdaterStiler() {
 function etikettHtml(b) {
   const h = hk(b);
   const ts = b.treslag ? `${b.treslag}${b.bonitet ?? ''}` : '';
-  return `<b>${esc(b.nr || '?')}</b><span class="mer">${h || '–'}/ ${esc(ts)}</span><span class="mer">${fmt(b.areal || 0, 2)}</span>`;
+  const k = h ? tetthet(b, { inn: inn(), hk: h }).klasse : null;
+  return `<b>${esc(b.nr || '?')}</b><span class="mer">${h || '–'}${k || ''}/ ${esc(ts)}</span><span class="mer">${fmt(b.areal || 0, 2)}</span>`;
 }
 function oppdaterEtiketter() {
   const z = kart.getZoom();
@@ -679,7 +681,7 @@ function tegnBestandTabell() {
       <td>${esc(r.nr)}${r.b.miljo ? ' 🦉' : ''}${r.b.geometri ? '' : ' <span title="Mangler kartgeometri">⚠️</span>'}</td>
       <td class="tall">${fmt(r.areal, 1)}</td>
       <td><span class="ts-prikk" style="background:var(--ts-${(r.treslag || 'g').toLowerCase()})"></span>${r.treslag || ''}</td>
-      <td class="tall">${r.bonitet ?? ''}</td><td>${r.hogstklasse ? HK_ROMERTALL[r.hogstklasse] : ''}</td>
+      <td class="tall">${r.bonitet ?? ''}</td><td>${r.hogstklasse ? hkTekst(r.b, { inn: inn(), hk: r.hogstklasse }) : ''}</td>
       <td class="tall">${r.alder !== null && r.alder !== undefined ? Math.round(r.alder) : ''}</td>
       <td class="tall">${fmt(r.volumDaa, 1)}</td><td class="tall">${fmt(r.volum)}</td>
       <td class="tall">${r.hogstmoden ? (r.hogstmoden <= IAAR ? 'Nå' : r.hogstmoden) : ''}</td>
@@ -761,6 +763,7 @@ function visDetalj() {
       <label>Treslag <select name="treslag">${opsjoner(Object.entries(TRESLAG), b.treslag)}</select></label>
       <label>Bonitet (H40) <select name="bonitet"><option value="">–</option>${opsjoner(BONITETER.map((v) => [v, `${b.treslag || 'G'}${v}`]), b.bonitet)}</select></label>
       <label>Hogstklasse <select name="hogstklasse"><option value="">Beregn fra alder${!b.hogstklasse && hk(b) ? ` (${HK_ROMERTALL[hk(b)]})` : ''}</option>${opsjoner(HOGSTKLASSER.map((h) => [h, HK_NAVN[h]]), b.hogstklasse)}</select>${(() => { const a = hogstklasseAvvik(b, inn()); return a ? `<span class="hk-avvik">Alder ${a.alder} år og bonitet ${esc(b.treslag || 'G')}${b.bonitet} tilsier hogstklasse ${HK_ROMERTALL[a.beregnet]} (III fra ${a.grenser.III}, IV fra ${a.grenser.IV}, V fra ${a.grenser.V} år). Velg «Beregn fra alder» hvis registreringen er utdatert.</span>` : ''; })()}</label>
+      ${tetthetFeltHtml(b)}
       <label>Alder (år) <input name="alder" type="number" value="${b.alder ?? ''}"></label>
       <label>Volum (m³/daa) <input name="volumDaa" type="number" step="0.1" value="${b.volumDaa ?? ''}"></label>
       <label>Treantall (per daa) <input name="treantall" type="number" value="${b.treantall ?? ''}"></label>
@@ -785,6 +788,7 @@ function visDetalj() {
     const f = e.target; const navn = f.name;
     let v = f.type === 'checkbox' ? f.checked : f.value;
     if (['areal', 'alder', 'volumDaa', 'treantall', 'hoyde', 'bonitet', 'hogstklasse'].includes(navn)) v = v === '' ? null : Number(v);
+    if (navn === 'tetthetsklasse') { b.tetthetsklasse = v || null; if (!v) delete b.tetthetsklasse; endret({ kart: true }); visDetalj(); return; }
     if (navn === 'vegetasjon') { b.vegetasjon = v ? { kode: v, navn: VEG_TYPER[v]?.navn || b.vegetasjon?.navn || v, kilde: 'manuell' } : null; endret({ kart: true }); visDetalj(); return; }
     b[navn] = v;
     if (['alder', 'volumDaa', 'treantall', 'hoyde'].includes(navn)) b.takstAar = IAAR; // registrert i år
@@ -819,6 +823,14 @@ function visDetalj() {
     S.bestand = S.bestand.filter((x) => x.id !== b.id); valgtId = null; avsluttGrenseRedigering();
     endret({ kart: true });
   };
+}
+
+// Tetthetsklasse a/b (SOSI SP_HKL): registrert, beregnet for HK II, hint for HK III–V.
+function tetthetFeltHtml(b) {
+  const h = hk(b); const t = tetthet(b, { inn: inn(), hk: h });
+  const navn = h === 1 ? 'Rydding' : 'Tetthetsklasse';
+  const tom = t.kilde === 'beregnet' ? `Beregn (${t.klasse} – ${tetthetNavn(h, t.klasse)})` : 'Ikke vurdert';
+  return `<label>${navn} <select name="tetthetsklasse"><option value="">${esc(tom)}</option>${['a', 'b'].map((k) => `<option value="${k}" ${b.tetthetsklasse === k ? 'selected' : ''}>${k} – ${esc(tetthetNavn(h, k))}</option>`).join('')}</select><span class="hint" style="font-weight:400">${esc(t.kilde === 'registrert' ? 'Registrert' : t.hint || t.forklaring)}</span></label>`;
 }
 
 // Ungskogfelt (HK I–II) og økonomisk effekt av å gjennomføre eller ikke gjennomføre ungskogpleie/planting.
@@ -1218,7 +1230,7 @@ function startGps() {
     if (forste) { kart.setView(ll, Math.max(kart.getZoom(), 15)); forste = false; }
     $('#gpsStatus').textContent = `Posisjon ${ll[0].toFixed(5)}, ${ll[1].toFixed(5)} (±${Math.round(p.coords.accuracy)} m)`;
     const b = S.bestand.find((x) => punktIGeometri([ll[1], ll[0]], x.geometri));
-    $('#gpsBestand').innerHTML = b ? `<p>Du står i <b>bestand ${esc(b.nr)}</b>: ${TRESLAG[b.treslag] || ''} ${b.bonitet ? `bonitet ${b.bonitet}` : ''}, HK ${HK_ROMERTALL[hk(b)] || '?'}, ${b.alder ?? '?'} år, ${fmt(startTilstand(b).volumDaa, 1)} m³/daa. <a href="#" data-vis="${b.id}">Åpne</a></p>` : '<p class="hint">Du er utenfor registrerte bestand.</p>';
+    $('#gpsBestand').innerHTML = b ? `<p>Du står i <b>bestand ${esc(b.nr)}</b>: ${TRESLAG[b.treslag] || ''} ${b.bonitet ? `bonitet ${b.bonitet}` : ''}, HK ${hkTekst(b, { inn: inn(), hk: hk(b) }) || '?'}, ${b.alder ?? '?'} år, ${fmt(startTilstand(b).volumDaa, 1)} m³/daa. <a href="#" data-vis="${b.id}">Åpne</a></p>` : '<p class="hint">Du er utenfor registrerte bestand.</p>';
   }, (err) => { $('#gpsStatus').textContent = `GPS-feil: ${err.message}`; }, { enableHighAccuracy: true, maximumAge: 5000 });
 }
 
@@ -1304,6 +1316,8 @@ function bestandTilFeature(b, koordsys = 'WGS84') {
     geometry: b.geometri ? fraWgs84(b.geometri, koordsys) : null,
     properties: {
       BESTANDNR: b.nr, TEIG: b.teig || null, AREAL_DAA: b.areal, TRESLAG: b.treslag, BONITET: b.bonitet, HOGSTKLASSE: hk(b),
+      ...(b.tetthetsklasse && hk(b) ? { TETTHETSKLASSE: b.tetthetsklasse, SP_HKL: hk(b) * 10 + (b.tetthetsklasse === 'a' ? 1 : 2) } : {}),
+      ...(b.ungskog ? { TREANTALL_FOR_REGULERING: b.ungskog.treantallFor ?? null, TREANTALL_ETTER_REGULERING: b.ungskog.treantallEtter ?? null, HOYDE_BAR: b.ungskog.hoydeBar ?? null, HOYDE_LAUV: b.ungskog.hoydeLauv ?? null } : {}),
       ALDER: b.alder ?? null, VOLUM_DAA: b.volumDaa ?? runde(s.volumDaa, 1), VOLUM_M3: runde(s.volumDaa * (b.areal || 0), 0),
       TREANTALL: b.treantall ?? null, MIDDELHOYDE: b.hoyde ?? null, MILJOFIGUR: b.miljo ? 'Ja' : null, VEGETASJONSTYPE: vegTekst(b.vegetasjon) || null, MERKNAD: b.merknad || null,
       TILTAK: (b.tiltak || []).filter((t) => t.status !== 'utfort').map((t) => `${TILTAKSTYPER[t.type]?.navn || t.type} ${t.aar}`).join('; ') || null,

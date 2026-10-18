@@ -31,11 +31,12 @@ const r1 = (v) => (v == null ? null : Math.round(v * 10) / 10);
 export function ungskogData(b, { inn = STANDARD_INNSTILLINGER } = {}) {
   const u = b.ungskog || {}; const s = startTilstand(b); const ts = b.treslag || 'G'; const bo = s.h40;
   const pleid = utfort(b, 'ungskogpleie'); const plantet = utfort(b, 'planting');
+  const reg = u.kilde === 'import' ? 'Fra importert skogbruksplan' : 'Registrert';
   const maal = maalTetthet(ts, bo);
   const v = (felt, verdi, kilde, forklaring) => ({ felt, verdi: verdi == null ? null : Math.round(verdi * (felt.startsWith('hoyde') ? 10 : 1)) / (felt.startsWith('hoyde') ? 10 : 1), kilde, forklaring });
   // Treantall før regulering
   let tf;
-  if (u.treantallFor != null) tf = v('treantallFor', u.treantallFor, 'registrert', 'Registrert');
+  if (u.treantallFor != null) tf = v('treantallFor', u.treantallFor, 'registrert', reg);
   else if (b.treantall != null && !pleid) tf = v('treantallFor', b.treantall, 'data', 'Treantall i bestandsdataene');
   else {
     const vekst = Math.min(1, Math.max(0.3, (s.alder || 1) / 8));
@@ -48,17 +49,17 @@ export function ungskogData(b, { inn = STANDARD_INNSTILLINGER } = {}) {
   }
   // Treantall etter regulering
   let te;
-  if (u.treantallEtter != null) te = v('treantallEtter', u.treantallEtter, 'registrert', 'Registrert');
+  if (u.treantallEtter != null) te = v('treantallEtter', u.treantallEtter, 'registrert', reg);
   else if (pleid) te = v('treantallEtter', b.treantall && b.treantall <= maal * 1.4 ? b.treantall : maal, 'beregnet', `Ungskogpleie utført ${pleid.utfortDato || pleid.aar} – målet er ${maal} trær/daa`);
   else te = v('treantallEtter', null, null, `Ikke regulert ennå – mål ${maal} trær/daa`);
   // Høyder
   const hModell = hoydeOm(b, 0);
   let hb;
-  if (u.hoydeBar != null) hb = v('hoydeBar', u.hoydeBar, 'registrert', 'Registrert');
+  if (u.hoydeBar != null) hb = v('hoydeBar', u.hoydeBar, 'registrert', reg);
   else if (ts !== 'L' && b.hoyde != null) hb = v('hoydeBar', b.hoyde, 'data', 'Middelhøyde i bestandsdataene');
   else hb = v('hoydeBar', ts === 'L' ? hModell * 0.8 : hModell, 'beregnet', `Høydekurve for bonitet ${bo} ved ${Math.round(s.alder)} år`);
   let hl;
-  if (u.hoydeLauv != null) hl = v('hoydeLauv', u.hoydeLauv, 'registrert', 'Registrert');
+  if (u.hoydeLauv != null) hl = v('hoydeLauv', u.hoydeLauv, 'registrert', reg);
   else if (ts === 'L' && b.hoyde != null) hl = v('hoydeLauv', b.hoyde, 'data', 'Middelhøyde i bestandsdataene');
   else {
     // Lauv (bjørk/osp/selje) vokser raskere enn gran de første 15–20 årene.
@@ -163,7 +164,7 @@ export function settUngskog(b, felt, verdi, { idag = new Date().toISOString().sl
   if (!UNGSKOG_FELT[felt]) return false;
   const n = verdi === '' || verdi == null ? null : Number(String(verdi).replace(',', '.'));
   if (n != null && (!Number.isFinite(n) || n < 0 || (felt.startsWith('treantall') && n > 20000) || (felt.startsWith('hoyde') && n > 40))) return false;
-  b.ungskog = { ...(b.ungskog || {}) };
+  b.ungskog = { ...(b.ungskog || {}) }; delete b.ungskog.kilde;
   if (n == null) delete b.ungskog[felt]; else b.ungskog[felt] = felt.startsWith('treantall') ? Math.round(n) : Math.round(n * 10) / 10;
   b.ungskog.dato = idag;
   if (!Object.keys(b.ungskog).some((k) => UNGSKOG_FELT[k])) delete b.ungskog;

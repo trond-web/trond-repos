@@ -72,22 +72,29 @@ export function treslagFraSR16(kode, andel = null) {
 // ---------- Normalisering av importerte attributter ----------
 
 const FELT = {
-  nr: ['BESTANDNR', 'BESTAND_NR', 'BESTANDSNR', 'BESTNR', 'BEST_NR', 'BESTAND', 'NR', 'BESTANDSNUMMER', 'ID'],
-  teig: ['TEIG', 'TEIGNR', 'TEIG_NR'],
-  areal: ['AREAL_DAA', 'AREALDAA', 'PRODUKTIVT_AREAL', 'PROD_AREAL', 'AREAL', 'DAA', 'DEKAR'],
-  treslag: ['TRESLAG', 'HOVEDTRESLAG', 'TRESL', 'TRESLAG_KODE', 'TSL', 'TRESLAGSKODE'],
-  bonitet: ['BONITET', 'BON', 'H40', 'SI', 'BONITET_H40', 'SITEINDEX'],
-  hogstklasse: ['HOGSTKLASSE', 'HKL', 'HK', 'HOGSTKL'],
-  alder: ['ALDER', 'BESTANDSALDER', 'ALDER_TOT', 'TOTALALDER', 'ALDER_BRH'],
-  volumDaa: ['VOLUM_DAA', 'M3_DAA', 'VOLUM_PR_DAA', 'VOLDAA', 'M3DAA', 'VOLUM_PER_DAA'],
-  volum: ['VOLUM', 'VOLUM_TOTAL', 'TOTALVOLUM', 'M3', 'VOL', 'VOLUM_M3', 'TOT_VOLUM'],
+  // SP_-navnene er fra SOSI-standarden «Skogbruksplan – bestand» (planfirmaenes eksport).
+  nr: ['BESTANDNR', 'BESTAND_NR', 'BESTANDSNR', 'BESTNR', 'BEST_NR', 'BESTAND', 'NR', 'BESTANDSNUMMER', 'SP_BESTNR', 'ID'],
+  teig: ['TEIG', 'TEIGNR', 'TEIG_NR', 'SP_TEIGNR'],
+  areal: ['AREAL_DAA', 'AREALDAA', 'PRODUKTIVT_AREAL', 'PROD_AREAL', 'AREAL', 'DAA', 'DEKAR', 'SP_BAREAL'],
+  treslag: ['TRESLAG', 'HOVEDTRESLAG', 'TRESL', 'TRESLAG_KODE', 'TSL', 'TRESLAGSKODE', 'SP_ABONTRE'],
+  bonitet: ['BONITET', 'BON', 'H40', 'SI', 'BONITET_H40', 'SITEINDEX', 'SP_AGJBON'],
+  hogstklasse: ['HOGSTKLASSE', 'HKL', 'HK', 'HOGSTKL', 'SP_HKL'],
+  tetthet: ['TETTHETSKLASSE', 'TETTHETKLASSE', 'TETTHET', 'TETTHET_KLASSE'],
+  alder: ['ALDER', 'BESTANDSALDER', 'ALDER_TOT', 'TOTALALDER', 'ALDER_BRH', 'SP_ALDER'],
+  volumDaa: ['VOLUM_DAA', 'M3_DAA', 'VOLUM_PR_DAA', 'VOLDAA', 'M3DAA', 'VOLUM_PER_DAA', 'SP_AVOLPRDA', 'SP_BVOLPRDA'],
+  volum: ['VOLUM', 'VOLUM_TOTAL', 'TOTALVOLUM', 'M3', 'VOL', 'VOLUM_M3', 'TOT_VOLUM', 'SP_AVOLTOT'],
   treantall: ['TREANTALL', 'TREANTALL_DAA', 'TREANT_DAA', 'TRE_DAA', 'STAMMETALL', 'N_DAA'],
-  hoyde: ['MIDDELHOYDE', 'HOYDE', 'HL', 'LOREYS_HOYDE', 'MHOYDE'],
+  hoyde: ['MIDDELHOYDE', 'HOYDE', 'HL', 'LOREYS_HOYDE', 'MHOYDE', 'SP_HOYDE', 'SP_BMIDHO'],
+  // Ungskog (hogstklasse II)
+  treantallFor: ['TREANTALL_FOR', 'TREANTALL_FOR_REGULERING', 'TRE_FOR_REG', 'SP_TREFREG'],
+  treantallEtter: ['TREANTALL_ETTER', 'TREANTALL_ETTER_REGULERING', 'TRE_ETTER_REG', 'SP_TREEREG'],
+  hoydeBar: ['HOYDE_BAR', 'BARHOYDE', 'SP_HBAR'],
+  hoydeLauv: ['HOYDE_LAUV', 'LAUVHOYDE', 'SP_HLAUV'],
   gran: ['GRAN_PST', 'GRAN_PROSENT', 'ANDEL_GRAN', 'PST_GRAN'],
   furu: ['FURU_PST', 'FURU_PROSENT', 'ANDEL_FURU', 'PST_FURU'],
   lauv: ['LAUV_PST', 'LAUV_PROSENT', 'ANDEL_LAUV', 'PST_LAUV'],
   tiltak: ['TILTAK', 'TILTAK1', 'TILTAKSKODE', 'FORESLATT_TILTAK', 'TILTAKSTYPE'],
-  tiltakAar: ['TILTAK_AAR', 'TILTAKAAR', 'TILTAKSAAR', 'AAR_TILTAK', 'TILTAK1_AAR'],
+  tiltakAar: ['TILTAK_AAR', 'TILTAKAAR', 'TILTAKSAAR', 'AAR_TILTAK', 'TILTAK1_AAR', 'SP_AAR'],
   merknad: ['MERKNAD', 'KOMMENTAR', 'BESKRIVELSE', 'NOTAT', 'NOTE'],
   miljo: ['MILJOFIGUR', 'NOKKELBIOTOP', 'MIS', 'MILJO'],
   vegetasjon: ['VEGETASJONSTYPE', 'VEGETASJON', 'VEGTYPE', 'VEG_TYPE', 'VEGETASJONSKODE', 'SKOGTYPE'],
@@ -126,13 +133,28 @@ export function tolkBonitet(v) {
   return { h40: n, treslag: null };
 }
 
+// Hogstklasse fra «4», «IV», «2A», «II b», «2 B» eller SOSI-koden SP_HKL (11, 12, 21 … 52: klasse og a/b).
 export function tolkHogstklasse(v) {
   if (v === null || v === undefined || v === '') return null;
-  const s = String(v).trim().toUpperCase().replace(/[^IVX0-9]/g, '');
+  const t = String(v).trim().toUpperCase();
+  const sosi = t.match(/^([1-5])([12])$/); if (sosi) return Number(sosi[1]);
+  const s = t.replace(/[\s.-]*[AB]$/, '').replace(/[^IVX0-9]/g, '');
   const rom = { I: 1, II: 2, III: 3, IV: 4, V: 5 };
   if (rom[s]) return rom[s];
   const n = parseInt(s, 10);
   return n >= 1 && n <= 5 ? n : null;
+}
+
+// Tetthetsklasse a/b fra «a», «B», «2A», «II b» eller SOSI-koden (21 = a, 22 = b). a = tilfredsstillende tetthet
+// (i HK I: tilfredsstillende ryddet), b = mindre tilfredsstillende.
+export function tolkTetthet(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const t = String(v).trim().toUpperCase();
+  const sosi = t.match(/^[1-5]([12])$/); if (sosi) return sosi[1] === '1' ? 'a' : 'b';
+  const m = t.match(/(?:^|[\dIVX\s.-])([AB])$/); if (m) return m[1].toLowerCase();
+  if (/^TILFREDS/.test(t)) return 'a';
+  if (/^(MINDRE|IKKE)/.test(t)) return 'b';
+  return null;
 }
 
 export function tolkTiltak(v) {
@@ -201,6 +223,7 @@ export function normaliserBestand(props, geometri, arealGeomDaa, iAar = new Date
     treslag,
     bonitet: bon.h40,
     hogstklasse: tolkHogstklasse(hent('hogstklasse')),
+    tetthetsklasse: tolkTetthet(hent('tetthet')) || tolkTetthet(hent('hogstklasse')),
     alder: tall(hent('alder')),
     volumDaa: volumDaa !== null ? runde(volumDaa, 2) : null,
     treantall: tall(hent('treantall')),
@@ -208,6 +231,7 @@ export function normaliserBestand(props, geometri, arealGeomDaa, iAar = new Date
     miljo: Boolean(hent('miljo')) && !['0', 'NEI', 'N', 'FALSE'].includes(String(hent('miljo')).toUpperCase()),
     merknad: hent('merknad') ? String(hent('merknad')) : '',
     vegetasjon: tolkVegetasjon(hent('vegetasjon')),
+    ...(() => { const u = Object.fromEntries(['treantallFor', 'treantallEtter', 'hoydeBar', 'hoydeLauv'].map((k) => [k, tall(hent(k))]).filter(([, v]) => v !== null && v >= 0)); return Object.keys(u).length ? { ungskog: { ...u, kilde: 'import' } } : {}; })(),
     tiltak,
     ekstra,
     takstAar: iAar,

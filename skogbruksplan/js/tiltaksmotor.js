@@ -1,6 +1,7 @@
 // Tiltaksmotor: lager tiltak for kort (0–10 år) og lang sikt (10–30 år) ut fra biologi, bærekraft og økonomi.
 // Fokus: flatehogst, lukket hogst, tynning, planting, markberedning og ungskogpleie. Reglene bygger på forskrift,
 // forskning og fagråd (se KILDER). Ingen DOM – kan testes i Node.
+import { tetthet } from './tetthet.js';
 import { STANDARD_INNSTILLINGER, startTilstand, laavesteHogstalder, beregnetHogstklasse, arligTilvekstDaa, hogstAndel, hogstNettoPerM3, tiltakKostnad, nyId, TILTAKSTYPER, hkGrenser } from './model.js';
 import { pefcAlder, avstand } from './pefc.js';
 import { bestandsverdi, STANDARD_VERDI } from './verdi.js';
@@ -210,6 +211,13 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
       }
     }
 
+    // 2b. Ungskog med mindre tilfredsstillende tetthet (II b): suppler mens bestandet er ungt. Bare når klassen er
+    // registrert eller treantallet er målt (ungskogfeltene) – treantall fra SR16 er for usikkert i ung skog.
+    if (hk === 2 && ts !== 'L' && s.alder <= 12 && !planlagt(b, ['suppleringsplanting']) && !utfort(b, 'suppleringsplanting').length && (() => { const t = tetthet(b, { hk }); return t.klasse === 'b' && (t.kilde === 'registrert' || t.grunnlag === 'ungskog'); })()) {
+      const pt = plantetall(ts, bo);
+      legg(b, 'suppleringsplanting', iAar + 1, 1, `Suppleringsplanting – mindre tilfredsstillende tetthet (II b), minst ${pt.min} planter/daa`, `For få trær til å utnytte markas produksjonsevne. Forskriften § 7 krever minst ${pt.min} planter/daa for ${ts}${bo}. Suppler mens bestandet er ungt (under ca. 10–12 år) – senere blir de nye plantene skygget ut.`, ['forskrift'], { regel: 'supplering' });
+    }
+
     // 3. Tynning (først 12–14 m, furu ev. andre gang 16–18 m)
     if (!planlagt(b, ['tynning', 'sluttavvirkning', 'lukkethogst']) && hk >= 2 && hk <= 4 && ts !== 'L') {
       // Karbon: tynning tar ut en fjerdedel av lageret og gir lite merproduksjon – bare på god bonitet.
@@ -299,7 +307,7 @@ export function oppsummer(forslag, S) {
 export function signatur(b) {
   const s = startTilstand(b);
   return JSON.stringify([b.treslag, b.bonitet, Math.round(s.alder / 3), Math.round(s.volumDaa), b.ungskog?.treantallFor ?? b.treantall, b.hoyde ? Math.round(b.hoyde) : null, b.hogstklasse, Math.round((b.areal || 0) * 2), !!b.miljo,
-    (b.tiltak || []).filter((t) => t.status === 'utfort').map((t) => `${t.type}:${t.aar}`).sort().join(',')]);
+    (b.tiltak || []).filter((t) => t.status === 'utfort').map((t) => `${t.type}:${t.aar}`).sort().join(','), ...(b.tetthetsklasse ? [b.tetthetsklasse] : [])]);
 }
 export function merkKjort(b, prinsipp) { b.motor = { signatur: signatur(b), kjort: new Date().toISOString().slice(0, 10), prinsipp, versjon: MOTOR_VERSJON }; }
 

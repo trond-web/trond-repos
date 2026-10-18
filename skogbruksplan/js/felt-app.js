@@ -16,6 +16,7 @@ import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from '.
 import { erUngskog, ungskogData, effektFor, settUngskog } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { STANDARD_VERDI } from './verdi.js';
+import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -161,6 +162,13 @@ function ungskogSeksjon(b) {
     ${e ? `<h3>Effekt av ${e.type === 'ungskogpleie' ? 'ungskogpleie' : 'planting'}</h3>${effektHtml(e, { kompakt: true })}
       ${planlagt ? '' : `<div class="knapper"><button type="button" class="knapp" data-h="effekt-tiltak" data-type="${e.type}">+ Planlegg ${e.type === 'ungskogpleie' ? 'ungskogpleie' : 'planting'} ${IAAR}</button></div>`}` : ''}`;
 }
+// Tetthetsklasse a/b: velges med ett trykk i felt (registrert), ellers beregnet (HK II) eller hint (HK III–V).
+function tetthetRad(b, h) {
+  const t = tetthet(b, { inn: inn(), hk: h });
+  return `<div class="tetthet-rad"><div><span>${h === 1 ? 'Rydding' : 'Tetthet'}</span> <b>${t.klasse ? `${t.klasse} – ${esc(tetthetNavn(h, t.klasse))}` : 'ikke vurdert'}</b>${t.kilde ? ` <small>${t.kilde === 'registrert' ? 'registrert' : 'beregnet'}</small>` : ''}</div>
+    <div class="chips">${['a', 'b'].map((k) => `<button type="button" class="chip" data-tetthet="${k}" aria-pressed="${b.tetthetsklasse === k}" title="${esc(tetthetNavn(h, k))}">${k}</button>`).join('')}${b.tetthetsklasse ? '<button type="button" class="chip" data-tetthet="">Tøm</button>' : ''}</div></div>
+    ${t.kilde !== 'registrert' && (t.hint || t.forklaring) ? `<p class="hint" style="margin-top:2px">${esc(t.hint || t.forklaring)}</p>` : ''}`;
+}
 function visBestand(id, { zoom = false } = {}) {
   const b = finn(id); if (!b) return;
   if (ungskogRed !== id) ungskogRed = null;
@@ -170,7 +178,8 @@ function visBestand(id, { zoom = false } = {}) {
   const regs = (P.registreringer || []).filter((r) => r.bestandId === id);
   const tiltak = nesteTiltak(b);
   aapneArk(`<h2>Bestand ${esc(b.nr)}</h2>
-    <div><span class="merke">${esc(TRESLAG[b.treslag] || 'Ukjent treslag')}</span>${b.bonitet ? `<span class="merke">Bonitet ${esc(b.bonitet)}</span>` : ''}${h ? `<span class="merke" title="${esc(HK_NAVN[h])}">HK ${HK_ROMERTALL[h]}</span>` : ''}${b.miljo ? '<span class="merke" style="background:#fae6ea;color:#c93a55">Miljøfigur</span>' : ''}</div>
+    <div><span class="merke">${esc(TRESLAG[b.treslag] || 'Ukjent treslag')}</span>${b.bonitet ? `<span class="merke">Bonitet ${esc(b.bonitet)}</span>` : ''}${h ? `<span class="merke" title="${esc(HK_NAVN[h])}">HK ${hkTekst(b, { inn: inn(), hk: h })}</span>` : ''}${b.miljo ? '<span class="merke" style="background:#fae6ea;color:#c93a55">Miljøfigur</span>' : ''}</div>
+    ${h ? tetthetRad(b, h) : ''}
     <div class="tall-rad">
       <div class="tall"><b>${fmt(b.areal, 1)}</b><span>daa</span></div>
       <div class="tall"><b>${fmt(s.alder)}</b><span>år</span></div>
@@ -233,7 +242,7 @@ function identifiser(ll, b) {
   treffMarkor = L.circleMarker(ll, { radius: 7, color: '#fff', weight: 2.5, fillColor: '#c93a55', fillOpacity: 1, interactive: false }).addTo(kart);
   aapneArk(`<h2>Her ligger</h2><p class="hint">Velg hva du vil se.</p>
     <div class="liste">${h.tiltak.map(({ b: tb, t }) => `<button type="button" class="rad treff-rad" data-tiltakkort="${esc(tb.id)}|${esc(t.id)}"><div><div class="tittel"><span class="treff-ikon ${t.status === 'utfort' ? 'utfort' : 'planlagt'}" aria-hidden="true"></span>${esc(tiltakNavn(t))}</div><div class="under">${esc(tiltakLinje(tb, t))} · bestand ${esc(tb.nr)}</div></div><span>›</span></button>`).join('')}
-    ${best ? `<button type="button" class="rad treff-rad" data-bestand-kort="${esc(best.id)}"><div><div class="tittel"><span class="treff-ikon bestand" aria-hidden="true"></span>Bestand ${esc(best.nr)}</div><div class="under">${esc(TRESLAG[best.treslag] || '')}${best.bonitet ? ` · bonitet ${esc(best.bonitet)}` : ''}${hk(best) ? ` · HK ${HK_ROMERTALL[hk(best)]}` : ''} · ${fmt(best.areal, 1)} daa</div></div><span>›</span></button>` : ''}</div>`);
+    ${best ? `<button type="button" class="rad treff-rad" data-bestand-kort="${esc(best.id)}"><div><div class="tittel"><span class="treff-ikon bestand" aria-hidden="true"></span>Bestand ${esc(best.nr)}</div><div class="under">${esc(TRESLAG[best.treslag] || '')}${best.bonitet ? ` · bonitet ${esc(best.bonitet)}` : ''}${hk(best) ? ` · HK ${hkTekst(best, { inn: inn(), hk: hk(best) })}` : ''} · ${fmt(best.areal, 1)} daa</div></div><span>›</span></button>` : ''}</div>`);
 }
 function visTiltakKort(bid, tid, { zoom = false } = {}) {
   const b = finn(bid); const t = b?.tiltak?.find((x) => x.id === tid); if (!b || !t) return;
@@ -403,7 +412,7 @@ function gpsStripe() {
   if (gps.watch === null || !gps.pos) { el.hidden = gps.watch === null; if (!el.hidden) el.innerHTML = '<span class="hint">Venter på GPS …</span>'; return; }
   const b = bestandVed(gps.pos.lat, gps.pos.lon);
   el.hidden = false;
-  el.innerHTML = b ? `Du står i <b>bestand ${esc(b.nr)}</b> · ${esc(b.treslag || '')}${esc(b.bonitet || '')} · HK ${HK_ROMERTALL[hk(b)] || '?'} · ${fmt(startTilstand(b).alder)} år <span class="hint">±${Math.round(gps.pos.noyaktighet)} m</span>`
+  el.innerHTML = b ? `Du står i <b>bestand ${esc(b.nr)}</b> · ${esc(b.treslag || '')}${esc(b.bonitet || '')} · HK ${hkTekst(b, { inn: inn(), hk: hk(b) }) || '?'} · ${fmt(startTilstand(b).alder)} år <span class="hint">±${Math.round(gps.pos.noyaktighet)} m</span>`
     : `<span class="hint">Utenfor bestandene · ±${Math.round(gps.pos.noyaktighet)} m</span>`;
   el.onclick = b ? () => visBestand(b.id) : null;
 }
@@ -525,6 +534,8 @@ function kobleHendelser() {
   const ark = $('#arkInnhold');
   ark.addEventListener('click', async (e) => {
     if (await oppdrag.klikk(e)) return;
+    const tkl = e.target.closest('[data-tetthet]');
+    if (tkl && valgtId) { const b = finn(valgtId); const top = $('#arkInnhold').scrollTop; if (tkl.dataset.tetthet) b.tetthetsklasse = tkl.dataset.tetthet; else delete b.tetthetsklasse; await lagrePlanen(); visBestand(b.id); $('#arkInnhold').scrollTop = top; melding(tkl.dataset.tetthet ? `Bestand ${b.nr}: HK ${hkTekst(b, { inn: inn() })}` : 'Tetthetsklassen er fjernet.', 1800); return; }
     const plan = e.target.closest('[data-plan]'); if (plan) { await velgPlan(plan.dataset.plan); lukkArk(); return; }
     const en = e.target.closest('[data-endre]'); if (en) { e.stopPropagation(); const [bid, tid] = en.dataset.endre.split('|'); visEndreTiltak(bid, tid); return; }
     const ut = e.target.closest('[data-utfort]'); if (ut) { e.stopPropagation(); const [bid, tid] = ut.dataset.utfort.split('|'); settUtfort(bid, tid); return; }

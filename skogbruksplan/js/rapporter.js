@@ -7,6 +7,7 @@ import { etikettPunkt } from './proj.js';
 import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling } from './markslag.js';
 import { KRAVPUNKTER, TEMA, OBJEKTTYPER, KLARERING, HOGSTFORMER, FORYNGELSE, arealDaa, klareringStatus } from './pefc.js';
 import { signatur } from './versjon.js';
+import { tetthet } from './tetthet.js';
 import { MIS, misMonster, misFigurer } from './miljokart.js';
 
 export const RAPPORTER = {
@@ -220,7 +221,7 @@ function bestandRader(S, iAar) {
   return [...S.bestand].sort((a, b) => sr(a) - sr(b) || sortNr(a.teig || '', b.teig || '') || sortNr(a.nr, b.nr)).map((b) => {
     const st = startTilstand(b); const a = b.areal || 0; const tv = arligTilvekstDaa(b) * a;
     const tiltak = (b.tiltak || []).filter((t) => t.status !== 'utfort').sort((x, y) => x.aar - y.aar);
-    return { b, teig: b.teig || (String(b.nr).includes('-') ? String(b.nr).split('-')[0] : /^S\d/.test(b.nr) ? 'SR16' : ''), nr: b.nr, areal: a, hk: hkFor(b, inn), treslag: b.treslag, bonitet: b.bonitet, alder: Math.round(st.alder), hoyde: b.hoyde, treantall: b.treantall, volumDaa: st.volumDaa, volum: st.volumDaa * a, tilvekst: tv, tilvekstPst: st.volumDaa * a ? (tv / (st.volumDaa * a)) * 100 : null, tiltak, miljo: b.miljo, merknad: b.merknad || '' };
+    return { b, teig: b.teig || (String(b.nr).includes('-') ? String(b.nr).split('-')[0] : /^S\d/.test(b.nr) ? 'SR16' : ''), nr: b.nr, areal: a, hk: hkFor(b, inn), tetthet: hkFor(b, inn) ? tetthet(b, { inn, hk: hkFor(b, inn) }).klasse : null, treslag: b.treslag, bonitet: b.bonitet, alder: Math.round(st.alder), hoyde: b.hoyde, treantall: b.treantall, volumDaa: st.volumDaa, volum: st.volumDaa * a, tilvekst: tv, tilvekstPst: st.volumDaa * a ? (tv / (st.volumDaa * a)) * 100 : null, tiltak, miljo: b.miljo, merknad: b.merknad || '' };
   });
 }
 function bestandslisteHtml(S, { iAar }) {
@@ -229,15 +230,15 @@ function bestandslisteHtml(S, { iAar }) {
   const sumRad = (liste, tekst) => `<tr class="r-sum"><td colspan="2">${tekst}</td><td class="t">${tall(liste.reduce((s, r) => s + r.areal, 0), 1)}</td><td colspan="6"></td><td class="t">${tall(liste.reduce((s, r) => s + r.volum, 0))}</td><td class="t">${tall(liste.reduce((s, r) => s + r.tilvekst, 0), 1)}</td><td colspan="3"></td></tr>`;
   return `${hode(S, 'Bestandsliste', iAar)}
     <table class="r-bestand"><thead><tr><th>Teig</th><th>Bestand</th><th class="t">Areal daa</th><th>HK</th><th>Treslag</th><th class="t">Bon.</th><th class="t">Alder</th><th class="t">Høyde m</th><th class="t">Trær/daa</th><th class="t">Volum m³</th><th class="t">Tilv. m³/år</th><th class="t">m³/daa</th><th>Tiltak</th><th>Merknad</th></tr></thead>
-    <tbody>${teiger.map((t) => { const liste = rader.filter((r) => r.teig === t); return liste.map((r) => `<tr${r.miljo ? ' class="r-miljo"' : ''}><td>${esc(r.teig)}</td><td><b>${esc(r.nr)}</b></td><td class="t">${tall(r.areal, 1)}</td><td>${HK_ROMERTALL[r.hk] || ''}</td><td>${esc(TRESLAG[r.treslag] || '')}</td><td class="t">${r.bonitet ?? ''}</td><td class="t">${r.alder}</td><td class="t">${r.hoyde ? tall(r.hoyde, 1) : ''}</td><td class="t">${r.treantall ?? ''}</td><td class="t">${tall(r.volum)}</td><td class="t">${tall(r.tilvekst, 1)}</td><td class="t">${tall(r.volumDaa, 1)}</td><td>${r.tiltak.map((x) => `${esc(TILTAKSTYPER[x.type]?.navn || x.type)} ${x.aar}`).join('<br>')}</td><td class="r-merk">${r.miljo ? '<b>Miljøfigur.</b> ' : ''}${esc(r.merknad)}</td></tr>`).join('') + (teiger.length > 1 ? sumRad(liste, `${t === 'SR16' ? 'Sum flater fra SR16 uten tidligere bestandsnummer' : `Sum teig ${esc(t)}`} (${liste.length} bestand)`) : ''); }).join('')}</tbody>
+    <tbody>${teiger.map((t) => { const liste = rader.filter((r) => r.teig === t); return liste.map((r) => `<tr${r.miljo ? ' class="r-miljo"' : ''}><td>${esc(r.teig)}</td><td><b>${esc(r.nr)}</b></td><td class="t">${tall(r.areal, 1)}</td><td>${HK_ROMERTALL[r.hk] || ''}${r.tetthet ? ` ${r.tetthet}` : ''}</td><td>${esc(TRESLAG[r.treslag] || '')}</td><td class="t">${r.bonitet ?? ''}</td><td class="t">${r.alder}</td><td class="t">${r.hoyde ? tall(r.hoyde, 1) : ''}</td><td class="t">${r.treantall ?? ''}</td><td class="t">${tall(r.volum)}</td><td class="t">${tall(r.tilvekst, 1)}</td><td class="t">${tall(r.volumDaa, 1)}</td><td>${r.tiltak.map((x) => `${esc(TILTAKSTYPER[x.type]?.navn || x.type)} ${x.aar}`).join('<br>')}</td><td class="r-merk">${r.miljo ? '<b>Miljøfigur.</b> ' : ''}${esc(r.merknad)}</td></tr>`).join('') + (teiger.length > 1 ? sumRad(liste, `${t === 'SR16' ? 'Sum flater fra SR16 uten tidligere bestandsnummer' : `Sum teig ${esc(t)}`} (${liste.length} bestand)`) : ''); }).join('')}</tbody>
     <tfoot>${sumRad(rader, `Sum eiendom (${rader.length} bestand)`)}</tfoot></table>
     ${uproduktivHtml(S)}
-    <p class="r-liten">HK = hogstklasse (I skogfornyelse, II ungskog, III yngre produksjonsskog, IV eldre produksjonsskog, V hogstmoden). Bonitet er H40 (overhøyde ved 40 år). Alder og volum er framskrevet til ${iAar}. Grå rader er miljøfigurer.</p>
+    <p class="r-liten">HK = hogstklasse (I skogfornyelse, II ungskog, III yngre produksjonsskog, IV eldre produksjonsskog, V hogstmoden), med tetthetsklasse a (tilfredsstillende) eller b (mindre tilfredsstillende; i HK I: ryddet/ikke ryddet). Bonitet er H40 (overhøyde ved 40 år). Alder og volum er framskrevet til ${iAar}. Grå rader er miljøfigurer.</p>
     ${fot('')}`;
 }
 function bestandslisteCsv(S, { iAar }) {
-  return [['Teig', 'Bestand', 'Areal daa', 'Hogstklasse', 'Treslag', 'Bonitet', 'Alder', 'Middelhøyde m', 'Treantall per daa', 'Volum m3/daa', 'Volum m3', 'Tilvekst m3/år', 'Tilvekst %', 'Miljøfigur', 'Planlagte tiltak', 'Merknad'],
-    ...bestandRader(S, iAar).map((r) => [r.teig, r.nr, r.areal, r.hk, TRESLAG[r.treslag] || '', r.bonitet, r.alder, r.hoyde, r.treantall, r.volumDaa, r.volum, r.tilvekst, r.tilvekstPst, r.miljo ? 'Ja' : '', r.tiltak.map((x) => `${TILTAKSTYPER[x.type]?.navn} ${x.aar}`).join(', '), r.merknad]),
+  return [['Teig', 'Bestand', 'Areal daa', 'Hogstklasse', 'Tetthetsklasse', 'Treslag', 'Bonitet', 'Alder', 'Middelhøyde m', 'Treantall per daa', 'Volum m3/daa', 'Volum m3', 'Tilvekst m3/år', 'Tilvekst %', 'Miljøfigur', 'Planlagte tiltak', 'Merknad'],
+    ...bestandRader(S, iAar).map((r) => [r.teig, r.nr, r.areal, r.hk, r.tetthet || '', TRESLAG[r.treslag] || '', r.bonitet, r.alder, r.hoyde, r.treantall, r.volumDaa, r.volum, r.tilvekst, r.tilvekstPst, r.miljo ? 'Ja' : '', r.tiltak.map((x) => `${TILTAKSTYPER[x.type]?.navn} ${x.aar}`).join(', '), r.merknad]),
     ...((S.markslag || []).length ? [[], ['Uproduktive arealer (AR5)'], ['Figur', 'Markslag', 'Areal daa', 'Treslag', 'Grunnforhold', 'Skogbonitet', 'Kartlagt'], ...S.markslag.map((f) => [f.nr, MARKSLAG[f.kategori].navn, f.areal, f.ar5?.treslag, f.ar5?.grunnforhold, f.ar5?.bonitet, f.ar5?.datafangst])] : [])];
 }
 

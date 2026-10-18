@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.16.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.17.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -471,6 +471,49 @@ V 70). Hogstklasse I er alder under 3 år eller hogd flate.
   – med merknad på bestandet.
 - Manuelt satt eller importert hogstklasse som ikke stemmer med alder og bonitet varsles på bestandet og under Innsikt.
 - Når en plan åpnes et senere år, skrives alder og volum frem fra takståret med vekstmodellen (én gang, lagres).
+
+### Tetthetsklasse (a/b)
+
+Hogstklassen har en underklasse a/b, som i SOSI-standarden «Skogbruksplan – bestand» (`SP_HKL`: 11, 12, 21 … 52).
+
+- **HK I:** a = tilfredsstillende ryddet, b = ikke tilfredsstillende ryddet.
+- **HK II–V:** a = tilfredsstillende tetthet, b = mindre tilfredsstillende tetthet.
+
+Visning:
+- Klassen vises som «II a» i bestandet, bestandstabellen og rapportene, og som «2a/ G20» i kartetikettene.
+- Bestandslisten (CSV) har en egen kolonne for tetthetsklasse.
+- SOSI-eksporten skriver `TETTHETSKLASSE` og `SP_HKL`, men bare når klassen er registrert.
+
+Hvor klassen kommer fra:
+- **Import:**
+  - Koden `SP_HKL` (for eksempel 22 = II b).
+  - En hogstklasse som «2A», «II b» eller «2 B».
+  - Et eget felt `TETTHETSKLASSE`.
+- **Planfirmaenes SOSI-felt:** Appen kjenner igjen feltnavnene i standarden, også inne i gruppene. I tillegg til `SP_HKL` gjelder det:
+
+  | Felt | Betydning |
+  |---|---|
+  | `SP_BESTNR` | bestandsnummer |
+  | `SP_TEIGNR` | teignummer |
+  | `SP_BAREAL` | areal |
+  | `SP_ABONTRE` | bonitetstreslag |
+  | `SP_AGJBON` | bonitet |
+  | `SP_ALDER` | alder |
+  | `SP_AVOLPRDA` | volum per daa |
+  | `SP_AVOLTOT` | totalvolum |
+  | `SP_HOYDE` | middelhøyde |
+  | `SP_AAR` | tiltaksår |
+
+  Ungskogfeltene leses også: `SP_TREFREG`/`SP_TREEREG` (treantall før og etter regulering) og `SP_HBAR`/`SP_HLAUV` (høyde bar og lauv). Tidligere ble planer med disse feltnavnene ikke tolket.
+- **Registrering:**
+  - I fullversjonen velges klassen i bestandsskjemaet.
+  - I SkogIQ Felt velges den med ett trykk (a, b eller Tøm) på bestandskortet.
+- **Beregnet for HK II:** Treantallet sammenlignes med minste plantetall i forskriften § 7, for eksempel 150 per daa for G20 og 100 for G14. Appen bruker først treantall etter regulering, så treantall før regulering, og til slutt bestandsdataene.
+- **HK III–V beregnes ikke.** Appen viser i stedet et hint: hvor mange prosent målt volum er av fullt bestokket skog ved samme alder og bonitet. Under 50 % gir teksten «kan tyde på mindre tilfredsstillende tetthet».
+  - Grunnen er at SR16-volumene i fjellskog ofte ligger på 30–40 % av vekstmodellen. På Flå 22/1 ville en grense på 60 % gitt b på nesten tre av fire bestand.
+- NIBIOs åpne skogbruksplandata (WMS «hogstklasser») har ikke tetthetsklasse, bare hogstklasse, bonitet, treslag og alder. Klassen må derfor komme fra planfirmaets SOSI-fil eller registreres i felt.
+
+Tiltaksmotoren foreslår **suppleringsplanting** i II b når bestandet er under ca. 12 år. Forslaget kommer bare når klassen er registrert eller treantallet er målt i ungskogfeltene, fordi treantall fra SR16 er for usikkert i ung skog.
 
 ## Spør AI (fanen «Spør AI»)
 
