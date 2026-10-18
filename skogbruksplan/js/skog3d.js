@@ -3,6 +3,7 @@
 // Styring: mus + WASD/piltaster (Shift = løpe), berøring (venstre halvdel går, høyre ser), og i VR venstre
 // stikke = gå, høyre stikke = snu 30°. Three.js lastes fra unpkg første gang visningen åpnes.
 import { lagSkog, terrengPunkter, lagTerreng, iPolygon } from './skog3d-data.js';
+import { lagTreLag } from './skog3d-traer.js';
 import { TRESLAG, HK_ROMERTALL, startTilstand } from './model.js';
 import { hkTekst } from './tetthet.js';
 import { middelhoyde, ungskogData, erUngskog } from './ungskog.js';
@@ -10,7 +11,6 @@ import { etikettPunkt } from './proj.js';
 
 const THREE_URL = 'https://unpkg.com/three@0.160.0/build/three.module.js';
 const OYEHOYDE = 1.7;
-const FARGER = { G: { stamme: 0x5a4030, krone: 0x2e6a3a }, F: { stamme: 0x9a6440, krone: 0x4a7a3c }, L: { stamme: 0xe6e2d6, krone: 0x7fae45 } };
 const STIL = `
 .skog3d { position: fixed; inset: 0; z-index: 3000; background: #9cc3e6; font: 14px/1.4 'Schibsted Grotesk', system-ui, sans-serif; color: #10241c; touch-action: none; }
 .skog3d canvas { display: block; width: 100%; height: 100%; }
@@ -85,27 +85,9 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     if (punkter.length > 1) scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(punkter), grenseMat));
   }
 
-  // Trær: én InstancedMesh per treslag for stamme og krone
-  const stammeGeo = new THREE.CylinderGeometry(0.35, 0.5, 1, 6); stammeGeo.translate(0, 0.5, 0);
-  // Gran: kjegle. Furu: flat, avrundet krone. Lauv: eggformet krone. Alle med grunnflate i y = 0 og høyde 1.
-  const kroneGeo = { G: new THREE.ConeGeometry(1, 1, 9), F: new THREE.IcosahedronGeometry(1, 1), L: new THREE.IcosahedronGeometry(1, 1) };
-  kroneGeo.G.translate(0, 0.5, 0); kroneGeo.F.translate(0, 1, 0); kroneGeo.F.scale(1, 0.5, 1); kroneGeo.L.translate(0, 1, 0); kroneGeo.L.scale(0.8, 0.5, 0.8);
-  const m = new THREE.Matrix4(); const q = new THREE.Quaternion(); const p3 = new THREE.Vector3(); const sk = new THREE.Vector3(); const farge = new THREE.Color();
-  const geometrier = [stammeGeo, ...Object.values(kroneGeo)];
-  for (const art of ['G', 'F', 'L']) {
-    const liste = skog.traer.filter((t) => t.art === art); if (!liste.length) continue;
-    const stammer = new THREE.InstancedMesh(stammeGeo, new THREE.MeshLambertMaterial({ color: FARGER[art].stamme }), liste.length);
-    const kroner = new THREE.InstancedMesh(kroneGeo[art], new THREE.MeshLambertMaterial({ color: 0xffffff }), liste.length);
-    liste.forEach((t, i) => {
-      const [x, y, z] = tilScene(t.x, t.y); const d = Math.max(0.03, t.h * 0.011);
-      m.compose(p3.set(x, y, z), q.identity(), sk.set(d, t.h, d)); stammer.setMatrixAt(i, m);
-      const ks = t.h * t.kroneStart; const kh = t.h - ks; const kr = Math.max(0.15, t.h * t.kroneBredde);
-      m.compose(p3.set(x, y + ks, z), q.identity(), sk.set(kr, art === 'G' ? kh : kh, kr)); kroner.setMatrixAt(i, m);
-      farge.setHex(FARGER[art].krone).offsetHSL(((i * 7919) % 100) / 2500 - 0.02, 0, ((i * 104729) % 100) / 1200 - 0.04); kroner.setColorAt(i, farge);
-    });
-    stammer.instanceMatrix.needsUpdate = true; kroner.instanceMatrix.needsUpdate = true; if (kroner.instanceColor) kroner.instanceColor.needsUpdate = true;
-    scene.add(stammer, kroner);
-  }
+  // Trær: gran, furu og bjørk med detaljerte modeller nær deg og enkle former lenger unna (skog3d-traer.js).
+  const treLag = lagTreLag(THREE, scene, skog.traer.map((t) => { const [x, y, z] = tilScene(t.x, t.y); return { x, y, z, h: t.h, kroneStart: t.kroneStart, kroneBredde: t.kroneBredde, art: t.art }; }));
+  treLag.oppdater(0, 0, { tvang: true });
 
   // ---------- bevegelse ----------
   const startX = 0; const startY = 0; dolly.position.set(startX, hoyde(startX, startY), -startY);
@@ -163,7 +145,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     // Hold deg innenfor området og på bakken
     const r = Math.hypot(dolly.position.x, dolly.position.z); if (r > R - 2) { dolly.position.x *= (R - 2) / r; dolly.position.z *= (R - 2) / r; }
     const x = dolly.position.x; const y = -dolly.position.z; dolly.position.y = hoyde(x, y);
-    if (t - hudTid > 250) { hudTid = t; oppdaterHud(x, y); }
+    if (t - hudTid > 250) { hudTid = t; oppdaterHud(x, y); treLag.oppdater(dolly.position.x, dolly.position.z, { avstand: renderer.xr.isPresenting ? 45 : 60 }); }
     renderer.render(scene, camera);
   });
   rot.querySelector('.s3-laster').remove();
@@ -188,7 +170,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     renderer.setAnimationLoop(null); renderer.xr.getSession()?.end();
     window.removeEventListener('keydown', ned); window.removeEventListener('keyup', opp); document.removeEventListener('mousemove', mus); window.removeEventListener('resize', vindu);
     if (document.pointerLockElement) document.exitPointerLock();
-    scene.traverse((o) => { o.material?.dispose?.(); }); geometrier.forEach((g) => g.dispose()); bakke.dispose(); renderer.dispose(); rot.remove();
+    treLag.dispose(); scene.traverse((o) => { o.material?.dispose?.(); }); bakke.dispose(); renderer.dispose(); rot.remove();
   }
   rot.querySelector('[data-s3="lukk"]').onclick = lukk;
   return { lukk, antall: skog.traer.length, radius: R, posisjon: () => ({ x: dolly.position.x, y: -dolly.position.z }), hud: () => hud.textContent };

@@ -24,7 +24,7 @@ export function bestandTraer(b, { inn = STANDARD_INNSTILLINGER } = {}) {
   // Kronen: i ung skog går granas krone nesten ned til bakken; med alder og tetthet dør de nedre greinene (kvisting).
   const krone = (art, H, tett = false) => {
     const fase = H < 3 ? 0 : hk <= 2 ? 1 : hk === 3 ? 2 : 3;
-    const start = { G: [0.02, 0.05, 0.25, 0.38], F: [0.05, 0.15, 0.45, 0.6], L: [0.1, 0.2, 0.4, 0.5] }[art][fase] + (tett && fase >= 2 ? 0.08 : 0);
+    const start = { G: [0.02, 0.05, 0.22, 0.3], F: [0.05, 0.15, 0.45, 0.6], L: [0.1, 0.2, 0.4, 0.5] }[art][fase] + (tett && fase >= 2 ? 0.08 : 0);
     const bredde = { G: [0.3, 0.22, 0.17, 0.14], F: [0.3, 0.2, 0.15, 0.13], L: [0.3, 0.2, 0.17, 0.16] }[art][fase];
     return { kroneStart: start, kroneBredde: bredde };
   };
@@ -88,7 +88,9 @@ export function lagSkog(S, { start, radius = 250, maks = MAKS_TRAER, inn = STAND
       }
     }
   }
-  return { senter, radius: R, traer: traer.slice(0, maks * 1.2), bestand: med };
+  // Litt åpning der du starter, så du ikke står inne i en krone.
+  const fri = traer.filter((t) => t.x * t.x + t.y * t.y > Math.max(4, Math.min(9, t.h * t.kroneBredde * t.h * t.kroneBredde * 1.5)));
+  return { senter, radius: R, traer: fri.slice(0, maks * 1.2), bestand: med };
 }
 
 // Terreng: punktene som hentes fra Kartverket (n × n i kvadratet rundt senteret), og en funksjon for høyde i (x, y).
