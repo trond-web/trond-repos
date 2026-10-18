@@ -22,12 +22,14 @@ export const MARKSLAG = {
   ukjent: { navn: 'Ikke kartlagt', kort: 'Ikke kartlagt', farge: '#e5e5e5', symbol: 'ukjent' },
 };
 // Kategorier der AR5 kan overstyres av nyere data som viser produktiv skog (se generator.js).
-export const OVERSTYRBAR = ['impediment', 'myr', 'apen'];
+// Myr er ikke med: den skilles alltid ut, selv om SR16 eller en nyere plan viser skog der.
+export const OVERSTYRBAR = ['impediment', 'apen'];
 const BONITET = { 11: 'Impediment', 12: 'Lav', 13: 'Middels', 14: 'Høy', 15: 'Særs høy' };
 
 export function klassifiser(a) {
   const t = Number(a.artype); const bon = Number(a.arskogbon);
-  if ((t === 30 || t === 60) && bon >= 12 && bon <= 15) return 'produktiv';
+  // Myr (60) skilles alltid ut – også skogkledd myr med produktiv bonitet regnes ikke som produktiv skog i planen.
+  if (t === 30 && bon >= 12 && bon <= 15) return 'produktiv';
   if (t === 30) return 'impediment';
   if (t === 60) return 'myr';
   if (t === 50) return 'apen';
