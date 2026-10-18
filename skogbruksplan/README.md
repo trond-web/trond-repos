@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.25.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.26.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -208,7 +208,11 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
 - **Treantall:**
   - HK II: fra ungskogfeltene eller treantallsmodellen, med høyde bar og lauv hver for seg.
   - HK III–V: fra takst eller SR16. Mangler tallet, brukes standardtall som justeres mot volumet og tetthetsklasse b.
-- **Kronen:** Gran har krone helt ned i ung skog og kortere krone med alderen og tettheten. Furu har flat, høy krone, og lauv har eggformet krone med hvit stamme.
+- **Tremodellene** ligger i `js/skog3d-traer.js`. Hver art har tre varianter med ulik form og fargevariasjon:
+  - **Gran:** seks greinkranser i lag med ujevne, litt hengende kanter og spiss topp, i mørk blågrønn. Kronen går helt ned i ung skog og blir kortere med alderen og tettheten.
+  - **Furu:** gråbrun stamme nederst og rødoransje øverst. Kronen er flat og klumpete, høyt oppe, med synlige greiner.
+  - **Bjørk:** hvit stamme med svarte flekker og mørk, sprukket bark nederst. Kronen er luftig og lys gulgrønn, laget av mange klumper og tynne greiner.
+- **Nivå av detaljer:** Trær nærmere enn 60 m (45 m i VR) får den detaljerte modellen, og trær lenger unna får enkle former. Fordelingen oppdateres når du har gått mer enn 6 m. Det er en åpning på 2–3 m rundt startpunktet, så du ikke starter inne i en krone.
 - **Hogstflate (HK I):** livsløpstrær, eventuelt plantede småplanter og lauvoppslag.
 - **Plassering:** Trærne står tilfeldig, men fast for hvert bestand, innenfor bestandsgrensen. Grensene vises som gule linjer på bakken.
 - **Antall og terreng:** Det er høyst ca. 30 000 trær. Radiusen (opptil 250 m) krymper i tett ungskog. Terrenget hentes fra Kartverket (DTM1, 10 × 10 punkter), og uten nett blir det flatt.

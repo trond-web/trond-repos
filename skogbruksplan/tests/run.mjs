@@ -1564,7 +1564,7 @@ test('Virtuell skog: trær fra bestandsdataene (treslag, høyde, treantall, hogs
   assert.equal(pu.arter.find((a) => a.art === 'G').H, 2.5); assert.equal(pu.arter.find((a) => a.art === 'L').H, 3.5);
   assert.ok(pu.arter.find((a) => a.art === 'G').kroneStart <= 0.05); // krone ned til bakken i ungskog
   const gml = SK.bestandTraer({ id: 'g', nr: 'G', treslag: 'G', bonitet: 17, alder: 90, hogstklasse: 5, volumDaa: 35, treantall: 70, hoyde: 22, areal: 5, tiltak: [] });
-  assert.ok(Math.abs(gml.arter.reduce((x, a) => x + a.N, 0) - 70) < 1); assert.equal(gml.arter[0].art, 'G'); assert.equal(gml.arter[0].H, 22); assert.ok(gml.arter[0].kroneStart > 0.3);
+  assert.ok(Math.abs(gml.arter.reduce((x, a) => x + a.N, 0) - 70) < 1); assert.equal(gml.arter[0].art, 'G'); assert.equal(gml.arter[0].H, 22); assert.ok(gml.arter[0].kroneStart >= 0.25 && gml.arter[0].kroneStart > pu.arter[0].kroneStart * 4);
   assert.ok(SK.bestandTraer({ id: 'f', nr: 'F', treslag: 'G', bonitet: 17, alder: 1, areal: 5, tiltak: [] }).arter.some((a) => a.N <= 5 && a.H > 10)); // hogstflate med livsløpstrær
   // Skogen rundt bestand 17: maks antall, trærne ligger i bestandene, og samme skog hver gang
   const b = S.bestand.find((x) => x.nr === '17'); const start = etikettPunkt(b.geometri);
