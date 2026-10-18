@@ -3,7 +3,7 @@ import { lagSosi } from './sosi.js';
 import {
   TRESLAG, HOGSTKLASSER, HK_NAVN, HK_ROMERTALL, BONITETER, TILTAKSTYPER, STANDARD_INNSTILLINGER,
   normaliserBestand, laavesteHogstalder, beregnetHogstklasse, startTilstand, arligTilvekstDaa,
-  rotnettoPerM3, tiltakKostnad, framskriv, foreslaaForEiendom, sammendrag, nyId, runde, HOGSTTYPER, hogstAndel, hogstNettoPerM3,hkGrenser, hogstklasseAvvik, framskrivTilAar
+  rotnettoPerM3, hogstklasseFor, rettFeilHogd, tiltakKostnad, framskriv, foreslaaForEiendom, sammendrag, nyId, runde, HOGSTTYPER, hogstAndel, hogstNettoPerM3,hkGrenser, hogstklasseAvvik, framskrivTilAar
 } from './model.js';
 import { lesFil, slaaSammen } from './importers.js';
 import { lagDemo } from './demo.js';
@@ -71,11 +71,7 @@ let frResultat = null;
 function inn() { return S.innstillinger; }
 function finnBestand(id) { return S.bestand.find((b) => b.id === id); }
 function css(navn) { return getComputedStyle(document.documentElement).getPropertyValue(navn).trim(); }
-function hk(b) {
-  if (b.hogstklasse) return b.hogstklasse;
-  const s = startTilstand(b);
-  return beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn()), s.volumDaa, hkGrenser(b, inn()));
-}
+function hk(b) { return hogstklasseFor(b, inn()); }
 function hogstmodenAar(b) {
   const min = laavesteHogstalder(b, inn());
   const s = startTilstand(b);
@@ -1550,6 +1546,11 @@ function framskrivPlanTilIAar() {
   for (const b of S.bestand) { const d = framskrivTilAar(b, IAAR); if (d) { n++; aar = Math.max(aar, d); } }
   if (n) { lagreSnart(); setTimeout(() => melding(`Alder og volum i ${n} bestand er skrevet frem ${aar} år til ${IAAR} med vekstmodellen.`, 6000), 400); }
 }
+// Eldre genererte planer kunne ha «Mulig hogd» på glissen skog med mange trær over 5 cm – rett alder og merknad.
+function rettHogdIPlan() {
+  const n = rettFeilHogd(S.bestand);
+  if (n) { lagreSnart(); setTimeout(() => melding(`${n} bestand var feilaktig satt som hogd (hogstklasse I). SR16 viser mange trær over 5 cm – de er rettet til glissen skog.`, 7000), 900); }
+}
 
 async function aapnePlan(id) {
   stoppDeling(); sisteDeling = null;
@@ -1558,7 +1559,7 @@ async function aapnePlan(id) {
   if (!plan) { melding('Fant ikke planen. Den kan være slettet.'); tegnPlanListe(); return; }
   await lagreAktivPlan();
   S = { ...plan, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...plan.innstillinger } };
-  framskrivPlanTilIAar();
+  framskrivPlanTilIAar(); rettHogdIPlan();
   valgtId = null; forslag = []; avsluttGrenseRedigering();
   valgModus = false; valgteTiltak = new Set(); maalOppdrag = null; uthevet = new Set(); kartUtvalg = null; oppdragVisning?.lukk();
   tegnEiendom(); tegnInnstillinger(); tegnRegistreringer();
@@ -2010,7 +2011,7 @@ async function start() {
   initKart();
   kobleHendelser();
   const lagret = await hent();
-  if (lagret) { S = { ...S, ...lagret, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...lagret.innstillinger } }; framskrivPlanTilIAar(); }
+  if (lagret) { S = { ...S, ...lagret, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...lagret.innstillinger } }; framskrivPlanTilIAar(); rettHogdIPlan(); }
   tegnEiendom(); tegnInnstillinger(); tegnRegistreringer();
   endret({ kart: true, zoom: true });
   if (!lagret) lagreSnart();

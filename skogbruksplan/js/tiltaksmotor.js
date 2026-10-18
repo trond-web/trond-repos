@@ -3,7 +3,7 @@
 // forskning og fagråd (se KILDER). Ingen DOM – kan testes i Node.
 import { tetthet } from './tetthet.js';
 import { ungskogData } from './ungskog.js';
-import { STANDARD_INNSTILLINGER, startTilstand, laavesteHogstalder, beregnetHogstklasse, arligTilvekstDaa, hogstAndel, hogstNettoPerM3, tiltakKostnad, nyId, TILTAKSTYPER, hkGrenser } from './model.js';
+import { STANDARD_INNSTILLINGER, startTilstand, laavesteHogstalder, beregnetHogstklasse, hogstklasseFor, arligTilvekstDaa, hogstAndel, hogstNettoPerM3, tiltakKostnad, nyId, TILTAKSTYPER, hkGrenser } from './model.js';
 import { pefcAlder, avstand } from './pefc.js';
 import { bestandsverdi, STANDARD_VERDI } from './verdi.js';
 import { risikoPerBestand } from './skade.js';
@@ -184,7 +184,7 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
     if (vern) continue;
     const s = startTilstand(b); const ts = b.treslag || 'G'; const bo = s.h40;
     const min = laavesteHogstalder(b, inn) || 999;
-    const hk = b.hogstklasse || beregnetHogstklasse(s.alder, min, s.volumDaa, hkGrenser(b, inn));
+    const hk = hogstklasseFor(b, inn);
     const h = hoydeOm(b, 0);
     const r = risiko?.get(b.id);
     const storm = r?.storm?.nivaa?.id === 'hoy';

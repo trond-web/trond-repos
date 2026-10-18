@@ -42,7 +42,7 @@ import * as TR from '../js/treff.js';
 import * as US from '../js/ungskog.js';
 import * as OU from '../js/oppdrag-utvalg.js';
 import * as TT from '../js/tetthet.js';
-import { tolkTetthet } from '../js/model.js';
+import { tolkTetthet, hogstklasseFor, foryngelse, vurderLiteVolum, rettFeilHogd, minForyngelse } from '../js/model.js';
 import { ungskogHtml, effektHtml } from '../js/effekt-html.js';
 import { genererTiltak as motorTiltak } from '../js/tiltaksmotor.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
@@ -1434,6 +1434,37 @@ test('Ungskog: treantallsmodell for alle stammer – SR16 (bare trær over 5 cm)
   // Tiltaksmotoren ser bestandet som tett og foreslår ungskogpleie; tetthetsklassen bruker modellen
   assert.ok(motorTiltak({ bestand: [sr] }, { iAar: 2026, balanser: false }).some((f) => f.type === 'ungskogpleie'));
   assert.deepEqual([TT.tetthet(sr).klasse, TT.tetthet(sr).grunnlag], ['a', 'modell']);
+});
+
+test('Hogstklasse I = ikke tilfredsstillende forynget (ikke alder), og glissen skog er ikke hogd', () => {
+  const flate = { id: 'f', nr: '1', treslag: 'G', bonitet: 17, alder: 1, areal: 4, tiltak: [] };
+  assert.equal(hogstklasseFor(flate), 1); assert.equal(foryngelse(flate), null);
+  // Plantet: HK II samme dag, også med alder 0
+  assert.equal(hogstklasseFor({ ...flate, alder: 0, tiltak: [{ type: 'planting', status: 'utfort', utfortDato: '2026-05-10' }] }), 2);
+  // Hogd for 6 år siden og ikke forynget: fortsatt HK I selv om alderen sier II
+  const hogd = { ...flate, alder: 6, tiltak: [{ type: 'sluttavvirkning', status: 'utfort', utfortDato: '2020-03-01' }] };
+  assert.equal(hogstklasseFor(hogd), 1); assert.equal(foryngelse(hogd), 'ikke');
+  // … men plantet etter hogst gir II
+  assert.equal(hogstklasseFor({ ...hogd, tiltak: [...hogd.tiltak, { type: 'planting', status: 'utfort', utfortDato: '2021-05-01' }] }), 2);
+  // Treantall mot minste plantetall (forskriften § 7): takst og målt ungskog
+  assert.equal(minForyngelse('G', 17), 100); assert.equal(minForyngelse('G', 20), 150); assert.equal(minForyngelse('F', 8), 50);
+  assert.equal(hogstklasseFor({ ...flate, treantall: 120 }), 2);
+  assert.equal(hogstklasseFor({ ...flate, alder: 5, treantall: 60 }), 1);
+  assert.equal(hogstklasseFor({ ...flate, alder: 5, ungskog: { treantallFor: 300 } }), 2);
+  // Registrert hogstklasse og eldre skog påvirkes ikke
+  assert.equal(hogstklasseFor({ ...flate, hogstklasse: 1, treantall: 500 }), 1);
+  assert.equal(hogstklasseFor({ ...flate, alder: 70, treantall: 10 }), 4);
+  // SR16 (over 5 cm): lite volum mot HK IV–V i gammel plan
+  assert.equal(vurderLiteVolum({ treantall: 12, hoyde: 2.5, srAlder: 25 }), 'hogd');
+  assert.equal(vurderLiteVolum({ treantall: 70, hoyde: 10, srAlder: 110 }), 'glissen');
+  assert.equal(vurderLiteVolum({ treantall: 60, hoyde: 4.5, srAlder: 18 }), 'gjenvekst');
+  const gml = { id: 'g', nr: '1-15', treslag: 'G', bonitet: 6, alder: 0, volumDaa: 2.8, treantall: 79, hoyde: 9.5, areal: 6, tiltak: [], ekstra: { KILDE: 'Tidligere skogbruksplan (NIBIO) + SR16', SR16_ALDER: 110 },
+    merknad: 'Mulig hogd etter 2009: SR16 viser 2,8 m³/daa mot HK 4 i planen – kontroller; Overlapper MiS-nøkkelbiotop' };
+  const ekte = { ...gml, id: 'h', nr: '2-2147', treantall: 7, hoyde: 1.9, merknad: 'Mulig hogd etter 2009: SR16 viser 0,7 m³/daa mot HK 5 i planen – kontroller' };
+  assert.equal(rettFeilHogd([gml, ekte]), 1);
+  assert.equal(gml.alder, 110); assert.match(gml.merknad, /^Glissen skog: SR16 viser 2,8 m³\/daa, men 79 trær\/daa over 5 cm og 9,5 m høyde – ikke hogd \(HK 4 i planen 2009\), kontroller; Overlapper MiS/);
+  assert.ok(hogstklasseFor(gml) >= 4); assert.equal(ekte.alder, 0); assert.equal(hogstklasseFor(ekte), 1);
+  assert.equal(rettFeilHogd([gml]), 0); // bare én gang
 });
 
 await Promise.all(venter);

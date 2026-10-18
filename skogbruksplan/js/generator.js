@@ -2,7 +2,7 @@
 //   Kartverket eiendom-API (grense), NIBIO «skogbruksplan/hogstklasser» (bestand fra tidligere plan),
 //   NIBIO SR16 vektor (volum, høyde, treantall, treslag, alder) og NIBIO MiS (nøkkelbiotoper).
 // Geometrioperasjoner gjøres med Turf (sendes inn, slik at modulen også kan kjøres i Node).
-import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST, nyId } from './model.js';
+import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST, nyId, vurderLiteVolum } from './model.js';
 import { hentAr5, lagFigurer, MARKSLAG, OVERSTYRBAR, begrens } from './markslag.js';
 import { tomSkifteplan, lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
 import { geoTilUtm, utmTilGeo, punktIGeometri, etikettPunkt } from './proj.js';
@@ -540,9 +540,16 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     const merknader = [];
     if (k.kilde === 'sr16') merknader.push('Ikke med i tidligere plan – data fra SR16');
     if (bonitetFraAr5) merknader.push(`Bonitet anslått fra AR5 (${String(bonitetFraAr5).toLowerCase()} bonitet) – kontroller i felt`);
-    if (hkPlan >= 4 && volub !== null && volub < 3 && dekning > 0.5) {
+    // Lite volum mot HK IV–V i planen: hogd bare når SR16 også viser få trær over 5 cm – ellers glissen skog eller gjenvekst.
+    const liteVolum = hkPlan >= 4 && volub !== null && volub < 3 && dekning > 0.5 ? vurderLiteVolum({ treantall: trean, hoyde: hoydeM, srAlder }) : null;
+    if (liteVolum === 'hogd') {
       merknader.push(`Mulig hogd etter ${regaar}: SR16 viser ${komma(volub)} m³/daa mot HK ${hkPlan} i planen – kontroller`);
       alder = 0;
+    } else if (liteVolum === 'gjenvekst') {
+      merknader.push(`Hogd etter ${regaar} og forynget: SR16 viser ${Math.round(trean)} trær/daa over 5 cm og ${komma(hoydeM)} m høyde`);
+      alder = srAlder ? Math.round(srAlder) : alder;
+    } else if (liteVolum === 'glissen') {
+      merknader.push(`Glissen skog: SR16 viser ${komma(volub)} m³/daa, men ${Math.round(trean)} trær/daa over 5 cm og ${komma(hoydeM)} m høyde – ikke hogd (HK ${hkPlan} i planen ${regaar}), kontroller`);
     } else if (hkPlan >= 4 && volub !== null && hoydeM !== null && volub < 8 && hoydeM < 10 && dekning > 0.5) {
       merknader.push(`Avvik: HK ${hkPlan} i planen (${regaar}), men SR16 viser ${komma(volub)} m³/daa og ${komma(hoydeM)} m høyde – trolig hogd eller glissen, kontroller`);
     }

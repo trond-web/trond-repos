@@ -6,7 +6,7 @@
 // framtidstrærne, bedre kvalitet (større sagtømmerandel) og mer stabile trær; utsatt pleie blir dyrere fordi trærne er
 // større, og uten pleie overtar lauv og tette bestand produksjonen (lavere volum av bartrær, mer massevirke, senere og
 // dyrere tynning, høyere risiko for snø- og stormskader). Tallene er anslag – juster satsene under Innstillinger og Verdi.
-import { STANDARD_INNSTILLINGER, startTilstand, volumKurve, rotnettoPerM3, beregnetHogstklasse, laavesteHogstalder, hkGrenser } from './model.js';
+import { STANDARD_INNSTILLINGER, startTilstand, volumKurve, rotnettoPerM3, beregnetHogstklasse, hogstklasseFor, laavesteHogstalder, hkGrenser } from './model.js';
 import { STANDARD_VERDI, jordverdi } from './verdi.js';
 import { maalTetthet, plantetall, hoydeOm } from './tiltaksmotor.js';
 import { pefcAlder } from './pefc.js';
@@ -22,7 +22,7 @@ export const EFFEKT_KILDER = [
   { navn: 'NIBIO: Ungskogpleie gir større og mer verdifulle trær', url: 'https://www.nibio.no/tema/skog/skogbehandling-og-skogskjotsel/ungskogpleie' },
 ];
 
-const hk = (b, inn) => b.hogstklasse || beregnetHogstklasse(startTilstand(b).alder, laavesteHogstalder(b, inn), startTilstand(b).volumDaa, hkGrenser(b, inn));
+const hk = (b, inn) => hogstklasseFor(b, inn);
 export const erUngskog = (b, inn = STANDARD_INNSTILLINGER) => [1, 2].includes(hk(b, inn));
 const utfort = (b, type) => (b.tiltak || []).filter((t) => t.type === type && t.status === 'utfort').sort((x, y) => String(y.utfortDato || y.aar).localeCompare(String(x.utfortDato || x.aar)))[0] || null;
 const r1 = (v) => (v == null ? null : Math.round(v * 10) / 10);

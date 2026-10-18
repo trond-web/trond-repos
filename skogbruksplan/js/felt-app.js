@@ -1,7 +1,7 @@
 // SkogIQ Felt – mobilversjon med kartet i fokus: bestandsinfo, GPS, registreringer med bilde, tiltak som utføres i
 // felt og offline-kart. Bruker de samme planene (IndexedDB) som fullversjonen, og varsler den om endringer.
 import { hent, lagre, listPlaner, hentPlan, lagrePlan } from './store.js';
-import { TRESLAG, HK_ROMERTALL, HK_NAVN, TILTAKSTYPER, STANDARD_INNSTILLINGER, startTilstand, nyId } from './model.js';
+import { TRESLAG, HK_ROMERTALL, HK_NAVN, TILTAKSTYPER, STANDARD_INNSTILLINGER, startTilstand, nyId, rettFeilHogd } from './model.js';
 import { punktIGeometri, etikettPunkt, bbox } from './proj.js';
 import { hkFor } from './flere-eiendommer.js';
 import { flisUrler, FLIS_CACHE } from './offline-kart.js';
@@ -450,6 +450,7 @@ async function velgPlan(id, { zoom = true } = {}) {
   if (!plan) { melding('Fant ikke planen.'); return; }
   P = plan; P.registreringer = P.registreringer || []; ls.set(LS.plan, id);
   for (const b of P.bestand) for (const t of b.tiltak || []) if (!t.id) t.id = nyId('t'); // eldre importerte tiltak uten id
+  if (rettFeilHogd(P.bestand)) await lagrePlanen(); // glissen skog som var satt som hogd (se model.js)
   $('#planNavn').textContent = P.eiendom?.navn || 'Plan';
   document.title = `${P.eiendom?.navn || 'Plan'} · SkogIQ Felt`;
   valgtId = null; tegnPlan(zoom); gpsStripe(); spor?.tegnUtfort();

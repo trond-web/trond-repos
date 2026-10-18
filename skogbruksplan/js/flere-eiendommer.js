@@ -1,7 +1,7 @@
 // Flere eiendommer i kartet samtidig: andre lagrede skogbruksplaner kan slås på i kartet ved siden av planen som er
 // åpen. De tegnes under den åpne planen med eiendomsgrense i egen farge, bestand farget etter hogstklasse og navn på
 // eiendommen. Klikk på en annen eiendom viser nøkkeltall og «Åpne planen». Valget lagres i nettleseren.
-import { STANDARD_INNSTILLINGER, startTilstand, beregnetHogstklasse, laavesteHogstalder, hkGrenser } from './model.js';
+import { STANDARD_INNSTILLINGER, startTilstand, beregnetHogstklasse, hogstklasseFor, laavesteHogstalder, hkGrenser } from './model.js';
 
 // Fargene skiller eiendommene fra hverandre (og fra den åpne planen, som har rød stiplet grense).
 export const EIENDOM_FARGER = ['#2a78d6', '#7a3fb8', '#0f8f8a', '#c2410c', '#a21caf', '#4d7c0f', '#0369a1', '#b45309'];
@@ -11,11 +11,7 @@ const NOKKEL = 'synligePlaner';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (v, d = 0) => Number(v || 0).toLocaleString('nb-NO', { maximumFractionDigits: d, minimumFractionDigits: d });
 
-export function hkFor(b, inn) {
-  if (b.hogstklasse) return b.hogstklasse;
-  const s = startTilstand(b);
-  return beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn), s.volumDaa, hkGrenser(b, inn));
-}
+export function hkFor(b, inn) { return hogstklasseFor(b, inn); }
 
 // Avgrensningsboks [minLon, minLat, maxLon, maxLat] for en plan (grense eller bestand).
 export function planBoks(plan) {

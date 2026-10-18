@@ -274,6 +274,69 @@ export function hkGrenser(b, inn = STANDARD_INNSTILLINGER) {
 
 // Hogstklasse ut fra alder (brukes i framskriving og når HK mangler). grenser = hkGrenser(b); uten grenser brukes
 // forholdstall av laveste hogstalder (0,3 og 0,65) som reserve.
+// ---------- Hogstklasse I: skog under fornying ----------
+// Hogstklasse I er areal som ennå ikke er tilfredsstillende forynget – uavhengig av alder. Et plantet (eller
+// tilstrekkelig naturlig forynget) areal går over i hogstklasse II samme dag (SNL «hogstklasser», SOSI SP_HKL 11/12).
+// Grensen er minste plantetall i forskriften om bærekraftig skogbruk § 7 (samme tall som tiltaksmotorens plantetall).
+export function minForyngelse(treslag, bonitet) {
+  const bo = bonitet || 11;
+  if (treslag === 'L') return 100;
+  if (treslag === 'F') return bo >= 17 ? 150 : bo >= 11 ? 100 : 50;
+  return bo >= 20 ? 150 : bo >= 14 ? 100 : 50;
+}
+const sisteUtfort = (b, typer) => (b.tiltak || []).filter((t) => typer.includes(t.type) && t.status === 'utfort').map((t) => String(t.utfortDato || t.aar || '')).sort().at(-1) || null;
+const erSr16 = (b) => /SR16/.test(String(b.ekstra?.KILDE || ''));
+// 'forynget' | 'ikke' | null (ukjent). SR16 teller bare trær over 5 cm og sier lite om ung foryngelse – brukes bare
+// når det alene viser nok trær.
+export function foryngelse(b) {
+  const hogd = sisteUtfort(b, ['sluttavvirkning']); const plantet = sisteUtfort(b, ['planting', 'suppleringsplanting']);
+  if (plantet && (!hogd || plantet >= hogd)) return 'forynget';
+  const min = minForyngelse(b.treslag, b.bonitet);
+  const u = b.ungskog || {};
+  const N = u.treantallEtter ?? u.treantallFor ?? (b.treantall != null && !erSr16(b) ? b.treantall : null);
+  if (N != null) return N >= min ? 'forynget' : 'ikke';
+  if (b.treantall != null && erSr16(b) && b.treantall >= min) return 'forynget';
+  if (hogd) return 'ikke';
+  return null;
+}
+// Hogstklassen for et bestand: registrert, ellers fra alder/bonitet – rettet for foryngelse i den unge delen.
+export function hogstklasseFor(b, inn = STANDARD_INNSTILLINGER) {
+  if (b.hogstklasse) return b.hogstklasse;
+  const s = startTilstand(b);
+  const hk = beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn), s.volumDaa, hkGrenser(b, inn));
+  if (!hk || hk > 2) return hk;
+  const f = foryngelse(b);
+  if (f === 'forynget') return 2;
+  if (f === 'ikke') return 1;
+  return hk;
+}
+
+// Generatoren antok tidligere «hogd» når SR16 viste under 3 m³/daa mot HK IV–V i en eldre plan. I glissen fjellskog
+// står det likevel mange trær over 5 cm og høy skog. Vurdering ut fra SR16: 'hogd' | 'gjenvekst' | 'glissen'.
+export function vurderLiteVolum({ treantall = null, hoyde = null, srAlder = null } = {}) {
+  if (treantall == null || treantall < 30) return 'hogd'; // under ca. 30 trær/daa over 5 cm: frøtrær/livsløpstrær
+  if ((hoyde != null && hoyde < 6) && (srAlder == null || srAlder < 30)) return 'gjenvekst';
+  return 'glissen';
+}
+// Retter bestand fra eldre genererte planer der «Mulig hogd» ble satt på glissen skog. Gir antall rettede bestand.
+export function rettFeilHogd(bestand) {
+  let n = 0;
+  for (const b of bestand || []) {
+    const m = String(b.merknad || '').match(/Mulig hogd etter (\d{4}): SR16 viser ([\d,]+) m³\/daa mot HK (\d) i planen – kontroller/);
+    if (!m || b.alder !== 0 || (b.tiltak || []).some((t) => t.type === 'sluttavvirkning' && t.status === 'utfort')) continue;
+    const srAlder = b.ekstra?.SR16_ALDER ?? null;
+    const v = vurderLiteVolum({ treantall: b.treantall, hoyde: b.hoyde, srAlder });
+    if (v === 'hogd') continue;
+    b.alder = srAlder != null ? Math.round(srAlder) : null;
+    const ny = v === 'glissen'
+      ? `Glissen skog: SR16 viser ${m[2]} m³/daa, men ${Math.round(b.treantall)} trær/daa over 5 cm og ${String(b.hoyde ?? '?').replace('.', ',')} m høyde – ikke hogd (HK ${m[3]} i planen ${m[1]}), kontroller`
+      : `Hogd etter ${m[1]} og forynget: SR16 viser ${Math.round(b.treantall)} trær/daa over 5 cm og ${String(b.hoyde ?? '?').replace('.', ',')} m høyde`;
+    b.merknad = String(b.merknad).replace(m[0], ny);
+    n++;
+  }
+  return n;
+}
+
 export function beregnetHogstklasse(alder, minAlder, volumDaa, grenser = null) {
   const V = grenser?.V ?? minAlder;
   if (alder === null || alder === undefined || !V) return null;
@@ -425,7 +488,7 @@ export function foreslaaTiltak(b, inn = STANDARD_INNSTILLINGER, iAar = new Date(
   const forslag = [];
   const s = startTilstand(b);
   const minAlder = laavesteHogstalder(b, inn);
-  const hk = b.hogstklasse || beregnetHogstklasse(s.alder, minAlder, s.volumDaa, hkGrenser(b, inn));
+  const hk = hogstklasseFor(b, inn);
   const har = (type) => (b.tiltak || []).some((t) => t.type === type && t.status !== 'utfort');
   if (b.miljo) return forslag; // aldri foreslå hogst i miljøfigurer
 
@@ -490,7 +553,7 @@ export function sammendrag(bestandListe, inn = STANDARD_INNSTILLINGER) {
     volum += s.volumDaa * a;
     tilvekst += arligTilvekstDaa(b) * a;
     perTreslag[b.treslag || 'G'] += s.volumDaa * a;
-    const hk = b.hogstklasse || beregnetHogstklasse(s.alder, laavesteHogstalder(b, inn), s.volumDaa, hkGrenser(b, inn));
+    const hk = hogstklasseFor(b, inn);
     if (hk) perHk[hk][b.treslag || 'G'] += a; else utenHk += a;
     if (hk === 5) verdiHogstmoden += s.volumDaa * a * rotnettoPerM3(b.treslag, inn);
   }
