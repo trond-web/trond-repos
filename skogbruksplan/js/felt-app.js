@@ -185,7 +185,7 @@ function visBestand(id, { zoom = false } = {}) {
       <div class="tall"><b>${fmt(s.alder)}</b><span>år</span></div>
       <div class="tall"><b>${fmt(s.volumDaa, 1)}</b><span>m³/daa</span></div>
       <div class="tall"><b>${fmt(s.volumDaa * (b.areal || 0))}</b><span>m³ totalt</span></div>
-      ${fraSr16(b) && erUngskog(b, inn()) ? `<div class="tall"><b>${fmt(ungskogData(b, { inn: inn() }).treantallFor.verdi)}</b><span>trær/daa (modell)</span></div>` : `<div class="tall"><b>${fmt(b.treantall)}</b><span>trær/daa</span></div>`}
+      ${(() => { if (!erUngskog(b, inn()) || (!fraSr16(b) && b.ungskog?.treantallFor == null)) return `<div class="tall"><b>${fmt(b.treantall)}</b><span>trær/daa</span></div>`; const t = ungskogData(b, { inn: inn() }).treantallFor; return `<div class="tall"><b>${fmt(t.verdi)}</b><span>trær/daa${t.kilde === 'registrert' ? ' (målt)' : t.kilde === 'beregnet' ? ' (modell)' : ''}</span></div>`; })()}
       <div class="tall"><b>${fmt(b.hoyde, 1)}</b><span>m høyde</span></div>
     </div>
     ${b.vegetasjon?.kode ? `<p class="hint">Vegetasjonstype ${esc(b.vegetasjon.kode)} ${esc(b.vegetasjon.navn || '')}</p>` : ''}

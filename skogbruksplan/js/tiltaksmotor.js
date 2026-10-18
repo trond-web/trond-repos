@@ -3,7 +3,7 @@
 // forskning og fagråd (se KILDER). Ingen DOM – kan testes i Node.
 import { tetthet } from './tetthet.js';
 import { ungskogData } from './ungskog.js';
-import { STANDARD_INNSTILLINGER, startTilstand, laavesteHogstalder, beregnetHogstklasse, hogstklasseFor, arligTilvekstDaa, hogstAndel, hogstNettoPerM3, tiltakKostnad, nyId, TILTAKSTYPER, hkGrenser } from './model.js';
+import { STANDARD_INNSTILLINGER, startTilstand, laavesteHogstalder, beregnetHogstklasse, hogstklasseFor, foryngelse, arligTilvekstDaa, hogstAndel, hogstNettoPerM3, tiltakKostnad, nyId, TILTAKSTYPER, hkGrenser } from './model.js';
 import { pefcAlder, avstand } from './pefc.js';
 import { bestandsverdi, STANDARD_VERDI } from './verdi.js';
 import { risikoPerBestand } from './skade.js';
@@ -194,7 +194,7 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
 
     // 1. Hogstflate / skogfornyelse uten foryngelse
     const nyligHogd = hogd && hogd.aar >= iAar - 5;
-    if ((hk === 1 || nyligHogd || s.alder < 3) && !planlagt(b, ['planting', 'markberedning', 'suppleringsplanting', 'ungskogpleie'])) {
+    if ((hk === 1 || nyligHogd || s.alder < 3) && foryngelse(b) !== 'forynget' && !planlagt(b, ['planting', 'markberedning', 'suppleringsplanting', 'ungskogpleie'])) {
       if (!utfort(b, 'planting').length && !utfort(b, 'markberedning').length) {
         const hAar = hogd?.aar ?? iAar - 1;
         const form = ts === 'F' && bo <= 14 ? 'frotre' : ts === 'L' && bo < 17 ? 'flate-naturlig' : 'flate';

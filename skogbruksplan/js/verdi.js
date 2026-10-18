@@ -15,6 +15,8 @@ export const STANDARD_VERDI = {
   fasteKostnader: 0,     // kr/år, f.eks. forsikring, administrasjon, eiendomsskatt
   medVeivedlikehold: true,
   ungskogpleieAar: 12,   // år etter foryngelse da ungskogpleie regnes
+  tilskuddUngskogpleie: 0, // % tilskudd (NMSK) til ungskogpleie – varierer per kommune
+  skogfondSkatt: 22,     // % marginalskatt for skattefordelen ved bruk av skogfond (85 % skattefritt)
 };
 
 // ---------- SSB: gjennomsnittlig tømmerpris i kommunen ----------

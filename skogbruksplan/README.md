@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.20.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.21.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -82,7 +82,7 @@ For bestand i hogstklasse I og II viser bestandet (fullversjonen og SkogIQ Felt)
   - Samme mål brukes av tiltaksmotoren («Ungskogpleie ned til ca. … trær/daa») og effektberegningen.
 - *registrert*: målte verdier skrevet inn i feltet (i Felt: «✎ Registrer målte verdier»). Tøm feltet for å gå tilbake til beregnet verdi.
 
-Registrert treantall og høyder brukes av tiltaksmotoren (behov for ungskogpleie, høyde om x år).
+Registrert treantall og høyder brukes av tiltaksmotoren (behov for ungskogpleie, høyde om x år). Har en hogd flate (alder 0) fått målt høyde, regnes alderen ut fra høyden (`alderFraHoyde`: år til brysthøyde + høydekurven; 2 m på G11 ≈ 11 år). Et bestand som er forynget, får ikke forslag om planting og markberedning.
 
 **Treantall i ungskog og SR16.** SR16 teller bare trær som er over 5 cm i brysthøyde ([produktarket](https://nibio.no/tema/skog/kart-over-skogressurser/skogressurskart-sr16)). I hogstklasse II mangler derfor de fleste stammene, og på Flå 22/1 viste SR16 49–128 trær/daa. For bestand med treantall fra SR16 (`KILDE` inneholder «SR16») bruker appen derfor en treantallsmodell for alle stammer (`treantallModell` i `js/ungskog.js`). SR16-tallet brukes bare som nedre grense.
 
@@ -95,7 +95,11 @@ Modellen gir Flå 22/1 en median på ca. 205 trær/daa i HK II, mot ca. 70 i SR1
 
 **Effekt av tiltaket** (ungskogpleie prioriteres, ellers planting i HK I) sammenligner tre alternativer med nåverdi per daa og for bestandet: *gjennomfør nå*, *utsett 5 år* og *ikke gjennomfør*. Nåverdien er hogstinntekt (rotnetto) og jordverdi etter hogst (Faustmann) minus kostnaden, med kalkulasjonsrenten fra Verdi.
 
-- Uten ungskogpleie: 10–35 % lavere barvolum (mer når bestandet er tett eller lauvet er høyere enn baret), 8 % lavere pris og hogst 5 år senere.
+- Uten ungskogpleie: 10–40 % lavere barvolum, 8–12 % lavere pris og hogst 5–8 år senere. Tapet er størst når bestandet er tett og lauvet er høyere enn baret. Det er kalibrert mot Bergseng (2016) i Skogtiltaksfondets rapport om ungskogpleie, der rotnettoen er om lag halvert når lauvet ikke ryddes, på både G17 og G11.
+- Kostnaden regnes etter tilskudd og skattefordel ved bruk av skogfond. 85 % av beløpet er skattefritt, og skattesatsen er 22 % som standard. Tilskuddet er 0 % som standard, og begge kan endres under Verdi.
+- Jordverdien etter hogst settes aldri lavere enn null. Ellers ville en negativ jordverdi på lav bonitet få utsettelse til å se lønnsomt ut.
+- **Internrenten** er renten der pleie og ingen pleie gir samme nåverdi. Ved 900 trær/daa er den ca. 2,9 % på G11, 3,8 % på G14, 4,9 % på G17 og 6,1 % på G20.
+- Er bestandet tett, men økonomien nær null, sier kortet «Ungskogpleie anbefales», med internrenten og forklaringen at det er lang tid til hogst. Det sier ikke lenger at tiltaket «ikke lønner seg».
 - Utsatt pleie: 40 % av tapet, og høyere kostnad fordi trærne er høyere.
 - Naturlig foryngelse i stedet for planting: 5–10 år senere etablering, 20–35 % lavere produksjon, lavere pris og forventet suppleringsplanting.
 

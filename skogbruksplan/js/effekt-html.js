@@ -29,22 +29,31 @@ export function effektHtml(e, { kompakt = false } = {}) {
   const maks = Math.max(...alt.map(([, a]) => Math.abs(a.nvTotal)), 1);
   const best = alt.reduce((x, y) => (y[1].nv > x[1].nv ? y : x))[0];
   const g = e.gevinstTotal; const u = e.tapVedUtsettelseTotal;
-  const hoved = g > 0
-    ? `<b>${esc(e.alt.naa.navn)}</b> gir ca. <b>${kr(g)}</b> mer i nåverdi enn «${esc(e.alt.uten.navn.toLowerCase())}» (${kr(e.gevinst)}/daa)${u > 0 ? `. Utsetter du 5 år, taper du ca. <b>${kr(u)}</b>` : ''}.`
-    : `Med disse forutsetningene lønner ${esc(TITTEL[e.type])} seg ikke økonomisk alene (${kr(g)}). Se andre effekter.`;
+  const ir = e.internrente != null ? ` Internrente ca. ${tall(e.internrente, 1)} %.` : '';
+  const utsett = u > 0 ? ` Utsetter du 5 år, taper du ca. <b>${kr(u)}</b>.` : '';
+  const d = e.data;
+  let hoved; let klasse;
+  if (g > 0) {
+    hoved = `<b>${esc(e.alt.naa.navn)}</b> gir ca. <b>${kr(g)}</b> mer i nåverdi enn «${esc(e.alt.uten.navn.toLowerCase())}» (${kr(e.gevinst)}/daa).${utsett}${ir}`; klasse = 'pluss';
+  } else if (e.type === 'ungskogpleie' && e.behov) {
+    // Skogfaglig behov (tett/lauvdominert), men økonomisk nær null – typisk lav bonitet med lang tid til hogst.
+    hoved = `<b>Ungskogpleie anbefales</b> – bestandet er tett (${tall(d?.treantallFor?.verdi)} trær/daa mot mål ${tall(d?.maal)}). Økonomisk er den omtrent i balanse ved ${tall(e.rente, 1)} % rente (${kr(g)}) fordi det er lenge til hogst på bonitet ${esc(d?.h40)}.${ir}${utsett}`; klasse = 'noytral';
+  } else {
+    hoved = `Med disse forutsetningene lønner ${esc(TITTEL[e.type])} seg ikke økonomisk alene (${kr(g)}).${ir} Se andre effekter.`; klasse = 'minus';
+  }
   return `<div class="effekt-kort">
-    <div class="effekt-hoved ${g > 0 ? 'pluss' : 'minus'}">${hoved}</div>
+    <div class="effekt-hoved ${klasse}">${hoved}</div>
     <div class="effekt-alt">${alt.map(([k, a]) => `<div class="effekt-rad ${k === best ? 'best' : ''}">
       <div class="effekt-navn">${esc(a.navn)}${k === best ? ' <span class="effekt-best">best</span>' : ''}</div>
       <div class="effekt-sole"><span style="width:${Math.max(3, (Math.abs(a.nvTotal) / maks) * 100)}%"></span></div>
       <div class="effekt-tall"><b>${kr(a.nvTotal)}</b><small>nåverdi</small></div>
-      ${kompakt ? '' : `<div class="effekt-detalj">Kostnad ${kr(a.kostTotal)} · ${tall(a.volumTotal)} m³ ved hogst (${tall(a.volum)} m³/daa) · hogst ca. ${a.hogstAar}</div>`}
+      ${kompakt ? '' : `<div class="effekt-detalj">Kostnad ${kr(a.kostTotal)}${a.kostBrutto && a.kostBrutto - a.kost > 1 ? ` (${kr(a.kostBrutto * e.arealDaa)} før skogfond/tilskudd)` : ''} · ${tall(a.volumTotal)} m³ ved hogst (${tall(a.volum)} m³/daa) · hogst ca. ${a.hogstAar}</div>`}
     </div>`).join('')}</div>
     ${e.andre?.length ? `<ul class="effekt-andre">${e.andre.map((x) => `<li class="${x.type}"><span>${IKON[x.type] || '•'}</span>${esc(x.tekst)}</li>`).join('')}</ul>` : ''}
     ${kompakt ? '' : `<details class="effekt-forut"><summary>Forutsetninger og kilder</summary>
       <p>Nåverdi av hogstinntekt (rotnetto ${tall(e.forutsetninger.netto)} kr/m³) og jordverdien etterpå, minus kostnaden, med ${tall(e.rente, 1)} % kalkulasjonsrente. Omløp ${e.forutsetninger.T} år. Areal ${tall(e.arealDaa, 1)} daa.
-      ${e.type === 'ungskogpleie' ? `Uten pleie: ${Math.round(e.forutsetninger.tapUten * 100)} % lavere barvolum, ${Math.round(e.forutsetninger.kvalitet * 100)} % lavere pris (mindre sagtømmer) og hogst ${e.forutsetninger.forsinkelse} år senere. Utsatt 5 år: ${Math.round(e.forutsetninger.tapUtsatt * 100)} % lavere volum og dyrere pleie fordi trærne er høyere.` : `Naturlig foryngelse: ca. ${e.forutsetninger.forsinkelse} år senere etablering, ${Math.round(e.forutsetninger.tap * 100)} % lavere produksjon, ${Math.round((1 - e.forutsetninger.pris) * 100)} % lavere pris (mer lauv og massevirke) og forventet suppleringsplanting etter 5 år.`}
-      Tallene er anslag – juster priser, kostnader og rente under Innstillinger og Verdi.</p>
+      ${e.type === 'ungskogpleie' ? `Uten pleie: ${Math.round(e.forutsetninger.tapUten * 100)} % lavere barvolum, ${Math.round(e.forutsetninger.kvalitet * 100)} % lavere pris (mindre sagtømmer, mer lauv) og hogst ${e.forutsetninger.forsinkelse} år senere – kalibrert mot Bergseng (2016): rotnettoen om lag halvert når lauvet ikke ryddes. Utsatt 5 år: ${Math.round(e.forutsetninger.tapUtsatt * 100)} % lavere volum og dyrere pleie fordi trærne er høyere. Kostnaden er etter ${Math.round(e.forutsetninger.tilskudd * 100)} % tilskudd og skattefordel ved bruk av skogfond (85 % skattefritt, ${Math.round(e.forutsetninger.skatt * 100)} % skatt). Jordverdien etter hogst regnes ikke negativ.` : `Naturlig foryngelse: ca. ${e.forutsetninger.forsinkelse} år senere etablering, ${Math.round(e.forutsetninger.tap * 100)} % lavere produksjon, ${Math.round((1 - e.forutsetninger.pris) * 100)} % lavere pris (mer lauv og massevirke) og forventet suppleringsplanting etter 5 år.`}
+      Tallene er anslag – juster priser, kostnader, rente, tilskudd og skattesats under Innstillinger og Verdi.</p>
       <ul>${EFFEKT_KILDER.map((k) => `<li><a href="${esc(k.url)}" target="_blank" rel="noopener">${esc(k.navn)}</a></li>`).join('')}</ul></details>`}
   </div>`;
 }

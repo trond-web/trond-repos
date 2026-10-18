@@ -383,10 +383,21 @@ function estimerAlder(volumDaa, h40, treslag) {
 }
 
 // Startverdier for et bestand (alder/volum) med fallback der data mangler.
+// Alder (totalalder) fra middelhøyde i ungskog: år til brysthøyde (lengre på lav bonitet) + samme høydekurve som
+// tiltaksmotoren. Brukes når en hogd flate (alder 0) har fått målt høyde i ungskogfeltene.
+export function alderFraHoyde(H, h40, treslag = 'G') {
+  if (!(H > 0)) return null;
+  const bo = h40 || 11;
+  const tilBrh = Math.max(4, 14 - bo * 0.4) * (treslag === 'L' ? 0.6 : 1);
+  return Math.round(tilBrh * Math.min(1, H / 1.3) + (H > 1.3 ? 40 * ((H - 1.3) / (0.85 * bo)) ** (4 / 3) : 0));
+}
 export function startTilstand(b) {
   const h40 = b.bonitet || 11;
   let alder = b.alder;
   let volumDaa = b.volumDaa;
+  // Hogd flate med målt ungskog: alderen følger høyden (ellers blir den stående på 0 og bestandet regnes som HK I).
+  const hMaalt = (b.treslag === 'L' ? b.ungskog?.hoydeLauv : b.ungskog?.hoydeBar) ?? null;
+  if ((alder == null || alder < 3) && hMaalt >= 0.5) alder = Math.max(alder || 0, alderFraHoyde(hMaalt, h40, b.treslag));
   if (alder === null || alder === undefined) alder = estimerAlder(volumDaa, h40, b.treslag) ?? (b.hogstklasse === 1 ? 0 : null);
   if ((volumDaa === null || volumDaa === undefined) && alder !== null) volumDaa = volumKurve(alder, h40, b.treslag);
   return { alder: alder ?? 0, volumDaa: volumDaa ?? 0, h40 };

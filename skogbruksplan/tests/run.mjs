@@ -42,7 +42,7 @@ import * as TR from '../js/treff.js';
 import * as US from '../js/ungskog.js';
 import * as OU from '../js/oppdrag-utvalg.js';
 import * as TT from '../js/tetthet.js';
-import { tolkTetthet, hogstklasseFor, foryngelse, vurderLiteVolum, rettFeilHogd, minForyngelse } from '../js/model.js';
+import { tolkTetthet, alderFraHoyde, startTilstand as startT2, hogstklasseFor, foryngelse, vurderLiteVolum, rettFeilHogd, minForyngelse } from '../js/model.js';
 import { ungskogHtml, effektHtml } from '../js/effekt-html.js';
 import { genererTiltak as motorTiltak } from '../js/tiltaksmotor.js';
 import { TILTAKSTYPER as TILTAKSTYPER_T } from '../js/model.js';
@@ -1465,6 +1465,22 @@ test('Hogstklasse I = ikke tilfredsstillende forynget (ikke alder), og glissen s
   assert.equal(gml.alder, 110); assert.match(gml.merknad, /^Glissen skog: SR16 viser 2,8 m³\/daa, men 79 trær\/daa over 5 cm og 9,5 m høyde – ikke hogd \(HK 4 i planen 2009\), kontroller; Overlapper MiS/);
   assert.ok(hogstklasseFor(gml) >= 4); assert.equal(ekte.alder, 0); assert.equal(hogstklasseFor(ekte), 1);
   assert.equal(rettFeilHogd([gml]), 0); // bare én gang
+});
+
+test('Ungskog på hogd flate (Nannestad 29/2, bestand 1-19): alder fra målt høyde, ungskogpleie anbefales, internrente', () => {
+  const b = { id: 'x', nr: '1-19', treslag: 'G', bonitet: 11, alder: 0, volumDaa: 1, treantall: 20, hoyde: 1.1, areal: 48.5, tiltak: [], ekstra: { KILDE: 'Tidligere skogbruksplan (NIBIO) + SR16' },
+    merknad: 'Mulig hogd etter 2013: SR16 viser 1,0 m³/daa mot HK 5 i planen – kontroller', ungskog: { treantallFor: 900, treantallEtter: 180, hoydeBar: 2 } };
+  assert.ok(alderFraHoyde(2, 11) >= 9 && alderFraHoyde(2, 11) <= 14); assert.ok(alderFraHoyde(2, 20) < alderFraHoyde(2, 11));
+  assert.equal(startT2(b).alder, alderFraHoyde(2, 11)); assert.equal(hogstklasseFor(b), 2);
+  const f = motorTiltak({ bestand: [b] }, { iAar: 2026, balanser: false });
+  assert.deepEqual(f.map((x) => x.type), ['ungskogpleie']); assert.equal(f[0].aar, 2026);
+  const e = US.effektUngskogpleie(b, { iAar: 2026 });
+  assert.ok(e.behov); assert.ok(e.internrente > 2 && e.internrente < 4, String(e.internrente));
+  assert.equal(e.forutsetninger.lev >= 0, true);
+  assert.match(effektHtml(e), /Ungskogpleie anbefales/);
+  // Lønnsomheten øker med bonitet, og tilskudd gjør tiltaket lønnsomt
+  assert.ok(US.effektUngskogpleie({ ...b, bonitet: 17 }, { iAar: 2026 }).gevinst > 500);
+  assert.ok(US.effektUngskogpleie(b, { iAar: 2026, vInn: { ...STANDARD_VERDI, tilskuddUngskogpleie: 40 } }).gevinst > 0);
 });
 
 await Promise.all(venter);
