@@ -27,6 +27,9 @@ export const VEG_PROFIL = {
   gras: { navn: 'gras og urter', bakke: BAKKE.gras, elementer: [e('gras', 5, [0.2, 0.5]), e('urter', 1, [0.1, 0.3])] },
   ur: { navn: 'stein og mose', bakke: BAKKE.stein, elementer: [e('stein', 0.4, [0.3, 1.4]), e('mose', 0.8, [0.05, 0.1]), e('lav', 0.5, [0.03, 0.06]), e('bregne', 0.05, [0.3, 0.6])] },
   lavhei: { navn: 'reinlav', bakke: BAKKE.lav, elementer: [e('lav', 5, [0.04, 0.1]), e('lyng', 0.5, [0.1, 0.25]), e('stein', 0.05, [0.2, 0.6])] },
+  innmark: { navn: 'eng og beite', bakke: [0.36, 0.5, 0.17], elementer: [e('gras', 7, [0.2, 0.5]), e('urter', 0.8, [0.15, 0.4])] },
+  plen: { navn: 'plen og hage', bakke: [0.32, 0.46, 0.16], elementer: [e('gras', 1.2, [0.08, 0.18]), e('urter', 0.1, [0.1, 0.2])] },
+  vei: { navn: 'vei og grus', bakke: [0.5, 0.47, 0.4], elementer: [e('stein', 0.02, [0.1, 0.3])] },
   rishei: { navn: 'lyng og ris', bakke: BAKKE.lyng, elementer: [e('lyng', 3, [0.15, 0.4]), e('blabaer', 0.6, [0.15, 0.3]), e('lav', 0.8, [0.04, 0.08])] },
 };
 // Vegetasjonskode → profil
@@ -71,4 +74,11 @@ export function vegRute(x0, y0, storrelse, profil, frø = '') {
     }
   }
   return ut;
+}
+
+// Areal utenfor bestandene etter markslag (AR5). Skog (produktiv, impediment, myr med trær) går via naboBestand.
+const MARK = { jordbruk: 'innmark', myr: 'myr', apen: 'rishei', bebygd: 'plen', samferdsel: 'vei', impediment: 'lavFuru', sno: 'ur', vann: 'sump' };
+export function markProfil(kategori) {
+  const navn = MARK[kategori]; if (!navn) return null; const p = VEG_PROFIL[navn];
+  return { kode: kategori, navn: p.navn, beskrivelse: p.navn, anslaatt: false, bakke: p.bakke, elementer: p.elementer };
 }

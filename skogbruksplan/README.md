@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.27.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.28.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -228,7 +228,23 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
   - Mangler vegetasjonstypen, anslås den av treslag og bonitet, og HUD-en viser «(anslått)". Låg bonitet gir lyng- eller lavtype, middels gir blåbærtype og høy gir småbregnetype.
   - **Lys:** Hogstflater får mer gras og urter. Tett ungskog (over 600 trær/daa) har 45 % av feltsjiktet, og tett granskog har 60 %.
   - Plantene lages i ruter på 5 × 5 m innen 35 m fra deg (25 m i VR), med høyst 30 000 planter. Små planter vises bare innen 16 m, og rutene bygges på nytt når du har gått 6 m. Plantene står i flekker og er faste for hvert bestand.
-- **Antall og terreng:** Det er høyst ca. 30 000 trær. Radiusen (opptil 250 m) krymper i tett ungskog. Terrenget hentes fra Kartverket (DTM1, 10 × 10 punkter), og uten nett blir det flatt.
+- **Antall og terreng:** Det er høyst ca. 30 000 trær. Radiusen (opptil 250 m) krymper i tett ungskog. Terrenget hentes fra Kartverket (DTM1) med et punkt for omtrent hver 12. meter, høyst 41 × 41 punkter. Da kommer koller, søkk og bekkedaler fram. Uten nett blir det flatt.
+- **Omgivelser** (`js/skog3d-omgivelser.js` for data og `js/skog3d-objekter.js` for 3D). Alt hentes direkte fra åpne tjenester, samtidig med terrenget. Hver kilde kan feile eller bruke for lang tid (over 25 s) uten at resten stopper:
+
+  | Hva | Kilde | Slik ser det ut |
+  |---|---|---|
+  | Veier | Planens veiregister og NVDB vegnett (Statens vegvesen), også private veier og skogsbilveier | Asfalt med kantlinjer (E-, R-, F- og K-vei), grusvei med grøftekant, og traktorvei med to hjulspor. Bredden følger vegkategori og -klasse. |
+  | Stier | Kartverkets turrutebase (Fotrute, AnnenRute) | Brun sti på 0,7 m. Ruter som følger traktorvei, vises som traktorvei. |
+  | Bekker og elver | NVE Elvenett (ELVIS) | Blank vannstripe på 1,4 m (elver med navn 4 m) med mørk kant |
+  | Innsjøer | NVE Innsjødatabasen, ellers AR5 vann | Flat, blank vannflate i strandhøyden |
+  | Bygninger | Matrikkelen bygningspunkt (Kartverket) | Mål og farge etter bygningstype: bolig, fritidsbolig, koie, garasje/uthus, låve/fjøs, naust, veksthus, industri og næring. Saltak, grunnmur, vinduer med karm og dør, og port på låver. Bygningene vris etter nærmeste vei, og du kan ikke gå gjennom veggene. |
+  | Markslag | NIBIO AR5 for hele området, også utenfor eiendommen | Jordbruk blir eng og beite, bebygd blir plen, åpen fastmark blir lyng og ris, og samferdsel blir grus. |
+  | Skog utenfor planen | AR5 produktiv skog, impediment og myr | Generelle trær etter AR5-treslag og -bonitet. Impediment og myr får glissen, lav furu. Infoboksen sier at trærne er et anslag. |
+  | Eiendomsgrense | Planens eiendomsgrense | Rød stripe på bakken, og grensemerker (rødmalt stake med steinrøys) i knekkpunktene, høyst ett per 10 m |
+
+  - **Trær og planter** står ikke på veier, stier, i vann eller ved bygninger.
+  - **Infoboksen** viser hva du står på: bestand, markslag fra AR5, eller skog utenfor planen. Den viser også veinavn når du står på en vei, og om du er ved vann eller en bygning.
+  - **Demoeiendommen** har nå en eiendomsgrense. Den ligger på et ekte sted i Løten, så veier, bygninger og markslag rundt er ekte.
 
 **Styring:**
 - **PC:** Klikk i bildet og se rundt med musa. Gå med W A S D eller piltastene, og hold Shift for å løpe.

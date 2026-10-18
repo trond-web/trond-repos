@@ -1,9 +1,9 @@
 // Bakkevegetasjon i den virtuelle skogen: lav, lyng, blåbær, tyttebær, mose, gras, starr, urter, bregner, høgstauder,
 // einer og stein ut fra vegetasjonstypen (skog3d-veg.js). Plantene lages i ruter på 5 × 5 m rundt deg og bygges på nytt
 // når du har gått noen meter. Én InstancedMesh per plantetype, så det går raskt også i VR. Små planter vises bare nær.
-// Alle modeller har grunnflate i y = 0, høyde 1 og bredde ca. 1 (skaleres per plante).
+// Ikke planter på veier, stier, vann og ved bygninger. Alle modeller har grunnflate i y = 0, høyde 1 og bredde ca. 1 (skaleres per plante).
 import { vegProfil, vegRute } from './skog3d-veg.js';
-import { iPolygon } from './skog3d-data.js';
+import { lagOppslag } from './skog3d-omgivelser.js';
 import { STANDARD_INNSTILLINGER } from './model.js';
 
 const RUTE = 5; // m
@@ -78,27 +78,30 @@ export function lagBunnModeller(THREE) {
 }
 
 // Bunnlaget: bestand = [{ b, mp }] i lokale meter, hoyde(x, y) = terrenget.
-export function lagBunnLag(THREE, scene, bestand, { hoyde = () => 0, inn = STANDARD_INNSTILLINGER, radius = 35, grense = Infinity } = {}) {
+// bestand: [{ b, mp }] eller [{ id, mp, profil }] (markslag); første treff gjelder. hinder(x, y) → noe = ingen planter.
+export function lagBunnLag(THREE, scene, bestand, { hoyde = () => 0, inn = STANDARD_INNSTILLINGER, radius = 35, grense = Infinity, hinder = null } = {}) {
   const modeller = lagBunnModeller(THREE);
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
   const mesh = {};
   for (const [type, geo] of Object.entries(modeller)) { const m = new THREE.InstancedMesh(geo, mat, MAKS); m.frustumCulled = false; m.count = 0; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.setColorAt(0, new THREE.Color(1, 1, 1)); scene.add(m); mesh[type] = m; }
-  const profiler = new Map(); const profil = (s) => { if (!profiler.has(s.b.id)) profiler.set(s.b.id, vegProfil(s.b, { inn })); return profiler.get(s.b.id); };
-  const finn = (x, y) => bestand.find((s) => iPolygon(x, y, s.mp));
+  const nokkel = (s) => s.b?.id ?? s.id;
+  const profiler = new Map(); const profil = (s) => { const k = nokkel(s); if (!profiler.has(k)) profiler.set(k, s.profil || vegProfil(s.b, { inn })); return profiler.get(k); };
+  const finn = lagOppslag(bestand);
   // Planter per rute (lages én gang og huskes)
   const ruter = new Map();
   const rute = (i, j) => {
-    const nokkel = `${i},${j}`; if (ruter.has(nokkel)) return ruter.get(nokkel);
+    const rk = `${i},${j}`; if (ruter.has(rk)) return ruter.get(rk);
     const x0 = i * RUTE; const y0 = j * RUTE; const hjorner = [[x0, y0], [x0 + RUTE, y0], [x0, y0 + RUTE], [x0 + RUTE, y0 + RUTE], [x0 + RUTE / 2, y0 + RUTE / 2]].map(([x, y]) => finn(x, y));
     const ulike = [...new Set(hjorner.filter(Boolean))]; const blandet = ulike.length > 1 || hjorner.some((h) => !h);
     const ut = [];
-    for (const s of ulike) for (const p of vegRute(x0, y0, RUTE, profil(s), s.b.id)) {
+    for (const s of ulike) for (const p of vegRute(x0, y0, RUTE, profil(s), nokkel(s))) {
       if (blandet && finn(p.x, p.y) !== s) continue;
+      if (hinder && hinder(p.x, p.y)) continue;
       if (p.x * p.x + p.y * p.y > grense * grense) continue;
       ut.push({ ...p, z: hoyde(p.x, p.y) - 0.02 });
     }
     if (ruter.size > 600) ruter.clear(); // hold minnet nede på lange turer
-    ruter.set(nokkel, ut); return ut;
+    ruter.set(rk, ut); return ut;
   };
   const m4 = new THREE.Matrix4(); const q = new THREE.Quaternion(); const v = new THREE.Vector3(); const sk = new THREE.Vector3(); const opp = new THREE.Vector3(0, 1, 0); const c = new THREE.Color();
   let sist = null; let antall = 0;

@@ -60,14 +60,18 @@ const bbox = (mp) => { const xs = mp.flat(2).map((q) => q[0]); const ys = mp.fla
 
 // Lager trærne i en sirkel rundt startpunktet. Radien krympes til antall trær er under maks (tett ungskog gir mindre
 // område). Gir { senter (UTM), radius, traer: [{ x, y, art, h, kroneStart, kroneBredde, bid }], bestand: [{ b, mp }] }.
-export function lagSkog(S, { start, radius = 250, maks = MAKS_TRAER, inn = STANDARD_INNSTILLINGER } = {}) {
+// Bestand med nabo: true (skog utenfor planen, fra AR5) får bare trær utenfor planens bestand. fri(x, y) = false
+// fjerner trær (veier, vann, bygninger).
+export function lagSkog(S, { start, radius = 250, maks = MAKS_TRAER, inn = STANDARD_INNSTILLINGER, fri = null } = {}) {
   const senter = tilUtmPunkt(start);
   const alle = S.bestand.filter((b) => b.geometri).map((b) => ({ b, mp: lokal(b.geometri, senter), p: bestandTraer(b, { inn }) }));
+  const plan = alle.filter((x) => !x.b.nabo).map((x) => ({ mp: x.mp, bb: bbox(x.mp) }));
+  const iPlan = (px, py) => plan.some((q) => px >= q.bb[0] && px <= q.bb[2] && py >= q.bb[1] && py <= q.bb[3] && iPolygon(px, py, q.mp));
   const mange = (R) => alle.reduce((sum, x) => {
     const [x0, y0, x1, y1] = bbox(x.mp); if (x1 < -R || x0 > R || y1 < -R || y0 > R) return sum;
     // grovt anslag: areal av bestandet i sirkelen × tetthet
     let inne = 0; let n = 0; const st = Math.max(5, R / 25);
-    for (let x2 = Math.max(x0, -R); x2 <= Math.min(x1, R); x2 += st) for (let y2 = Math.max(y0, -R); y2 <= Math.min(y1, R); y2 += st) { n++; if (x2 * x2 + y2 * y2 <= R * R && iPolygon(x2, y2, x.mp)) inne++; }
+    for (let x2 = Math.max(x0, -R); x2 <= Math.min(x1, R); x2 += st) for (let y2 = Math.max(y0, -R); y2 <= Math.min(y1, R); y2 += st) { n++; if (x2 * x2 + y2 * y2 <= R * R && iPolygon(x2, y2, x.mp) && !(x.b.nabo && iPlan(x2, y2))) inne++; }
     return sum + inne * st * st / 1000 * x.p.arter.reduce((t, a) => t + a.N, 0);
   }, 0);
   let R = radius; while (R > 30 && mange(R) > maks) R *= 0.85;
@@ -81,7 +85,7 @@ export function lagSkog(S, { start, radius = 250, maks = MAKS_TRAER, inn = STAND
       for (let gx = Math.max(x0, -R) + fx; gx <= Math.min(x1, R); gx += avst) {
         for (let gy = Math.max(y0, -R) + fy; gy <= Math.min(y1, R); gy += avst) {
           const px = gx + (r() - 0.5) * avst * 0.9; const py = gy + (r() - 0.5) * avst * 0.9;
-          if (px * px + py * py > R * R || !iPolygon(px, py, x.mp)) continue;
+          if (px * px + py * py > R * R || !iPolygon(px, py, x.mp) || (x.b.nabo && iPlan(px, py)) || (fri && !fri(px, py))) continue;
           const v = 0.75 + r() * 0.5; // høydevariasjon ±25 %
           traer.push({ x: px, y: py, art: a.art, h: a.H * v, kroneStart: a.kroneStart * (0.85 + r() * 0.3), kroneBredde: a.kroneBredde * (0.8 + r() * 0.4), bid: x.b.id });
         }
@@ -89,8 +93,8 @@ export function lagSkog(S, { start, radius = 250, maks = MAKS_TRAER, inn = STAND
     }
   }
   // Litt åpning der du starter, så du ikke står inne i en krone.
-  const fri = traer.filter((t) => t.x * t.x + t.y * t.y > Math.max(4, Math.min(9, t.h * t.kroneBredde * t.h * t.kroneBredde * 1.5)));
-  return { senter, radius: R, traer: fri.slice(0, maks * 1.2), bestand: med };
+  const aapen = traer.filter((t) => t.x * t.x + t.y * t.y > Math.max(4, Math.min(9, t.h * t.kroneBredde * t.h * t.kroneBredde * 1.5)));
+  return { senter, radius: R, traer: aapen.slice(0, maks * 1.2), bestand: med };
 }
 
 // Terreng: punktene som hentes fra Kartverket (n × n i kvadratet rundt senteret), og en funksjon for høyde i (x, y).
@@ -100,8 +104,8 @@ export function terrengPunkter(senter, R, n = 10) {
   return pts;
 }
 export function lagTerreng(z, R, n = 10) {
-  const ok = z.filter(Number.isFinite); const min = ok.length ? Math.min(...ok) : 0;
-  const g = z.map((v) => (Number.isFinite(v) ? v - min : 0));
+  const ok = z.filter(Number.isFinite); const min = ok.length ? Math.min(...ok) : 0; const snitt = ok.length ? ok.reduce((a, v) => a + v, 0) / ok.length : 0;
+  const g = z.map((v) => (Number.isFinite(v) ? v : snitt) - min); // manglende punkter får snittet
   return (x, y) => {
     const fx = Math.min(n - 1.001, Math.max(0, ((x + R) / (2 * R)) * (n - 1))); const fy = Math.min(n - 1.001, Math.max(0, ((y + R) / (2 * R)) * (n - 1)));
     const i = Math.floor(fx); const j = Math.floor(fy); const u = fx - i; const v = fy - j;

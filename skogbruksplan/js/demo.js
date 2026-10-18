@@ -50,8 +50,10 @@ export function lagDemo(iAar = new Date().getFullYear()) {
       nr++;
     }
   }
+  // Eiendomsgrensen = ytterkanten av bestandsnettet (kantpunktene har ikke støy).
+  const omriss = [...p[0], ...p.slice(1).map((q) => q[kol]), ...[...p[rad]].reverse().slice(1), ...p.slice(0, rad).map((q) => q[0]).reverse()].map(([x, y]) => utmTilGeo(x, y, 32));
   return {
-    eiendom: { navn: 'Demoskogen (fiktiv)', kommune: 'Løten', gnrbnr: '12/3', takstAar: iAar - 3, eier: '' },
+    eiendom: { navn: 'Demoskogen (fiktiv)', kommune: 'Løten', gnrbnr: '12/3', takstAar: iAar - 3, eier: '', grense: { type: 'Polygon', coordinates: [omriss] } },
     bestand,
   };
 }

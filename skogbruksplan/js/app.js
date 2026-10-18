@@ -1511,7 +1511,7 @@ function endret({ kart: kartEndret = false, zoom = false } = {}) {
 
 async function lastDemo() {
   const d = lagDemo(IAAR);
-  await nyArbeidsplan({ ...d.eiendom, grense: null });
+  await nyArbeidsplan({ ...d.eiendom });
   S.bestand = d.bestand;
   valgtId = null; forslag = [];
   tegnEiendom(); tegnRegistreringer();
