@@ -738,6 +738,7 @@ function visDetalj() {
       <h3>Bestand ${esc(b.nr)}${b.teig ? ` <span class="hint">teig ${esc(b.teig)}</span>` : ''}</h3>
       <div class="knapperad" style="margin:0">
         <button class="knapp liten" data-handling="zoom" type="button">Zoom</button>
+        <button class="knapp liten" data-handling="skog3d" type="button" title="Gå rundt i skogen fra bakkenivå – også med VR-briller">🥽 Gå inn i skogen</button>
         <button class="knapp liten" data-handling="grense" type="button">${redigerMarkorer.length ? 'Ferdig' : 'Rediger grense'}</button>
         <button class="knapp liten" data-handling="del" type="button" title="Del bestandet i to med en linje">Del i to</button>
         ${sisteDeling && (sisteDeling.for.id === b.id || sisteDeling.nyId === b.id) ? '<button class="knapp liten" data-handling="angre-deling" type="button">Angre deling</button>' : ''}
@@ -806,6 +807,11 @@ function visDetalj() {
     endret(); visDetalj();
   });
   boks.querySelector('[data-handling="zoom"]').onclick = () => velgBestand(b.id);
+  boks.querySelector('[data-handling="skog3d"]').onclick = async () => {
+    if (!b.geometri) { melding('Bestandet har ingen kartgeometri.'); return; }
+    const { aapneVirtuellSkog } = await import('./skog3d.js');
+    aapneVirtuellSkog({ S, b, inn: inn(), melding });
+  };
   const vegKnapp = boks.querySelector('[data-handling="hent-veg"]'); if (vegKnapp) vegKnapp.onclick = hentVegetasjonForPlan;
   boks.querySelector('[data-handling="del"]').onclick = () => startDeling(b);
   const angre = boks.querySelector('[data-handling="angre-deling"]'); if (angre) angre.onclick = angreDeling;

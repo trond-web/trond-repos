@@ -43,6 +43,7 @@ import * as US from '../js/ungskog.js';
 import * as OU from '../js/oppdrag-utvalg.js';
 import * as TT from '../js/tetthet.js';
 import * as DR from '../js/drone.js';
+import * as SK from '../js/skog3d-data.js';
 import { lagRelay, KODE_GYLDIG_MS } from '../kontroller-relay.js';
 import { tolkTetthet, alderFraHoyde, startTilstand as startT2, hogstklasseFor, foryngelse, vurderLiteVolum, rettFeilHogd, minForyngelse } from '../js/model.js';
 import { ungskogHtml, effektHtml } from '../js/effekt-html.js';
@@ -1553,6 +1554,29 @@ test('Kontroller-overføring: kobling med kode, sending av KMZ, nedlasting og st
   assert.ok(r.status(k.id, oid, 'flydd')); assert.ok(!r.status(k.id, oid, 'tull')); assert.equal(r.liste(k.id)[0].status, 'flydd');
   assert.ok(r.slett(k.id, oid)); assert.equal(r.liste(k.id).length, 0);
   assert.equal(r.liste('ugyldig'), null);
+});
+
+test('Virtuell skog: trær fra bestandsdataene (treslag, høyde, treantall, hogstklasse), fast tilfeldighet og terreng', () => {
+  const S = lagDemo(2026);
+  const ung = { id: 'u', nr: 'U', treslag: 'G', bonitet: 17, alder: 10, hogstklasse: 2, areal: 5, tiltak: [], ungskog: { treantallFor: 800, hoydeBar: 2.5, hoydeLauv: 3.5 } };
+  const pu = SK.bestandTraer(ung);
+  assert.equal(pu.hk, 2); const N = pu.arter.reduce((x, a) => x + a.N, 0); assert.ok(Math.abs(N - 800) < 1);
+  assert.equal(pu.arter.find((a) => a.art === 'G').H, 2.5); assert.equal(pu.arter.find((a) => a.art === 'L').H, 3.5);
+  assert.ok(pu.arter.find((a) => a.art === 'G').kroneStart <= 0.05); // krone ned til bakken i ungskog
+  const gml = SK.bestandTraer({ id: 'g', nr: 'G', treslag: 'G', bonitet: 17, alder: 90, hogstklasse: 5, volumDaa: 35, treantall: 70, hoyde: 22, areal: 5, tiltak: [] });
+  assert.ok(Math.abs(gml.arter.reduce((x, a) => x + a.N, 0) - 70) < 1); assert.equal(gml.arter[0].art, 'G'); assert.equal(gml.arter[0].H, 22); assert.ok(gml.arter[0].kroneStart > 0.3);
+  assert.ok(SK.bestandTraer({ id: 'f', nr: 'F', treslag: 'G', bonitet: 17, alder: 1, areal: 5, tiltak: [] }).arter.some((a) => a.N <= 5 && a.H > 10)); // hogstflate med livsløpstrær
+  // Skogen rundt bestand 17: maks antall, trærne ligger i bestandene, og samme skog hver gang
+  const b = S.bestand.find((x) => x.nr === '17'); const start = etikettPunkt(b.geometri);
+  const a1 = SK.lagSkog(S, { start, maks: 8000 }); const a2 = SK.lagSkog(S, { start, maks: 8000 });
+  assert.ok(a1.traer.length > 1000 && a1.traer.length <= 9600, String(a1.traer.length)); assert.ok(a1.radius < 250);
+  assert.deepEqual(a1.traer.slice(0, 20), a2.traer.slice(0, 20));
+  const mp = a1.bestand.find((x) => x.b.id === b.id).mp;
+  assert.ok(a1.traer.filter((t) => t.bid === b.id).slice(0, 200).every((t) => SK.iPolygon(t.x, t.y, mp)));
+  assert.ok(a1.traer.every((t) => Math.hypot(t.x, t.y) <= a1.radius + 1e-6));
+  // Terreng: bilineær interpolasjon i rutenettet, laveste punkt = 0
+  const h = SK.lagTerreng([100, 110, 120, 130], 50, 2); assert.equal(h(-50, -50), 0); assert.equal(h(0, 0), 15); assert.ok(Math.abs(h(50, 50) - 30) < 0.1);
+  assert.equal(SK.terrengPunkter([600000, 6700000], 100, 10).length, 100);
 });
 
 await Promise.all(venter);
