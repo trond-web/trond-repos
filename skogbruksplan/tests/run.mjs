@@ -48,6 +48,7 @@ import * as SV from '../js/skog3d-veg.js';
 import * as SO from '../js/skog3d-omgivelser.js';
 import * as AR from '../js/ar-data.js';
 import * as PS from '../js/plan-synk.js';
+import * as VR from '../js/skog3d-vaer.js';
 import { lagPlanRelay } from '../plan-relay.js';
 import { lagRelay, KODE_GYLDIG_MS } from '../kontroller-relay.js';
 import { tolkTetthet, alderFraHoyde, startTilstand as startT2, hogstklasseFor, foryngelse, vurderLiteVolum, rettFeilHogd, minForyngelse } from '../js/model.js';
@@ -1778,6 +1779,32 @@ test('Framskriving: ung skog med mer volum enn kurven vokser rimelig, og målt v
   const c = { treslag: 'G', bonitet: 17, alder: 48, volumDaa: 20.1, takstAar: 2015 }; const f0 = M.volumKurve(48, 17, 'G'); const f1 = M.volumKurve(59, 17, 'G'); M.framskrivTilAar(c, 2026);
   assert.ok(Math.abs(c.volumDaa - 20.1 * (f1 / f0)) < 0.2);
   assert.ok(M.arligTilvekstDaa({ treslag: 'G', bonitet: 20, alder: 18, volumDaa: 60 }) < 3); // ingen urimelig tilvekst
+});
+
+test('Vær i den virtuelle skogen: sol, MET-varsel, snødybde og værscener', async () => {
+  // Sola i Oslo ved sommersolverv kl. 13:15 (sann middag) står ca. 53° over horisonten i sør
+  const s = VR.solposisjon(new Date('2026-06-21T11:15:00Z'), 59.91, 10.75); assert.ok(Math.abs(s.hoyde - 53.5) < 1.5, `${s.hoyde}`); assert.ok(Math.abs(s.asimut - 180) < 10, `${s.asimut}`);
+  assert.ok(VR.solposisjon(new Date('2026-12-21T23:00:00Z'), 59.91, 10.75).hoyde < -40); // midnatt i desember
+  const kveld = VR.tidFor('kveld', 60.2, 11.0, new Date('2026-10-18T09:00:00')); const hk = VR.solposisjon(kveld, 60.2, 11).hoyde; assert.ok(hk < 3 && hk > -2, `${hk}`); assert.ok(VR.solposisjon(new Date(kveld.getTime() - 3 * 3600000), 60.2, 11).hoyde > hk); // ettermiddag, sola på vei ned
+  // MET-svar → nærmeste time
+  const met = { properties: { timeseries: [
+    { time: '2026-10-18T10:00:00Z', data: { instant: { details: { air_temperature: 3.2, wind_speed: 5.1, wind_from_direction: 225, cloud_area_fraction: 100, relative_humidity: 93 } }, next_1_hours: { summary: { symbol_code: 'lightrain' }, details: { precipitation_amount: 0.6 } } } },
+    { time: '2026-10-18T11:00:00Z', data: { instant: { details: { air_temperature: -1, wind_speed: 2, wind_from_direction: 10, cloud_area_fraction: 100, relative_humidity: 90 } }, next_1_hours: { summary: { symbol_code: 'snow' }, details: { precipitation_amount: 1.2 } } } }] } };
+  const v = VR.tolkMet(met, new Date('2026-10-18T10:10:00Z')); assert.equal(v.symbol, 'lightrain'); assert.equal(v.temp, 3.2);
+  assert.equal(VR.tolkMet(met, new Date('2026-10-18T10:50:00Z')).symbol, 'snow');
+  // Henting: MET + seNorge, og at feil i én kilde ikke stopper
+  const hent = async (u) => ({ ok: true, json: async () => (u.includes('met.no') ? met : { StartDate: '18.10.2026', NoDataValue: 65535, Data: [37] }) });
+  const h = await VR.hentVaer([600000, 6700000], { hent, nveBase: '/api/nve', tid: new Date('2026-10-18T10:10:00Z') }); assert.equal(h.snodybde, 37); assert.equal(h.symbol, 'lightrain');
+  const uten = await VR.hentVaer([600000, 6700000], { hent: async () => { throw new Error('nede'); } }); assert.equal(uten.ok, false);
+  // Scener
+  const dag = { hoyde: 30, asimut: 180 }; const natt = { hoyde: -25, asimut: 0 };
+  const regn = VR.vaerScene(v, dag); assert.equal(regn.type, 'regn'); assert.ok(regn.mengde > 0 && regn.taake.fjern < 200);
+  const sno = VR.vaerScene({ ...VR.forhandsvaer('sno') }, dag); assert.equal(sno.type, 'sno'); assert.equal(sno.snoDekke, 1);
+  const taake = VR.vaerScene(VR.forhandsvaer('take'), dag); assert.equal(taake.type, 'taake'); assert.ok(taake.taake.fjern <= 55);
+  const klart = VR.vaerScene(VR.forhandsvaer('sol'), dag); assert.equal(klart.type, null); assert.ok(klart.sol.styrke > 1);
+  assert.ok(VR.vaerScene(VR.forhandsvaer('sol'), natt).natt); assert.ok(VR.vaerScene(VR.forhandsvaer('sol'), natt).sol.styrke < 0.2);
+  assert.ok(VR.vaerScene(VR.forhandsvaer('torden'), dag).torden);
+  assert.match(VR.vaerTekst({ ...v, snodybde: 37 }), /3 °C · lett regn · vind 5,1 m\/s fra SV · 0,6 mm\/t · 37 cm snø/);
 });
 
 await Promise.all(venter);
