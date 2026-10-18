@@ -44,6 +44,7 @@ import * as OU from '../js/oppdrag-utvalg.js';
 import * as TT from '../js/tetthet.js';
 import * as DR from '../js/drone.js';
 import * as SK from '../js/skog3d-data.js';
+import * as SV from '../js/skog3d-veg.js';
 import { lagRelay, KODE_GYLDIG_MS } from '../kontroller-relay.js';
 import { tolkTetthet, alderFraHoyde, startTilstand as startT2, hogstklasseFor, foryngelse, vurderLiteVolum, rettFeilHogd, minForyngelse } from '../js/model.js';
 import { ungskogHtml, effektHtml } from '../js/effekt-html.js';
@@ -1577,6 +1578,33 @@ test('Virtuell skog: trær fra bestandsdataene (treslag, høyde, treantall, hogs
   // Terreng: bilineær interpolasjon i rutenettet, laveste punkt = 0
   const h = SK.lagTerreng([100, 110, 120, 130], 50, 2); assert.equal(h(-50, -50), 0); assert.equal(h(0, 0), 15); assert.ok(Math.abs(h(50, 50) - 30) < 0.1);
   assert.equal(SK.terrengPunkter([600000, 6700000], 100, 10).length, 100);
+});
+
+test('Virtuell skog: bakkevegetasjon etter vegetasjonstypen', () => {
+  const b = (x) => ({ id: 'v', nr: 'V', treslag: 'G', bonitet: 14, alder: 70, hogstklasse: 4, treantall: 100, areal: 5, tiltak: [], ...x });
+  const blab = SV.vegProfil(b({ vegetasjon: { kode: '7b' } }));
+  assert.equal(blab.kode, '7b'); assert.equal(blab.anslaatt, false);
+  assert.ok(blab.elementer.find((e) => e.type === 'blabaer').tetthet >= 2);
+  const lav = SV.vegProfil(b({ treslag: 'F', vegetasjon: { kode: '6a' } }));
+  assert.ok(lav.elementer[0].type === 'lav' && lav.bakke[0] > 0.6); // lys bakke
+  assert.ok(SV.vegProfil(b({ vegetasjon: { kode: '8b' } })).elementer.some((e) => e.type === 'torvmose'));
+  assert.ok(SV.vegProfil(b({ vegetasjon: { kode: '5b' } })).elementer.some((e) => e.type === 'hoystaude'));
+  // anslag uten vegetasjonstype
+  assert.equal(SV.anslaattKode({ treslag: 'F', bonitet: 8 }), '6a'); assert.equal(SV.anslaattKode({ treslag: 'G', bonitet: 14 }), '7b'); assert.equal(SV.anslaattKode({ treslag: 'G', bonitet: 20 }), '7c');
+  const ans = SV.vegProfil(b({})); assert.equal(ans.anslaatt, true); assert.equal(ans.kode, '7b');
+  // lys: hogstflate mer gras, tett granskog mindre blåbær enn glissen
+  const flate = SV.vegProfil(b({ alder: 1, hogstklasse: 1, treantall: 0, vegetasjon: { kode: '7b' } }));
+  const tett = SV.vegProfil(b({ treantall: 200, vegetasjon: { kode: '7b' } }));
+  const sum = (p, t) => p.elementer.filter((e) => e.type === t).reduce((s, e) => s + e.tetthet, 0);
+  assert.ok(sum(flate, 'gras') > sum(blab, 'gras') * 3);
+  assert.ok(sum(tett, 'blabaer') < sum(blab, 'blabaer'));
+  // rute: fast, innenfor ruta og omtrent riktig tetthet
+  const r1 = SV.vegRute(10, 20, 5, blab, 'v'); const r2 = SV.vegRute(10, 20, 5, blab, 'v');
+  assert.deepEqual(r1, r2);
+  assert.ok(r1.every((p) => p.x >= 10 && p.x <= 15 && p.y >= 20 && p.y <= 25 && p.h > 0));
+  const forventet = blab.elementer.reduce((s, e) => s + e.tetthet, 0) * 25;
+  assert.ok(Math.abs(r1.length - forventet) <= forventet * 0.1 + 3, `${r1.length} vs ${forventet}`);
+  assert.notDeepEqual(SV.vegRute(15, 20, 5, blab, 'v').map((p) => p.x - 5), r1.map((p) => p.x));
 });
 
 await Promise.all(venter);

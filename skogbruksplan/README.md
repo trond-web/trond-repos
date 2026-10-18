@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.26.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.27.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -215,13 +215,26 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
 - **Nivå av detaljer:** Trær nærmere enn 60 m (45 m i VR) får den detaljerte modellen, og trær lenger unna får enkle former. Fordelingen oppdateres når du har gått mer enn 6 m. Det er en åpning på 2–3 m rundt startpunktet, så du ikke starter inne i en krone.
 - **Hogstflate (HK I):** livsløpstrær, eventuelt plantede småplanter og lauvoppslag.
 - **Plassering:** Trærne står tilfeldig, men fast for hvert bestand, innenfor bestandsgrensen. Grensene vises som gule linjer på bakken.
+- **Bakkevegetasjon etter vegetasjonstypen** (`js/skog3d-veg.js` og `js/skog3d-bunn.js`):
+  - Bakkefargen følger bunnsjiktet: lys lav, brun lyng, grønn mose, gulgrønn torvmose, eng eller stein.
+  - Feltsjiktet har egne modeller for lav, røsslyng, blåbær (med bær), tyttebær (med røde bær), mose, torvmose, gras, starr, urter med blomster, bregner, høgstauder, einer og stein. Tetthet (per m²) og høyde følger typen:
+    - **Lav- og lyngfuruskog (6a):** reinlav, lyng, tyttebær, einer og stein.
+    - **Blåbærskog (7b, 6b, 4b):** tett blåbærlyng og mose, litt tyttebær, bregner og gras.
+    - **Småbregne- og storbregneskog, lågurtskog (7c, 6c, 4c, 5a):** gras, urter og bregner.
+    - **Høgstaudeskog (5b, 4e, 4f, 3b, 8d):** høgstauder og store bregner.
+    - **Kalkskog (6d, 4d):** urter og gras.
+    - **Fuktskog, myr og sump (8a, 8b, 9a, 8c, 9c–9e):** torvmose, starr og lyng.
+    - **Fjell og annen mark:** lavhei, rishei, grasmark og ur.
+  - Mangler vegetasjonstypen, anslås den av treslag og bonitet, og HUD-en viser «(anslått)". Låg bonitet gir lyng- eller lavtype, middels gir blåbærtype og høy gir småbregnetype.
+  - **Lys:** Hogstflater får mer gras og urter. Tett ungskog (over 600 trær/daa) har 45 % av feltsjiktet, og tett granskog har 60 %.
+  - Plantene lages i ruter på 5 × 5 m innen 35 m fra deg (25 m i VR), med høyst 30 000 planter. Små planter vises bare innen 16 m, og rutene bygges på nytt når du har gått 6 m. Plantene står i flekker og er faste for hvert bestand.
 - **Antall og terreng:** Det er høyst ca. 30 000 trær. Radiusen (opptil 250 m) krymper i tett ungskog. Terrenget hentes fra Kartverket (DTM1, 10 × 10 punkter), og uten nett blir det flatt.
 
 **Styring:**
 - **PC:** Klikk i bildet og se rundt med musa. Gå med W A S D eller piltastene, og hold Shift for å løpe.
 - **Mobil og nettbrett:** Venstre halvdel av skjermen går, og høyre halvdel ser rundt.
 - **VR:** Trykk **🥽 VR**. Knappen vises når nettleseren og brillene støtter WebXR, for eksempel Meta Quest-nettleseren. Venstre stikke går, med knapp for å løpe, og høyre stikke snur 30°.
-- Øverst til venstre vises dataene for bestandet du står i: treslag, bonitet, hogstklasse med tetthet, alder, høyde, treantall og volum.
+- Øverst til venstre vises dataene for bestandet du står i: treslag, bonitet, hogstklasse med tetthet, alder, høyde, treantall og volum, og vegetasjonstypen.
 
 Dette er en tolkning av dataene, ikke en skanning. Enkelttrær fra laserdata kan legges inn senere.
 
