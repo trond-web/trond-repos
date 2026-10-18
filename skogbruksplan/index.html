@@ -473,6 +473,11 @@
 
     <!-- FELT -->
     <div class="fane" id="fane-felt" hidden>
+      <div class="kort">
+        <h3>📱 Planen på mobilen</h3>
+        <p class="hint">Send planen til SkogIQ Felt på telefonen med en QR-kode. Den virker uten nett der ute, og registreringer, utførte tiltak og sporlogger kommer tilbake hit automatisk.</p>
+        <div class="knapperad"><button class="knapp primar" type="button" data-til-mobil>📱 Send planen til mobilen</button></div>
+      </div>
       <a class="kort felt-lenke" href="felt.html"><span class="felt-ikon" aria-hidden="true">📱</span><span><b>SkogIQ Felt – mobilversjonen</b><span class="hint">Kartet i fullskjerm, GPS, registreringer og tiltak. Fungerer uten nett og kan installeres på telefonen.</span></span><span aria-hidden="true">›</span></a>
       <div class="kort">
         <h3>Hvor er jeg?</h3>
@@ -592,6 +597,7 @@
 </div>
 
 <dialog id="tiltakDialog" class="dialog" aria-label="Endre tiltak"></dialog>
+<dialog id="mobilDialog" class="dialog mobil-dialog" aria-label="Planen på mobilen"></dialog>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script type="module" src="js/app.js"></script>
 </body>

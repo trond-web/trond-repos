@@ -1,5 +1,6 @@
 // Endre og slette tiltak – felles for fullversjonen og SkogIQ Felt. Ingen DOM.
 import { TILTAKSTYPER } from './model.js';
+import { merkSlettet } from './plan-synk.js';
 
 export const STATUSER = { planlagt: 'Planlagt', utfort: 'Utført' };
 
@@ -43,6 +44,7 @@ export function endreTiltak(b, t, e, { idag = new Date().toISOString().slice(0, 
 
 // Sletter tiltaket fra bestandet og fjerner koblinger fra oppdrag og sporlogger.
 export function slettTiltak(S, b, t) {
+  merkSlettet(S, 'tiltak', t.id); // så synkroniseringen med andre enheter ikke henter det tilbake
   b.tiltak = (b.tiltak || []).filter((x) => x !== t);
   for (const o of S.oppdrag || []) o.linjer = (o.linjer || []).filter((l) => l.tiltakId !== t.id);
   for (const s of S.sporlogger || []) if (s.bestand?.includes(b.id) && !(b.tiltak || []).some((x) => (x.sporIder || []).includes(s.id))) s.bestand = s.bestand.filter((id) => id !== b.id);

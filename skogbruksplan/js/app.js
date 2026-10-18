@@ -55,6 +55,7 @@ let valgModus = false; let valgteTiltak = new Set(); let maalOppdrag = null; let
 let kartUtvalg = null; // velg-modus: trykk på bestand i kartet og tegnede flater (oppdrag-utvalg.js), deler valgteTiltak
 const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
 import { stabletSoyle, linje, fmt } from './charts.js';
+import { lagPlanSynk, merkSlettet, lenkeMedKode, API as SYNK_API } from './plan-synk.js';
 
 const IAAR = new Date().getFullYear();
 const $ = (s, r = document) => r.querySelector(s);
@@ -86,6 +87,7 @@ const kanal = 'BroadcastChannel' in window ? new BroadcastChannel('skogiq') : nu
 let stilleLagring = false;
 function lagreSnart() {
   clearTimeout(lagreTimer);
+  if (!stilleLagring) { S.endret = new Date().toISOString(); if (S.synk?.id) { clearTimeout(synkTimer); synkTimer = setTimeout(() => synkAktiv(), 10000); } } // brukes når planen synkroniseres med mobilen
   lagreTimer = setTimeout(async () => {
     try {
       await lagre(S);
@@ -1558,6 +1560,69 @@ function rettHogdIPlan() {
   if (n) { lagreSnart(); setTimeout(() => melding(`${n} bestand var feilaktig satt som hogd (hogstklasse I). SR16 viser mange trær over 5 cm – de er rettet til glissen skog.`, 7000), 900); }
 }
 
+// ---------- planen på mobilen: send med QR-kode/kode og synkroniser endringer begge veier (plan-synk.js) ----------
+const planSynk = lagPlanSynk({ enhet: 'pc' });
+let synker = false; let synkTimer = null; let qrLover = null; let synkInfo = null;
+const lastQr = () => (qrLover ||= new Promise((ok, nei) => {
+  if (window.qrcode) { ok(window.qrcode); return; }
+  const sk = document.createElement('script'); sk.src = 'https://unpkg.com/qrcode-generator@1.4.4/qrcode.js';
+  sk.onload = () => ok(window.qrcode); sk.onerror = () => { qrLover = null; nei(new Error('QR-biblioteket kunne ikke lastes')); }; document.head.appendChild(sk);
+}));
+const feltAdresse = () => new URL('felt.html', location.href.split(/[?#]/)[0]).href;
+// Resultatet av en synkronisering legges inn uten å miste endringer som ble gjort mens den pågikk.
+async function brukSynk(planId, endret0, r) {
+  if (planId === S.planId) {
+    if (S.endret !== endret0) { S.synk = { ...r.plan.synk, sendtHash: null }; await lagrePlan(S); return; } // endret underveis – sendes neste gang
+    if (r.status === 'hentet' || r.status === 'flettet') {
+      S = { ...r.plan, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...r.plan.innstillinger } };
+      await lagrePlan(S); await lagre(S);
+      stilleLagring = true; tegnEiendom(); tegnRegistreringer(); endret({ kart: true }); if (valgtId) visDetalj();
+      melding(r.status === 'hentet' ? 'Planen er oppdatert med endringer fra mobilen.' : 'Endringer fra mobilen og PC-en er slått sammen.', 5000);
+    } else { S.synk = r.plan.synk; await lagrePlan(S); }
+  } else {
+    const lagret = await hentPlan(planId);
+    if (lagret && lagret.endret === endret0) await lagrePlan(r.plan); else if (lagret) { lagret.synk = { ...r.plan.synk, sendtHash: null }; await lagrePlan(lagret); }
+  }
+  synkInfo = { tid: new Date(), status: r.status };
+  tegnPlanListe();
+}
+async function synkAktiv({ stille = true } = {}) {
+  if (!S.synk?.id || synker || !navigator.onLine) return;
+  synker = true; const id = S.planId; const e0 = S.endret;
+  try { const r = await planSynk.synk(S); await brukSynk(id, e0, r); if (!stille) melding({ lik: '✓ Planen er lik på PC og mobil.', sendt: '✓ Endringene er sendt til mobilen.', hentet: '✓ Oppdatert fra mobilen.', flettet: '✓ Endringer slått sammen.' }[r.status]); }
+  catch (e) { if (!stille) melding(`Synkronisering feilet: ${e.message}`, 6000); } finally { synker = false; }
+}
+async function tilMobil(id = S.planId) {
+  const d = $('#mobilDialog');
+  if (!id) { melding('Åpne eller lag en plan først.'); return; }
+  if (id === S.planId) await lagreAktivPlan();
+  const plan = id === S.planId ? S : await hentPlan(id); if (!plan) return;
+  d.innerHTML = `<h3>📱 ${esc(plan.eiendom?.navn || 'Planen')} på mobilen</h3><p class="hint">Gjør planen klar for mobilen …</p>`;
+  if (!d.open) d.showModal();
+  const e0 = plan.endret;
+  try {
+    const [r, qr] = await Promise.all([planSynk.del(plan), lastQr().catch(() => null)]);
+    await brukSynk(id, e0, r);
+    const lenke = `${feltAdresse()}?kode=${r.kode}`;
+    let qrHtml = '';
+    if (qr) { const q = qr(0, 'M'); q.addData(lenke); q.make(); qrHtml = q.createSvgTag({ cellSize: 5, margin: 2, scalable: true }); }
+    const til = new Date(r.utloper).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
+    const lokal = /^(localhost|127\.)/.test(location.hostname);
+    d.innerHTML = `<h3>📱 Åpne ${esc(plan.eiendom?.navn || 'planen')} på mobilen</h3>
+      <div class="mobil-qr">${qrHtml ? `<div class="qr" aria-label="QR-kode">${qrHtml}</div>` : ''}
+        <ol><li>Skann QR-koden med kameraet på mobilen. Planen åpnes i SkogIQ Felt og lagres der.</li>
+        <li>Eller åpne <b>SkogIQ Felt</b> på mobilen (${esc(feltAdresse().replace(/^https?:\/\//, ''))}), trykk på planvelgeren øverst → <b>Hent plan fra PC-en</b> og skriv koden:<br><span class="mobil-kode">${esc(r.kode.slice(0, 3))} ${esc(r.kode.slice(3))}</span></li>
+        <li>Legg SkogIQ Felt på hjemskjermen og last ned kartet for offline under <b>Mer</b>.</li></ol></div>
+      <p class="hint">Koden gjelder til kl. ${til}, og kan brukes på flere mobiler. ${lokal ? '<b>Merk:</b> Du kjører appen lokalt – mobilen må nå samme adresse. ' : ''}Planen virker uten nett på mobilen. Registreringer, utførte tiltak, sporlogger og oppdrag synkroniseres automatisk begge veier når enhetene har nett, og endringer fra begge sider slås sammen. Planen overføres kryptert (HTTPS) og mellomlagres på SkogIQ-serveren (slettes etter 90 dager uten bruk).</p>
+      <div class="knapperad" style="margin:0"><button class="knapp" type="button" data-m="synk">⇅ Synkroniser nå</button><button class="knapp" type="button" data-m="kopier">Kopier lenke</button><button class="knapp primar" type="button" data-m="lukk">Ferdig</button></div>`;
+    d.querySelector('[data-m="kopier"]').onclick = () => navigator.clipboard?.writeText(lenke).then(() => melding('Lenken er kopiert – send den til mobilen.'), () => melding(lenke, 10000));
+  } catch (e) {
+    d.innerHTML = `<h3>📱 Planen på mobilen</h3><p>${esc(e.nett ? e.message : `Kunne ikke gjøre planen klar: ${e.message}`)}</p><div class="knapperad" style="margin:0"><button class="knapp primar" type="button" data-m="lukk">Lukk</button></div>`;
+  }
+  d.querySelector('[data-m="synk"]')?.addEventListener('click', () => synkAktiv({ stille: false }));
+  d.querySelector('[data-m="lukk"]').onclick = () => d.close();
+}
+
 async function aapnePlan(id) {
   stoppDeling(); sisteDeling = null;
   if (id === S.planId) { visFane('oversikt'); zoomTilAlle(); return; }
@@ -1573,6 +1638,7 @@ async function aapnePlan(id) {
   visFane('oversikt');
   andreVisning?.tegn(); tegnPlanListe();
   melding(`Åpnet ${S.eiendom.navn || 'planen'}.`);
+  synkAktiv(); // hent endringer fra mobilen
 }
 
 async function tegnPlanListe() {
@@ -1580,9 +1646,9 @@ async function tegnPlanListe() {
   const synligeAndre = andreVisning?.antall() || 0;
   $('#planListe').innerHTML = (liste.length > 1 ? `<div class="plan-kartvalg"><span class="hint">Vis flere eiendommer i kartet samtidig${synligeAndre ? ` – ${synligeAndre} til vises nå` : ''}:</span><div class="knapperad" style="margin:0"><button class="knapp liten" type="button" data-plan-alle="vis">Vis alle</button><button class="knapp liten" type="button" data-plan-alle="skjul" ${synligeAndre ? '' : 'disabled'}>Skjul andre</button><button class="knapp liten" type="button" data-plan-alle="zoom" ${synligeAndre ? '' : 'disabled'}>Zoom til alle</button></div></div>` : '') + (liste.length ? liste.map((p) => `
     <div class="plan-rad" data-plan="${esc(p.id)}">
-      <div><div class="navn">${esc(p.navn)}${p.id === S.planId ? '<span class="merke-aktiv">Åpen</span>' : ''}</div>
+      <div><div class="navn">${esc(p.navn)}${p.id === S.planId ? '<span class="merke-aktiv">Åpen</span>' : ''}${p.synk ? '<span class="synk-merke" title="Synkroniseres med mobilen">⇅ mobil</span>' : ''}</div>
       <div class="hint">${fmt(p.areal)} daa · ${p.antall} bestand · endret ${new Date(p.endret).toLocaleDateString('nb-NO')}</div></div>
-      <div class="knapperad" style="margin:0"><label class="plan-kart" title="${p.id === S.planId ? 'Planen er åpen og vises alltid' : 'Vis eiendommen i kartet sammen med planen som er åpen'}"><input type="checkbox" data-plan-kart ${p.id === S.planId || andreVisning?.erSynlig(p.id) ? 'checked' : ''} ${p.id === S.planId ? 'disabled' : ''}> I kartet</label><button class="knapp liten primar" data-plan-handling="aapne" type="button">Åpne</button><button class="knapp liten fare" data-plan-handling="slett" type="button">Slett</button></div>
+      <div class="knapperad" style="margin:0"><label class="plan-kart" title="${p.id === S.planId ? 'Planen er åpen og vises alltid' : 'Vis eiendommen i kartet sammen med planen som er åpen'}"><input type="checkbox" data-plan-kart ${p.id === S.planId || andreVisning?.erSynlig(p.id) ? 'checked' : ''} ${p.id === S.planId ? 'disabled' : ''}> I kartet</label><button class="knapp liten" data-plan-handling="mobil" type="button" title="Send planen til SkogIQ Felt på mobilen (QR-kode)">📱 Til mobil</button><button class="knapp liten primar" data-plan-handling="aapne" type="button">Åpne</button><button class="knapp liten fare" data-plan-handling="slett" type="button">Slett</button></div>
     </div>`).join('') : '<div class="tom">Ingen lagrede planer ennå. Lag en over, eller importer en plan under Data.</div>');
 }
 
@@ -1652,20 +1718,27 @@ async function startGenerering(e) {
     const [turf, klipping] = await Promise.all([lastTurf(), lastKlipping()]);
     const plan = await genererPlan({ kommune, gnr, bnr, festenr }, { turf, klipping, iAar: IAAR, logg: (st, status, t) => { aktivtSteg = st; logg(st, status, t); } });
     const ny = { versjon: 1, planId: nyId('p'), eiendom: plan.eiendom, bestand: plan.bestand, markslag: plan.markslag || [], ...(plan.skifteplan ? { skifteplan: plan.skifteplan } : {}), registreringer: [], innstillinger: klon(S.innstillinger), metadata: plan.metadata, datakilder: { ...plan.kilder } };
-    // Alt datagrunnlag for PEFC, veier og verdi hentes med en gang. Feil her stopper ikke planen.
-    const dgSteg = ['miljo', 'nvdb', 'fkb', 'ssb'];
-    dgSteg.forEach((st) => logg(st, 'aktiv', 'Henter …'));
-    const dg = await hentDatagrunnlag(ny, { hvilke: dgSteg, nyId, kommunenr: kommune.nr, logg: (st, t, ok) => logg(st, ok === true ? 'ok' : ok === false ? 'feil' : 'aktiv', t) });
-    let kalibrert = null;
-    if (ny.verdi?.ssb) {
-      kalibrert = kalibrerPriser(ny.verdi.ssb, ny.innstillinger.pris);
-      if (kalibrert) ny.innstillinger.pris = { ...ny.innstillinger.pris, G: kalibrert.G, F: kalibrert.F, L: kalibrert.L };
-    }
+    // Planen lagres med en gang. Datagrunnlaget (miljødata til PEFC, veier, traktorveier og tømmerpriser) hentes
+    // samtidig i bakgrunnen og legges inn i planen når det kommer – også om planen er åpnet i mellomtiden.
     await lagrePlan(ny);
     await tegnPlanListe();
     const vol = ny.bestand.reduce((s, b) => s + (b.volumDaa || 0) * b.areal, 0);
     const kontroll = ny.bestand.filter((b) => /hogd/.test(b.merknad)).length;
     const m = plan.metadata;
+    const dgSteg = ['miljo', 'nvdb', 'fkb', 'ssb'];
+    dgSteg.forEach((st) => logg(st, 'aktiv', 'Henter i bakgrunnen …'));
+    const dgLover = hentDatagrunnlag(ny, { hvilke: dgSteg, nyId, kommunenr: kommune.nr, logg: (st, t, ok) => logg(st, ok === true ? 'ok' : ok === false ? 'feil' : 'aktiv', t) });
+    dgLover.then(async (dg) => {
+      let kalibrert = null;
+      if (ny.verdi?.ssb) {
+        kalibrert = kalibrerPriser(ny.verdi.ssb, ny.innstillinger.pris);
+        if (kalibrert) ny.innstillinger.pris = { ...ny.innstillinger.pris, G: kalibrert.G, F: kalibrert.F, L: kalibrert.L };
+      }
+      const felter = (x) => { x.pefc = ny.pefc; x.veier = ny.veier; x.verdi = ny.verdi; x.datakilder = { ...x.datakilder, ...ny.datakilder }; if (kalibrert) x.innstillinger = { ...x.innstillinger, pris: { ...x.innstillinger?.pris, G: kalibrert.G, F: kalibrert.F, L: kalibrert.L } }; };
+      if (S.planId === ny.planId) { felter(S); endret({ kart: true }); } else { const lagret = await hentPlan(ny.planId); if (lagret) { felter(lagret); lagret.endret = new Date().toISOString(); await lagrePlan(lagret); } }
+      const el = $('#genDatagrunnlag');
+      if (el) el.innerHTML = `✓ Datagrunnlaget er lagt inn: ${(ny.pefc?.objekter || []).length} miljøobjekter til PEFC, ${fmt((ny.veier?.veier || []).reduce((s, v) => s + (v.lengde || 0), 0) / 1000, 1)} km vei og sti. ${kalibrert ? `Tømmerpriser kalibrert mot SSB (${esc(kalibrert.grunnlag.navn)}, ${fmt(kalibrert.grunnlag.pris)} kr/m³): gran ${fmt(kalibrert.G)}, furu ${fmt(kalibrert.F)}, lauv ${fmt(kalibrert.L)} kr/m³.` : 'Tømmerpriser fra SSB kunne ikke hentes – standardpriser er brukt.'}${dg.feil.length ? ` Noen kilder svarte ikke (${esc(dg.feil.join('; '))}) – prøv «Oppdater alle» i PEFC-fanen senere.` : ''}`;
+    }).catch((e) => { const el = $('#genDatagrunnlag'); if (el) el.textContent = `Datagrunnlaget kunne ikke hentes (${e.message}) – prøv «Oppdater alle» i PEFC-fanen.`; });
     $('#genTittel').textContent = `Skogbruksplan for ${ny.eiendom.navn} er klar`;
     $('#genResultat').innerHTML = `<div class="gen-resultat">
       <div class="nokkeltall" style="margin:0">
@@ -1673,19 +1746,18 @@ async function startGenerering(e) {
         <div><b>${ny.bestand.length}</b><span>bestand</span></div>
         <div><b>${fmt(vol)} m³</b><span>stående volum (SR16)</span></div>
         <div><b>${kontroll}</b><span>trolig hogd siden forrige takst – kontroller</span></div>
-        <div><b>${(ny.pefc?.objekter || []).length}</b><span>miljøobjekter til PEFC</span></div>
-        <div><b>${fmt((ny.veier?.veier || []).reduce((s, v) => s + v.lengde, 0) / 1000, 1)} km</b><span>vei fra NVDB</span></div>
         ${ny.skifteplan?.skifter?.length ? `<div><b>${ny.skifteplan.skifter.length}</b><span>skifter på ${fmt(ny.skifteplan.skifter.reduce((s, x) => s + x.areal, 0))} daa jordbruksareal</span></div>` : ''}
       </div>
-      <p class="hint" style="margin:0">${kalibrert ? `Tømmerpriser kalibrert mot SSB (${esc(kalibrert.grunnlag.navn)}, ${fmt(kalibrert.grunnlag.pris)} kr/m³): gran ${fmt(kalibrert.G)}, furu ${fmt(kalibrert.F)}, lauv ${fmt(kalibrert.L)} kr/m³.` : 'Tømmerpriser fra SSB kunne ikke hentes – standardpriser er brukt.'}${dg.feil.length ? ` Noen kilder svarte ikke (${esc(dg.feil.join('; '))}) – prøv «Oppdater alle» i PEFC-fanen senere.` : ''}</p>
+      <p class="hint" style="margin:0" id="genDatagrunnlag">⏳ Miljødata til PEFC, veier, traktorveier og tømmerpriser hentes i bakgrunnen og legges inn i planen når de kommer. Du kan åpne planen nå.</p>
       <p class="hint" style="margin:0">${m.antallFraPlan ? `Bestandsgrenser fra skogbruksplan registrert ${esc(m.planRegistrert || '')}, oppdatert med SR16.` : 'Fant ingen tidligere skogbruksplan – bestandene er laget fra SR16-flater.'} Utkastet må kontrolleres i felt før det brukes som grunnlag for hogst.</p>
       <div class="motor-sporsmal" id="motorSporsmal">
         <div><b>Skal tiltaksplanen lages automatisk?</b><div class="hint">Tiltaksmotoren foreslår flatehogst eller lukket hogst, tynning, markberedning, planting og ungskogpleie for de neste 30 årene, basert på biologi, bærekraft og økonomi. Du kan endre alt etterpå.</div></div>
         <div class="motor-prinsipper">${Object.entries(PRINSIPPER).map(([k, p]) => `<label class="motor-prinsipp"><input type="radio" name="genPrinsipp" value="${k}" ${k === 'balansert' ? 'checked' : ''}><span><b>${esc(p.navn)}</b><small>${esc(p.beskrivelse)}</small></span></label>`).join('')}</div>
         <div class="knapperad" style="margin:0"><button class="knapp primar" type="button" id="motorJa">Ja, lag tiltaksplan</button><button class="knapp" type="button" id="motorNei">Nei takk</button></div>
       </div>
-      <button class="knapp primar" type="button" id="aapneNyPlan">Åpne skogbruksplanen for ${esc(ny.eiendom.navn)} →</button>
+      <div class="knapperad" style="margin:0"><button class="knapp primar" type="button" id="aapneNyPlan">Åpne skogbruksplanen for ${esc(ny.eiendom.navn)} →</button><button class="knapp" type="button" id="nyPlanMobil">📱 Send til mobilen</button></div>
     </div>`;
+    $('#nyPlanMobil').onclick = async () => { await dgLover.catch(() => {}); tilMobil(ny.planId); };
     $('#aapneNyPlan').onclick = () => aapnePlan(ny.planId);
     $('#motorNei').onclick = () => { $('#motorSporsmal').innerHTML = '<span class="hint">Ingen tiltak er laget. Du kan kjøre tiltaksmotoren senere under Tiltak.</span>'; $('#aapneNyPlan').focus(); };
     $('#motorJa').onclick = async () => {
@@ -1883,6 +1955,7 @@ function kobleHendelser() {
     if (alle === 'zoom') { await andreVisning.zoomAlle(bboxFor()); if (erMobil()) settArk('halv'); return; }
     const rad = e.target.closest('.plan-rad'); const h = e.target.dataset.planHandling; if (!rad || !h) return;
     if (h === 'aapne') aapnePlan(rad.dataset.plan);
+    if (h === 'mobil') tilMobil(rad.dataset.plan);
     if (h === 'slett') {
       const navn = rad.querySelector('.navn').firstChild.textContent;
       if (!confirm(`Slette planen «${navn}»? Dette kan ikke angres.`)) return;
@@ -1892,6 +1965,7 @@ function kobleHendelser() {
     }
   });
   document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-til-mobil]')) { tilMobil(); return; }
     const g = e.target.closest('[data-gaa]'); if (g) { e.preventDefault(); visFane(g.dataset.gaa); }
     const v = e.target.closest('[data-vis]'); if (v) { e.preventDefault(); velgBestand(v.dataset.vis); visFane('bestand'); }
   });
@@ -1960,7 +2034,7 @@ function kobleHendelser() {
     const rad = e.target.closest('.reg'); const h = e.target.dataset.reg; if (!rad || !h) return;
     const r = S.registreringer.find((x) => x.id === rad.dataset.id);
     if (h === 'vis') kart.setView([r.lat, r.lon], 17);
-    if (h === 'slett' && confirm('Slette registreringen?')) { S.registreringer = S.registreringer.filter((x) => x !== r); lagreSnart(); tegnRegistreringer(); }
+    if (h === 'slett' && confirm('Slette registreringen?')) { merkSlettet(S, 'registreringer', r.id); S.registreringer = S.registreringer.filter((x) => x !== r); lagreSnart(); tegnRegistreringer(); }
   });
 
   $('#eiendomSkjema').addEventListener('input', (e) => {
@@ -2032,6 +2106,11 @@ async function start() {
     stilleLagring = true; tegnRegistreringer(); endret({ kart: true });
     melding('Planen er oppdatert fra SkogIQ Felt.');
   });
+  // Synkronisering med mobilen: når vinduet får fokus, når nettet kommer tilbake, og hvert minutt.
+  synkAktiv();
+  window.addEventListener('focus', () => synkAktiv());
+  window.addEventListener('online', () => synkAktiv());
+  setInterval(() => { if (document.visibilityState === 'visible') synkAktiv(); }, 60000);
 }
 
 start();

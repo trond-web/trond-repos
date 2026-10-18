@@ -22,9 +22,14 @@ export const STANDARD_VERDI = {
 // ---------- SSB: gjennomsnittlig tømmerpris i kommunen ----------
 const SSB = 'https://data.ssb.no/api/v0/no/table';
 async function ssb(hent, tabell, query) {
-  const r = await hent(`${SSB}/${tabell}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, response: { format: 'json-stat2' } }) });
-  if (!r.ok) throw new Error(`SSB svarte ${r.status}`);
-  return r.json();
+  // Ett nytt forsøk etter et kort opphold – SSB svarer av og til ikke på første kall.
+  for (let forsok = 0; ; forsok++) {
+    try {
+      const r = await hent(`${SSB}/${tabell}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, response: { format: 'json-stat2' } }) });
+      if (!r.ok) throw new Error(`SSB svarte ${r.status}`);
+      return await r.json();
+    } catch (e) { if (forsok >= 1) throw e; await new Promise((ok) => setTimeout(ok, 1500)); }
+  }
 }
 // Gjør json-stat2 om til en funksjon som slår opp verdien for en kombinasjon av kategorier.
 function jsonStat(d) {
