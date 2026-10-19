@@ -3,7 +3,7 @@
 // (men faste per bestand), mens tetthet, høyde og treslagsblanding følger planen. Ingen DOM – kan testes i Node.
 import { STANDARD_INNSTILLINGER, startTilstand, hogstklasseFor, foryngelse } from './model.js';
 import { hoydeOm, plantetall } from './tiltaksmotor.js';
-import { ungskogData, treantallModell, fraSr16, pleieDekning, effektUngskogpleie } from './ungskog.js';
+import { ungskogData, treantallModell, fraSr16, pleieDekning, effektUngskogpleie, pleieKostPerDaa } from './ungskog.js';
 import { tetthet } from './tetthet.js';
 import { tilUtmPunkt, tilGeoPunkt } from './flate-geometri.js';
 
@@ -82,6 +82,57 @@ export function framtidsskog(b, scenario, { inn = STANDARD_INNSTILLINGER, vInn, 
   return { hk: 5, arter, scenario, beskrivelse: `Hogstmoden ${a.hogstAar} – uten ungskogpleie`, alder: naa + aar, hogstAar: a.hogstAar, volum: a.volum, nv: a.nv, treantall: Math.round(N * 1.25), hoyde: H, pris: a.pris, dode: Math.round(N * 0.08), forsinkelse: f.forsinkelse };
 }
 
+// Arbeidsinstruks for ungskogpleie i VR: ungskogen før tiltaket med merking av hva som skal fjernes ('merket'), og
+// rett etter tiltaket ('etter'). Følger instruksen «friske og vitale bartrær – rett treslag, rett tetthet og god
+// kvalitet»:
+//   Beholdes: framtidstrær av hovedtreslaget med jevn avstand (målet for treslag og bonitet, f.eks. 150–180/daa),
+//             og enkelte ROS-trær (rogn, osp, selje – art 'R') for det biologiske mangfoldet.
+//   Fjernes:  lauv og kratt som konkurrerer med framtidstrærne, og overtallige bartrær. Etter tiltaket står stubbene
+//             igjen (art 'S'), og hogstavfallet ligger i terrenget.
+// merke: 'behold' | 'fjern' | 'ros' – fargelegges i 'merket'. jevn: liten tilfeldig forskyvning (jevn avstand).
+export const ROS_PER_DAA = 3;
+export function ungskogpleieVisning(b, scenario, { inn = STANDARD_INNSTILLINGER, iAar = new Date().getFullYear() } = {}) {
+  const d = ungskogData(b, { inn }); const ts = d.treslag || b.treslag || 'G'; const bar = ts === 'L' ? 'G' : ts;
+  const m = treantallModell(b);
+  const N0 = Math.max(d.treantallFor.verdi ?? m.verdi ?? 400, 1);
+  const maal = Math.round(d.maal || 200);
+  const barAndel = ts === 'L' ? 0.2 : Math.min(0.9, Math.max(0.15, m.verdi ? m.bar / m.verdi : 0.4));
+  const Hb = d.hoydeBar.verdi ?? hoydeOm(b, 0); const Hl = d.hoydeLauv.verdi ?? Hb * 1.25;
+  const nBar = N0 * barAndel; const nLauv = N0 - nBar;
+  // Er det for få bartrær, beholdes de beste lauvtrærne for å nå målet.
+  const behBar = Math.min(nBar, maal); const behLauv = Math.max(0, Math.min(nLauv - ROS_PER_DAA, maal - behBar));
+  const kratt = Math.round(Math.min(400, N0 * 0.25)); // busker og oppslag under 1,5 m
+  const krone = (a, H) => (a === 'G' ? { kroneStart: 0.03, kroneBredde: 0.24 } : a === 'F' ? { kroneStart: 0.12, kroneBredde: 0.22 } : { kroneStart: 0.15, kroneBredde: 0.22 });
+  const art = (a, N, H, ekstra = {}) => ({ art: a, N, H: a === 'S' ? H : Math.max(0.3, H), ...krone(a, H), ...ekstra });
+  const planlagt = (b.tiltak || []).filter((t) => t.type === 'ungskogpleie' && t.status !== 'utfort').sort((x, y) => (x.aar || 0) - (y.aar || 0))[0] || null;
+  const fjernet = Math.max(0, N0 - behBar - behLauv - ROS_PER_DAA);
+  const info = {
+    hk: 2, scenario, alder: d.alder, treslag: ts, treantallFor: Math.round(N0), maal, treantall: Math.round(behBar + behLauv + ROS_PER_DAA),
+    hoydeBar: Hb, hoydeLauv: Hl, avstand: Math.sqrt(1000 / maal), fjernet: Math.round(fjernet), kratt, ros: ROS_PER_DAA,
+    lauvBeholdt: Math.round(behLauv), areal: b.areal || null, startAar: planlagt?.aar || iAar,
+    kostDaa: Math.round(pleieKostPerDaa(Math.max(Hb, Hl), N0, inn)), pleid: !!(d.pleid || pleieDekning(b)?.helt),
+  };
+  if (scenario === 'merket') {
+    const arter = [
+      art(bar, behBar, Hb, { merke: 'behold' }),
+      art(bar, nBar - behBar, Hb * 0.8, { merke: 'fjern' }), // overtallige og dårlige bartrær
+      art('L', behLauv, Hl, { merke: 'behold' }),
+      art('L', Math.max(0, nLauv - behLauv - ROS_PER_DAA), Hl, { merke: 'fjern' }),
+      art('R', ROS_PER_DAA, Hl * 0.9, { merke: 'ros', kroneStart: 0.2, kroneBredde: 0.3 }),
+      art('L', kratt, 1.1, { merke: 'fjern', kroneStart: 0.02, kroneBredde: 0.45 }),
+    ].filter((x) => x.N > 0.5);
+    return { ...info, arter, beskrivelse: 'Ungskog før ungskogpleie – merket' };
+  }
+  // Etter: bartrærne står med jevn avstand og får litt bredere kroner (mer lys). Stubber etter det som er fjernet.
+  const arter = [
+    art(bar, behBar, Hb, { jevn: true, kroneBredde: krone(bar).kroneBredde * 1.1 }),
+    art('L', behLauv, Hl, { jevn: true }),
+    art('R', ROS_PER_DAA, Hl * 0.9, { kroneStart: 0.2, kroneBredde: 0.3 }),
+    art('S', Math.min(450, fjernet + kratt * 0.3), 0.18, { kroneStart: 0.94, kroneBredde: 0.3 }),
+  ].filter((x) => x.N > 0.5);
+  return { ...info, arter, beskrivelse: 'Rett etter ungskogpleie' };
+}
+
 // Polygon(er) i lokale meter rundt senteret (x øst, y nord).
 const lokal = (geom, [cx, cy]) => (geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates).map((p) => p.map((r) => r.map((q) => { const [x, y] = tilUtmPunkt(q); return [x - cx, y - cy]; })));
 function iRing(x, y, r) { let inne = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i]; const [xj, yj] = r[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inne = !inne; } return inne; }
@@ -110,14 +161,14 @@ export function lagSkog(S, { start, radius = 250, maks = MAKS_TRAER, inn = STAND
     const [x0, y0, x1, y1] = bbox(x.mp); if (x1 < -R || x0 > R || y1 < -R || y0 > R) continue;
     med.push({ b: x.b, mp: x.mp, beskrivelse: x.p.beskrivelse, hk: x.p.hk });
     for (const a of x.p.arter) {
-      const r = rng(`${x.b.id}|${a.art}|${Math.round(a.H * 10)}`);
+      const r = rng(`${x.b.id}|${a.art}${a.merke ? `|${a.merke}` : ''}|${Math.round(a.H * 10)}`);
       const avst = Math.sqrt(1000 / a.N); const fx = r() * avst; const fy = r() * avst;
       for (let gx = Math.max(x0, -R) + fx; gx <= Math.min(x1, R); gx += avst) {
         for (let gy = Math.max(y0, -R) + fy; gy <= Math.min(y1, R); gy += avst) {
-          const px = gx + (r() - 0.5) * avst * 0.9; const py = gy + (r() - 0.5) * avst * 0.9;
+          const sp = a.jevn ? 0.3 : 0.9; const px = gx + (r() - 0.5) * avst * sp; const py = gy + (r() - 0.5) * avst * sp;
           if (px * px + py * py > R * R || !iPolygon(px, py, x.mp) || (x.b.nabo && iPlan(px, py)) || (fri && !fri(px, py))) continue;
           const v = 0.75 + r() * 0.5; // høydevariasjon ±25 %
-          traer.push({ x: px, y: py, art: a.art, h: a.H * v, kroneStart: a.kroneStart * (0.85 + r() * 0.3), kroneBredde: a.kroneBredde * (0.8 + r() * 0.4), tykkelse: a.tykkelse ?? 1, bid: x.b.id });
+          traer.push({ x: px, y: py, art: a.art, h: a.H * v, kroneStart: a.kroneStart * (0.85 + r() * 0.3), kroneBredde: a.kroneBredde * (0.8 + r() * 0.4), tykkelse: a.tykkelse ?? 1, bid: x.b.id, ...(a.merke ? { merke: a.merke } : {}) });
         }
       }
     }
