@@ -13,6 +13,7 @@ on:
       - "team-sjusjoen/**"
       - "nordfjella-villrein/**"
       - "gran-kommune/**"
+      - "harehund-skogsprotokoll/**"
       - ".github/workflows/deploy-pages.yml"
   schedule:
     # Børsradar: ny analyse hver handelsdag etter børsslutt (18:45 norsk sommertid / 17:45 vintertid)
@@ -53,7 +54,7 @@ jobs:
       # tretetthet-flyfoto ligger fortsatt på rot-URL-en, øvrige apper under egne stier
       - name: Assemble site
         run: |
-          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom _site/borsradar _site/team-sjusjoen _site/nordfjella-villrein _site/gran-kommune
+          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom _site/borsradar _site/team-sjusjoen _site/nordfjella-villrein _site/gran-kommune _site/harehund-skogsprotokoll
           cp -r tretetthet-flyfoto/. _site/
           cp -r snovill-skifore/. _site/snovill-skifore/
           cp -r therese-helge/. _site/therese-helge/
@@ -62,11 +63,12 @@ jobs:
           cp -r borsradar/. _site/borsradar/
           cp -r team-sjusjoen/. _site/team-sjusjoen/
           cp -r gran-kommune/. _site/gran-kommune/
+          cp -r harehund-skogsprotokoll/. _site/harehund-skogsprotokoll/
           # Nordfjella villrein kjører på Railway (med server). Pages sender videre dit og rydder bort den gamle appen.
           cp nordfjella-villrein/pages-videresending/* _site/nordfjella-villrein/
           rm -f _site/team-sjusjoen/bilder/README.md
           # Tester, verktøy og serverfiler (Railway) publiseres ikke på GitHub Pages
-          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/gran-kommune/tests _site/gran-kommune/data/hent-data.mjs _site/borsradar/analyse _site/borsradar/data/innsidehandel.json
+          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/gran-kommune/tests _site/gran-kommune/data/hent-data.mjs _site/borsradar/analyse _site/borsradar/data/innsidehandel.json _site/harehund-skogsprotokoll/tests _site/harehund-skogsprotokoll/README.md
 
       # Snøvill: snødybde, snømengde og smelting fra NVE/seNorge legges ved som datafil
       - name: Snødata fra NVE (Snøvill)
