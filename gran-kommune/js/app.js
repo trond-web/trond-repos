@@ -2,9 +2,12 @@ import {
   RAADHUS, KATEGORIER, hentVirksomheter, grupperSteder, geokod, sokAdresse, avstandKm, retning,
   hentKjoreavstander, hentVaer, vaerVed, symbolTekst, vindretningTekst, iParallell,
 } from './kilder.js';
+import { hentSkytebaner, leggTilTillegg, baneTekst, banerKort } from './skytebaner.js';
 
 const IKON = 'https://cdn.jsdelivr.net/gh/metno/weathericons@89e3173756248b4696b9b10677b66c4ef435db53/weather/svg';
 const KAT = Object.fromEntries(KATEGORIER.map(k => [k.id, k]));
+// Skytebaner har et eget symbol (blink med siktekors) som ikke ligner noe annet i kartet.
+const SIKTE = '<svg class="sikte" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#fff" stroke="#dc2626" stroke-width="2.4"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="#dc2626" stroke-width="2.4"/><circle cx="12" cy="12" r="1.9" fill="#dc2626"/><path d="M12 0v5M12 19v5M0 12h5M19 12h5" stroke="#111" stroke-width="2"/></svg>';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const tall = (x, d = 1) => x.toLocaleString('nb-NO', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -12,13 +15,24 @@ const grader = t => (t == null ? '–' : `${Math.round(t) === 0 ? 0 : Math.round
 const lagre = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* privat modus */ } };
 const les = (k, std) => { try { return JSON.parse(localStorage.getItem(k)) ?? std; } catch { return std; } };
 
+// Valgte kategorier huskes. Kategorier som er kommet til siden sist (f.eks. skytebaner) vises som standard.
+function lesKategorier() {
+  const alle = KATEGORIER.map(k => k.id);
+  const valgt = new Set(les('gran-kategorier', alle));
+  const kjente = les('gran-kategorier-kjente', ['raadhus', 'skole', 'barnehage', 'helse', 'kultur', 'teknisk', 'beredskap', 'andre']);
+  for (const id of alle) if (!kjente.includes(id)) valgt.add(id);
+  lagre('gran-kategorier-kjente', alle);
+  return valgt;
+}
+
 const tilstand = {
   steder: [],
+  skytebaner: [],
   egne: les('gran-egne', []),
   vaer: new Map(),       // stedsid → tidsserie fra MET
   kjoring: new Map(),    // stedsid → { km, min }
   tid: null,             // valgt tidspunkt (ISO), null = nå
-  kategorier: new Set(les('gran-kategorier', KATEGORIER.map(k => k.id))),
+  kategorier: lesKategorier(),
   tekst: '',
   sortering: les('gran-sortering', 'avstand'),
   valgt: null,
@@ -45,14 +59,19 @@ for (const km of [5, 10, 20, 30]) {
 }
 ringer.addTo(kart);
 const markorLag = L.layerGroup().addTo(kart);
-L.control.layers(grunnkart, { 'Avstandsringer fra rådhuset': ringer, 'Steder': markorLag }, { position: 'topright' }).addTo(kart);
+// Navn på stedene kan slås av i lagvelgeren (et tomt lag som bare styrer en CSS-klasse).
+const navnLag = L.layerGroup();
+navnLag.on('add', () => { kart.getContainer().classList.remove('uten-navn'); lagre('gran-navn', true); });
+navnLag.on('remove', () => { kart.getContainer().classList.add('uten-navn'); lagre('gran-navn', false); });
+if (les('gran-navn', true)) navnLag.addTo(kart); else kart.getContainer().classList.add('uten-navn');
+L.control.layers(grunnkart, { 'Navn på stedene': navnLag, 'Avstandsringer fra rådhuset': ringer, 'Steder': markorLag }, { position: 'topright' }).addTo(kart);
 L.control.scale({ imperial: false }).addTo(kart);
 
 const markorer = new Map(); // stedsid → L.marker
 
 // ---------- Hjelpere for steder ----------
 
-const allesteder = () => [...tilstand.steder, ...tilstand.egne];
+const allesteder = () => [...tilstand.steder, ...tilstand.skytebaner, ...tilstand.egne];
 const posisjon = s => (s.posisjon?.lat ? s.posisjon : null);
 const luftlinje = s => (posisjon(s) ? avstandKm(RAADHUS, posisjon(s)) : null);
 const vaerFor = s => vaerVed(tilstand.vaer.get(s.id), tilstand.tid || Date.now());
@@ -88,9 +107,42 @@ function sorter(liste) {
 function markorHtml(s) {
   const v = vaerFor(s);
   const ikon = v?.symbol ? `<img src="${IKON}/${v.symbol}.svg" alt="">` : '<span class="uv"></span>';
-  const kl = ['pille', s.erRaadhus && 'raadhus', s.egen && 'egen-pille', tilstand.valgt === s.id && 'valgt'].filter(Boolean).join(' ');
-  return `<div class="${kl}" style="--k:${farge(s)}" title="${esc(s.tittel)}">${ikon}${grader(v?.temp)}</div>`;
+  const kl = ['pille', s.erRaadhus && 'raadhus', s.egen && 'egen-pille', s.erSkytebane && 'skyte', tilstand.valgt === s.id && 'valgt'].filter(Boolean).join(' ');
+  return `<div class="${kl}" style="--k:${farge(s)}" title="${esc(s.erSkytebane ? `Skytebane: ${s.tittel}` : s.tittel)}">${s.erSkytebane ? SIKTE : ''}${ikon}${grader(v?.temp)}</div>`
+    + `<span class="navn${s.erRaadhus ? ' raadhus' : ''}${s.erSkytebane ? ' skyte' : ''}" style="--k:${farge(s)}">${s.erSkytebane ? SIKTE : ''}${esc(s.tittel)}</span>`;
 }
+
+// Navnene skal ikke legge seg oppå hverandre. Viktigste sted først (valgt, rådhuset, flest ansatte);
+// et navn som overlapper et navn eller en markør som allerede er plassert, skjules til man zoomer inn.
+// Rådhuset og valgt sted får alltid navn. Skytebaner viser alltid navn, så lenge de ikke dekker
+// navnet på en annen skytebane (Lygna skytebane og skiskytterstadion ligger tett).
+const viktighet = s => (tilstand.valgt === s.id ? 1e6 : 0) + (s.erRaadhus ? 1e5 : 0) + (s.erSkytebane ? 5e4 : 0) + (s.egen ? 1e4 : 0)
+  + (s.virksomheter || []).reduce((n, v) => n + (v.ansatte || 0), 0);
+const overlapper = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+function ryddNavn() {
+  const synlige = markorLag.getLayers().filter(m => m._icon && m._sted)
+    .sort((a, b) => viktighet(b._sted) - viktighet(a._sted));
+  const opptatt = synlige.map(m => m._icon.querySelector('.pille')?.getBoundingClientRect()).filter(Boolean);
+  const viktigeNavn = [];
+  for (const m of synlige) {
+    const navn = m._icon.querySelector('.navn');
+    if (!navn) continue;
+    navn.classList.remove('skjult-navn');
+    const r = navn.getBoundingClientRect();
+    const egen = m._icon.querySelector('.pille')?.getBoundingClientRect();
+    const alltid = m._sted.erRaadhus || tilstand.valgt === m._sted.id;
+    const skjul = alltid ? false
+      : m._sted.erSkytebane ? viktigeNavn.some(o => overlapper(r, o))
+        : opptatt.some(o => o !== egen && overlapper(r, o));
+    if (skjul) { navn.classList.add('skjult-navn'); continue; }
+    opptatt.push(r);
+    if (alltid || m._sted.erSkytebane) viktigeNavn.push(r);
+  }
+}
+let ryddSnart;
+const planleggRydding = () => { cancelAnimationFrame(ryddSnart); ryddSnart = requestAnimationFrame(ryddNavn); };
+kart.on('zoomend moveend', planleggRydding);
 
 function tegnMarkorer() {
   const ider = new Set();
@@ -100,7 +152,7 @@ function tegnMarkorer() {
     const ikon = L.divIcon({ className: 'markor', html: markorHtml(s), iconSize: [0, 0] });
     let m = markorer.get(s.id);
     if (!m) {
-      m = L.marker([s.posisjon.lat, s.posisjon.lon], { icon: ikon, riseOnHover: true, zIndexOffset: s.erRaadhus ? 1000 : 0, keyboard: true, title: s.tittel });
+      m = L.marker([s.posisjon.lat, s.posisjon.lon], { icon: ikon, riseOnHover: true, zIndexOffset: s.erRaadhus ? 1000 : s.erSkytebane ? 800 : 0, keyboard: true, title: s.tittel });
       m.bindPopup(() => popupHtml(s), { maxWidth: 360, autoPanPadding: [30, 30] });
       m.on('popupopen', () => velg(s.id, { fraKart: true }));
       m.on('popupclose', () => { if (tilstand.valgt === s.id) velg(null); });
@@ -116,6 +168,7 @@ function tegnMarkorer() {
   for (const [id, m] of markorer) {
     if (!ider.has(id)) { markorLag.removeLayer(m); if (!allesteder().some(s => s.id === id)) markorer.delete(id); }
   }
+  planleggRydding();
 }
 
 function popupHtml(s) {
@@ -131,8 +184,9 @@ function popupHtml(s) {
   const vei = `https://www.google.com/maps/dir/?api=1&origin=${RAADHUS.lat},${RAADHUS.lon}&destination=${p.lat},${p.lon}`;
   return `<div class="popup">
     <h2>${esc(s.tittel)}</h2>
+    ${s.erSkytebane ? `<p class="skyte-merke">${SIKTE}Skytebane</p>` : ''}
     <p class="adr">${esc([s.adresse, [s.postnummer, s.poststed].filter(Boolean).join(' ')].filter(Boolean).join(', '))}
-      · <span style="color:${farge(s)}">${esc(s.egen ? 'Egen adresse' : KAT[s.kategori]?.navn)}</span>
+      ${s.adresse || s.poststed ? '·' : ''} <span style="color:${farge(s)}">${esc(s.egen ? 'Egen adresse' : KAT[s.kategori]?.navn)}</span>
       ${s.posisjon.presisjon === 'omtrentlig' || s.posisjon.presisjon === 'stedsnavn' ? `<br><small>Omtrentlig plassering (${esc(s.posisjon.treff)})</small>` : ''}</p>
     ${v ? `<div class="rad">
       ${v.symbol ? `<img src="${IKON}/${v.symbol}.svg" alt="">` : ''}
@@ -151,13 +205,23 @@ function popupHtml(s) {
       <dt>Fra rådhuset</dt><dd>${s.erRaadhus ? 'Dette er rådhuset' : `${tall(km)} km i luftlinje mot ${retning(RAADHUS, p)}`}</dd>
       ${!s.erRaadhus ? `<dt>Kjøring</dt><dd>${kj ? `${tall(kj.km)} km · ca. ${Math.round(kj.min)} min` : 'beregnes …'}</dd>` : ''}
     </dl>
-    ${virks ? `<strong>${s.virksomheter.length === 1 ? 'Virksomhet' : `${s.virksomheter.length} virksomheter`} på adressen</strong><ul>${virks}</ul>` : ''}
+    ${s.erSkytebane ? skytebaneHtml(s) : virks ? `<strong>${s.virksomheter.length === 1 ? 'Virksomhet' : `${s.virksomheter.length} virksomheter`} på adressen</strong><ul>${virks}</ul>` : ''}
     <div class="lenker">
       <a href="${yr}" target="_blank" rel="noopener">Varsel på Yr</a>
       ${!s.erRaadhus ? `<a href="${vei}" target="_blank" rel="noopener">Veibeskrivelse fra rådhuset</a>` : ''}
       ${s.egen ? `<button class="lenkeknapp" type="button" data-fjern="${esc(s.id)}">Fjern</button>` : ''}
     </div>
   </div>`;
+}
+
+function skytebaneHtml(s) {
+  const aktive = s.baner.filter(b => b.iBruk);
+  const nedlagte = s.baner.filter(b => !b.iBruk);
+  const lag = s.virksomheter.map(x => `<li>${esc(x.navn)}${x.orgnr ? ` <small><a href="https://virksomhet.brreg.no/nb/oppslag/enheter/${x.orgnr}" target="_blank" rel="noopener">${x.orgnr}</a></small>` : ''}</li>`).join('');
+  return `<strong>Baner</strong><ul>${aktive.map(b => `<li>${esc(baneTekst(b))}${b.skytterlag && s.virksomheter.length > 1 ? ` <small>· ${esc(b.skytterlag)}</small>` : ''}</li>`).join('') || '<li>Ingen registrerte baner i bruk</li>'}
+    ${nedlagte.map(b => `<li><s>${esc(baneTekst(b))}</s> <small>nedlagt${b.nedlagt ? ` ${esc(b.nedlagt.slice(0, 4))}` : ''}</small></li>`).join('')}</ul>
+    <strong>Brukes av</strong><ul>${lag}</ul>
+    <p class="liten">Skyting kan pågå. Sjekk skytetider med skytterlaget før ferdsel i området.<br>Kilde: ${esc(s.kilde)}</p>`;
 }
 
 function tidTekst(iso) {
@@ -179,7 +243,7 @@ function tegnListe() {
     const egen = s.egen ? '<span class="merkelapp">egen</span>' : '';
     return `<li class="sted${tilstand.valgt === s.id ? ' valgt' : ''}" tabindex="0" data-id="${esc(s.id)}" style="--k:${farge(s)}">
       <span class="strek"></span>
-      <div><h3>${esc(s.tittel)}${ekstra}${egen}</h3><div class="adr">${esc([s.adresse, s.poststed].filter(Boolean).join(', '))}</div></div>
+      <div><h3>${s.erSkytebane ? SIKTE : ''}${esc(s.tittel)}${s.erSkytebane ? '' : ekstra}${egen}</h3><div class="adr">${esc(s.erSkytebane ? `Skytebane · ${banerKort(s.baner)}${v ? ` · vind ${tall(v.vind)} m/s fra ${vindretningTekst(v.vindretning)}` : ''}` : [s.adresse, s.poststed].filter(Boolean).join(', '))}</div></div>
       <div class="vaer">${v?.symbol ? `<img src="${IKON}/${v.symbol}.svg" alt="${esc(symbolTekst(v.symbol))}" loading="lazy">` : ''}<span class="temp ${v ? (v.temp >= 0 ? 'pluss' : 'minus') : ''}">${grader(v?.temp)}</span></div>
       <div class="avst">${s.erRaadhus ? 'Utgangspunkt for avstander' : `${tall(km)} km luftlinje${kj ? ` · ${tall(kj.km)} km / ${Math.round(kj.min)} min med bil` : ''}`}</div>
     </li>`;
@@ -187,8 +251,8 @@ function tegnListe() {
 
   const alle = allesteder().filter(posisjon);
   $('#kategorier').innerHTML = KATEGORIER.map(k => {
-    const n = tilstand.steder.filter(s => s.kategori === k.id && posisjon(s)).length;
-    return n ? `<button class="brikke" type="button" data-kat="${k.id}" aria-pressed="${tilstand.kategorier.has(k.id)}" style="--k:${k.farge}"><i></i>${k.navn} <small>${n}</small></button>` : '';
+    const n = [...tilstand.steder, ...tilstand.skytebaner].filter(s => s.kategori === k.id && posisjon(s)).length;
+    return n ? `<button class="brikke${k.id === 'skytebane' ? ' skyte' : ''}" type="button" data-kat="${k.id}" aria-pressed="${tilstand.kategorier.has(k.id)}" style="--k:${k.farge}">${k.id === 'skytebane' ? SIKTE : '<i></i>'}${k.navn} <small>${n}</small></button>` : '';
   }).join('');
 
   const medVaer = alle.filter(s => tilstand.kategorier.has(s.kategori) || s.egen).map(s => ({ s, v: vaerFor(s) })).filter(x => x.v);
@@ -197,7 +261,7 @@ function tegnListe() {
   const lengst = alle.reduce((a, b) => (!a || luftlinje(b) > luftlinje(a) ? b : a), null);
   const antVirks = tilstand.steder.reduce((n, s) => n + s.virksomheter.length, 0);
   $('#sammendrag').innerHTML = `
-    <div class="tall"><b>${tilstand.steder.length}</b><span>adresser · ${antVirks} virksomheter</span></div>
+    <div class="tall"><b>${tilstand.steder.length}</b><span>adresser · ${antVirks} virksomheter${tilstand.skytebaner.length ? ` · ${tilstand.skytebaner.length} skytebaner` : ''}</span></div>
     <div class="tall"><b>${kald && varm ? `${grader(kald.v.temp)} – ${grader(varm.v.temp)}` : '–'}</b><span title="${kald ? `Kaldest: ${esc(kald.s.tittel)}` : ''}">${kald ? `kaldest ${esc(kald.s.tittel)}` : 'temperatur'}</span></div>
     <div class="tall"><b>${lengst ? `${tall(luftlinje(lengst), 0)} km` : '–'}</b><span title="${esc(lengst?.tittel)}">${lengst ? `lengst unna: ${esc(lengst.tittel)}` : 'lengst unna'}</span></div>`;
 }
@@ -288,6 +352,19 @@ async function hentFraRegistrene() {
   tegn();
 }
 
+// Skytebanene hentes fra DFS-registeret ved siden av Enhetsregisteret; feiler det, beholdes øyeblikksbildet.
+async function hentSkytebanerLive() {
+  try {
+    const [baner, tillegg] = await Promise.all([
+      hentSkytebaner(),
+      fetch('data/skytebaner-tillegg.json').then(r => (r.ok ? r.json() : [])).catch(() => []),
+    ]);
+    if (baner.length) { tilstand.skytebaner = leggTilTillegg(baner, tillegg); tegn(); }
+  } catch (e) {
+    console.warn('Skytebaner ikke tilgjengelig:', e);
+  }
+}
+
 function visHentet() {
   if (!tilstand.hentet) return;
   const d = new Date(tilstand.hentet);
@@ -302,6 +379,7 @@ async function last({ tving = false } = {}) {
       try {
         const d = await fetch('data/steder.json', { cache: 'no-cache' }).then(r => (r.ok ? r.json() : Promise.reject(r.status)));
         tilstand.steder = d.steder;
+        tilstand.skytebaner = d.skytebaner || [];
         tilstand.hentet = d.hentet;
         visHentet();
         tegn();
@@ -317,7 +395,7 @@ async function last({ tving = false } = {}) {
       if (!tilstand.steder.length) status('Fikk ikke kontakt med Enhetsregisteret. Prøv igjen senere.', { feil: true });
       else status('Viser lagret oversikt – registrene svarte ikke.', { feil: true, varighet: 6000 });
     });
-    await registre;
+    await Promise.all([registre, hentSkytebanerLive()]);
     await Promise.all([vaer, hentVaerFor(allesteder()), hentKjoring()]);
   } finally {
     knapp.disabled = false;
@@ -387,7 +465,8 @@ function eksporter() {
     return [s.tittel, s.egen ? 'Egen adresse' : KAT[s.kategori]?.navn, s.adresse, s.postnummer, s.poststed,
       p.lat.toFixed(6), p.lon.toFixed(6), tall(luftlinje(s), 2), kj ? tall(kj.km, 1) : '', kj ? Math.round(kj.min) : '',
       v ? tall(v.temp, 1) : '', v ? symbolTekst(v.symbol) : '', v ? tall(v.vind, 1) : '', v?.nedbor != null ? tall(v.nedbor, 1) : '',
-      v ? new Date(v.tid).toLocaleString('nb-NO') : '', (s.virksomheter || []).map(x => `${x.navn} (${x.orgnr})`).join('; ')];
+      v ? new Date(v.tid).toLocaleString('nb-NO') : '',
+      [s.erSkytebane ? `Baner: ${banerKort(s.baner)}` : '', ...(s.virksomheter || []).map(x => (x.orgnr ? `${x.navn} (${x.orgnr})` : x.navn))].filter(Boolean).join('; ')];
   });
   const csv = [kol, ...rader].map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
   const a = document.createElement('a');

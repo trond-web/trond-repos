@@ -11,6 +11,10 @@ omsorgsinstitusjoner, kultur og idrett, teknisk drift, brann/legevakt/NAV, og ny
 - **Virksomhetene på adressen** med organisasjonsnummer (lenke til Brønnøysundregistrene) og antall ansatte.
   Mange virksomheter deler adresse – f.eks. ligger 23 virksomheter på rådhuset – og vises som ett punkt.
 
+**Skytebaner** vises med et eget symbol – svart markør med rød kant og blink/siktekors – og rødt navneskilt,
+slik at de ikke kan forveksles med andre steder. Kartet viser vær, temperatur og vind (viktig for skyting), hvilke
+baner som finnes (100/200/300 m rifle, pistol, leirdue, skiskyting) og hvilke skytterlag som bruker dem.
+
 Lista kan filtreres på kategori og tekst, sorteres på avstand, navn, temperatur eller kategori, og lastes ned
 som CSV (åpnes i Excel). Du kan også legge til egne adresser i Gran; de huskes i nettleseren.
 
@@ -22,6 +26,7 @@ Alt hentes direkte fra nettleseren. Det er ingen server og ingen innlogging.
 |---|---|
 | Kommunens virksomheter og adresser | [Enhetsregisteret](https://data.brreg.no/enhetsregisteret/api/docs/index.html): underenheter under Gran kommune (961381541) og organisasjonsleddene (oppvekst, helse og omsorg, …) |
 | Ikke-kommunale steder | Enhetsregisteret, underenheter i kommune 3446 med næringskode barnehage, videregående, sykehjem og politi |
+| Skytebaner | Det frivillige Skyttervesens [skyteanleggsregister](https://wfs.geonorge.no/skwms1/wfs.skytebaner_dfs?service=WFS&request=GetCapabilities) (WFS på Geonorge): anlegg, posisjon, skytterlag og baner. Navn fra stedsnavnregisteret. Anlegg som ikke er i DFS-registeret, står i `data/skytebaner-tillegg.json` med kilde |
 | Koordinater | Kartverkets [adresse-API](https://ws.geonorge.no/adresser/v1/) og [stedsnavn-API](https://ws.geonorge.no/stedsnavn/v1/) |
 | Vær | MET [Locationforecast 2.0](https://api.met.no/weatherapi/locationforecast/2.0/documentation), symboler fra [metno/weathericons](https://github.com/metno/weathericons) |
 | Kjøreavstand | [OSRM](https://project-osrm.org/) (OpenStreetMap) |

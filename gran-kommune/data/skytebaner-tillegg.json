@@ -1,0 +1,22 @@
+[
+  {
+    "gjelder": "Lygna skytebane",
+    "baner": [
+      { "type": "Pistol", "lengde": null, "iBruk": true, "skytterlag": "Hadeland sportsskyttere" },
+      { "type": "Leirdue", "lengde": null, "iBruk": true, "skytterlag": "Brandbu og Tingelstad jeger- og fiskeforening" }
+    ],
+    "brukere": [
+      { "orgnr": "996829731", "navn": "Brandbu og Tingelstad jeger- og fiskeforening", "naering": "Leirduebane (NJFF)" },
+      { "orgnr": "", "navn": "Hadeland sportsskyttere", "naering": "Pistolbane" }
+    ]
+  },
+  {
+    "id": "osm-way-456627713",
+    "navn": "Lygna skiskytterstadion",
+    "lat": 60.46040,
+    "lon": 10.63376,
+    "kilde": "OpenStreetMap (sport=biathlon, shooting=range)",
+    "baner": [{ "type": "Skiskyting", "lengde": 50, "iBruk": true, "skytterlag": "Gran idrettslag" }],
+    "brukere": [{ "orgnr": "975423948", "navn": "Gran idrettslag", "naering": "Skiskyting" }]
+  }
+]
