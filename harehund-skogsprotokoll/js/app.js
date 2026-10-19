@@ -22,6 +22,7 @@ const iDag = () => { const d = new Date(); return `${d.getFullYear()}-${String(d
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const finn = (id) => data.prover.find((p) => p.id === id);
 const datoNo = (d) => (d ? new Date(`${d}T12:00`).toLocaleDateString('no-NO', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+const klokkeSek = (t) => `${klokke(t)}:${String(new Date(t).getSeconds()).padStart(2, '0')}`;
 const vibrer = (ms = 25) => { try { navigator.vibrate?.(ms); } catch { /* ikke støttet */ } };
 
 function nyProve(mal = {}) {
@@ -188,9 +189,16 @@ function tilstandTekst(r) {
   if (!t.modus) return [t.fot ? 'Søk – fot påvist' : 'Søk', 'sok'];
   const losdyr = LOSDYR[t.losdyr]?.toLowerCase() || '';
   return {
-    hort: [`Los – ${losdyr}`, 'los'], tap: ['Tap', 'tap'], luh: ['Ute av hørehold (LUH)', 'luh'],
+    hort: [`Los – ${losdyr}`, 'los'], tap: tapTekst(r.logg.ende - t.modusFra), luh: ['Ute av hørehold (LUH)', 'luh'],
     lpp: ['Los på peil (LPP)', 'luh'], slh: ['Stålos (hjort)', 'los'],
   }[t.modus] || ['', ''];
+}
+
+// Tap under 5 minutter er ikke noterbart og teller som los (kap. 15.3). Grensen går ved 5:00, så 4:59 er ikke noterbart.
+const NOTERBART = 5 * MIN;
+function tapTekst(varighet) {
+  if (varighet < NOTERBART) return [`Tap – ikke noterbart (noterbart om ${fmtKort(NOTERBART - varighet)})`, 'tap'];
+  return ['Noterbart tap (5 min +)', 'tap noterbart'];
 }
 
 function statusKort(p, r) {
@@ -292,7 +300,7 @@ function loggListe(p) {
   if (!h.length) return '<p class="dempet">Ingen hendelser ennå. Trykk «Slipp» når hunden slippes.</p>';
   return `<ol class="logg">${h.map((e) => `
     <li class="h-${e.type}">
-      <input type="time" value="${klokke(e.t)}" data-tid="${e.id}" aria-label="Klokkeslett">
+      <input type="time" step="1" value="${klokkeSek(e.t)}" data-tid="${e.id}" aria-label="Klokkeslett">
       <div class="logg-tekst"><div>${esc(hendelseTekst(e))}</div>${e.tekst ? `<div class="dempet">${esc(e.tekst)}</div>` : ''}
         ${e.pos ? `<div class="dempet liten">${e.pos.lat.toFixed(5)}, ${e.pos.lon.toFixed(5)}</div>` : ''}</div>
       <button class="ikon" data-slett="${e.id}" aria-label="Slett hendelse">✕</button>
@@ -303,6 +311,7 @@ let tikk = null;
 function startTikk(p) {
   if (!erLive(p)) return;
   let fullTidVarslet = false;
+  let tapVarslet = null;
   tikk = setInterval(() => {
     const el = document.getElementById('status');
     if (!el || app.dataset.fane !== 'skog') return stoppTikk();
@@ -310,6 +319,8 @@ function startTikk(p) {
     el.innerHTML = statusKort(p, r);
     const full = r.grupper.some((g) => g.fullTid && g.aapen);
     if (full && !fullTidVarslet) { fullTidVarslet = true; vibrer([200, 100, 200]); oppdater(p); }
+    const t = r.logg.tilstand;
+    if (t.modus === 'tap' && r.logg.ende - t.modusFra >= NOTERBART && tapVarslet !== t.modusFra) { tapVarslet = t.modusFra; vibrer([120, 80, 120]); }
   }, 1000);
 }
 function stoppTikk() { if (tikk) clearInterval(tikk); tikk = null; }
@@ -380,7 +391,7 @@ function velgFor(p, type, ekstraFelles = {}, t = undefined) {
 function etterregistrer(p) {
   const typer = Object.entries(HENDELSER);
   visArk(`<h2>Legg til hendelse i ettertid</h2>
-    <label class="felt"><span>Klokkeslett</span><input type="time" name="tid" value="${klokke(Date.now())}" required></label>
+    <label class="felt"><span>Klokkeslett</span><input type="time" name="tid" step="1" value="${klokkeSek(Date.now())}" required></label>
     <label class="felt"><span>Hendelse</span><select name="type">${typer.map(([k, t]) => `<option value="${k}">${t}</option>`).join('')}</select></label>
     <div class="valg"><button class="hk primar" data-valg="ok">Fortsett</button></div>`, (v, f) => {
     const t = tidPaaDato(p, f.tid.value);
@@ -392,9 +403,10 @@ function etterregistrer(p) {
   });
 }
 
-function tidPaaDato(p, hhmm) {
-  if (!/^\d{2}:\d{2}$/.test(hhmm)) return null;
-  const d = new Date(`${p.dato || iDag()}T${hhmm}:00`);
+// Godtar både TT:MM og TT:MM:SS (feltene viser sekunder, så et tap kan rettes til f.eks. 4:59).
+function tidPaaDato(p, tid) {
+  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(tid)) return null;
+  const d = new Date(`${p.dato || iDag()}T${tid.length === 5 ? `${tid}:00` : tid}`);
   return Number.isNaN(+d) ? null : d.getTime();
 }
 

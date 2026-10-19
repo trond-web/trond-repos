@@ -116,6 +116,8 @@ textarea { resize: vertical; }
 .tilstand { text-align: right; font-weight: 600; }
 .status.los .tilstand { color: var(--los); }
 .status.tap .tilstand { color: var(--tap); }
+.status.tap.noterbart { border-color: var(--fare); }
+.status.tap.noterbart .tilstand { color: var(--fare); }
 .status.luh .tilstand { color: var(--luh); }
 .losmaler { margin-top: .75rem; }
 .maaler { position: relative; height: 14px; background: var(--bg); border-radius: 7px; overflow: hidden; border: 1px solid var(--linje); }
@@ -140,7 +142,7 @@ textarea { resize: vertical; }
 
 .rad-mellom { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
 .logg { list-style: none; margin: 0; padding: 0; }
-.logg li { display: grid; grid-template-columns: 7.4rem 1fr auto; gap: .6rem; align-items: center; padding: .4rem 0; border-top: 1px solid var(--linje); }
+.logg li { display: grid; grid-template-columns: 9.6rem 1fr auto; gap: .6rem; align-items: center; padding: .4rem 0; border-top: 1px solid var(--linje); }
 .logg li input[type="time"] { padding: .3rem .4rem; min-height: 40px; font-variant-numeric: tabular-nums; }
 .logg .ikon { border: 0; background: none; color: var(--dempet); font-size: 1.1rem; min-width: 40px; min-height: 40px; cursor: pointer; }
 .logg li.h-uttak .logg-tekst, .logg li.h-gjentak .logg-tekst, .logg li.h-inn .logg-tekst { color: var(--los); font-weight: 600; }
