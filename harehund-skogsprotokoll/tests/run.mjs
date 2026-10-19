@@ -67,6 +67,17 @@ test('ikke noterbare tap teller som los, noterbare gjør ikke', () => {
   assert.equal(g.reg.uttakTilSlutt, 90);
 });
 
+test('tap på 4:59 er ikke noterbart, 5:00 er noterbart', () => {
+  const S = 1000;
+  const lag = (tapSek) => beregn(prove([h(0, 'slipp'), h(10, 'uttak', { losdyr: 'hare' }), h(30, 'tap'),
+    { id: 'gj', t: kl(30) + tapSek * S, seq: 999, type: 'gjentak' }, h(60, 'slutt'), h(400, 'avslutt')])).premielos;
+  assert.equal(lag(299).hortMin, 49);
+  assert.equal(lag(299).reg.antallTap, 0);
+  assert.equal(lag(300).hortMin, 44);
+  assert.equal(lag(300).reg.antallTap, 1);
+  assert.equal(lag(300).reg.lengsteTap, 5);
+});
+
 test('LUH gir tillegg maks 20 per gang, og LUH+LPP kan ikke overstige hørt los', () => {
   const p = prove([
     h(0, 'slipp'), h(10, 'uttak', { losdyr: 'hare' }),
