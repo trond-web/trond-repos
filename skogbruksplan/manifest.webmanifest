@@ -2,7 +2,7 @@
   "id": "./",
   "name": "SkogIQ.ai",
   "short_name": "SkogIQ",
-  "description": "Skogbruksplan fra åpne data: kart, bestand, tiltak, framskriving og analyser.",
+  "description": "Skogbruksplan fra åpne data: kart, bestand, tiltak, framskriving og analyser. Utviklet av Trond Harald Sand.",
   "lang": "no",
   "start_url": "./",
   "scope": "./",
