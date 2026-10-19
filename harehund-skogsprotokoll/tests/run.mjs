@@ -1,7 +1,7 @@
 // Kjør med: node tests/run.mjs
 import assert from 'node:assert/strict';
 import {
-  beregn, beregnEP, lesLogg, losgrupper, premiegradFor, maksLospoeng, aktiveMomenter, gruppeForRase, alderMnd, klovdyrGrense, MIN,
+  beregn, beregnEP, RASER, lesLogg, losgrupper, premiegradFor, maksLospoeng, aktiveMomenter, gruppeForRase, alderMnd, klovdyrGrense, MIN,
 } from '../js/regler.js';
 
 const T0 = new Date('2025-11-15T08:00:00').getTime();
@@ -32,6 +32,8 @@ test('rase gir gruppe', () => {
   assert.equal(gruppeForRase('Beagle'), 'smahund');
   assert.equal(gruppeForRase('drever'), 'smahund');
   assert.equal(gruppeForRase('Finsk støver'), 'stover');
+  assert.equal(gruppeForRase('Hygen'), 'stover');
+  assert.equal(RASER.length, 18);
   assert.equal(alderMnd('2024-01-20', '2025-11-15'), 21);
   assert.deepEqual(klovdyrGrense(21), { enkelt: 20, sum: 40 });
   assert.deepEqual(klovdyrGrense(30), { enkelt: 10, sum: 20 });

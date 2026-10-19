@@ -133,14 +133,17 @@ function infoFane(p) {
       ${felt('hund.navn', 'Hundens navn', h.navn)}
       ${felt('hund.regnr', 'Reg.nr.', h.regnr, 'text', 'placeholder="NO12345/22"')}
       ${felt('hund.idnr', 'ID-nr. (chip)', h.idnr, 'text', 'inputmode="numeric"')}
-      <label class="felt"><span>Rase</span><input name="hund.rase" list="raser" value="${esc(h.rase)}"></label>
+      <label class="felt"><span>Rase</span><select name="hund.rase">
+        <option value="" ${h.rase ? '' : 'selected'}>Velg rase …</option>
+        ${[['stover', 'Støvere'], ['smahund', 'Beagle og drever (småhund)']].map(([g, navn]) => `<optgroup label="${navn}">${RASER.filter(([, rg]) => rg === g).map(([r]) => `<option ${r === h.rase ? 'selected' : ''}>${esc(r)}</option>`).join('')}</optgroup>`).join('')}
+        ${h.rase && !RASER.some(([r]) => r === h.rase) ? `<option selected>${esc(h.rase)}</option>` : ''}
+      </select></label>
       ${velg('hund.gruppe', 'Gruppe', h.gruppe, [['stover', 'Støver (hare/rev)'], ['smahund', 'Beagle/drever (småhund)']])}
       ${velg('hund.kjonn', 'Kjønn', h.kjonn, [['', '–'], ['hann', 'Hann'], ['tispe', 'Tispe']])}
       ${felt('hund.fodt', `Født${alder != null ? ` (${alder} mnd på prøvedagen)` : ''}`, h.fodt, 'date')}
       ${h.gruppe === 'smahund' ? felt('hund.boghoyde', 'Boghøyde (cm)', h.boghoyde, 'number', 'step="0.5" inputmode="decimal"') : ''}
       <label class="felt hake"><input type="checkbox" name="hund.idKontrollert" ${h.idKontrollert ? 'checked' : ''}> ID kontrollert</label>
     </div>
-    <datalist id="raser">${RASER.map(([r]) => `<option value="${esc(r)}">`).join('')}</datalist>
     ${alder != null && alder < 15 ? '<p class="varsel feil">Hunden må være fylt 15 måneder senest på prøvedagen.</p>' : ''}
     <h2>Eier og fører</h2>
     <div class="rutenett">
