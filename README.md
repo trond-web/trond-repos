@@ -7,3 +7,4 @@
 - [`borsradar/`](borsradar/) – Børsradar: kjøp-, hold- og selgsignaler for Oslo Børs på kort og lang sikt (trend, nyheter, innsidehandel, analytikere), med egen portefølje og historisk test
 - [`team-sjusjoen/`](team-sjusjoen/) – nettsiden til Team Sjusjøen Kaffebryggeriet (Ski Classics Pro Team): laget, løpere, terminliste, partnere og kontakt
 - [`nordfjella-villrein/`](nordfjella-villrein/) – jaktkart for villreinjakt i Nordfjella: grensa for villreinområdet, eiendomsgrenser, GPS og kart som virker uten nett
+- [`gran-kommune/`](gran-kommune/) – Gran kommune: kart over rådhus, skoler, barnehager, institusjoner og andre tjenestesteder, med vær, temperatur og avstand fra Gran rådhus
