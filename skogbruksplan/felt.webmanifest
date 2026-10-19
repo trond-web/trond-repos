@@ -2,7 +2,7 @@
   "id": "felt.html",
   "name": "SkogIQ Felt",
   "short_name": "SkogIQ Felt",
-  "description": "Mobilversjon av skogbruksplanen: kart, bestand, GPS, registreringer og tiltak – fungerer offline.",
+  "description": "Mobilversjon av skogbruksplanen: kart, bestand, GPS, registreringer og tiltak – fungerer offline. Utviklet av Trond Harald Sand.",
   "lang": "no",
   "start_url": "felt.html",
   "scope": "./",

@@ -8,6 +8,7 @@ import {
 } from './skade.js';
 import { hentBrannfare, hentFarevarsler, hentVind, hentBarkbille, KARTLAG, PERIODER } from './skade-data.js';
 import { fmt } from './charts.js';
+import { signatur } from './versjon.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -386,7 +387,7 @@ export function initSkogbrand({ kart, hentPlan, endret, melding, nyId, settKartK
     const S = hentPlan();
     const tekst = skademeldingTekst(S, s, s.beregning || { rader: [], volum: 0, skadeDaa: 0 }, { fmt });
     const w = window.open('', '_blank'); if (!w) { melding('Nettleseren blokkerte utskriftsvinduet.'); return; }
-    w.document.write(`<!doctype html><meta charset="utf-8"><title>Skademelding ${esc(S.eiendom?.navn || '')}</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:800px;margin:24px auto;padding:0 16px}pre{white-space:pre-wrap;font:inherit}img{max-width:48%;margin:4px;border-radius:6px}</style><pre>${esc(tekst)}</pre>${(s.bilder || []).map((b) => `<img src="${b}">`).join('')}<script>setTimeout(()=>print(),300)<\/script>`);
+    w.document.write(`<!doctype html><meta charset="utf-8"><title>Skademelding ${esc(S.eiendom?.navn || '')}</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:800px;margin:24px auto;padding:0 16px}pre{white-space:pre-wrap;font:inherit}img{max-width:48%;margin:4px;border-radius:6px}</style><pre>${esc(tekst)}</pre>${(s.bilder || []).map((b) => `<img src="${b}">`).join('')}<p style="color:#666;font-size:11px">${esc(signatur())}</p><script>setTimeout(()=>print(),300)<\/script>`);
     w.document.close();
   }
   function lastNedGeojson(s) {
@@ -411,6 +412,7 @@ export function initSkogbrand({ kart, hentPlan, endret, melding, nyId, settKartK
       <h2>Risikovurdering</h2>${['Skogtype, vegetasjon, skogbunn og topografi', 'Spredningsrisiko, begrensningslinjer og vind', 'Nærhet til bebyggelse og infrastruktur'].map((x) => `<p><span class="b"></span>${x}: ______________________________________</p>`).join('')}
       <h2>Sikringstiltak</h2>${['Kjøring uten belter/kjettinger', 'Prioritere granskog og fuktige områder; unngå tørr, blokkrik furumark og sør-/vestvendte lier', 'Utkjøring på grønt bar', 'Tidsbegrenset kjøring (natt/morgen)', 'Vakthold under og etter drift', 'Vanning av utkjøringsveier', 'Forhåndskontakt med brannvesenet', 'Sikringsradio', 'Flyttbar vannkilde (1000 L), pumpe og slanger', 'Flytte eller stoppe aktiviteten'].map((x) => `<p><span class="b"></span>${x}</p>`).join('')}
       <h2>Konklusjon og nytt samråd</h2><table>${linje('Beslutning')}${linje('Tid for nytt samråd')}${linje('Kopi sendt brannvesenet (dato)')}</table>
+      <p style="color:#666;font-size:11px;margin-top:24px">${esc(signatur())}</p>
       <script>setTimeout(()=>print(),300)<\/script>`);
     w.document.close();
   }
