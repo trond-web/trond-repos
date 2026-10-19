@@ -45,7 +45,12 @@ for (const km of [5, 10, 20, 30]) {
 }
 ringer.addTo(kart);
 const markorLag = L.layerGroup().addTo(kart);
-L.control.layers(grunnkart, { 'Avstandsringer fra rådhuset': ringer, 'Steder': markorLag }, { position: 'topright' }).addTo(kart);
+// Navn på stedene kan slås av i lagvelgeren (et tomt lag som bare styrer en CSS-klasse).
+const navnLag = L.layerGroup();
+navnLag.on('add', () => { kart.getContainer().classList.remove('uten-navn'); lagre('gran-navn', true); });
+navnLag.on('remove', () => { kart.getContainer().classList.add('uten-navn'); lagre('gran-navn', false); });
+if (les('gran-navn', true)) navnLag.addTo(kart); else kart.getContainer().classList.add('uten-navn');
+L.control.layers(grunnkart, { 'Navn på stedene': navnLag, 'Avstandsringer fra rådhuset': ringer, 'Steder': markorLag }, { position: 'topright' }).addTo(kart);
 L.control.scale({ imperial: false }).addTo(kart);
 
 const markorer = new Map(); // stedsid → L.marker
@@ -89,8 +94,35 @@ function markorHtml(s) {
   const v = vaerFor(s);
   const ikon = v?.symbol ? `<img src="${IKON}/${v.symbol}.svg" alt="">` : '<span class="uv"></span>';
   const kl = ['pille', s.erRaadhus && 'raadhus', s.egen && 'egen-pille', tilstand.valgt === s.id && 'valgt'].filter(Boolean).join(' ');
-  return `<div class="${kl}" style="--k:${farge(s)}" title="${esc(s.tittel)}">${ikon}${grader(v?.temp)}</div>`;
+  return `<div class="${kl}" style="--k:${farge(s)}" title="${esc(s.tittel)}">${ikon}${grader(v?.temp)}</div>`
+    + `<span class="navn${s.erRaadhus ? ' raadhus' : ''}" style="--k:${farge(s)}">${esc(s.tittel)}</span>`;
 }
+
+// Navnene skal ikke legge seg oppå hverandre. Viktigste sted først (valgt, rådhuset, flest ansatte);
+// et navn som overlapper et navn eller en markør som allerede er plassert, skjules til man zoomer inn.
+// Rådhuset og valgt sted får alltid navn.
+const viktighet = s => (tilstand.valgt === s.id ? 1e6 : 0) + (s.erRaadhus ? 1e5 : 0) + (s.egen ? 1e4 : 0)
+  + (s.virksomheter || []).reduce((n, v) => n + (v.ansatte || 0), 0);
+const overlapper = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+function ryddNavn() {
+  const synlige = markorLag.getLayers().filter(m => m._icon && m._sted)
+    .sort((a, b) => viktighet(b._sted) - viktighet(a._sted));
+  const opptatt = synlige.map(m => m._icon.querySelector('.pille')?.getBoundingClientRect()).filter(Boolean);
+  for (const m of synlige) {
+    const navn = m._icon.querySelector('.navn');
+    if (!navn) continue;
+    navn.classList.remove('skjult-navn');
+    const r = navn.getBoundingClientRect();
+    const egen = m._icon.querySelector('.pille')?.getBoundingClientRect();
+    const alltid = m._sted.erRaadhus || tilstand.valgt === m._sted.id;
+    if (!alltid && opptatt.some(o => o !== egen && overlapper(r, o))) navn.classList.add('skjult-navn');
+    else opptatt.push(r);
+  }
+}
+let ryddSnart;
+const planleggRydding = () => { cancelAnimationFrame(ryddSnart); ryddSnart = requestAnimationFrame(ryddNavn); };
+kart.on('zoomend moveend', planleggRydding);
 
 function tegnMarkorer() {
   const ider = new Set();
@@ -116,6 +148,7 @@ function tegnMarkorer() {
   for (const [id, m] of markorer) {
     if (!ider.has(id)) { markorLag.removeLayer(m); if (!allesteder().some(s => s.id === id)) markorer.delete(id); }
   }
+  planleggRydding();
 }
 
 function popupHtml(s) {
