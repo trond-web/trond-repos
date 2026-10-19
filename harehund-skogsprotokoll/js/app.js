@@ -193,7 +193,7 @@ function tilstandTekst(r) {
   const t = r.logg.tilstand;
   if (r.logg.avsluttet) return ['Prøven er avsluttet', 'av'];
   if (!t.los) return [r.logg.slipp ? 'Hunden er koblet' : 'Ikke sluppet ennå', 'av'];
-  if (!t.modus) return [t.fot ? 'Søk – fot påvist' : 'Søk', 'sok'];
+  if (!t.modus) return t.fot ? ['Fot – arbeider med fot', 'fot'] : ['Søk', 'sok'];
   const losdyr = LOSDYR[t.losdyr]?.toLowerCase() || '';
   return {
     hort: [`Los – ${losdyr}`, 'los'], tap: tapTekst(r.logg.ende - t.modusFra), luh: ['Ute av hørehold (LUH)', 'luh'],
@@ -213,7 +213,9 @@ function statusKort(p, r) {
   const t = r.logg.tilstand;
   const naa = r.logg.ende;
   const pl = r.logg.paagaaende ? r.grupper.find((g) => g.deler.includes(r.logg.paagaaende)) : r.premielos;
-  const varighet = t.modus ? fmtKort(naa - t.modusFra) : '';
+  // Tidtaker: losen/tapet når det pågår, ellers tid i fot (fot til uttak) eller i søk siden slipp/forrige los.
+  const fra = t.modus ? t.modusFra : t.fot ? t.fotFra : t.sokFra;
+  const varighet = fra != null && t.los && !r.logg.avsluttet ? fmtKort(naa - fra) : '';
   const krav = pl ? kravTabell(r.gruppe, pl.losdyr) : null;
   const lp = pl ? pl.lospoeng : 0;
   const maks = pl ? pl.maks : 120;
@@ -243,7 +245,9 @@ function handlingsKnapper(p, r) {
   if (!t.los) {
     knapper.push(k('slipp', 'Slipp', 'primar stor-knapp'));
   } else if (!t.modus) {
-    knapper.push(k('uttak', 'Uttak / los', 'primar stor-knapp'), k('fot', t.fot ? 'Ny fot' : 'Fot'), k('kobling', 'Kobling'));
+    // Etter slipp kommer hunden som regel i fot før uttak, så Fot er hovedknappen i søk. Uttak rett fra søk går også.
+    if (t.fot) knapper.push(k('uttak', 'Uttak / los', 'primar stor-knapp'), k('fot', 'Nytt fot'), k('kobling', 'Kobling'));
+    else knapper.push(k('fot', 'Fot', 'fot stor-knapp'), k('uttak', 'Uttak / los'), k('kobling', 'Kobling'));
   } else if (t.modus === 'hort' || t.modus === 'slh') {
     knapper.push(k('tap', 'Tap', 'tap stor-knapp'));
     if (t.modus === 'slh') knapper.push(k('stalosSlutt', 'Stålos slutt'));
