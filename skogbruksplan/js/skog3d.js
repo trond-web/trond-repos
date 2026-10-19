@@ -3,7 +3,7 @@
 // stier, bekker, vann, bygninger, markslag og eiendomsgrensen hentes fra åpne kilder (skog3d-omgivelser.js).
 // Styring: mus + WASD/piltaster (Shift = løpe), berøring (venstre halvdel går, høyre ser), og i VR venstre
 // stikke = gå, høyre stikke = snu 30°. Three.js lastes fra unpkg første gang visningen åpnes.
-import { lagSkog, terrengPunkter, lagTerreng, iPolygon, framtidsskog, MAKS_TRAER } from './skog3d-data.js';
+import { lagSkog, terrengPunkter, lagTerreng, iPolygon, framtidsskog, ungskogpleieVisning, MAKS_TRAER } from './skog3d-data.js';
 import { STANDARD_VERDI } from './verdi.js';
 import { hentVaer, tolkMet, forhandsvaer, vaerScene, vaerTekst, solposisjon, tidFor, VAER_VALG, TID_VALG } from './skog3d-vaer.js';
 import { lagVaerLag } from './skog3d-vaerlag.js';
@@ -39,6 +39,8 @@ const STIL = `
 @media (max-width: 760px) { .skog3d .s3-vaerinfo { top: auto; bottom: 130px; } }
 .skog3d .s3-framtid { position: absolute; left: 50%; bottom: 72px; transform: translateX(-50%); display: flex; gap: 4px; align-items: center; background: rgba(251,252,250,.94); border-radius: 14px; padding: 5px; box-shadow: 0 6px 20px rgba(0,0,0,.18); max-width: calc(100% - 28px); flex-wrap: wrap; justify-content: center; }
 .skog3d .s3-framtid span { font-weight: 700; font-size: 13px; padding: 0 6px; }
+.skog3d .s3-hud .s3-merker { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.skog3d .s3-hud .s3-merker i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
 .skog3d .s3-framtid button { border: 0; border-radius: 10px; padding: 8px 11px; font: 700 13px/1.1 'Schibsted Grotesk', system-ui, sans-serif; background: transparent; color: #10241c; cursor: pointer; }
 .skog3d .s3-framtid button[aria-pressed="true"] { background: #1f6b45; color: #fff; }
 .skog3d .s3-framtid button:disabled { opacity: .5; cursor: progress; }
@@ -62,7 +64,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
       <small data-vaerstatus>Dagens vær hentes fra MET (yr) for stedet, snødybden fra seNorge (NVE).</small>
     </div>
     <div class="s3-vaerinfo" hidden></div>
-    <div class="s3-framtid" hidden><span>🔮 Framtidsskog</span><button type="button" data-fs="naa" aria-pressed="true">I dag</button><button type="button" data-fs="pleid" aria-pressed="false">Hogstmoden med ungskogpleie</button><button type="button" data-fs="upleid" aria-pressed="false">Hogstmoden uten pleie</button></div>
+    <div class="s3-framtid" hidden><span>🌲 Ungskogpleie</span><button type="button" data-fs="naa" aria-pressed="true">I dag</button><button type="button" data-fs="merket" aria-pressed="false">✂️ Merket: hva fjernes</button><button type="button" data-fs="etter" aria-pressed="false">Etter pleie</button><button type="button" data-fs="pleid" aria-pressed="false">Hogstmoden med ungskogpleie</button><button type="button" data-fs="upleid" aria-pressed="false">Hogstmoden uten pleie</button></div>
     <div class="s3-stikke" id="s3stikke"></div>
     <div class="s3-hjelp">Klikk i bildet og se med musa · W A S D / piltaster for å gå · Shift for å løpe · Esc slipper musa</div>`;
   document.body.appendChild(rot);
@@ -138,7 +140,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   }
 
   // Trær: gran, furu og bjørk med detaljerte modeller nær deg og enkle former lenger unna (skog3d-traer.js).
-  const treData = (traer) => traer.map((t) => { const [x, y, z] = tilScene(t.x, t.y); return { x, y, z, h: t.h, kroneStart: t.kroneStart, kroneBredde: t.kroneBredde, art: t.art, tykkelse: t.tykkelse }; });
+  const treData = (traer) => traer.map((t) => { const [x, y, z] = tilScene(t.x, t.y); return { x, y, z, h: t.h, kroneStart: t.kroneStart, kroneBredde: t.kroneBredde, art: t.art, tykkelse: t.tykkelse, merke: t.merke }; });
   let treLag = lagTreLag(THREE, scene, treData(skog.traer));
   treLag.oppdater(0, 0, { tvang: true });
   // Bakkevegetasjon (feltsjiktet) rundt deg ut fra vegetasjonstypen (skog3d-bunn.js)
@@ -170,8 +172,22 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   let framtid = null; // { bid, scenario, f }
   const fsPanel = rot.querySelector('.s3-framtid');
   const kr = (v) => `${Math.round(v).toLocaleString('nb-NO')} kr`; const komma = (v, d = 1) => String(Math.round(v * 10 ** d) / 10 ** d).replace('.', ',');
+  const INSTRUKS = ['merket', 'etter'];
+  const lagScenario = (b2, scenario) => (INSTRUKS.includes(scenario) ? ungskogpleieVisning(b2, scenario, { inn, iAar: IAAR }) : framtidsskog(b2, scenario, { inn, vInn, iAar: IAAR }));
+  const TRESLAG_NAVN = { G: 'gran', F: 'furu', L: 'lauv' };
+  // Arbeidsinstruksen: før/etter, hva som beholdes og fjernes, og merkingen i scenen.
+  function instruksHud(b2) {
+    const f = framtid.f; const hs = TRESLAG_NAVN[f.treslag === 'L' ? 'G' : f.treslag] || 'gran';
+    const tittel = f.scenario === 'merket' ? '✂️ før ungskogpleie – merket' : '✂️ rett etter ungskogpleie';
+    return `<b>Bestand ${b2.nr} · ${tittel}</b>
+      <small>Før: ca. ${f.treantallFor} trær/daa – ${hs} og lauv, høyde ca. ${komma(f.hoydeBar)} m · Etter: ${f.treantall} trær/daa – ${hs} prioriteres, ca. ${komma(f.avstand)} m mellom trærne</small>
+      ${f.scenario === 'merket' ? `<small class="s3-merker"><span><i style="background:#3fae5a"></i>framtidstrær beholdes</span><span><i style="background:#d9533a"></i>lauv, kratt og overtallige trær fjernes</span><span><i style="background:#e0a52a"></i>ROS-trær (rogn, osp, selje) beholdes</span></small>`
+        : `<small>Fjernet ca. ${f.fjernet} trær/daa og ${f.kratt} busker/daa · ${f.ros} ROS-trær/daa beholdt${f.lauvBeholdt ? ` · ${f.lauvBeholdt} lauvtrær/daa beholdt for å nå målet` : ''} · stubbene står igjen, hogstavfallet ligger ryddig i terrenget</small>`}
+      <small>${f.areal ? `Areal ${komma(f.areal, 2)} daa · ` : ''}start ${f.startAar} · ca. ${kr(f.kostDaa)}/daa${f.areal ? ` (${kr(f.kostDaa * f.areal)})` : ''}${f.pleid ? ' · bestandet er allerede pleiet – viser tilstanden før' : ''}</small>
+      <small>Arbeid systematisk · velg de beste trærne – rett tre på rett plass · unngå skader på framtidstrærne</small>`;
+  }
   function framtidHud(b2) {
-    const f = framtid.f; const andre = framtidsskog(b2, f.scenario === 'pleid' ? 'upleid' : 'pleid', { inn, vInn, iAar: IAAR });
+    const f = framtid.f; if (INSTRUKS.includes(f.scenario)) return instruksHud(b2); const andre = framtidsskog(b2, f.scenario === 'pleid' ? 'upleid' : 'pleid', { inn, vInn, iAar: IAAR });
     const med = f.scenario === 'pleid' ? f : andre; const uten = f.scenario === 'pleid' ? andre : f;
     return `<b>Bestand ${b2.nr} · 🔮 hogstmoden ${f.hogstAar}</b> · ${f.scenario === 'pleid' ? 'med ungskogpleie nå' : 'uten ungskogpleie'}
       <small>${f.treantall} trær/daa · ${komma(f.hoyde)} m · ${Math.round(f.volum)} m³/daa · ${Math.round(f.pris)} kr/m³ · nåverdi ${kr(f.nv)}/daa</small>
@@ -182,23 +198,27 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     const vis = !!framtid || ungIder.has(herBid);
     fsPanel.hidden = !vis;
     for (const k of fsPanel.querySelectorAll('[data-fs]')) k.setAttribute('aria-pressed', String((framtid?.scenario || 'naa') === k.dataset.fs));
-    if (ungIder.has(herBid) && !framtid) vrTavle(['Ungskog (HK II)', 'A: vis framtidsskogen']);
+    if (ungIder.has(herBid) && !framtid) vrTavle(['Ungskog (HK II)', 'A: ungskogpleie og framtidsskog']);
   }
   function settFramtid(scenario) {
     const bid = scenario === 'naa' ? null : (ungIder.has(herBid) ? herBid : framtid?.bid);
     if (scenario !== 'naa' && !bid) return;
     const s2 = bid && planBestand.find((x) => x.b.id === bid);
-    framtid = s2 ? { bid, scenario, f: framtidsskog(s2.b, scenario, { inn, vInn, iAar: IAAR }) } : null;
+    framtid = s2 ? { bid, scenario, f: lagScenario(s2.b, scenario) } : null;
     const ny = lagSkog(alleBestand, { start, inn, radius: R, maks: MAKS_TRAER * 1.5, fri, overstyr: framtid ? { [bid]: framtid.f } : {} });
     treLag.dispose(); treLag = lagTreLag(THREE, scene, treData(ny.traer)); treLag.oppdater(dolly.position.x, dolly.position.z, { tvang: true, avstand: renderer.xr.isPresenting ? 45 : 60 });
     // Bakkevegetasjonen etter lyset i framtidsskogen
-    const fl = flater.map((x) => (framtid && x.b?.id === framtid.bid ? { ...x, profil: vegProfil({ ...x.b, alder: framtid.f.alder, hogstklasse: 5, treantall: framtid.f.treantall, ungskog: null }, { inn }) } : x));
+    const fl = flater.map((x) => (framtid && x.b?.id === framtid.bid ? { ...x, profil: vegProfil({ ...x.b, alder: framtid.f.alder, hogstklasse: framtid.f.hk, treantall: framtid.f.scenario === 'merket' ? framtid.f.treantallFor : framtid.f.treantall, ungskog: null }, { inn }) } : x));
     bunnLag.dispose(); bunnLag = lagBunnLag(THREE, scene, fl, { hoyde, inn, grense: R, hinder }); bunnLag.oppdater(dolly.position.x, -dolly.position.z, { tvang: true, radius: renderer.xr.isPresenting ? 25 : 35 }); vaerLag.paaNytt();
     hudBid = null; oppdaterHud(dolly.position.x, -dolly.position.z); visFramtidValg();
     const f = framtid?.f;
-    vrTavle(f ? [`Hogstmoden ${f.hogstAar} – ${scenario === 'pleid' ? 'med pleie' : 'uten pleie'}`, `${Math.round(f.volum)} m³/daa · nåverdi ${kr(f.nv)}/daa`, 'A: neste · B: i dag'] : ['I dag', 'A: vis framtidsskogen']);
+    const tavle = !f ? ['I dag', 'A: ungskogpleie og framtidsskog']
+      : scenario === 'merket' ? ['Merket: rødt fjernes', `Grønt beholdes · gult = ROS-trær · ${f.treantallFor} → ${f.treantall}/daa`, 'A: neste · B: i dag']
+        : scenario === 'etter' ? [`Etter pleie: ${f.treantall} trær/daa`, `ca. ${komma(f.avstand)} m mellom trærne · stubbene står igjen`, 'A: neste · B: i dag']
+          : [`Hogstmoden ${f.hogstAar} – ${scenario === 'pleid' ? 'med pleie' : 'uten pleie'}`, `${Math.round(f.volum)} m³/daa · nåverdi ${kr(f.nv)}/daa`, 'A: neste · B: i dag'];
+    vrTavle(tavle);
   }
-  const SCEN = ['naa', 'pleid', 'upleid'];
+  const SCEN = ['naa', 'merket', 'etter', 'pleid', 'upleid'];
   const nesteFramtid = () => { if (!framtid && !ungIder.has(herBid)) return; settFramtid(SCEN[(SCEN.indexOf(framtid?.scenario || 'naa') + 1) % SCEN.length]); };
   for (const k of fsPanel.querySelectorAll('[data-fs]')) k.onclick = (e) => { e.stopPropagation(); settFramtid(k.dataset.fs); };
 
@@ -280,7 +300,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   });
   laster?.remove();
   const a = omgLag.antall; const deler = [a.veier && `${a.veier} vei/sti`, a.bygg && `${a.bygg} bygg`, (a.bekker || a.innsjoer) && `${a.bekker + a.innsjoer} vann/bekk`, omg.ar5.length && 'markslag', a.grensemerker && 'eiendomsgrense'].filter(Boolean);
-  rot.querySelector('.s3-hjelp').textContent = `${skog.traer.length.toLocaleString('nb-NO')} trær i ${planBestand.length} bestand innenfor ${Math.round(R)} m${deler.length ? ` · ${deler.join(', ')}` : ''} · Klikk og se med musa · W A S D / piltaster · Shift for å løpe · V: vær${ungIder.size ? ' · F: framtidsskog i ungskog' : ''}${matchMedia('(pointer: coarse)').matches ? ' · Venstre halvdel: gå · høyre: se rundt' : ''}`;
+  rot.querySelector('.s3-hjelp').textContent = `${skog.traer.length.toLocaleString('nb-NO')} trær i ${planBestand.length} bestand innenfor ${Math.round(R)} m${deler.length ? ` · ${deler.join(', ')}` : ''} · Klikk og se med musa · W A S D / piltaster · Shift for å løpe · V: vær${ungIder.size ? ' · F: ungskogpleie og framtidsskog' : ''}${matchMedia('(pointer: coarse)').matches ? ' · Venstre halvdel: gå · høyre: se rundt' : ''}`;
 
   // ---------- vær ----------
   const [vLon, vLat] = utmTilGeo(skog.senter[0], skog.senter[1], 33);

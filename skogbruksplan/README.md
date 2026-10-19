@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.36.2** (2026-10-19) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.37.0** (2026-10-19) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -275,7 +275,11 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
   - **Infoboksen** viser hva du står på: bestand, markslag fra AR5, eller skog utenfor planen. Den viser også veinavn når du står på en vei, og om du er ved vann eller en bygning.
   - **Demoeiendommen** har nå en eiendomsgrense. Den ligger på et ekte sted i Løten, så veier, bygninger og markslag rundt er ekte.
 
-**Framtidsskog i ungskog (HK II):** Når du står i et bestand i hogstklasse II, kommer valget **🔮 Framtidsskog** fram: **I dag**, **Hogstmoden med ungskogpleie** eller **Hogstmoden uten pleie**. Bytt med F på tastaturet, eller med A (neste) og B (i dag) på høyre kontroller i VR. I VR vises valget på en tavle foran deg.
+**Ungskogpleie og framtidsskog (HK II):** Når du står i et bestand i hogstklasse II, kommer valget **🌲 Ungskogpleie** fram: **I dag**, **✂️ Merket: hva fjernes**, **Etter pleie**, **Hogstmoden med ungskogpleie** eller **Hogstmoden uten pleie**. Bytt med F på tastaturet, eller med A (neste) og B (i dag) på høyre kontroller i VR. I VR vises valget på en tavle foran deg.
+  - **Arbeidsinstruks i skogen** (`ungskogpleieVisning` i `js/skog3d-data.js`), etter instruksen «friske og vitale bartrær – rett treslag, rett tetthet og god kvalitet»:
+    - **Merket:** ungskogen før tiltaket, med kratt og oppslag. Grønne trær er framtidstrær som beholdes, røde fjernes (lauv og kratt som konkurrerer med bartrærne, og overtallige bartrær), og gule er ROS-trær (rogn, osp og selje, 3 per daa) som beholdes.
+    - **Etter pleie:** målet for treslag og bonitet står igjen (f.eks. 150–180 trær/daa) med jevn avstand. ROS-trærne står igjen, og det står stubber etter det som er fjernet. Er det for få bartrær, beholdes de beste lauvtrærne for å nå målet.
+    - **Infoboksen:** før og etter (treantall, treslag og høyde), avstand mellom trærne, hva som er fjernet og beholdt, areal, planlagt år (fra tiltaket i planen), kostnad per daa og for hele bestandet, og prinsippene for utførelsen.
 - **Tallene** (hogstår, volum, pris og nåverdi per daa) kommer fra samme modell som effektvisningen i bestandet (`effektUngskogpleie`).
 - **Infoboksen** viser begge alternativene og forskjellen i nåverdi, per daa og for hele bestandet.
 - **Med pleie:** hogst etter omløpstiden. Ca. 38 % av måltettheten står igjen ved hogst (50–110 trær/daa), med ca. 10 % lauv. Trærne er 25 % grovere enn normalt og har lange, brede kroner. Bakken får mer lys.

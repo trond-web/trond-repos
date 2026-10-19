@@ -3,6 +3,8 @@
 //   Gran:  greinkranser i lag med ujevne, litt hengende kanter, mørk blågrønn, smal topp. Krone helt ned i ung skog.
 //   Furu:  gråbrun stamme nederst og rødoransje øverst, flat og klumpete krone med synlige greiner høyt oppe.
 //   Bjørk: hvit stamme med svarte flekker og mørk, sprukket bark nederst; lys gulgrønn, luftig krone av mange klumper.
+//   ROS-tre (rogn, osp, selje – art 'R'): grå stamme, mørkere og åpnere krone med klaser av røde rognebær.
+//   Stubbe (art 'S'): kort stamme med lys snittflate – det som står igjen etter ungskogpleie.
 // Alle kroner har grunnflate i y = 0 og høyde 1 (skaleres per tre); stammer har høyde 1 og radius ca. 1.
 
 // Fast «støy» av posisjonen, slik at like punkter i ulike trekanter flyttes likt (ingen sprekker).
@@ -68,6 +70,19 @@ export function lagTremodeller(THREE, { varianter = 3 } = {}) {
     }
     return slaaSammen(deler);
   }
+  // ---------- ROS-tre (rogn) ----------
+  function rognKrone(v) {
+    const deler = []; const n = 7;
+    for (let i = 0; i < n; i++) {
+      const y = 0.2 + (i / (n - 1)) * 0.68; const a = i * 2.2 + v; const rr = Math.sin(Math.PI * Math.min(1, y + 0.1)) * 0.5 * (0.5 + hash(i, v, 8) * 0.5);
+      const p = [Math.cos(a) * rr, y, Math.sin(a) * rr];
+      deler.push(farg(blob(0, i + v * 30, p, [0.34, 0.24, 0.34], 0.35), () => { const l = 0.85 + hash(i, v, 9) * 0.25; return [0.22 * l, 0.42 * l, 0.14 * l]; }));
+      if (i % 2) deler.push(farg(blob(0, i + v * 40, [p[0] * 1.15, p[1] - 0.06, p[2] * 1.15], [0.09, 0.07, 0.09], 0.2), () => [0.78, 0.16, 0.08])); // bærklase
+    }
+    return slaaSammen(deler);
+  }
+  // ---------- stubbe: snittflate på toppen ----------
+  const stubbeTopp = () => farg(new THREE.CylinderGeometry(0.32, 0.32, 1, 8, 1).translate(0, 0.5, 0), (x, y) => (y > 0.9 ? [0.86, 0.76, 0.55] : [0.4, 0.3, 0.22]));
   // ---------- stammer ----------
   const granStamme = () => farg(new THREE.CylinderGeometry(0.3, 0.55, 1, 6, 1).translate(0, 0.5, 0), (x, y) => [0.3 - y * 0.05, 0.24 - y * 0.04, 0.2 - y * 0.03]);
   const furuStamme = () => farg(new THREE.CylinderGeometry(0.28, 0.55, 1, 7, 6).translate(0, 0.5, 0), (x, y) => { const t = Math.min(1, Math.max(0, (y - 0.4) / 0.3)); return [0.34 + t * 0.4, 0.27 + t * 0.15, 0.22 + t * 0.03]; });
@@ -75,21 +90,27 @@ export function lagTremodeller(THREE, { varianter = 3 } = {}) {
     if (y < 0.1 + hash(r3(x), 0, r3(z), 4) * 0.06) return [0.22, 0.2, 0.19]; // mørk, sprukket bark nederst
     return hash(r3(x * 3), r3(y * 7), r3(z * 3), 1) < 0.2 ? [0.12, 0.11, 0.1] : [0.9, 0.89, 0.84];
   });
+  const rognStamme = () => farg(new THREE.CylinderGeometry(0.28, 0.5, 1, 6, 1).translate(0, 0.5, 0), (x, y) => [0.42 - y * 0.05, 0.4 - y * 0.05, 0.36 - y * 0.04]);
+  const stubbeStamme = () => farg(new THREE.CylinderGeometry(0.32, 0.4, 1, 7, 1).translate(0, 0.5, 0), () => [0.36, 0.28, 0.21]);
   // ---------- enkle former langt unna ----------
   const enkel = {
     G: farg(new THREE.ConeGeometry(1, 1, 7).translate(0, 0.5, 0), (x, y) => [0.1 + y * 0.03, 0.24 + y * 0.05, 0.15]),
     F: farg(blob(0, 7, [0, 0.65, 0], [0.6, 0.3, 0.6], 0.2), () => [0.18, 0.32, 0.16]),
     L: farg(blob(0, 8, [0, 0.55, 0], [0.55, 0.45, 0.55], 0.2), () => [0.36, 0.52, 0.18]),
+    R: farg(blob(0, 9, [0, 0.55, 0], [0.5, 0.42, 0.5], 0.25), () => [0.25, 0.42, 0.15]),
+    S: stubbeTopp(),
   };
-  const enkelStamme = { G: farg(new THREE.CylinderGeometry(0.3, 0.5, 1, 4, 1).translate(0, 0.5, 0), () => [0.3, 0.24, 0.2]), F: farg(new THREE.CylinderGeometry(0.3, 0.5, 1, 4, 1).translate(0, 0.5, 0), () => [0.6, 0.38, 0.22]), L: farg(new THREE.CylinderGeometry(0.3, 0.5, 1, 4, 1).translate(0, 0.5, 0), () => [0.85, 0.84, 0.8]) };
+  const enkelStamme = { G: farg(new THREE.CylinderGeometry(0.3, 0.5, 1, 4, 1).translate(0, 0.5, 0), () => [0.3, 0.24, 0.2]), F: farg(new THREE.CylinderGeometry(0.3, 0.5, 1, 4, 1).translate(0, 0.5, 0), () => [0.6, 0.38, 0.22]), L: farg(new THREE.CylinderGeometry(0.3, 0.5, 1, 4, 1).translate(0, 0.5, 0), () => [0.85, 0.84, 0.8]), R: farg(new THREE.CylinderGeometry(0.3, 0.5, 1, 4, 1).translate(0, 0.5, 0), () => [0.42, 0.4, 0.36]), S: farg(new THREE.CylinderGeometry(0.32, 0.4, 1, 5, 1).translate(0, 0.5, 0), () => [0.36, 0.28, 0.21]) };
   return {
-    krone: { G: [...Array(varianter)].map((_, v) => granKrone(v)), F: [...Array(varianter)].map((_, v) => furuKrone(v)), L: [...Array(varianter)].map((_, v) => bjorkKrone(v)) },
-    stamme: { G: granStamme(), F: furuStamme(), L: bjorkStamme() },
+    krone: { G: [...Array(varianter)].map((_, v) => granKrone(v)), F: [...Array(varianter)].map((_, v) => furuKrone(v)), L: [...Array(varianter)].map((_, v) => bjorkKrone(v)), R: [...Array(varianter)].map((_, v) => rognKrone(v)), S: [stubbeTopp()] },
+    stamme: { G: granStamme(), F: furuStamme(), L: bjorkStamme(), R: rognStamme(), S: stubbeStamme() },
     enkel, enkelStamme,
   };
 }
 
-// Instanser med LOD. traer: [{ x, z, y (bakke), h, kroneStart, kroneBredde, art }] i scenekoordinater.
+// Merking i arbeidsinstruksen for ungskogpleie: fargen på hele treet (stamme og krone) ganges med disse.
+export const MERKE_FARGE = { fjern: [2.5, 0.5, 0.42], ros: [2, 1.35, 0.35], behold: [0.8, 1.25, 0.85] };
+// Instanser med LOD. traer: [{ x, z, y (bakke), h, kroneStart, kroneBredde, art, merke? }] i scenekoordinater.
 export function lagTreLag(THREE, scene, traer, { naer = 60 } = {}) {
   const mod = lagTremodeller(THREE);
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -98,15 +119,16 @@ export function lagTreLag(THREE, scene, traer, { naer = 60 } = {}) {
   const m = new THREE.Matrix4(); const q = new THREE.Quaternion(); const p = new THREE.Vector3(); const s = new THREE.Vector3(); const e = new THREE.Euler();
   // tykkelse (valgfri): grove trær i pleiet framtidsskog, tynne i upleiet
   traer.forEach((t, i) => {
-    const d = Math.max(0.03, t.h * (t.art === 'L' ? 0.009 : 0.012) * (t.tykkelse ?? 1)); const ks = t.h * t.kroneStart; const kh = t.h - ks; const kr = Math.max(0.15, t.h * t.kroneBredde);
+    // Stubber: fast diameter (ca. 10 cm), snittflaten er «kronen» og like bred som stammen.
+    const d = t.art === 'S' ? 0.13 * (t.tykkelse ?? 1) : Math.max(0.03, t.h * (t.art === 'L' || t.art === 'R' ? 0.009 : 0.012) * (t.tykkelse ?? 1)); const ks = t.h * t.kroneStart; const kh = t.h - ks; const kr = t.art === 'S' ? d : Math.max(0.15, t.h * t.kroneBredde);
     q.setFromEuler(e.set(0, hash(i, 1, 2) * Math.PI * 2, 0));
-    m.compose(p.set(t.x, t.y - 0.05, t.z), q, s.set(d, t.h * (t.art === 'G' ? 0.97 : 0.9), d)).toArray(mStamme, i * 16);
+    m.compose(p.set(t.x, t.y - 0.05, t.z), q, s.set(d, t.art === 'S' ? ks + 0.05 : t.h * (t.art === 'G' ? 0.97 : 0.9), d)).toArray(mStamme, i * 16);
     m.compose(p.set(t.x, t.y + ks, t.z), q, s.set(kr, kh, kr)).toArray(mKrone, i * 16);
-    const l = 0.88 + hash(i, 3, 4) * 0.24; farge.set([l, l, l], i * 3);
+    const l = 0.88 + hash(i, 3, 4) * 0.24; const mf = MERKE_FARGE[t.merke] || [1, 1, 1]; farge.set([l * mf[0], l * mf[1], l * mf[2]], i * 3);
   });
   const mesh = (geo, kap, materiale = mat) => { const x = new THREE.InstancedMesh(geo, materiale, Math.max(1, kap)); x.frustumCulled = false; x.count = 0; x.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(x); return x; };
   const grupper = {};
-  for (const art of ['G', 'F', 'L']) {
+  for (const art of ['G', 'F', 'L', 'R', 'S']) {
     const ider = traer.map((t, i) => (t.art === art ? i : -1)).filter((i) => i >= 0); if (!ider.length) continue;
     grupper[art] = { ider, stamme: mesh(mod.stamme[art], ider.length), krone: mod.krone[art].map((g) => mesh(g, ider.length, matKrone)), enkelStamme: mesh(mod.enkelStamme[art], ider.length), enkel: mesh(mod.enkel[art], ider.length) };
   }

@@ -1718,6 +1718,33 @@ test('Virtuell skog: framtidsskog i ungskog – hogstmoden med og uten ungskogpl
   assert.equal(fram.bestand.find((x) => x.b.id === 'u').hk, 5);
 });
 
+test('Virtuell skog: arbeidsinstruks for ungskogpleie – merket før og rett etter', async () => {
+  const ung = { id: 'u', nr: '5', treslag: 'G', bonitet: 14, alder: 10, hogstklasse: 2, areal: 11.87, tiltak: [{ id: 't', type: 'ungskogpleie', aar: 2027, status: 'planlagt' }], ungskog: { treantallFor: 300, hoydeBar: 3, hoydeLauv: 3.5 } };
+  const N = (f, filt = () => true) => f.arter.filter(filt).reduce((s, a) => s + a.N, 0);
+  const m = SK.ungskogpleieVisning(ung, 'merket', { iAar: 2026 }); const e = SK.ungskogpleieVisning(ung, 'etter', { iAar: 2026 });
+  assert.equal(m.hk, 2); assert.equal(m.treantallFor, 300); assert.equal(m.startAar, 2027); assert.ok(m.kostDaa > 0);
+  // Merket: alle trærne i dag er med (trær + kratt), og det som beholdes er målet.
+  assert.ok(Math.abs(N(m, (a) => a.merke !== 'fjern' || a.H > 1.5) + N(m, (a) => a.merke === 'fjern' && a.H <= 1.5) - (300 + m.kratt)) < 1);
+  assert.ok(Math.abs(N(m, (a) => a.merke !== 'fjern') - m.treantall) < 1);
+  assert.ok(m.arter.some((a) => a.art === 'R' && a.merke === 'ros') && m.arter.some((a) => a.art === 'L' && a.merke === 'fjern'));
+  // Etter: målet står igjen med jevn avstand, ROS-trær beholdt, stubber etter det som er fjernet.
+  assert.ok(Math.abs(N(e, (a) => a.art !== 'S') - e.treantall) < 1 && e.treantall < 300);
+  assert.ok(e.arter.filter((a) => a.art === 'G').every((a) => a.jevn));
+  assert.equal(N(e, (a) => a.art === 'R'), SK.ROS_PER_DAA);
+  assert.ok(N(e, (a) => a.art === 'S') > 50 && e.arter.find((a) => a.art === 'S').H < 0.3);
+  assert.ok(e.avstand > 2 && e.avstand < 3.2);
+  // I scenen: merkingen følger trærne, og jevn avstand gir jevnere nærmeste nabo enn ungskogen i dag.
+  const geo = { type: 'Polygon', coordinates: [[[0, 0], [60, 0], [60, 60], [0, 60], [0, 0]].map(([x, y]) => SK.terrengPunkter([600000 + x + 50, 6700000 + y + 50], 50, 2)[0])] };
+  const S2 = { bestand: [{ ...ung, geometri: geo }] }; const start = SK.terrengPunkter([600080, 6700080], 50, 2)[0];
+  const sm = SK.lagSkog(S2, { start, radius: 100, overstyr: { u: m } });
+  assert.ok(sm.traer.some((t) => t.merke === 'fjern') && sm.traer.some((t) => t.merke === 'behold') && sm.traer.some((t) => t.merke === 'ros'));
+  const se = SK.lagSkog(S2, { start, radius: 100, overstyr: { u: e } });
+  const gran = se.traer.filter((t) => t.art === 'G'); const naer = gran.slice(0, 150).map((t) => Math.min(...gran.filter((u) => u !== t).map((u) => Math.hypot(u.x - t.x, u.y - t.y))));
+  assert.ok(Math.min(...naer) > e.avstand * 0.45, `${Math.min(...naer)}`);
+  const { MERKE_FARGE } = await import('../js/skog3d-traer.js');
+  assert.ok(MERKE_FARGE.fjern[0] > 1 && MERKE_FARGE.fjern[1] < 1 && MERKE_FARGE.behold[1] > 1);
+});
+
 test('AR i felt: grenser, stier, miljø, kulturminner, retning og varsler', async () => {
   const { tilGeoPunkt } = await import('../js/flate-geometri.js');
   const o = [600000, 6700000]; const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => tilGeoPunkt([o[0] + x, o[1] + y]));
