@@ -5,6 +5,7 @@ import {
   RAADHUS, penNavn, kategoriFor, tilVirksomhet, grupperSteder, hovedvirksomhet, velgAdresse, avstandKm, retning,
   tolkMet, vaerVed, symbolTekst, vindretningTekst, iParallell, hentVirksomheter, geokod, hentVaer, hentKjoreavstander,
 } from '../js/kilder.js';
+import { tolkGml, byggSkytebaner, baneTekst, banerKort, leggTilTillegg, hentSkytebaner } from '../js/skytebaner.js';
 
 let ok = 0;
 const venter = [];
@@ -129,7 +130,64 @@ test('øyeblikksbildet har rådhuset og posisjon for alle steder', async () => {
   for (const k of ['skole', 'barnehage', 'helse']) assert.ok(d.steder.some(s => s.kategori === k), `ingen ${k}`);
 });
 
+const GML = `<wfs:FeatureCollection><wfs:member><app:Skyteanlegg gml:id="a.1">
+  <app:posisjon><gml:Point><gml:pos>60.462248 10.635341</gml:pos></gml:Point></app:posisjon>
+  <app:skyteanleggId>2105</app:skyteanleggId><app:skytterlag>Brandbu Skytterlag</app:skytterlag><app:organisasjonsnummer>995441586</app:organisasjonsnummer>
+</app:Skyteanlegg></wfs:member><wfs:member><app:Skyteanlegg gml:id="a.2">
+  <app:posisjon><gml:Point><gml:pos>60.462739 10.636622</gml:pos></gml:Point></app:posisjon>
+  <app:skyteanleggId>2116</app:skyteanleggId><app:skytterlag>Tingelstad Skytterlag</app:skytterlag>
+</app:Skyteanlegg></wfs:member><wfs:member><app:Skyteanlegg gml:id="a.3">
+  <app:posisjon><gml:Point><gml:pos>60.518333 10.263857</gml:pos></gml:Point></app:posisjon>
+  <app:skyteanleggId>2104</app:skyteanleggId><app:skytterlag>Bjoneroa Skytterlag</app:skytterlag>
+</app:Skyteanlegg></wfs:member></wfs:FeatureCollection>`;
+
+test('skytebaner fra DFS: GML tolkes, anlegg på samme sted slås sammen', () => {
+  const anlegg = tolkGml(GML, 'Skyteanlegg');
+  assert.equal(anlegg.length, 3);
+  assert.deepEqual([anlegg[0].lat, anlegg[0].lon, anlegg[0].skyteanleggId], [60.462248, 10.635341, '2105']);
+  const baner = [
+    { skyteanleggId: '2105', skytebanetype: '100M', skytebanelengde: '92', iBruk: 'Ja', skytterlag: 'Brandbu Skytterlag' },
+    { skyteanleggId: '2116', skytebanetype: '100M', skytebanelengde: '100', iBruk: 'Ja', skytterlag: 'Tingelstad Skytterlag' },
+    { skyteanleggId: '2116', skytebanetype: '300M', skytebanelengde: '299', iBruk: 'Ja', skytterlag: 'Tingelstad Skytterlag' },
+    { skyteanleggId: '2104', skytebanetype: 'Pistol', skytebanelengde: '25', iBruk: 'Nei', nedlagtDato: '2010-09-01' },
+  ];
+  const s = byggSkytebaner(anlegg, baner, [{ navn: 'Lygna skytebane', lat: 60.46273, lon: 10.6367 }]);
+  assert.equal(s.length, 2);
+  const lygna = s.find(x => x.tittel === 'Lygna skytebane');
+  assert.ok(lygna.erSkytebane && lygna.kategori === 'skytebane');
+  assert.deepEqual(lygna.virksomheter.map(v => v.navn), ['Brandbu skytterlag', 'Tingelstad skytterlag']);
+  assert.equal(banerKort(lygna.baner), '2 × 100 m rifle, 300 m rifle');
+  const bjoneroa = s.find(x => x.tittel === 'Bjoneroa skytebane');
+  assert.equal(banerKort(bjoneroa.baner), '');
+  assert.equal(bjoneroa.baner[0].iBruk, false);
+  assert.equal(baneTekst({ type: 'Pistol', lengde: 25 }), 'Pistol 25 m');
+  assert.equal(baneTekst({ type: 'Leirdue' }), 'Leirdue/hagle');
+  const med = leggTilTillegg(s, [
+    { gjelder: 'Lygna skytebane', baner: [{ type: 'Leirdue', iBruk: true }], brukere: [{ navn: 'JFF', orgnr: '1' }] },
+    { id: 'x', navn: 'Lygna skiskytterstadion', lat: 60.4604, lon: 10.6338, kilde: 'OSM', baner: [{ type: 'Skiskyting', lengde: 50, iBruk: true }] },
+    { gjelder: 'Finnes ikke', baner: [{ type: 'Pistol', iBruk: true }] },
+  ]);
+  assert.equal(med.length, 3);
+  assert.equal(banerKort(med.find(x => x.tittel === 'Lygna skytebane').baner), '2 × 100 m rifle, 300 m rifle, Leirdue/hagle');
+  assert.equal(lygna.baner.length, 3, 'tillegg skal ikke endre originalen');
+});
+
+test('øyeblikksbildet har skytebanene i Gran', async () => {
+  const d = JSON.parse(await readFile(new URL('../data/steder.json', import.meta.url)));
+  assert.ok(d.skytebaner.some(s => s.tittel === 'Lygna skytebane'));
+  for (const s of d.skytebaner) {
+    assert.ok(s.erSkytebane && s.posisjon.lat > 60.2 && s.posisjon.lat < 60.6, s.tittel);
+    assert.ok(avstandKm(RAADHUS, s.posisjon) < 30, `${s.tittel} ligger langt utenfor Gran`);
+  }
+});
+
 if (process.env.LIVE) {
+  test('LIVE: skytebaner fra DFS-registeret', async () => {
+    const s = await hentSkytebaner();
+    assert.ok(s.length >= 3, `fikk ${s.length}`);
+    assert.ok(s.some(x => x.tittel === 'Lygna skytebane' && x.baner.length >= 3));
+  });
+
   test('LIVE: Enhetsregisteret, geokoding, MET og OSRM', async () => {
     const v = await hentVirksomheter();
     assert.ok(v.some(x => /Trintom skole/.test(x.navn)));

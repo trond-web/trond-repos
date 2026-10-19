@@ -27,6 +27,7 @@ export const KATEGORIER = [
   { id: 'teknisk', navn: 'Teknisk, vann og avløp', farge: '#57534e' },
   { id: 'beredskap', navn: 'Brann, legevakt og NAV', farge: '#c2410c' },
   { id: 'andre', navn: 'Andre (ikke kommunale)', farge: '#64748b' },
+  { id: 'skytebane', navn: 'Skytebaner', farge: '#dc2626' },
 ];
 const PRIORITET = Object.fromEntries(KATEGORIER.map((k, i) => [k.id, i]));
 

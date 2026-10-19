@@ -130,6 +130,18 @@ select, input[type=search] {
 .pille.raadhus::before { content: '★'; color: var(--k); margin-right: 2px; }
 .pille.valgt { outline: 3px solid color-mix(in srgb, var(--k) 40%, transparent); }
 .pille.egen-pille { border-style: dashed; }
+/* Skytebaner: mørk markør med rød kant og blink/siktekors – skiller seg tydelig fra alle andre steder */
+.sikte { width: 22px; height: 22px; flex: none; }
+.pille.skyte { background: #161616; color: #fff; border: 3px solid #dc2626; border-radius: 6px; padding-left: 3px; height: 32px; gap: 3px; }
+.pille.skyte::after { border-top-color: #dc2626; bottom: -9px; border-width: 7px; }
+.pille.skyte img { filter: drop-shadow(0 0 1px #fff); }
+.navn.skyte { display: inline-flex; align-items: center; gap: 4px; background: #dc2626; color: #fff; border-bottom: 0; font-weight: 700; padding: 1px 6px 1px 2px; top: 10px; }
+.navn.skyte .sikte { width: 14px; height: 14px; }
+.sted h3 .sikte { width: 18px; height: 18px; vertical-align: -3px; margin-right: 5px; }
+.brikke.skyte .sikte { width: 15px; height: 15px; margin-left: -2px; }
+.skyte-merke { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 6px; padding: 2px 8px 2px 3px; border-radius: 999px; background: #dc2626; color: #fff; font-weight: 700; font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; }
+.skyte-merke .sikte { width: 18px; height: 18px; }
+.popup s { color: var(--dempet); }
 /* Navn under markøren, på lys bakgrunn med kategorifarge slik at det skiller seg fra kartets egne navn */
 .navn {
   position: absolute; left: 0; top: 4px; transform: translateX(-50%); max-width: 180px;

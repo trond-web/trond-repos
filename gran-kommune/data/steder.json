@@ -1,5 +1,5 @@
 {
- "hentet": "2026-10-19T11:10:02.603Z",
+ "hentet": "2026-10-19T17:48:35.486Z",
  "steder": [
   {
    "id": "rådhusvegen 39|2770",
@@ -2562,6 +2562,215 @@
     "treff": "Storgata 39",
     "kommunenummer": "3446"
    }
+  }
+ ],
+ "skytebaner": [
+  {
+   "id": "skyte:2104",
+   "kategori": "skytebane",
+   "erSkytebane": true,
+   "kommunal": false,
+   "tittel": "Bjoneroa skytebane",
+   "adresse": "",
+   "postnummer": "",
+   "poststed": "",
+   "posisjon": {
+    "lat": 60.518333,
+    "lon": 10.263857,
+    "presisjon": "register",
+    "treff": "DFS skyteanleggsregister"
+   },
+   "baner": [
+    {
+     "type": "100M",
+     "lengde": 100,
+     "iBruk": true,
+     "nedlagt": null,
+     "skytterlag": "Bjoneroa skytterlag"
+    },
+    {
+     "type": "200M",
+     "lengde": 200,
+     "iBruk": true,
+     "nedlagt": null,
+     "skytterlag": "Bjoneroa skytterlag"
+    }
+   ],
+   "kilde": "Det frivillige Skyttervesen (skyteanleggsregisteret)",
+   "virksomheter": [
+    {
+     "orgnr": "993359920",
+     "navn": "Bjoneroa skytterlag",
+     "kategori": "skytebane",
+     "kommunal": false,
+     "ansatte": null,
+     "naering": "Skytterlag (DFS)"
+    }
+   ]
+  },
+  {
+   "id": "skyte:2105+2116",
+   "kategori": "skytebane",
+   "erSkytebane": true,
+   "kommunal": false,
+   "tittel": "Lygna skytebane",
+   "adresse": "",
+   "postnummer": "",
+   "poststed": "",
+   "posisjon": {
+    "lat": 60.4624935,
+    "lon": 10.6359815,
+    "presisjon": "register",
+    "treff": "DFS skyteanleggsregister"
+   },
+   "baner": [
+    {
+     "type": "100M",
+     "lengde": 92,
+     "iBruk": true,
+     "nedlagt": null,
+     "skytterlag": "Brandbu skytterlag"
+    },
+    {
+     "type": "100M",
+     "lengde": 100,
+     "iBruk": true,
+     "nedlagt": null,
+     "skytterlag": "Tingelstad skytterlag"
+    },
+    {
+     "type": "200M",
+     "lengde": 200,
+     "iBruk": true,
+     "nedlagt": null,
+     "skytterlag": "Tingelstad skytterlag"
+    },
+    {
+     "type": "300M",
+     "lengde": 299,
+     "iBruk": true,
+     "nedlagt": null,
+     "skytterlag": "Tingelstad skytterlag"
+    },
+    {
+     "type": "Pistol",
+     "lengde": null,
+     "iBruk": true,
+     "skytterlag": "Hadeland sportsskyttere"
+    },
+    {
+     "type": "Leirdue",
+     "lengde": null,
+     "iBruk": true,
+     "skytterlag": "Brandbu og Tingelstad jeger- og fiskeforening"
+    }
+   ],
+   "kilde": "Det frivillige Skyttervesen (skyteanleggsregisteret)",
+   "virksomheter": [
+    {
+     "orgnr": "995441586",
+     "navn": "Brandbu skytterlag",
+     "kategori": "skytebane",
+     "kommunal": false,
+     "ansatte": null,
+     "naering": "Skytterlag (DFS)"
+    },
+    {
+     "orgnr": "993576638",
+     "navn": "Tingelstad skytterlag",
+     "kategori": "skytebane",
+     "kommunal": false,
+     "ansatte": null,
+     "naering": "Skytterlag (DFS)"
+    },
+    {
+     "orgnr": "996829731",
+     "navn": "Brandbu og Tingelstad jeger- og fiskeforening",
+     "naering": "Leirduebane (NJFF)",
+     "kategori": "skytebane",
+     "kommunal": false,
+     "ansatte": null
+    },
+    {
+     "orgnr": "",
+     "navn": "Hadeland sportsskyttere",
+     "naering": "Pistolbane",
+     "kategori": "skytebane",
+     "kommunal": false,
+     "ansatte": null
+    }
+   ]
+  },
+  {
+   "id": "skyte:2118",
+   "kategori": "skytebane",
+   "erSkytebane": true,
+   "kommunal": false,
+   "tittel": "Vestre Brandbu skytebane",
+   "adresse": "",
+   "postnummer": "",
+   "poststed": "",
+   "posisjon": {
+    "lat": 60.419355,
+    "lon": 10.374383,
+    "presisjon": "register",
+    "treff": "DFS skyteanleggsregister"
+   },
+   "baner": [
+    {
+     "type": "100M",
+     "lengde": 100,
+     "iBruk": true,
+     "nedlagt": null,
+     "skytterlag": "Vestre Brandbu skytterlag"
+    }
+   ],
+   "kilde": "Det frivillige Skyttervesen (skyteanleggsregisteret)",
+   "virksomheter": [
+    {
+     "orgnr": "",
+     "navn": "Vestre Brandbu skytterlag",
+     "kategori": "skytebane",
+     "kommunal": false,
+     "ansatte": null,
+     "naering": "Skytterlag (DFS)"
+    }
+   ]
+  },
+  {
+   "id": "skyte:osm-way-456627713",
+   "kategori": "skytebane",
+   "erSkytebane": true,
+   "kommunal": false,
+   "tittel": "Lygna skiskytterstadion",
+   "adresse": "",
+   "postnummer": "",
+   "poststed": "",
+   "kilde": "OpenStreetMap (sport=biathlon, shooting=range)",
+   "posisjon": {
+    "lat": 60.4604,
+    "lon": 10.63376,
+    "presisjon": "register",
+    "treff": "OpenStreetMap (sport=biathlon, shooting=range)"
+   },
+   "baner": [
+    {
+     "type": "Skiskyting",
+     "lengde": 50,
+     "iBruk": true,
+     "skytterlag": "Gran idrettslag"
+    }
+   ],
+   "virksomheter": [
+    {
+     "orgnr": "975423948",
+     "navn": "Gran idrettslag",
+     "naering": "Skiskyting",
+     "kategori": "skytebane",
+     "kommunal": false,
+     "ansatte": null
+    }
+   ]
   }
  ]
 }
