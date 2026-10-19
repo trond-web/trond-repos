@@ -1,5 +1,5 @@
 // Service worker: appen og besøkte/nedlastede kartfliser fungerer uten nett.
-const APP = 'skogiq-app-v65';
+const APP = 'skogiq-app-v66';
 const FLISER = 'kartfliser-v1';
 const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'ikon-180.png', 'ikon-192.png', 'ikon-512.png', 'ikon-maskerbar-512.png',
   'felt.html', 'felt.css', 'felt.webmanifest', 'js/felt-app.js', 'js/offline-kart.js', 'js/sporlogg.js', 'js/sporlogg-ui.js', 'js/tiltak-endring.js', 'js/flate-geometri.js', 'js/flate-redigering.js', 'js/treff.js', 'js/oppdrag-felt.js', 'js/ungskog.js', 'js/effekt-html.js', 'js/oppdrag-utvalg.js', 'js/tetthet.js', 'js/drone.js', 'js/drone-felt.js', 'js/skog3d.js', 'js/skog3d-data.js', 'js/skog3d-traer.js', 'js/skog3d-veg.js', 'js/skog3d-bunn.js', 'js/skog3d-omgivelser.js', 'js/skog3d-objekter.js', 'js/felt-ar.js', 'js/ar-data.js', 'js/plan-synk.js', 'js/skog3d-vaer.js', 'js/skog3d-vaerlag.js',
@@ -39,8 +39,10 @@ self.addEventListener('fetch', (e) => {
     return;
   }
   if (url.origin === location.origin || url.hostname === 'unpkg.com') {
-    // Appfiler: nett først (får oppdateringer), cache som reserve offline.
-    e.respondWith(fetch(e.request).then((svar) => {
+    // Appfiler: nett først (får oppdateringer), cache som reserve offline. no-cache: nettleserens HTTP-buffer (GitHub
+    // Pages: 10 min) skal ikke gi gamle moduler rett etter en ny versjon. Sidevisninger kan ikke få endret modus.
+    const req = url.origin === location.origin && e.request.mode !== 'navigate' ? new Request(e.request, { cache: 'no-cache' }) : e.request;
+    e.respondWith(fetch(req).then((svar) => {
       if (svar.ok) { const kopi = svar.clone(); caches.open(APP).then((c) => c.put(e.request, kopi)); }
       return svar;
     }).catch(async () => {
