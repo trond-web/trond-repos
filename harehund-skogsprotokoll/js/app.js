@@ -165,7 +165,11 @@ function infoFane(p) {
       ${felt('terreng', 'Terreng', p.terreng)}
       ${velg('mark', 'Mark', p.mark, [['Snø', 'Snø'], ['Barmark', 'Barmark (minst 2/3 av arealet)']])}
       ${felt('vaer', 'Vær og føre', p.vaer)}
-      ${felt('temp', 'Temperatur (°C)', p.temp, 'number', 'inputmode="numeric"')}
+      <div class="felt"><label for="temp">Temperatur (°C)</label>
+        <div class="med-knapp">
+          <button type="button" class="knapp" data-handling="fortegn" aria-label="Bytt mellom pluss- og minusgrader">−/+</button>
+          <input type="text" id="temp" name="temp" value="${esc(p.temp)}" inputmode="numeric" autocomplete="off" placeholder="f.eks. −4">
+        </div></div>
     </div>
     ${p.temp !== '' && Number(p.temp) < -15 ? '<p class="varsel advarsel">Under −15 °C bør prøven avlyses (kap. 8). Avsluttes prøven for hunden av den grunn, tildeles U.</p>' : ''}
     <h2>Utstyr</h2>
@@ -627,6 +631,17 @@ app.addEventListener('click', (ev) => {
   if (b.dataset.utfall != null) { p.utfall = b.dataset.utfall || null; return oppdater(p); }
   if (b.dataset.tomSignatur) { p[b.dataset.tomSignatur] = ''; return oppdater(p); }
   switch (handling) {
+    case 'fortegn': {
+      // Talltastaturet på iPhone har ikke minus, så fortegnet byttes med en egen knapp.
+      const felt = document.getElementById('temp');
+      const v = normaliserTemp(felt.value);
+      p.temp = v.startsWith('-') ? v.slice(1) : `-${v}`;
+      oppdater(p);
+      const nytt = document.getElementById('temp');
+      nytt.focus();
+      nytt.setSelectionRange(nytt.value.length, nytt.value.length);
+      break;
+    }
     case 'slett':
       if (confirm('Slette hele prøven? Dette kan ikke angres.')) { data.prover = data.prover.filter((x) => x !== p); lagre(); location.hash = '#/'; }
       break;
@@ -673,7 +688,8 @@ app.addEventListener('change', (ev) => {
   if (el.dataset.ikkeStartet != null) { p.ikkeStartet = el.checked; return oppdater(p); }
   if (el.dataset.rr != null) { p.rr = el.value; return oppdater(p, false); }
   if (el.closest('[data-skjema="info"]') && el.name) {
-    const verdi = el.type === 'checkbox' ? el.checked : el.value;
+    let verdi = el.type === 'checkbox' ? el.checked : el.value;
+    if (el.name === 'temp') verdi = normaliserTemp(verdi);
     const [a, b] = el.name.split('.');
     if (b) p[a][b] = verdi; else p[a] = a === 'dag' ? Number(verdi) : verdi;
     if (el.name === 'hund.rase' && el.value) p.hund.gruppe = gruppeForRase(el.value);
@@ -685,6 +701,10 @@ app.addEventListener('input', (ev) => {
   const p = finn(app.dataset.prove);
   if (p && ev.target.dataset.tilleggsopplysninger != null) { p.tilleggsopplysninger = ev.target.value; lagre(); }
 });
+
+function normaliserTemp(v) {
+  return String(v ?? '').trim().replace(/[−–]/g, '-').replace(',', '.').replace(/[^\d.-]/g, '').replace(/(?!^)-/g, '');
+}
 
 function lastNed(navn, innhold) {
   const a = document.createElement('a');

@@ -91,7 +91,9 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .rutenett { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .6rem .9rem; }
 .felt { display: flex; flex-direction: column; gap: .2rem; font-size: .9rem; }
-.felt > span { color: var(--dempet); }
+.felt > span, .felt > label { color: var(--dempet); }
+.med-knapp { display: flex; gap: .4rem; }
+.med-knapp .knapp { flex: 0 0 auto; padding: .5rem .8rem; }
 .felt.hake { flex-direction: row; align-items: center; gap: .5rem; min-height: 44px; }
 .felt.hake input { width: 22px; height: 22px; }
 input, select, textarea {
