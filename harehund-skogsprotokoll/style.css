@@ -9,6 +9,7 @@
   --los: #2f6b43;
   --tap: #b8641b;
   --luh: #4b6aa8;
+  --fot: #7a5a2e;
   --fare: #b3322c;
   --fare-lys: #f8e3e1;
   --advarsel: #8a6100;
@@ -24,7 +25,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #111612; --flate: #1b221d; --tekst: #e8ebe6; --dempet: #a1aba3; --linje: #2f3a32;
-    --gronn: #6cbf86; --gronn-lys: #1f3326; --los: #6cbf86; --tap: #e7a052; --luh: #8eaae6;
+    --gronn: #6cbf86; --gronn-lys: #1f3326; --los: #6cbf86; --tap: #e7a052; --luh: #8eaae6; --fot: #a07a3a;
     --fare: #f07b72; --fare-lys: #3a1f1d; --advarsel: #f0c25a; --advarsel-lys: #352b14; --info-lys: #1c2638;
     --blekk: #dfe8ff; --topp: #0b100c;
     color-scheme: dark;
@@ -32,7 +33,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #111612; --flate: #1b221d; --tekst: #e8ebe6; --dempet: #a1aba3; --linje: #2f3a32;
-  --gronn: #6cbf86; --gronn-lys: #1f3326; --los: #6cbf86; --tap: #e7a052; --luh: #8eaae6;
+  --gronn: #6cbf86; --gronn-lys: #1f3326; --los: #6cbf86; --tap: #e7a052; --luh: #8eaae6; --fot: #a07a3a;
   --fare: #f07b72; --fare-lys: #3a1f1d; --advarsel: #f0c25a; --advarsel-lys: #352b14; --info-lys: #1c2638;
   --blekk: #dfe8ff; --topp: #0b100c;
   color-scheme: dark;
@@ -113,6 +114,8 @@ textarea { resize: vertical; }
 .status.los { border-color: var(--los); }
 .status.tap { border-color: var(--tap); }
 .status.luh { border-color: var(--luh); }
+.status.fot { border-color: var(--fot); }
+.status.fot .tilstand { color: var(--fot); }
 .status-topp { display: flex; justify-content: space-between; gap: 1rem; }
 .stor { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .tilstand { text-align: right; font-weight: 600; }
@@ -137,6 +140,7 @@ textarea { resize: vertical; }
 .hk:active { transform: scale(.98); }
 .hk.primar { background: var(--gronn); border-color: var(--gronn); color: #fff; }
 .hk.tap { background: var(--tap); border-color: var(--tap); color: #fff; }
+.hk.fot { background: var(--fot); border-color: var(--fot); color: #fff; }
 .hk.stor-knapp { grid-column: 1 / -1; min-height: 76px; font-size: 1.3rem; }
 .hk.fare { background: var(--fare); border-color: var(--fare); color: #fff; }
 .hk.fare-lys { color: var(--fare); }
@@ -150,6 +154,7 @@ textarea { resize: vertical; }
 .logg li.h-uttak .logg-tekst, .logg li.h-gjentak .logg-tekst, .logg li.h-inn .logg-tekst { color: var(--los); font-weight: 600; }
 .logg li.h-tap .logg-tekst, .logg li.h-slutt .logg-tekst { color: var(--tap); font-weight: 600; }
 .logg li.h-utav .logg-tekst { color: var(--luh); font-weight: 600; }
+.logg li.h-fot .logg-tekst { color: var(--fot); font-weight: 600; }
 .logg li.h-klovStart .logg-tekst, .logg li.h-lib .logg-tekst { color: var(--fare); font-weight: 600; }
 
 .tabell { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }

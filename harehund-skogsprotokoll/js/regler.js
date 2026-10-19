@@ -267,7 +267,12 @@ export function lesLogg(prove, naa = null) {
 
   const sist = hend.length ? hend[hend.length - 1].t : 0;
   const ende = naa != null && !avsluttet ? Math.max(naa, sist) : sist;
-  let tilstand = { los, modus: cur ? modus : null, modusFra, losdyr: cur ? cur.losdyr : null, fot: fot != null, klov: !!klov };
+  // Søk regnes fra slipp eller fra slutten av forrige los; fotFra er når siste fot ble påvist.
+  const forrigeSlutt = loser.length ? loser[loser.length - 1].slutt : 0;
+  let tilstand = {
+    los, modus: cur ? modus : null, modusFra, losdyr: cur ? cur.losdyr : null, fot: fot != null, fotFra: fot,
+    sokFra: los ? Math.max(losFra, forrigeSlutt || 0) : null, klov: !!klov,
+  };
   let paagaaende = null;
   if (cur) {
     // Pågående los: lukk virtuelt ved `ende` (et åpent tap regnes som tap inntil det er avklart).
