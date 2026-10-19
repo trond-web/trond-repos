@@ -112,6 +112,8 @@ export function appBevis(S, nr, aar, idag = new Date().toISOString().slice(0, 10
   const kontroll = (type) => kontrollStatus(ksl, idag).find((k) => k.type === type);
   const fraKontroll = (type) => { const k = kontroll(type); if (!k?.siste) return { status: 'mangler', tekst: `Ingen registrert ${k.navn.toLowerCase()}`, fane: 'ksl:kontroller' }; return { status: k.status === 'forfalt' ? 'mangler' : 'ok', tekst: `${k.navn}: ${k.siste.dato}${k.neste ? `, neste ${k.neste}` : ''}${k.status === 'forfalt' ? ' (forfalt)' : ''}`, fane: 'ksl:kontroller' }; };
   const funn = sp ? skifteKontroller(S, aar) : [];
+  // Registreringer lest inn fra traktoren (John Deere / ISOBUS, se maskindata.js): dokumentasjon uten manuell føring.
+  const maskin = (liste) => { const n = liste.filter((x) => x.kilde === 'maskin').length; return n ? ` (${n} fra maskindata)` : ''; };
   // Skifter finnes, men ingen har vekst for året: gjødslingsplanen er ikke fylt ut.
   const utenVekst = skifter.length && !aktive.length && ['1.1.3', '1.2.1', '1.2.2', '1.2.3', '1.10.2'].includes(nr);
   if (utenVekst) return { status: 'mangler', tekst: `Ingen av ${skifter.length} skifter har vekst for ${aar} – fyll ut skifteplanen`, fane: 'skifteplan' };
@@ -137,7 +139,7 @@ export function appBevis(S, nr, aar, idag = new Date().toISOString().slice(0, 10
       if (!skifter.length) return null;
       const g = aktive.flatMap((s) => (s.gjodsling || []).filter((x) => Number(x.aar) === aar));
       const utfort = g.filter((x) => x.status === 'utfort' && x.dato && x.mengde);
-      return { status: utfort.length ? (utfort.length === g.length ? 'ok' : 'delvis') : 'mangler', tekst: `Gjødseljournal ${aar}: ${utfort.length} av ${g.length} gjødslinger registrert utført med dato og mengde`, fane: 'skifteplan' };
+      return { status: utfort.length ? (utfort.length === g.length ? 'ok' : 'delvis') : 'mangler', tekst: `Gjødseljournal ${aar}: ${utfort.length} av ${g.length} gjødslinger registrert utført med dato og mengde${maskin(utfort)}`, fane: 'skifteplan' };
     }
     case '1.3.2': {
       if (!skifter.length) return null;
@@ -152,7 +154,7 @@ export function appBevis(S, nr, aar, idag = new Date().toISOString().slice(0, 10
       if (!spr.length) return sp ? { status: 'ok', tekst: `Ingen sprøyting registrert i ${aar}`, fane: 'skifteplan' } : null;
       const ipv = Object.keys(sp.ipv?.[aar] || {}).length;
       const mangler = spr.filter((x) => !x.preparat || !x.dose || !x.skadegjorer || !x.skifter?.length).length;
-      return { status: ipv >= IPV.length && !mangler ? 'ok' : 'delvis', tekst: `Sprøytejournal ${aar}: ${spr.length} behandlinger${mangler ? `, ${mangler} ufullstendige` : ''}. IPV-sjekkliste ${ipv} av ${IPV.length}`, fane: 'skifteplan' };
+      return { status: ipv >= IPV.length && !mangler ? 'ok' : 'delvis', tekst: `Sprøytejournal ${aar}: ${spr.length} behandlinger${maskin(spr)}${mangler ? `, ${mangler} ufullstendige` : ''}. IPV-sjekkliste ${ipv} av ${IPV.length}`, fane: 'skifteplan' };
     }
     case '1.5.7': return fraKontroll('funksjonstest');
     case '1.5.8': {

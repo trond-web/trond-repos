@@ -9,6 +9,7 @@ import {
 import { arealM2 } from './proj.js';
 import { fmt } from './charts.js';
 import { signatur } from './versjon.js';
+import { lagMaskinUi } from './maskin-ui.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -331,7 +332,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
   function tegn() {
     const panel = $('#fane-skifteplan'); if (!panel) return;
     panel.querySelectorAll('[data-sp-under]').forEach((k) => k.classList.toggle('aktiv', k.dataset.spUnder === underfane));
-    const html = underfane === 'gjodsling' ? gjodslingHtml() : underfane === 'sproyting' ? sproytingHtml() : underfane === 'krav' ? kravHtml() : skifterHtml();
+    const html = underfane === 'gjodsling' ? gjodslingHtml() : underfane === 'sproyting' ? sproytingHtml() : underfane === 'krav' ? kravHtml() : underfane === 'maskin' ? maskin.html(tegn) : skifterHtml();
     $('#spInnhold').innerHTML = toppHtml() + html;
   }
 
@@ -377,12 +378,21 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     setTimeout(() => { URL.revokeObjectURL(url); lenke.remove(); }, 1000);
   }
 
+  // Maskin: data til og fra traktoren (John Deere / ISOBUS), se maskin-ui.js.
+  const maskin = lagMaskinUi({ kart, hentPlan, SP, aar, lagre, melding, nyId });
+  // Tilbake fra John Deere-innloggingen (jd-relay.js): vis Maskin-fanen.
+  if (/[?&]jd=tilkoblet/.test(location.search)) {
+    underfane = 'maskin'; setTimeout(() => melding('Koblet til John Deere Operations Center. Åpne Skifteplan › Maskin.'), 1500);
+    try { history.replaceState(null, '', location.href.replace(/([?&])jd=tilkoblet&?/, '$1').replace(/[?&]$/, '')); } catch { /* ignorer */ }
+  }
+
   // ---------- hendelser ----------
   const panel = $('#fane-skifteplan');
   panel.addEventListener('click', async (e) => {
     const p = SP(); const a = aar();
     const u = e.target.closest('[data-sp-under]'); if (u) { underfane = u.dataset.spUnder; tegn(); return; }
     const ul = e.target.closest('[data-sp-under-lenke]'); if (ul) { e.preventDefault(); underfane = ul.dataset.spUnderLenke; tegn(); return; }
+    if (underfane === 'maskin' && await maskin.klikk(e)) return;
     const gh = e.target.closest('[data-sp-gh]');
     if (gh) {
       const [skId, gId] = gh.closest('[data-sp-g]').dataset.spG.split(':'); const sk = finn(skId); const g = sk?.gjodsling.find((x) => x.id === gId); if (!g) return;
@@ -440,6 +450,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     if (k === 'til-gjodsling') { underfane = 'gjodsling'; tegn(); setTimeout(() => $(`#fane-skifteplan [data-sp-kort="${sk.id}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 30); }
   });
   panel.addEventListener('change', (e) => {
+    if (underfane === 'maskin' && maskin.endring(e)) return;
     const t = e.target; const p = SP(); const sk = finn(valgt);
     if (t.matches('[data-sp-aar]')) { p.aar = Number(t.value); lagre(); return; }
     if (t.matches('[data-sp-region]')) { p.region = t.value; lagre(false); return; }

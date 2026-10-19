@@ -32,6 +32,7 @@ import { readFileSync } from 'node:fs';
 import * as VEG from '../js/vegetasjon.js';
 import * as OPP from '../js/oppdrag.js';
 import * as KSL from '../js/ksl.js';
+import * as MD from '../js/maskindata.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
@@ -1743,6 +1744,167 @@ test('Virtuell skog: arbeidsinstruks for ungskogpleie – merket før og rett et
   assert.ok(Math.min(...naer) > e.avstand * 0.45, `${Math.min(...naer)}`);
   const { MERKE_FARGE } = await import('../js/skog3d-traer.js');
   assert.ok(MERKE_FARGE.fjern[0] > 1 && MERKE_FARGE.fjern[1] < 1 && MERKE_FARGE.behold[1] > 1);
+});
+
+test('Maskindata: ZIP, Shapefile, ISOXML og TLG – eksport til traktoren', async () => {
+  const { tilGeoPunkt } = await import('../js/flate-geometri.js');
+  const o = [600000, 6700000]; const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => tilGeoPunkt([o[0] + x, o[1] + y]));
+  // ZIP: lagret og deflate (som Operations Center), også mapper.
+  const z = MD.lagZip([{ navn: 'Rx/a.txt', data: 'hei æøå' }, { navn: 'b.bin', data: new Uint8Array([1, 2, 3]) }]);
+  const lest = await MD.lesZip(z); assert.deepEqual(lest.map((f) => f.navn), ['Rx/a.txt', 'b.bin']); assert.equal(new TextDecoder().decode(lest[0].data), 'hei æøå');
+  assert.equal(MD.crc32(new TextEncoder().encode('123456789')), 0xcbf43926);
+  const raw = zlib.deflateRawSync(Buffer.from('komprimert '.repeat(50)));
+  const zd = MD.lagZip([{ navn: 'x.txt', data: new Uint8Array(raw) }]); const dv = new DataView(zd.buffer); dv.setUint16(8, 8, true); // metode 8 i lokalt hode
+  const cOff = dv.getUint32(zd.length - 6, true); dv.setUint16(cOff + 10, 8, true); dv.setUint32(cOff + 24, 550, true);
+  assert.equal(new TextDecoder().decode((await MD.lesZip(zd))[0].data), 'komprimert '.repeat(50));
+  // Shapefile: polygon med hull tur–retur, med attributter (æøå i latin1).
+  const poly = { type: 'Polygon', coordinates: [ring(0, 0, 200, 100), [...ring(50, 25, 100, 75)].reverse()] };
+  const sf = MD.lagShapefile([{ geometri: poly, egenskaper: { FIELD: 'Skifte 1 Nordre jorde', RATE_KGHA: 400 } }], [{ navn: 'FIELD', type: 'C', lengde: 40 }, { navn: 'RATE_KGHA', type: 'N', lengde: 10, des: 0 }]);
+  const tilbake = MD.lesShapefile(sf.shp, sf.dbf, sf.prj);
+  assert.equal(tilbake.length, 1); assert.equal(tilbake[0].geometri.type, 'Polygon'); assert.equal(tilbake[0].geometri.coordinates.length, 2);
+  assert.equal(tilbake[0].egenskaper.FIELD, 'Skifte 1 Nordre jorde'); assert.equal(tilbake[0].egenskaper.RATE_KGHA, 400);
+  assert.ok(Math.abs(arealM2(tilbake[0].geometri) - (20000 - 2500)) < 200, `${arealM2(tilbake[0].geometri)}`);
+  assert.equal(sf.shx.length, 108); assert.ok(sf.prj.includes('WGS_1984'));
+  // UTM-shapefil (EUREF89 UTM 32) leses om til lon/lat.
+  const pkt = MD.lagShapefile([{ geometri: { type: 'Point', coordinates: [597000, 6650000] }, egenskaper: { V: 1 } }], [{ navn: 'V', type: 'N', lengde: 3 }], 'punkt');
+  const [lon, lat] = MD.lesShapefile(pkt.shp, pkt.dbf, 'PROJCS["ETRS89 / UTM zone 32N"]')[0].geometri.coordinates; assert.ok(lon > 10.6 && lon < 10.8 && lat > 59.9 && lat < 60.1, `${lon} ${lat}`);
+  // AB-linje langs den lange siden (øst–vest → retning ca. 90°), forlenget over skiftet.
+  const ab = MD.abLinje({ type: 'Polygon', coordinates: [ring(0, 0, 300, 80)] }); assert.ok(Math.abs(ab.retning - 90) <= 1 && Math.abs(ab.lengde - 300) < 2, JSON.stringify(ab));
+  // Skifteplan med planlagt gjødsling og avlingskart fra i fjor → variabelt gjødselkart (Rx) og ISOXML.
+  const sk = { id: 's1', nr: '1', navn: 'Nordre', geometri: { type: 'Polygon', coordinates: [ring(0, 0, 200, 100)] }, areal: 20, vekster: { 2026: { kultur: 'bygg', avling: 500 } }, jordprove: {}, gjodsling: [{ id: 'g1', aar: 2026, type: 'mineral', produkt: 'f22310', mengde: 50, dato: '2026-05-05', status: 'planlagt' }] };
+  sk.avlingskart = { 2025: { rute: 20, ruter: [...Array(50)].map((_, i) => [o[0] + (i % 10) * 20, o[1] + Math.floor(i / 10) * 20, i % 10 < 3 ? 380 : i % 10 > 6 ? 620 : 500]) } };
+  const S = { eiendom: { navn: 'Testgard', eier: 'Ola' }, skifteplan: { aar: 2026, skifter: [sk], sproyting: [] } };
+  const valg = MD.planlagteGjodslinger(S.skifteplan, 2026); assert.equal(valg.length, 1); assert.equal(valg[0].skifter.length, 1);
+  const r = MD.resept(sk, 2026, sk.gjodsling[0]);
+  assert.ok(r.variabel && r.soner.length === 3, JSON.stringify(r.soner.map((x) => x.mengde)));
+  const lav = r.soner.find((x) => x.id === 'lav'); const hoy = r.soner.find((x) => x.id === 'hoy');
+  assert.ok(lav.mengde < 50 && hoy.mengde > 50 && lav.mengde >= 37.5 && hoy.mengde <= 62.5, `${lav.mengde} ${hoy.mengde}`);
+  const pk = MD.eksportPakke(S, 2026, { valg: valg[0], versjon: 'test' });
+  const navn = pk.filer.map((f) => f.navn);
+  for (const n of ['SkogIQ/Testgard_skifter.shp', 'SkogIQ/Testgard_AB_linjer.shp', 'TASKDATA/TASKDATA.XML', 'LES_MEG.txt']) assert.ok(navn.includes(n), `${n} i ${navn}`);
+  assert.ok(navn.some((n) => /^Rx\/.*\.shp$/.test(n)) && navn.some((n) => /^Rx\/.*\.dbf$/.test(n)) && navn.some((n) => /^Rx\/.*\.prj$/.test(n)));
+  const rx = pk.filer.find((f) => /^Rx\/.*\.shp$/.test(f.navn)); const rxDbf = pk.filer.find((f) => /^Rx\/.*\.dbf$/.test(f.navn));
+  const rxObj = MD.lesShapefile(rx.data, rxDbf.data); assert.equal(rxObj.length, 50); assert.ok(rxObj.every((x) => x.egenskaper.RATE_KGHA === x.egenskaper.RATE_DAA * 10));
+  const xml = pk.filer.find((f) => f.navn === 'TASKDATA/TASKDATA.XML').data;
+  for (const t of ['<ISO11783_TaskData VersionMajor="4"', '<PFD A="PFD1"', '<PLN A="1"', '<LSG A="1">', '<GPN A="GPN1"', '<PNT A="6"', '<TSK A="TSK1"', '<TZN A="1"', '<PDV A="0006"', '<PDT A="PDT1" B="Fullgjødsel 22-3-10"/>']) assert.ok(xml.includes(t), t);
+  assert.ok(xml.includes(`B="${hoy.mengde * 1000}"`)); // kg/daa → mg/m²
+  const zip = MD.lagZip(pk.filer); assert.equal((await MD.lesZip(zip)).length, pk.filer.length);
+  // TLG (ISOXML-tidslogg): posisjon og utført mengde (DDI 7, mg/m²).
+  const tlgXml = '<TIM A="" D="4"><PTN A="" B="" D=""/><DLV A="0007" B="" C="DET-1"/></TIM>';
+  const rec = (ms, lat0, lon0, v) => { const b = new DataView(new ArrayBuffer(6 + 9 + 1 + 5)); b.setUint32(0, ms, true); b.setUint16(4, 16567, true); b.setInt32(6, Math.round(lat0 * 1e7), true); b.setInt32(10, Math.round(lon0 * 1e7), true); b.setUint8(14, 4); b.setUint8(15, 1); b.setUint8(16, 0); b.setInt32(17, v, true); return new Uint8Array(b.buffer); };
+  const [la0, lo0] = [...tilGeoPunkt([o[0] + 50, o[1] + 50])].reverse();
+  const bin = new Uint8Array([...rec(36000000, la0, lo0, 45000), ...rec(36001000, la0 + 0.0001, lo0, 47000)]);
+  const t = MD.lesTlg(tlgXml, bin); assert.equal(t.length, 2); assert.equal(t[0].verdier[7], 45000); assert.ok(Math.abs(t[0].lat - la0) < 1e-6);
+  assert.equal(t[0].tid.slice(0, 10), '2025-05-11');
+});
+
+test('Maskindata: import fra Operations Center og ISOXML til gjødseljournal, sprøytejournal, avling, KSL og økonomi', async () => {
+  const { tilGeoPunkt } = await import('../js/flate-geometri.js');
+  const o = [600000, 6700000]; const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => tilGeoPunkt([o[0] + x, o[1] + y]));
+  const sk1 = { id: 's1', nr: '1', geometri: { type: 'Polygon', coordinates: [ring(0, 0, 200, 100)] }, areal: 20, vekster: { 2026: { kultur: 'bygg', avling: 500 } }, jordprove: {}, gjodsling: [{ id: 'g1', aar: 2026, type: 'mineral', produkt: 'f22310', mengde: 50, dato: '2026-05-05', status: 'planlagt' }] };
+  const sk2 = { id: 's2', nr: '2', geometri: { type: 'Polygon', coordinates: [ring(300, 0, 400, 100)] }, areal: 10, vekster: { 2026: { kultur: 'bygg' } }, jordprove: {}, gjodsling: [] };
+  const S = { eiendom: { navn: 'Testgard' }, skifteplan: { aar: 2026, skifter: [sk1, sk2], sproyting: [], ipv: {} } };
+  // Utført gjødsling fra Operations Center: punkter med AppliedRate i kg/ha og produktnavn.
+  const pts = []; for (let x = 5; x < 400; x += 10) for (let y = 5; y < 100; y += 10) if (x < 200 || x > 300) pts.push({ geometri: { type: 'Point', coordinates: tilGeoPunkt([o[0] + x, o[1] + y]) }, egenskaper: { AppliedRate: x < 200 ? 520 : 400, Product: 'YaraMila 22-3-10', IsoTime: '2026-05-06T09:12:00Z' } });
+  const sf = MD.lagShapefile(pts, [{ navn: 'AppliedRate', type: 'N', lengde: 8, des: 1 }, { navn: 'Product', type: 'C', lengde: 30 }, { navn: 'IsoTime', type: 'C', lengde: 24 }], 'punkt');
+  const zip = MD.lagZip([{ navn: 'Testgard_application/doc.shp', data: sf.shp }, { navn: 'Testgard_application/doc.dbf', data: sf.dbf }, { navn: 'Testgard_application/doc.prj', data: sf.prj }]);
+  const [op] = await MD.lesMaskinfiler([{ navn: 'export.zip', data: zip }]);
+  assert.equal(op.type, 'gjodsling'); assert.equal(op.enhet, 'kg/ha'); assert.equal(op.dato, '2026-05-06'); assert.equal(op.produkt, 'YaraMila 22-3-10');
+  const f = MD.forslag(S, op); assert.equal(f.endringer.length, 2); assert.equal(f.endringer[0].snitt, 52); assert.equal(f.endringer[0].planlagt, 'g1'); assert.ok(f.endringer[0].dekning > 0.95);
+  const b = MD.brukImport(S, op); assert.equal(b.antall, 2);
+  assert.equal(sk1.gjodsling[0].status, 'utfort'); assert.equal(sk1.gjodsling[0].mengde, 52); assert.equal(sk1.gjodsling[0].planlagtMengde, 50); assert.equal(sk1.gjodsling[0].dato, '2026-05-06');
+  assert.equal(sk2.gjodsling.length, 1); assert.equal(sk2.gjodsling[0].produkt, 'f22310'); assert.equal(sk2.gjodsling[0].mengde, 40);
+  assert.equal(MD.brukImport(S, op).antall, 0, 'samme fil leses ikke inn to ganger');
+  // KSL 1.2.3 (gjødseljournal) er nå dokumentert fra maskindataene.
+  const bevis = KSL.appBevis(S, '1.2.3', 2026); assert.equal(bevis.status, 'ok'); assert.ok(/maskin/i.test(bevis.tekst), bevis.tekst);
+  // Sprøyting (l/ha) → sprøytejournalen med dose i ml/daa, mangler skadegjører (kontrollen varsler).
+  const spPts = pts.filter((p, i) => i % 2).map((p) => ({ ...p, egenskaper: { AppliedRate: 2.5, Product: 'Roundup Flex', IsoTime: '2026-06-10T07:00:00Z' } }));
+  const spf = MD.lagShapefile(spPts, [{ navn: 'AppliedRate', type: 'N', lengde: 8, des: 2 }, { navn: 'Product', type: 'C', lengde: 30 }, { navn: 'IsoTime', type: 'C', lengde: 24 }], 'punkt');
+  const [sp] = await MD.lesMaskinfiler([{ navn: 'sp.shp', data: spf.shp }, { navn: 'sp.dbf', data: spf.dbf }]);
+  assert.equal(sp.type, 'sproyting'); MD.brukImport(S, sp);
+  const j = S.skifteplan.sproyting[0]; assert.equal(j.preparat, 'Roundup Flex'); assert.equal(j.dose, '250'); assert.equal(j.enhet, 'ml/daa'); assert.deepEqual(j.skifter, ['s1', 's2']);
+  assert.equal(KSL.appBevis(S, '1.5.4', 2026).status, 'delvis');
+  // Avling (t/ha) → avling per skifte og avlingskart i 20 m-ruter; neste års gjødselkart blir variabelt.
+  const hPts = pts.filter((p) => p.egenskaper.AppliedRate === 520).map((p, i) => ({ ...p, egenskaper: { Yld_Mass_D: i % 10 < 3 ? 4.2 : 6.0, Moisture: 16, IsoTime: '2026-08-28T15:00:00Z' } }));
+  const hf = MD.lagShapefile(hPts, [{ navn: 'Yld_Mass_D', type: 'N', lengde: 8, des: 2 }, { navn: 'Moisture', type: 'N', lengde: 6, des: 1 }, { navn: 'IsoTime', type: 'C', lengde: 24 }], 'punkt');
+  const [h] = await MD.lesMaskinfiler([{ navn: 'h.zip', data: MD.lagZip([{ navn: 'yield.shp', data: hf.shp }, { navn: 'yield.dbf', data: hf.dbf }]) }]);
+  assert.equal(h.type, 'hosting'); assert.equal(h.enhet, 't/ha'); MD.brukImport(S, h);
+  assert.ok(sk1.vekster[2026].avlingRegistrert > 450 && sk1.vekster[2026].avlingRegistrert < 600, String(sk1.vekster[2026].avlingRegistrert));
+  assert.ok(sk1.avlingskart[2026].ruter.length >= 40);
+  sk1.vekster[2027] = { kultur: 'bygg', avling: 500 }; sk1.gjodsling.push({ id: 'g2', aar: 2027, type: 'mineral', produkt: 'f22310', mengde: 50, dato: '2027-05-05', status: 'planlagt' });
+  assert.ok(MD.resept(sk1, 2027, sk1.gjodsling.at(-1)).variabel);
+  // ISOXML-oppgave med tidslogg (DDI 7) leses også.
+  const tlgXml = '<TIM A="" D="4"><PTN A="" B=""/><DLV A="0007" B="" C="DET-1"/></TIM>';
+  const recs = []; for (let x = 310; x < 400; x += 15) for (let y = 10; y < 100; y += 15) { const [lo, la] = tilGeoPunkt([o[0] + x, o[1] + y]); const d = new DataView(new ArrayBuffer(6 + 8 + 1 + 5)); d.setUint32(0, 40000000, true); d.setUint16(4, Math.round((Date.UTC(2026, 3, 20) - Date.UTC(1980, 0, 1)) / 86400000), true); d.setInt32(6, Math.round(la * 1e7), true); d.setInt32(10, Math.round(lo * 1e7), true); d.setUint8(14, 1); d.setUint8(15, 0); d.setInt32(16, 30000, true); recs.push(...new Uint8Array(d.buffer)); }
+  const task = '<ISO11783_TaskData><PDT A="PDT1" B="Kalkammonsalpeter 27-0-0"/><PFD A="PFD1" C="Skifte 2"/><TSK A="TSK1" B="KAS" E="PFD1"><TLG A="TLG00001"/></TSK></ISO11783_TaskData>';
+  const iso = await MD.lesMaskinfiler([{ navn: 'TASKDATA/TASKDATA.XML', data: new TextEncoder().encode(task) }, { navn: 'TASKDATA/TLG00001.XML', data: new TextEncoder().encode(tlgXml) }, { navn: 'TASKDATA/TLG00001.BIN', data: new Uint8Array(recs) }]);
+  assert.equal(iso.length, 1); assert.equal(iso[0].type, 'gjodsling'); assert.equal(iso[0].enhet, 'kg/daa'); assert.equal(iso[0].dato, '2026-04-20');
+  const fi = MD.forslag(S, iso[0]); assert.equal(fi.endringer.length, 1); assert.equal(fi.endringer[0].snitt, 30);
+  MD.brukImport(S, iso[0]); assert.equal(sk2.gjodsling.at(-1).produkt, 'kas');
+  // Økonomi: avvik fra plan (+2 kg/daa × 20 daa), avling mot forventet, journalføringer.
+  const ok = MD.presisjonsOkonomi(S, 2026);
+  assert.equal(ok.avvik[0].kg, 40); assert.equal(ok.avvik[0].kr, 300); assert.ok(ok.avling.length === 1 && ok.journal >= 5);
+  const ok27 = MD.presisjonsOkonomi(S, 2027); assert.equal(ok27.vra.length, 1); assert.ok(ok27.vra[0].flyttetKg > 0);
+  // Produktnavn → gjødseltype
+  assert.equal(MD.produktFraNavn('OPTI-KAS 27-0-0').produkt, 'kas'); assert.deepEqual(MD.produktFraNavn('Yara 20-4-11').innhold, { navn: 'Yara 20-4-11', N: 20, P: 4, K: 11 });
+  assert.equal(MD.tilDato('5/14/2026 10:00'), '2026-05-14'); assert.equal(MD.tilDato('14.05.2026'), '2026-05-14');
+});
+
+test('John Deere Operations Center: innlogging, fornyet token, filer og operasjoner via serveren', async () => {
+  const { lagJdRelay, jdApi } = await import('../jd-relay.js');
+  let tid = 1_000_000; const kall = [];
+  const WK = 'https://signin.example/.well-known';
+  const svar = (status, kropp, hoder = {}) => ({ ok: status >= 200 && status < 300, status, headers: { get: (k) => hoder[k.toLowerCase()] ?? null }, json: async () => kropp, arrayBuffer: async () => (kropp instanceof Uint8Array ? kropp.buffer : new ArrayBuffer(0)) });
+  let tokenNr = 0; let tilgang = false;
+  const hent = async (url, o = {}) => {
+    kall.push({ url, metode: o.method || 'GET', auth: o.headers?.Authorization, accept: o.headers?.Accept, body: o.body });
+    if (url === WK) return svar(200, { authorization_endpoint: 'https://signin.example/authorize', token_endpoint: 'https://signin.example/token' });
+    if (url === 'https://signin.example/token') { const p = new URLSearchParams(o.body); assert.ok(o.headers.Authorization.startsWith('Basic ')); tokenNr++; return svar(200, { access_token: `A${tokenNr}`, refresh_token: p.get('grant_type') === 'refresh_token' ? 'R2' : 'R1', expires_in: 3600 }); }
+    assert.ok(url.startsWith('https://sandboxapi.deere.com/platform/'), url);
+    const sti = url.slice('https://sandboxapi.deere.com/platform'.length);
+    if (sti === '/organizations') return svar(200, { values: [{ id: 123, name: 'Testgard', links: tilgang ? [] : [{ rel: 'connections', uri: 'https://connections.deere.com/connections/abc/select-organizations' }] }] });
+    if (sti === '/organizations/123/fields') return svar(200, { values: [{ id: 'f1', name: 'Skifte 1' }], links: [{ rel: 'nextPage', uri: 'https://sandboxapi.deere.com/platform/organizations/123/fields?page=2' }] });
+    if (sti === '/organizations/123/fields?page=2') return svar(200, { values: [{ id: 'f2', name: 'Skifte 2' }], links: [] });
+    if (sti.startsWith('/organizations/123/fields/f1/fieldOperations?')) { assert.ok(sti.includes('startDate=2026-01-01')); return svar(200, { values: [{ id: 'op1', fieldOperationType: 'application', startDate: '2026-05-06T08:00:00Z', products: [{ name: 'YaraMila 22-3-10' }] }] }); }
+    if (sti === '/fieldOps/op1') { assert.equal(o.headers.Accept, 'application/zip'); assert.equal(o.headers['Accept-UOM-System'], 'METRIC'); return svar(200, new Uint8Array([0x50, 0x4b, 3, 4])); }
+    if (sti === '/fieldOps/op2') return svar(202, {});
+    if (sti === '/organizations/123/files' && o.method === 'POST') { assert.deepEqual(JSON.parse(o.body), { name: 'SkogIQ.zip' }); return svar(201, {}, { location: 'https://sandboxapi.deere.com/platform/files/F9' }); }
+    if (sti === '/files/F9' && o.method === 'PUT') { assert.equal(o.headers['Content-Type'], 'application/zip'); return svar(204, {}); }
+    return svar(404, {});
+  };
+  const relay = lagJdRelay({ klientId: 'id', hemmelighet: 'hemmelig', tilbakeUrl: 'https://skogiq.example/api/jd/callback', wellKnown: WK, hent, naa: () => tid });
+  const n = 'a'.repeat(32);
+  assert.deepEqual(relay.status(n), { konfigurert: true, tilkoblet: false, miljo: 'sandkasse' });
+  assert.equal(lagJdRelay({}).status(n).konfigurert, false);
+  const url = new URL(await relay.startInnlogging(n, 'https://trond-web.github.io/trond-repos/skogbruksplan/?full'));
+  assert.equal(url.origin + url.pathname, 'https://signin.example/authorize'); assert.equal(url.searchParams.get('client_id'), 'id'); assert.ok(url.searchParams.get('scope').includes('offline_access'));
+  assert.ok(!url.toString().includes('hemmelig'));
+  const state = url.searchParams.get('state');
+  // Første gang mangler appen tilgang til organisasjonen → Deeres connections-side, deretter tilbake til appen.
+  const videre = await relay.callback('KODE', state);
+  assert.ok(videre.startsWith('https://connections.deere.com/') && decodeURIComponent(videre).includes('skogbruksplan/?full&jd=tilkoblet'), videre);
+  await assert.rejects(relay.callback('KODE', state)); // state kan bare brukes én gang
+  assert.equal(relay.status(n).tilkoblet, true);
+  tilgang = true;
+  assert.deepEqual(await relay.organisasjoner(n), [{ id: '123', navn: 'Testgard', tilgang: true }]);
+  assert.deepEqual((await relay.skifter(n, '123')).map((f) => f.id), ['f1', 'f2']); // to sider
+  const ops = await relay.operasjoner(n, '123', 'f1', 2026); assert.equal(ops[0].type, 'application'); assert.deepEqual(ops[0].produkter, ['YaraMila 22-3-10']);
+  assert.equal((await relay.operasjonFil(n, 'op1')).data[0], 0x50); assert.deepEqual(await relay.operasjonFil(n, 'op2'), { venter: true });
+  assert.deepEqual(await relay.lastOppFil(n, '123', 'SkogIQ.zip', Buffer.from([0x50, 0x4b])), { id: 'F9' });
+  // Token fornyes med refresh token når det er utløpt.
+  tid += 3600 * 1000; await relay.organisasjoner(n);
+  assert.ok(kall.some((k) => k.url === 'https://signin.example/token' && String(k.body).includes('grant_type=refresh_token')));
+  assert.equal(kall.at(-1).auth, 'Bearer A2');
+  // Ukjent nøkkel avvises.
+  await assert.rejects(relay.organisasjoner('b'.repeat(32)), /Ikke koblet/);
+  // HTTP-laget: tilbake-adressen må være appens egen (ingen åpen videresending).
+  const kjor = (sti, url2, metode = 'GET') => new Promise((ok) => { const res = { hoder: null, status: 0, writeHead(s, h) { this.status = s; this.hoder = h; }, end(b) { ok({ status: this.status, hoder: this.hoder, kropp: b }); } }; jdApi(relay, { method: metode, url: url2, headers: { origin: 'https://trond-web.github.io' }, on: () => {} }, res, sti); });
+  assert.equal((await kjor('/api/jd/logginn', `/api/jd/logginn?n=${n}&tilbake=${encodeURIComponent('https://ond.example/')}`)).status, 400);
+  const ok = await kjor('/api/jd/logginn', `/api/jd/logginn?n=${n}&tilbake=${encodeURIComponent('https://trond-web.github.io/trond-repos/skogbruksplan/')}`);
+  assert.equal(ok.status, 302); assert.ok(ok.hoder.Location.startsWith('https://signin.example/authorize'));
+  const st = await kjor('/api/jd/status', `/api/jd/status?n=${n}`); assert.equal(JSON.parse(st.kropp).tilkoblet, true); assert.equal(st.hoder['Access-Control-Allow-Origin'], 'https://trond-web.github.io');
+  const ukjent = await kjor('/api/jd/organisasjoner', `/api/jd/organisasjoner?n=${'c'.repeat(32)}`); assert.equal(ukjent.status, 401);
+  assert.equal(relay.loggUt(n), true); assert.equal(relay.status(n).tilkoblet, false);
 });
 
 test('AR i felt: grenser, stier, miljø, kulturminner, retning og varsler', async () => {
