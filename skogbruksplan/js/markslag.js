@@ -53,7 +53,9 @@ export const begrens = (n) => {
     try { return await fn(); } finally { aktive--; ko.shift()?.(); }
   };
 };
-async function hentTekst(hent, url, ms = 60000) {
+// delVedTid: svarer ikke tjenesten i tide, gis det opp med en gang (kartruten deles i mindre ruter i stedet for å
+// prøve samme store rute igjen – det kunne ta mange minutter for store eiendommer).
+async function hentTekst(hent, url, ms = 60000, { delVedTid = false } = {}) {
   for (let forsok = 0; ; forsok++) {
     const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), ms);
     try {
@@ -61,6 +63,7 @@ async function hentTekst(hent, url, ms = 60000) {
       if (!r.ok) { const f = new Error(`NIBIO svarte ${r.status}`); f.status = r.status; throw f; }
       return await r.text();
     } catch (e) {
+      if (delVedTid && ctrl.signal.aborted) { const f = new Error('NIBIO (AR5) svarte ikke i tide'); f.tid = true; throw f; }
       if (e.status >= 500 || forsok >= 2) throw ctrl.signal.aborted ? new Error('NIBIO (AR5) svarte ikke i tide') : e;
       await new Promise((res) => setTimeout(res, 800 * (forsok + 1)));
     } finally { clearTimeout(t); }
@@ -79,7 +82,6 @@ const ringer = (g) => (g.type === 'Polygon' ? g.coordinates : g.coordinates.flat
 const bbox = (g) => { let a = Infinity; let b = Infinity; let c = -Infinity; let d = -Infinity; for (const r of ringer(g)) for (const [x, y] of r) { if (x < a) a = x; if (x > c) c = x; if (y < b) b = y; if (y > d) d = y; } return [a, b, c, d]; };
 const overlapp = (p, q) => p[0] <= q[2] && q[0] <= p[2] && p[1] <= q[3] && q[1] <= p[3];
 
-// Henter AR5-flater (geometri + attributter) som overlapper grensen. klipp(geometri) → klippet geometri eller null.
 // UTM33-boks → [minLon, minLat, maxLon, maxLat].
 function utmBoksTilGeo(b) {
   const h = [[b[0], b[1]], [b[0], b[3]], [b[2], b[1]], [b[2], b[3]]].map(([x, y]) => utmTilGeo(x, y, 33));
@@ -102,6 +104,10 @@ export function svgTilGeometri(svg, b, w, h) {
       if (r.length >= 3) { if (r[0][0] !== r.at(-1)[0] || r[0][1] !== r.at(-1)[1]) r.push([...r[0]]); if (r.length >= 4) ringer.push(r); }
     }
   }
+  return ringerTilGeometri(ringer);
+}
+// Ringer (lon/lat, lukket) → Polygon/MultiPolygon: den største ringen er ytre, ringer inne i en annen blir hull.
+function ringerTilGeometri(ringer) {
   if (!ringer.length) return null;
   const areal = (r) => Math.abs(arealM2({ type: 'Polygon', coordinates: [r] }));
   ringer.sort((x, y) => areal(y) - areal(x));
@@ -113,7 +119,7 @@ export function svgTilGeometri(svg, b, w, h) {
   return poly.length === 1 ? { type: 'Polygon', coordinates: poly[0] } : { type: 'MultiPolygon', coordinates: poly };
 }
 
-export async function hentAr5(grense, { hent = fetch, klipp, logg = () => {}, boksTreff = null } = {}) {
+async function hentAr5Kml(grense, { hent = fetch, klipp, logg = () => {}, boksTreff = null } = {}) {
   const [x0, y0, x1, y1] = bbox(grense);
   const h = [[x0, y0], [x0, y1], [x1, y0], [x1, y1]].map(([x, y]) => geoTilUtm(x, y, 33));
   const ub = [Math.min(...h.map((p) => p[0])) - 50, Math.min(...h.map((p) => p[1])) - 50, Math.max(...h.map((p) => p[0])) + 50, Math.max(...h.map((p) => p[1])) + 50];
@@ -122,31 +128,37 @@ export async function hentAr5(grense, { hent = fetch, klipp, logg = () => {}, bo
   const kmlUrl = (b) => `${NIBIO}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=Arealtype&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&WIDTH=2000&HEIGHT=${Math.max(200, Math.round((2000 * (b[3] - b[1])) / (b[2] - b[0])))}&FORMAT=kml`;
   let feil = 0; const vanskelige = [];
   // Ca. 6 samtidige kall: for store eiendommer (hundrevis av ruter) er det mange ganger raskere enn ett og ett.
-  const ko = begrens(6); const hentT = (url, ms) => ko(() => hentTekst(hent, url, ms));
+  const ko = begrens(6); const hentT = (url, ms, o) => ko(() => hentTekst(hent, url, ms, o));
+  let ferdig = 0; let totalt = 0; const framdrift = () => logg(`Henter markslag (AR5): ${ferdig} av ${totalt} kartruter …`);
   const hentRute = async (b, dybde = 0) => {
     let fl;
     // Tjenesten svarer 500 på ruter med svært mange flater – da deles ruten, som ved 1000-taket.
     let delOpp = false;
-    // Ruter som fortsatt feiler ved ca. 250 m, tas med i redningen etterpå (flate for flate med filter).
-    try { fl = parseKml(await hentT(kmlUrl(b))); } catch (e) { if (dybde >= 4) { vanskelige.push(b); return []; } delOpp = true; }
-    if (!delOpp && (fl.length < KML_MAKS || dybde >= 5)) { ruter.push(b); return fl; }
+    // Svarer den ikke innen 45 s (svært mange flater), deles den også. Ruter som fortsatt feiler ved ca. 190 m, tas
+    // med i redningen etterpå (flate for flate med filter).
+    try { fl = parseKml(await hentT(kmlUrl(b), 45000, { delVedTid: true })); } catch (e) { if (dybde >= 3) { vanskelige.push(b); ferdig++; framdrift(); return []; } delOpp = true; }
+    if (!delOpp && (fl.length < KML_MAKS || dybde >= 5)) { ruter.push(b); ferdig++; framdrift(); return fl; }
     const mx = (b[0] + b[2]) / 2; const my = (b[1] + b[3]) / 2;
     const deler = [[b[0], b[1], mx, my], [mx, b[1], b[2], my], [b[0], my, mx, b[3]], [mx, my, b[2], b[3]]].filter((d) => {
       const hh = [[d[0], d[1]], [d[0], d[3]], [d[2], d[1]], [d[2], d[3]]].map(([x, y]) => utmTilGeo(x, y, 33));
       return treff([Math.min(...hh.map((p) => p[0])), Math.min(...hh.map((p) => p[1])), Math.max(...hh.map((p) => p[0])), Math.max(...hh.map((p) => p[1]))]);
     });
+    totalt += deler.length - 1; framdrift(); // ruten erstattes av delene
     const sett = new Map();
     for (const fl2 of await Promise.all(deler.map((d) => hentRute(d, dybde + 1)))) for (const f of fl2) if (!sett.has(f.id)) sett.set(f.id, f);
     return [...sett.values()];
   };
   logg('Henter markslag (AR5) …');
-  // AR5-laget tegnes bare i store målestokker: over ca. 6 km bredde gir KML-svaret ingen flater. Start med ruter på maks 4 km; ruter som gir feil 500 deles videre.
-  const RUTE = 4000; const start = [];
+  // AR5-laget tegnes bare i store målestokker: over ca. 6 km bredde gir KML-svaret ingen flater. Start med ruter på
+  // 1,5 km: en rute på 4 km kunne gi 5–10 MB og over 80 s svartid hos NIBIO. Ruter som gir feil 500, treffer taket på
+  // 1000 flater eller ikke svarer i tide, deles videre.
+  const RUTE = 1500; const start = [];
   for (let x = ub[0]; x < ub[2]; x += RUTE) for (let y = ub[1]; y < ub[3]; y += RUTE) {
     const d = [x, y, Math.min(x + RUTE, ub[2]), Math.min(y + RUTE, ub[3])];
     const hh = [[d[0], d[1]], [d[0], d[3]], [d[2], d[1]], [d[2], d[3]]].map(([a, b]) => utmTilGeo(a, b, 33));
     if (treff([Math.min(...hh.map((p) => p[0])), Math.min(...hh.map((p) => p[1])), Math.max(...hh.map((p) => p[0])), Math.max(...hh.map((p) => p[1]))])) start.push(d);
   }
+  totalt = start.length; framdrift();
   const sett = new Map();
   for (const fl of await Promise.all(start.map((d) => hentRute(d)))) for (const f of fl) if (!sett.has(f.id)) sett.set(f.id, f);
   // Redning: enkelte AR5-flater har geometri som NIBIOs KML-utskrift ikke klarer (svar 500), og da feiler hver rute
@@ -211,6 +223,149 @@ export async function hentAr5(grense, { hent = fetch, klipp, logg = () => {}, bo
     const daa = arealM2(g) / 1000;
     if (daa < 0.05) continue;
     ut.push({ id: f.id, kategori: klassifiser(a), geometri: g, areal: daa, ar5: { artype: a.artype_beskrivelse, bonitet: BONITET[a.arskogbon] || a.arskogbon_beskrivelse, treslag: a.artreslag_beskrivelse, grunnforhold: a.argrunnf_beskrivelse, datafangst: a.datafangstdato, metode: a.klassifiseringsmetode } });
+  }
+  return ut;
+}
+
+// ---------- AR5 som vektorfliser (MVT) ----------
+// NIBIOs MapServer kan levere kartet som Mapbox-vektorflis (FORMAT=mvt): geometrien er klippet til ruten, og hver
+// flate har id og alle attributter. Det er mange ganger raskere enn KML, som sender hele flaten uklippet – én enkelt
+// stor flate (f.eks. Randsfjorden, 125 000 punkter) gjorde hver KML-rute i nærheten 3–5 MB stor og over ett minutt treg.
+// Minimal protobuf-leser for MVT-spesifikasjonen v2 (lag 3, flate 2, nøkler 3, verdier 4, utstrekning 5).
+export function lesMvt(u8) {
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength); const tekst = new TextDecoder();
+  const felt = function* (s, e) {
+    let p = s;
+    const varint = () => { let r = 0; let m = 1; let x; do { x = u8[p++]; r += (x & 127) * m; m *= 128; } while (x & 128); return r; };
+    while (p < e) {
+      const k = varint(); const f = Math.floor(k / 8); const t = k & 7;
+      if (t === 0) yield [f, varint()];
+      else if (t === 2) { const l = varint(); yield [f, [p, p + l]]; p += l; } else if (t === 5) { yield [f, dv.getFloat32(p, true)]; p += 4; } else if (t === 1) { yield [f, dv.getFloat64(p, true)]; p += 8; } else throw new Error('Ugyldig vektorflis');
+    }
+  };
+  const pakket = ([s, e]) => { const ut = []; let p = s; while (p < e) { let r = 0; let m = 1; let x; do { x = u8[p++]; r += (x & 127) * m; m *= 128; } while (x & 128); ut.push(r); } return ut; };
+  const lag = [];
+  for (const [f, v] of felt(0, u8.length)) {
+    if (f !== 3) continue;
+    const l = { navn: '', utstrekning: 4096, nokler: [], verdier: [], flater: [] };
+    for (const [g, w] of felt(...v)) {
+      if (g === 1) l.navn = tekst.decode(u8.subarray(...w));
+      else if (g === 3) l.nokler.push(tekst.decode(u8.subarray(...w)));
+      else if (g === 5) l.utstrekning = w;
+      else if (g === 4) { let val = null; for (const [h, z] of felt(...w)) val = h === 1 ? tekst.decode(u8.subarray(...z)) : h === 6 ? (z % 2 ? -(z + 1) / 2 : z / 2) : h === 7 ? !!z : z; l.verdier.push(val); }
+      else if (g === 2) { const fl = { id: null, tagger: [], type: 0, geometri: [] }; for (const [h, z] of felt(...w)) { if (h === 1) fl.id = z; else if (h === 2) fl.tagger = pakket(z); else if (h === 3) fl.type = z; else if (h === 4) fl.geometri = pakket(z); } l.flater.push(fl); }
+    }
+    lag.push(l);
+  }
+  // Flatene med attributter og ringer i flis-koordinater (0..utstrekning, y nedover).
+  return lag.map((l) => ({
+    navn: l.navn, utstrekning: l.utstrekning,
+    flater: l.flater.map((fl) => {
+      const a = {}; for (let i = 0; i + 1 < fl.tagger.length; i += 2) a[l.nokler[fl.tagger[i]]] = l.verdier[fl.tagger[i + 1]];
+      const ringer = []; let r = null; let x = 0; let y = 0; const g = fl.geometri;
+      for (let i = 0; i < g.length;) {
+        const kmd = g[i++]; const id = kmd & 7; const n = kmd >> 3;
+        if (id === 7) { if (r && r.length >= 3) { r.push([...r[0]]); ringer.push(r); } r = null; continue; }
+        for (let k = 0; k < n; k++) {
+          const dx = g[i++]; const dy = g[i++]; x += dx % 2 ? -(dx + 1) / 2 : dx / 2; y += dy % 2 ? -(dy + 1) / 2 : dy / 2;
+          if (id === 1) r = [[x, y]]; else r?.push([x, y]);
+        }
+      }
+      return { id: fl.id, type: fl.type, attributter: a, ringer };
+    }),
+  }));
+}
+// Klipper en ring (Sutherland–Hodgman) mot rektangelet b = [x0, y0, x1, y1].
+function klippRing(ring, b) {
+  let pts = ring.slice(0, -1);
+  const kanter = [[(p) => p[0] >= b[0], (p, q) => [b[0], p[1] + ((q[1] - p[1]) * (b[0] - p[0])) / (q[0] - p[0])]], [(p) => p[0] <= b[2], (p, q) => [b[2], p[1] + ((q[1] - p[1]) * (b[2] - p[0])) / (q[0] - p[0])]],
+    [(p) => p[1] >= b[1], (p, q) => [p[0] + ((q[0] - p[0]) * (b[1] - p[1])) / (q[1] - p[1]), b[1]]], [(p) => p[1] <= b[3], (p, q) => [p[0] + ((q[0] - p[0]) * (b[3] - p[1])) / (q[1] - p[1]), b[3]]]];
+  for (const [inne, kryss] of kanter) {
+    const ut = [];
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i]; const q = pts[(i + 1) % pts.length];
+      if (inne(p)) { ut.push(p); if (!inne(q)) ut.push(kryss(p, q)); } else if (inne(q)) ut.push(kryss(p, q));
+    }
+    pts = ut; if (pts.length < 3) return null;
+  }
+  return [...pts, [...pts[0]]];
+}
+// Geometrien til én flate i en flis med UTM33-boksen b, klippet til boksen (flisene har en buffer utenfor ruten).
+export function mvtFlateGeometri(flate, b, utstrekning = 4096) {
+  const ringer = [];
+  for (const r of flate.ringer) {
+    const utm = r.map(([px, py]) => [b[0] + (px / utstrekning) * (b[2] - b[0]), b[3] - (py / utstrekning) * (b[3] - b[1])]);
+    const k = klippRing(utm, b); if (!k) continue;
+    const geo = []; for (const [x, y] of k) { const p = utmTilGeo(x, y, 33).map((v) => Math.round(v * 1e7) / 1e7); if (!geo.length || p[0] !== geo.at(-1)[0] || p[1] !== geo.at(-1)[1]) geo.push(p); }
+    if (geo.length >= 4) ringer.push(geo);
+  }
+  return ringerTilGeometri(ringer);
+}
+async function hentBytes(hent, url, ms = 60000) {
+  for (let forsok = 0; ; forsok++) {
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), ms);
+    try {
+      const r = await hent(url, { signal: ctrl.signal });
+      if (!r.ok) { const f = new Error(`NIBIO svarte ${r.status}`); f.status = r.status; throw f; }
+      const u8 = new Uint8Array(await r.arrayBuffer());
+      if (u8[0] === 0x3c) { const f = new Error('NIBIO leverer ikke vektorfliser'); f.format = true; throw f; } // «<» = feilmelding i XML
+      return u8;
+    } catch (e) {
+      if (e.format || forsok >= 2) throw ctrl.signal.aborted ? new Error('NIBIO (AR5) svarte ikke i tide') : e;
+      await new Promise((res) => setTimeout(res, 800 * (forsok + 1)));
+    } finally { clearTimeout(t); }
+  }
+}
+const somMulti = (gs) => { const p = gs.flatMap((g) => (g.type === 'Polygon' ? [g.coordinates] : g.coordinates)); return p.length === 1 ? { type: 'Polygon', coordinates: p[0] } : { type: 'MultiPolygon', coordinates: p }; };
+
+// Henter AR5-flater (geometri + attributter) som overlapper grensen. klipp(geometri) → klippet geometri eller null.
+// foren(geometrier) → én geometri: slår sammen bitene av en flate som går over flere ruter (uten den blir bitene en
+// MultiPolygon). Bruker vektorfliser; leverer ikke NIBIO dem, brukes KML.
+export async function hentAr5(grense, opt = {}) {
+  try { return await hentAr5Mvt(grense, opt); } catch (e) {
+    if (!e.format) throw e;
+    (opt.logg || (() => {}))('Henter markslag (AR5) som KML …');
+    return hentAr5Kml(grense, opt);
+  }
+}
+async function hentAr5Mvt(grense, { hent = fetch, klipp, logg = () => {}, boksTreff = null, foren = null } = {}) {
+  const [x0, y0, x1, y1] = bbox(grense);
+  const h = [[x0, y0], [x0, y1], [x1, y0], [x1, y1]].map(([x, y]) => geoTilUtm(x, y, 33));
+  const ub = [Math.min(...h.map((p) => p[0])) - 50, Math.min(...h.map((p) => p[1])) - 50, Math.max(...h.map((p) => p[0])) + 50, Math.max(...h.map((p) => p[1])) + 50];
+  const treff = boksTreff || ((bb) => overlapp(bb, [x0, y0, x1, y1]));
+  // Kvadratiske ruter på 2 km (MVT-utstrekning 4096 → ca. 0,5 m oppløsning). Ruter utenfor eiendommen hoppes over.
+  const RUTE = 2000; const ruter = [];
+  for (let x = ub[0]; x < ub[2]; x += RUTE) for (let y = ub[1]; y < ub[3]; y += RUTE) { const d = [x, y, x + RUTE, y + RUTE]; if (treff(utmBoksTilGeo(d))) ruter.push(d); }
+  const ko = begrens(6); let ferdig = 0; let feil = 0;
+  logg(`Henter markslag (AR5): 0 av ${ruter.length} kartruter …`);
+  const biter = new Map(); const attr = new Map();
+  await Promise.all(ruter.map((b) => ko(async () => {
+    let u8;
+    try { u8 = await hentBytes(hent, `${NIBIO}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=Arealtype&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&WIDTH=4096&HEIGHT=4096&FORMAT=mvt`, 60000); } catch (e) { if (e.format) throw e; feil++; return; }
+    for (const l of lesMvt(u8)) {
+      for (const f of l.flater) {
+        const id = String(f.attributter.sl_sdeid ?? f.id ?? ''); if (!id || f.type !== 3) continue;
+        const g = mvtFlateGeometri(f, b, l.utstrekning); if (!g) continue;
+        attr.set(id, f.attributter);
+        if (!biter.has(id)) biter.set(id, []); biter.get(id).push(g);
+      }
+    }
+    logg(`Henter markslag (AR5): ${++ferdig} av ${ruter.length} kartruter …`);
+  })));
+  if (feil && !biter.size) throw new Error('NIBIO svarte ikke på forespørslene om markslag');
+  if (feil) logg(`${feil} rute(r) i AR5 svarte ikke – markslag kan mangle for deler av eiendommen`);
+  logg(`Klipper ${biter.size} AR5-flater mot eiendommen …`);
+  const ut = [];
+  for (const [id, gs] of biter) {
+    let geometri = gs.length === 1 ? gs[0] : null;
+    if (!geometri && foren) { try { geometri = foren(gs); } catch { /* bitene som MultiPolygon */ } }
+    geometri = geometri || somMulti(gs);
+    if (!treff(bbox(geometri))) continue;
+    const a = attr.get(id); const g = klipp ? klipp(geometri) : geometri;
+    if (!g) continue;
+    const daa = arealM2(g) / 1000;
+    if (daa < 0.05) continue;
+    ut.push({ id, kategori: klassifiser(a), geometri: g, areal: daa, ar5: { artype: a.artype_beskrivelse, bonitet: BONITET[a.arskogbon] || a.arskogbon_beskrivelse, treslag: a.artreslag_beskrivelse, grunnforhold: a.argrunnf_beskrivelse, datafangst: a.datafangstdato, metode: a.klassifiseringsmetode } });
   }
   return ut;
 }

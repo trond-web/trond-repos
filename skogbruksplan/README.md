@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.35.0** (2026-10-18) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
+**Versjon 1.36.0** (2026-10-19) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -517,6 +517,9 @@ Når en plan lages fra gårds- og bruksnummer, vurderes hvert bestand fra den ga
 ## Markslag og uproduktiv mark (AR5)
 
 Når planen lages, hentes markslag fra NIBIOs arealressurskart AR5 (`js/markslag.js`).
+
+- **Henting:** AR5 hentes som vektorfliser (MVT) i ruter på 2 × 2 km. Hver flis har geometrien klippet til ruten, med id og alle attributter, og svarer på omtrent ett sekund. Biter av samme flate fra flere ruter slås sammen. Leverer ikke NIBIO vektorfliser, brukes KML som før.
+  - **Hvorfor:** KML-utskriften sender hver flate uklippet. Store flater (f.eks. Randsfjorden, ca. 125 000 punkter) gjorde hver kartrute i nærheten flere MB stor og over ett minutt treg, og innlesingen stoppet opp (Gran 125/2).
 
 - **Kategorier:**
   - produktiv skog (skogbonitet lav–særs høy)
