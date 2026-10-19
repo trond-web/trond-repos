@@ -1,0 +1,2567 @@
+{
+ "hentet": "2026-10-19T11:10:02.603Z",
+ "steder": [
+  {
+   "id": "rådhusvegen 39|2770",
+   "adresse": "Rådhusvegen 39",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "918645330",
+     "navn": "Familie og velferd administrasjon",
+     "registrertNavn": "GRAN KOMMUNE FAMILIE OG VELFERD ADMINISTRASJON",
+     "naeringskode": "84.120",
+     "naering": "Offentlig administrasjon tilknyttet helsestell, undervisning, kultur og annen sosial virksomhet",
+     "ansatte": 16,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "raadhus"
+    },
+    {
+     "orgnr": "918645624",
+     "navn": "Hadeland nært og natulig interkommunalt politisk råd administrasjon",
+     "registrertNavn": "GRAN KOMMUNE HADELAND NÆRT OG NATULIG INTERKOMMUNALT POLITISK RÅD ADMINISTRASJON",
+     "naeringskode": "84.110",
+     "naering": "Generell offentlig administrasjon",
+     "ansatte": null,
+     "avdeling": "Hadeland interkommunalt politisk råd",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "raadhus"
+    },
+    {
+     "orgnr": "974596229",
+     "navn": "Helse og omsorg administrasjon",
+     "registrertNavn": "GRAN KOMMUNE HELSE OG OMSORG ADMINISTRASJON",
+     "naeringskode": "84.120",
+     "naering": "Offentlig administrasjon tilknyttet helsestell, undervisning, kultur og annen sosial virksomhet",
+     "ansatte": null,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "raadhus"
+    },
+    {
+     "orgnr": "974596199",
+     "navn": "Kommunedirektør",
+     "registrertNavn": "GRAN KOMMUNE KOMMUNEDIREKTØR",
+     "naeringskode": "84.110",
+     "naering": "Generell offentlig administrasjon",
+     "ansatte": 41,
+     "avdeling": "Kommunedirektør",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "raadhus"
+    },
+    {
+     "orgnr": "918645454",
+     "navn": "Kultur og samfunn",
+     "registrertNavn": "GRAN KOMMUNE KULTUR OG SAMFUNN",
+     "naeringskode": "84.120",
+     "naering": "Offentlig administrasjon tilknyttet helsestell, undervisning, kultur og annen sosial virksomhet",
+     "ansatte": 12,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "raadhus"
+    },
+    {
+     "orgnr": "973712241",
+     "navn": "Landbrukskontoret for Hadeland",
+     "registrertNavn": "LANDBRUKSKONTORET FOR HADELAND",
+     "naeringskode": "84.130",
+     "naering": "Offentlig administrasjon tilknyttet næringsvirksomhet og arbeidsmarked",
+     "ansatte": 11,
+     "avdeling": "Landbrukskontoret for Hadeland",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "raadhus"
+    },
+    {
+     "orgnr": "974596261",
+     "navn": "Oppvekst administrasjon",
+     "registrertNavn": "GRAN KOMMUNE OPPVEKST ADMINISTRASJON",
+     "naeringskode": "84.120",
+     "naering": "Offentlig administrasjon tilknyttet helsestell, undervisning, kultur og annen sosial virksomhet",
+     "ansatte": 16,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "raadhus"
+    },
+    {
+     "orgnr": "889721022",
+     "navn": "Plan og bygg",
+     "registrertNavn": "GRAN KOMMUNE PLAN OG BYGG",
+     "naeringskode": "84.130",
+     "naering": "Offentlig administrasjon tilknyttet næringsvirksomhet og arbeidsmarked",
+     "ansatte": 16,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "raadhus"
+    },
+    {
+     "orgnr": "934873157",
+     "navn": "Rådhuskantina",
+     "registrertNavn": "GRAN KOMMUNE RÅDHUSKANTINA",
+     "naeringskode": "56.110",
+     "naering": "Drift av restauranter",
+     "ansatte": null,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "raadhus"
+    },
+    {
+     "orgnr": "983781810",
+     "navn": "Pedagogisk/Psykologisk tjeneste",
+     "registrertNavn": "GRAN KOMMUNE PEDAGOGISK/PSYKOLOGISK TJENESTE",
+     "naeringskode": "85.691",
+     "naering": "Pedagogisk-psykologisk rådgivningstjeneste",
+     "ansatte": 16,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    },
+    {
+     "orgnr": "983781829",
+     "navn": "Barnevernstjenesten",
+     "registrertNavn": "GRAN KOMMUNE BARNEVERNSTJENESTEN",
+     "naeringskode": "88.991",
+     "naering": "Barneverntjenester",
+     "ansatte": 16,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "990028613",
+     "navn": "Forebyggende tjenester",
+     "registrertNavn": "GRAN KOMMUNE FOREBYGGENDE TJENESTER",
+     "naeringskode": "86.950",
+     "naering": "Fysioterapi- og ergoterapitjenester",
+     "ansatte": 13,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "983781837",
+     "navn": "Helsestasjon og skolehelsetjeneste",
+     "registrertNavn": "GRAN KOMMUNE HELSESTASJON OG SKOLEHELSETJENESTE",
+     "naeringskode": "86.942",
+     "naering": "Helsestasjons- og skolehelsetjenester",
+     "ansatte": 14,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "819083622",
+     "navn": "Hjemmetjenesten",
+     "registrertNavn": "GRAN KOMMUNE HJEMMETJENESTEN",
+     "naeringskode": "86.941",
+     "naering": "Sykepleietjenester og andre helsetjenester i hjemmet",
+     "ansatte": 187,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "990556555",
+     "navn": "Jaren legesenter",
+     "registrertNavn": "JAREN LEGESENTER",
+     "naeringskode": "86.210",
+     "naering": "Allmennlegetjenester",
+     "ansatte": 16,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "994958860",
+     "navn": "Koordinering og tildeling av tjenester",
+     "registrertNavn": "GRAN KOMMUNE KOORDINERING OG TILDELING AV TJENESTER",
+     "naeringskode": "87.102",
+     "naering": "Sykehjemstjenester",
+     "ansatte": 10,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "973712217",
+     "navn": "Legetjeneste",
+     "registrertNavn": "GRAN KOMMUNE LEGETJENESTE",
+     "naeringskode": "86.210",
+     "naering": "Allmennlegetjenester",
+     "ansatte": 6,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "918684611",
+     "navn": "Psykisk helsetjeneste",
+     "registrertNavn": "GRAN KOMMUNE PSYKISK HELSETJENESTE",
+     "naeringskode": "86.992",
+     "naering": "Forebyggende helsearbeid",
+     "ansatte": 12,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "988921343",
+     "navn": "Vikarer i helse og omsorg",
+     "registrertNavn": "GRAN KOMMUNE VIKARER I HELSE OG OMSORG",
+     "naeringskode": "87.102",
+     "naering": "Sykehjemstjenester",
+     "ansatte": null,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "983781845",
+     "navn": "Eiendom",
+     "registrertNavn": "GRAN KOMMUNE EIENDOM",
+     "naeringskode": "81.100",
+     "naering": "Kombinerte tjenester tilknyttet eiendomsdrift",
+     "ansatte": 65,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "teknisk"
+    },
+    {
+     "orgnr": "974596210",
+     "navn": "Samferdsel",
+     "registrertNavn": "GRAN KOMMUNE SAMFERDSEL",
+     "naeringskode": "42.110",
+     "naering": "Bygging av veier og motorveier",
+     "ansatte": 8,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "teknisk"
+    },
+    {
+     "orgnr": "918989412",
+     "navn": "Teknisk sjef kloakk",
+     "registrertNavn": "GRAN KOMMUNE TEKNISK SJEF KLOAKK",
+     "naeringskode": "37.000",
+     "naering": "Oppsamling og behandling av avløpsvann",
+     "ansatte": 7,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "teknisk"
+    },
+    {
+     "orgnr": "818989482",
+     "navn": "Teknisk sjef vann",
+     "registrertNavn": "GRAN KOMMUNE TEKNISK SJEF VANN",
+     "naeringskode": "36.000",
+     "naering": "Uttak fra kilde, rensing og distribusjon av vann",
+     "ansatte": 10,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Rådhusvegen 39",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "teknisk"
+    }
+   ],
+   "kategori": "raadhus",
+   "kategorier": [
+    "raadhus",
+    "skole",
+    "helse",
+    "teknisk"
+   ],
+   "erRaadhus": true,
+   "tittel": "Gran rådhus",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.39295284836627,
+    "lon": 10.560421090905512,
+    "presisjon": "adresse",
+    "treff": "Rådhusvegen 39",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "storlinna 25|2760",
+   "adresse": "Storlinna 25",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "818687192",
+     "navn": "Apo-klubben",
+     "registrertNavn": "GRAN KOMMUNE APO-KLUBBEN",
+     "naeringskode": "88.996",
+     "naering": "Andre sosialtjenester uten botilbud ellers",
+     "ansatte": null,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Storlinna 25",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "kultur"
+    },
+    {
+     "orgnr": "973712152",
+     "navn": "Brandbu kino",
+     "registrertNavn": "BRANDBU KINO",
+     "naeringskode": "59.140",
+     "naering": "Filmfremvisning",
+     "ansatte": null,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Storlinna 25",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "kultur"
+    }
+   ],
+   "kategori": "kultur",
+   "kategorier": [
+    "kultur"
+   ],
+   "erRaadhus": false,
+   "tittel": "Apo-klubben",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.421488211972225,
+    "lon": 10.505391647561417,
+    "presisjon": "adresse",
+    "treff": "Storlinna 25",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "hadelandsvegen 2195|2740",
+   "adresse": "Hadelandsvegen 2195",
+   "postnummer": "2740",
+   "poststed": "Roa",
+   "virksomheter": [
+    {
+     "orgnr": "918688099",
+     "navn": "Arena Lunner",
+     "registrertNavn": "ARENA LUNNER",
+     "naeringskode": "88.910",
+     "naering": "Dagaktivitetstilbud for barn",
+     "ansatte": null,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Hadelandsvegen 2195",
+     "postnummer": "2740",
+     "poststed": "Roa",
+     "kommunenummer": "3234",
+     "kategori": "kultur"
+    }
+   ],
+   "kategori": "kultur",
+   "kategorier": [
+    "kultur"
+   ],
+   "erRaadhus": false,
+   "tittel": "Arena Lunner",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.292027403225255,
+    "lon": 10.61453204754953,
+    "presisjon": "adresse",
+    "treff": "Hadelandsvegen 2195",
+    "kommunenummer": "3234"
+   }
+  },
+  {
+   "id": "brurbakkvegen 34|2760",
+   "adresse": "Brurbakkvegen 34",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "973982729",
+     "navn": "Bergseng bondegårds-barnehage AS",
+     "registrertNavn": "BERGSENG BONDEGÅRDS-BARNEHAGE AS",
+     "naeringskode": "85.100",
+     "naering": "Førskoleundervisning og drift av barnehager",
+     "ansatte": 18,
+     "avdeling": "",
+     "kommunal": false,
+     "adresse": "Brurbakkvegen 34",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "andre"
+    }
+   ],
+   "kategori": "andre",
+   "kategorier": [
+    "andre"
+   ],
+   "erRaadhus": false,
+   "tittel": "Bergseng bondegårds-barnehage AS",
+   "kommunal": false,
+   "posisjon": {
+    "lat": 60.4128505065929,
+    "lon": 10.506862780882948,
+    "presisjon": "adresse",
+    "treff": "Brurbakkvegen 34",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "skolevegen 8|3522",
+   "adresse": "Skolevegen 8",
+   "postnummer": "3522",
+   "poststed": "Bjoneroa",
+   "virksomheter": [
+    {
+     "orgnr": "875303732",
+     "navn": "Bjoneroa barnehage",
+     "registrertNavn": "BJONEROA BARNEHAGE",
+     "naeringskode": "85.100",
+     "naering": "Førskoleundervisning og drift av barnehager",
+     "ansatte": 11,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Skolevegen 8",
+     "postnummer": "3522",
+     "poststed": "Bjoneroa",
+     "kommunenummer": "3446",
+     "kategori": "barnehage"
+    }
+   ],
+   "kategori": "barnehage",
+   "kategorier": [
+    "barnehage"
+   ],
+   "erRaadhus": false,
+   "tittel": "Bjoneroa barnehage",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.51582672761269,
+    "lon": 10.297412113419192,
+    "presisjon": "adresse",
+    "treff": "Skolevegen 8",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "skolevegen 28|3522",
+   "adresse": "Skolevegen 28",
+   "postnummer": "3522",
+   "poststed": "Bjoneroa",
+   "virksomheter": [
+    {
+     "orgnr": "918686908",
+     "navn": "Bjoneroa omsorgsboliger og hjemmetjenester",
+     "registrertNavn": "GRAN KOMMUNE BJONEROA OMSORGSBOLIGER OG HJEMMETJENESTER",
+     "naeringskode": "86.941",
+     "naering": "Sykepleietjenester og andre helsetjenester i hjemmet",
+     "ansatte": 20,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Skolevegen 28",
+     "postnummer": "3522",
+     "poststed": "Bjoneroa",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Bjoneroa omsorgsboliger og hjemmetjenester",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.51512939951643,
+    "lon": 10.296673952254414,
+    "presisjon": "adresse",
+    "treff": "Skolevegen 28",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "skolevegen 5|3522",
+   "adresse": "Skolevegen 5",
+   "postnummer": "3522",
+   "poststed": "Bjoneroa",
+   "virksomheter": [
+    {
+     "orgnr": "988701726",
+     "navn": "Bjoneroa SFO",
+     "registrertNavn": "BJONEROA SFO",
+     "naeringskode": "88.910",
+     "naering": "Dagaktivitetstilbud for barn",
+     "ansatte": null,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Skolevegen 5",
+     "postnummer": "3522",
+     "poststed": "Bjoneroa",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    },
+    {
+     "orgnr": "875273892",
+     "navn": "Bjoneroa Skole",
+     "registrertNavn": "BJONEROA SKOLE",
+     "naeringskode": "85.201",
+     "naering": "Ordinær grunnskoleundervisning",
+     "ansatte": 19,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Skolevegen 5",
+     "postnummer": "3522",
+     "poststed": "Bjoneroa",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    }
+   ],
+   "kategori": "skole",
+   "kategorier": [
+    "skole"
+   ],
+   "erRaadhus": false,
+   "tittel": "Bjoneroa Skole",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.516332980288595,
+    "lon": 10.296139075094565,
+    "presisjon": "adresse",
+    "treff": "Skolevegen 5",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "bleikenvegen 75|2760",
+   "adresse": "Bleikenvegen 75",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "975303748",
+     "navn": "Bjørklund barnehage",
+     "registrertNavn": "BJØRKLUND BARNEHAGE",
+     "naeringskode": "85.100",
+     "naering": "Førskoleundervisning og drift av barnehager",
+     "ansatte": 16,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Bleikenvegen 75",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "barnehage"
+    }
+   ],
+   "kategori": "barnehage",
+   "kategorier": [
+    "barnehage"
+   ],
+   "erRaadhus": false,
+   "tittel": "Bjørklund barnehage",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.46506457131646,
+    "lon": 10.485802597238298,
+    "presisjon": "adresse",
+    "treff": "Bleikenvegen 75",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "nobels gate 28|2760",
+   "adresse": "Nobels gate 28",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "917611386",
+     "navn": "Brandbu barneskole",
+     "registrertNavn": "BRANDBU BARNESKOLE",
+     "naeringskode": "85.201",
+     "naering": "Ordinær grunnskoleundervisning",
+     "ansatte": 70,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Nobels gate 28",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    },
+    {
+     "orgnr": "917611513",
+     "navn": "Brandbu barneskole SFO",
+     "registrertNavn": "BRANDBU BARNESKOLE SFO",
+     "naeringskode": "88.910",
+     "naering": "Dagaktivitetstilbud for barn",
+     "ansatte": 22,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Nobels gate 28",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    }
+   ],
+   "kategori": "skole",
+   "kategorier": [
+    "skole"
+   ],
+   "erRaadhus": false,
+   "tittel": "Brandbu barneskole",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.42251148640337,
+    "lon": 10.513992195443453,
+    "presisjon": "adresse",
+    "treff": "Nobels gate 28",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "nedre hagali 18|2760",
+   "adresse": "Nedre Hagali 18",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "930493392",
+     "navn": "Brandbu legesenter",
+     "registrertNavn": "BRANDBU LEGESENTER",
+     "naeringskode": "86.210",
+     "naering": "Allmennlegetjenester",
+     "ansatte": 21,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Nedre Hagali 18",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Brandbu legesenter",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.41964313759636,
+    "lon": 10.50496128521513,
+    "presisjon": "adresse",
+    "treff": "Nedre Hagali 18",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "jens røislies veg 2|2760",
+   "adresse": "Jens Røislies veg 2",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "975273806",
+     "navn": "Brandbu ungdomsskole",
+     "registrertNavn": "BRANDBU UNGDOMSSKOLE",
+     "naeringskode": "85.201",
+     "naering": "Ordinær grunnskoleundervisning",
+     "ansatte": 51,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Jens Røislies veg 2",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    },
+    {
+     "orgnr": "973712225",
+     "navn": "Gran idrettshall",
+     "registrertNavn": "GRAN IDRETTSHALL",
+     "naeringskode": "93.110",
+     "naering": "Drift av idrettsanlegg",
+     "ansatte": 5,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Jens Røislies veg 2",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "kultur"
+    }
+   ],
+   "kategori": "skole",
+   "kategorier": [
+    "skole",
+    "kultur"
+   ],
+   "erRaadhus": false,
+   "tittel": "Brandbu ungdomsskole",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.41960734227136,
+    "lon": 10.512878257799313,
+    "presisjon": "adresse",
+    "treff": "Jens Røislies veg 2",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "ringdalslinna 7|2750",
+   "adresse": "Ringdalslinna 7",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "918986685",
+     "navn": "Briskebo bofelleskap",
+     "registrertNavn": "GRAN KOMMUNE BRISKEBO BOFELLESKAP",
+     "naeringskode": "87.202",
+     "naering": "Omsorgstjenester i botilbud for personer med utviklingshemming eller med tilsvarende funksjonsnedsettelse",
+     "ansatte": null,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Ringdalslinna 7",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Briskebo bofelleskap",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.36728035628732,
+    "lon": 10.556364752079679,
+    "presisjon": "adresse",
+    "treff": "Ringdalslinna 7",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "vannebos veg 169|2743",
+   "adresse": "Vannebos veg 169",
+   "postnummer": "2743",
+   "poststed": "Harestua",
+   "virksomheter": [
+    {
+     "orgnr": "937080328",
+     "navn": "Bua Harestua",
+     "registrertNavn": "BUA HARESTUA",
+     "naeringskode": "88.996",
+     "naering": "Andre sosialtjenester uten botilbud ellers",
+     "ansatte": null,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Vannebos veg 169",
+     "postnummer": "2743",
+     "poststed": "Harestua",
+     "kommunenummer": "3234",
+     "kategori": "kultur"
+    }
+   ],
+   "kategori": "kultur",
+   "kategorier": [
+    "kultur"
+   ],
+   "erRaadhus": false,
+   "tittel": "Bua Harestua",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.20719813912187,
+    "lon": 10.71775463115064,
+    "presisjon": "adresse",
+    "treff": "Vannebos veg 169",
+    "kommunenummer": "3234"
+   }
+  },
+  {
+   "id": "emsevegen 115|2770",
+   "adresse": "Emsevegen 115",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "985085536",
+     "navn": "Emsetrolla familiebarnehage",
+     "registrertNavn": "EMSETROLLA FAMILIEBARNEHAGE",
+     "naeringskode": "85.100",
+     "naering": "Førskoleundervisning og drift av barnehager",
+     "ansatte": null,
+     "avdeling": "",
+     "kommunal": false,
+     "adresse": "Emsevegen 115",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "andre"
+    }
+   ],
+   "kategori": "andre",
+   "kategorier": [
+    "andre"
+   ],
+   "erRaadhus": false,
+   "tittel": "Emsetrolla familiebarnehage",
+   "kommunal": false,
+   "posisjon": {
+    "lat": 60.414554832876895,
+    "lon": 10.58969373997758,
+    "presisjon": "adresse",
+    "treff": "Emsevegen 115",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "moldengutua 4|2750",
+   "adresse": "Moldengutua 4",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "888484582",
+     "navn": "Espira Romholt barnehage",
+     "registrertNavn": "ESPIRA ROMHOLT BARNEHAGE",
+     "naeringskode": "85.100",
+     "naering": "Førskoleundervisning og drift av barnehager",
+     "ansatte": 31,
+     "avdeling": "",
+     "kommunal": false,
+     "adresse": "Moldengutua 4",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "andre"
+    }
+   ],
+   "kategori": "andre",
+   "kategorier": [
+    "andre"
+   ],
+   "erRaadhus": false,
+   "tittel": "Espira Romholt barnehage",
+   "kommunal": false,
+   "posisjon": {
+    "lat": 60.34068087618763,
+    "lon": 10.596461790770164,
+    "presisjon": "adresse",
+    "treff": "Moldengutua 4",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "røysumslinna 2|2770",
+   "adresse": "Røysumslinna 2",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "991726004",
+     "navn": "Fagerlund barnehage",
+     "registrertNavn": "FAGERLUND BARNEHAGE",
+     "naeringskode": "85.100",
+     "naering": "Førskoleundervisning og drift av barnehager",
+     "ansatte": 42,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Røysumslinna 2",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "barnehage"
+    }
+   ],
+   "kategori": "barnehage",
+   "kategorier": [
+    "barnehage"
+   ],
+   "erRaadhus": false,
+   "tittel": "Fagerlund barnehage",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.40316335043574,
+    "lon": 10.534475567732658,
+    "presisjon": "adresse",
+    "treff": "Røysumslinna 2",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "jarenstranda 482|2770",
+   "adresse": "Jarenstranda 482",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "973210386",
+     "navn": "Fagertun sykehjem",
+     "registrertNavn": "FAGERTUN SYKEHJEM",
+     "naeringskode": "87.102",
+     "naering": "Sykehjemstjenester",
+     "ansatte": 105,
+     "avdeling": "",
+     "kommunal": false,
+     "adresse": "Jarenstranda 482",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "andre"
+    }
+   ],
+   "kategori": "andre",
+   "kategorier": [
+    "andre"
+   ],
+   "erRaadhus": false,
+   "tittel": "Fagertun sykehjem",
+   "kommunal": false,
+   "posisjon": {
+    "lat": 60.39579730456622,
+    "lon": 10.54289835782704,
+    "presisjon": "adresse",
+    "treff": "Jarenstranda 482",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "fjordlinna 100|2760",
+   "adresse": "Fjordlinna 100",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "988700797",
+     "navn": "Fredheim SFO",
+     "registrertNavn": "FREDHEIM SFO",
+     "naeringskode": "88.910",
+     "naering": "Dagaktivitetstilbud for barn",
+     "ansatte": 12,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Fjordlinna 100",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    },
+    {
+     "orgnr": "975273873",
+     "navn": "Fredheim skole",
+     "registrertNavn": "FREDHEIM SKOLE",
+     "naeringskode": "85.201",
+     "naering": "Ordinær grunnskoleundervisning",
+     "ansatte": 35,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Fjordlinna 100",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    }
+   ],
+   "kategori": "skole",
+   "kategorier": [
+    "skole"
+   ],
+   "erRaadhus": false,
+   "tittel": "Fredheim skole",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.39120886373656,
+    "lon": 10.463310008352883,
+    "presisjon": "adresse",
+    "treff": "Fjordlinna 100",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "storlinna 48|2760",
+   "adresse": "Storlinna 48",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "918687114",
+     "navn": "Gran bibliotek avd Brandbu",
+     "registrertNavn": "GRAN BIBLIOTEK AVD BRANDBU",
+     "naeringskode": "91.111",
+     "naering": "Drift av folkebiblioteker",
+     "ansatte": null,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Storlinna 48",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "kultur"
+    },
+    {
+     "orgnr": "974596326",
+     "navn": "Gran bibliotek avd Gran",
+     "registrertNavn": "GRAN BIBLIOTEK AVD GRAN",
+     "naeringskode": "91.111",
+     "naering": "Drift av folkebiblioteker",
+     "ansatte": 8,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Storlinna 48",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "kultur"
+    }
+   ],
+   "kategori": "kultur",
+   "kategorier": [
+    "kultur"
+   ],
+   "erRaadhus": false,
+   "tittel": "Gran bibliotek avd Gran",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.42041436002485,
+    "lon": 10.50893515689321,
+    "presisjon": "adresse",
+    "treff": "Storlinna 48A",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "storlinna 4|2760",
+   "adresse": "Storlinna 4",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "973712268",
+     "navn": "Gran kommunale vannverk",
+     "registrertNavn": "GRAN KOMMUNALE VANNVERK",
+     "naeringskode": "36.000",
+     "naering": "Uttak fra kilde, rensing og distribusjon av vann",
+     "ansatte": null,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Storlinna 4",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "teknisk"
+    },
+    {
+     "orgnr": "973712209",
+     "navn": "Kloakkvesenet",
+     "registrertNavn": "GRAN KOMMUNE KLOAKKVESENET",
+     "naeringskode": "37.000",
+     "naering": "Oppsamling og behandling av avløpsvann",
+     "ansatte": null,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Storlinna 4",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "teknisk"
+    }
+   ],
+   "kategori": "teknisk",
+   "kategorier": [
+    "teknisk"
+   ],
+   "erRaadhus": false,
+   "tittel": "Gran kommunale vannverk",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.4232478721379,
+    "lon": 10.499860321038028,
+    "presisjon": "adresse",
+    "treff": "Storlinna 4",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "hovsvegen 4|2750",
+   "adresse": "Hovsvegen 4",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "974321793",
+     "navn": "Gran legesenter",
+     "registrertNavn": "GRAN LEGESENTER",
+     "naeringskode": "86.210",
+     "naering": "Allmennlegetjenester",
+     "ansatte": 10,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Hovsvegen 4",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Gran legesenter",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.359924466811414,
+    "lon": 10.573998051686553,
+    "presisjon": "adresse",
+    "treff": "Hovsvegen 4",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "morstadvegen 37|2750",
+   "adresse": "Morstadvegen 37",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "974726106",
+     "navn": "Gran politistasjon",
+     "registrertNavn": "GRAN POLITISTASJON",
+     "naeringskode": "84.240",
+     "naering": "Aktiviteter utført av politi- og påtalemyndighet",
+     "ansatte": 37,
+     "avdeling": "",
+     "kommunal": false,
+     "adresse": "Morstadvegen 37",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "andre"
+    }
+   ],
+   "kategori": "andre",
+   "kategorier": [
+    "andre"
+   ],
+   "erRaadhus": false,
+   "tittel": "Gran politistasjon",
+   "kommunal": false,
+   "posisjon": {
+    "lat": 60.350531060230225,
+    "lon": 10.577253559062,
+    "presisjon": "adresse",
+    "treff": "Morstadvegen 37",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "idrettsvegen 8|2750",
+   "adresse": "Idrettsvegen 8",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "975273911",
+     "navn": "Gran ungdomsskole",
+     "registrertNavn": "GRAN UNGDOMSSKOLE",
+     "naeringskode": "85.201",
+     "naering": "Ordinær grunnskoleundervisning",
+     "ansatte": 46,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Idrettsvegen 8",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    }
+   ],
+   "kategori": "skole",
+   "kategorier": [
+    "skole"
+   ],
+   "erRaadhus": false,
+   "tittel": "Gran ungdomsskole",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.35662513477407,
+    "lon": 10.581108024030081,
+    "presisjon": "adresse",
+    "treff": "Idrettsvegen 8",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "skolebakken 9|2750",
+   "adresse": "Skolebakken 9",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "975300927",
+     "navn": "Grymyr barnehage",
+     "registrertNavn": "GRYMYR BARNEHAGE",
+     "naeringskode": "85.100",
+     "naering": "Førskoleundervisning og drift av barnehager",
+     "ansatte": 14,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Skolebakken 9",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "barnehage"
+    }
+   ],
+   "kategori": "barnehage",
+   "kategorier": [
+    "barnehage"
+   ],
+   "erRaadhus": false,
+   "tittel": "Grymyr barnehage",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.34051051589711,
+    "lon": 10.409711468721463,
+    "presisjon": "adresse",
+    "treff": "Skolebakken 9",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "hovsvegen 6|2750",
+   "adresse": "Hovsvegen 6",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "979149905",
+     "navn": "Hadeland kulturskole",
+     "registrertNavn": "HADELAND KULTURSKOLE",
+     "naeringskode": "85.521",
+     "naering": "Kulturskoleundervisning til barn og unge",
+     "ansatte": 23,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Hovsvegen 6",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "kultur"
+    }
+   ],
+   "kategori": "kultur",
+   "kategorier": [
+    "kultur"
+   ],
+   "erRaadhus": false,
+   "tittel": "Hadeland kulturskole",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.35952378963793,
+    "lon": 10.573706801819196,
+    "presisjon": "adresse",
+    "treff": "Hovsvegen 6",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "skolelia 3|2750",
+   "adresse": "Skolelia 3",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "918986758",
+     "navn": "Kultursal",
+     "registrertNavn": "GRAN KOMMUNE KULTURSAL",
+     "naeringskode": "79.121",
+     "naering": "Aktiviteter utført av utflukts- og eventarrangører",
+     "ansatte": null,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Skolelia 3",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "kultur"
+    },
+    {
+     "orgnr": "998513448",
+     "navn": "Hadeland videregående Skole",
+     "registrertNavn": "HADELAND VIDEREGÅENDE SKOLE",
+     "naeringskode": "85.310",
+     "naering": "Videregående opplæring innenfor studieforberedende utdanningsprogram",
+     "ansatte": 166,
+     "avdeling": "",
+     "kommunal": false,
+     "adresse": "Skolelia 3",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "andre"
+    },
+    {
+     "orgnr": "929639480",
+     "navn": "Karriere Innlandet Hadeland",
+     "registrertNavn": "KARRIERE INNLANDET HADELAND",
+     "naeringskode": "85.593",
+     "naering": "Undervisning ved voksenopplæringssentre, aktiviteter i studieforbund og undervisning i form av frivillige organisasjoners kurs",
+     "ansatte": 20,
+     "avdeling": "",
+     "kommunal": false,
+     "adresse": "Skolelia 3",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "andre"
+    }
+   ],
+   "kategori": "andre",
+   "kategorier": [
+    "kultur",
+    "andre"
+   ],
+   "erRaadhus": false,
+   "tittel": "Hadeland videregående Skole",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.35526231931031,
+    "lon": 10.576804605135187,
+    "presisjon": "adresse",
+    "treff": "Skolelia 3",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "haugsbakken 5|2770",
+   "adresse": "Haugsbakken 5",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "988757950",
+     "navn": "Dagsenter psykisk helse",
+     "registrertNavn": "GRAN KOMMUNE DAGSENTER PSYKISK HELSE",
+     "naeringskode": "86.992",
+     "naering": "Forebyggende helsearbeid",
+     "ansatte": null,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Haugsbakken 5",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "811662852",
+     "navn": "Haugsbakken bofellesskap",
+     "registrertNavn": "GRAN KOMMUNE HAUGSBAKKEN BOFELLESSKAP",
+     "naeringskode": "86.941",
+     "naering": "Sykepleietjenester og andre helsetjenester i hjemmet",
+     "ansatte": 25,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Haugsbakken 5",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Haugsbakken bofellesskap",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.3889898340506,
+    "lon": 10.567525802892728,
+    "presisjon": "adresse",
+    "treff": "Haugsbakken 5",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "ringdalslinna 5|2750",
+   "adresse": "Ringdalslinna 5",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "988758655",
+     "navn": "Hjertebo aktivitetssenter",
+     "registrertNavn": "GRAN KOMMUNE HJERTEBO AKTIVITETSSENTER",
+     "naeringskode": "88.102",
+     "naering": "Dagaktivitetstilbud tilpasset målgrupper",
+     "ansatte": 18,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Ringdalslinna 5",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Hjertebo aktivitetssenter",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.366635534050765,
+    "lon": 10.557748354792247,
+    "presisjon": "adresse",
+    "treff": "Ringdalslinna 5",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "skiakersgutua 20|2750",
+   "adresse": "Skiakersgutua 20",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "880271792",
+     "navn": "Hofsbro bofellesskap",
+     "registrertNavn": "GRAN KOMMUNE HOFSBRO BOFELLESSKAP",
+     "naeringskode": "87.202",
+     "naering": "Omsorgstjenester i botilbud for personer med utviklingshemming eller med tilsvarende funksjonsnedsettelse",
+     "ansatte": 44,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Skiakersgutua 20",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Hofsbro bofellesskap",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.36251020732281,
+    "lon": 10.564076634874734,
+    "presisjon": "adresse",
+    "treff": "Skiakersgutua 20A",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "hovsgutua 30|2750",
+   "adresse": "Hovsgutua 30",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "988757888",
+     "navn": "Hovsgutua bofellesskap",
+     "registrertNavn": "GRAN KOMMUNE HOVSGUTUA BOFELLESSKAP",
+     "naeringskode": "87.202",
+     "naering": "Omsorgstjenester i botilbud for personer med utviklingshemming eller med tilsvarende funksjonsnedsettelse",
+     "ansatte": 28,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Hovsgutua 30",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Hovsgutua bofellesskap",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.35688064312049,
+    "lon": 10.57614986766088,
+    "presisjon": "adresse",
+    "treff": "Hovsgutua 30",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "råstadvegen 19|2770",
+   "adresse": "Råstadvegen 19",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "988700894",
+     "navn": "Jaren SFO",
+     "registrertNavn": "JAREN SFO",
+     "naeringskode": "88.910",
+     "naering": "Dagaktivitetstilbud for barn",
+     "ansatte": 13,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Råstadvegen 19",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    }
+   ],
+   "kategori": "skole",
+   "kategorier": [
+    "skole"
+   ],
+   "erRaadhus": false,
+   "tittel": "Jaren SFO",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.39261365105597,
+    "lon": 10.57777173631143,
+    "presisjon": "adresse",
+    "treff": "Råstadvegen 19",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "rognstadvegen 64|2770",
+   "adresse": "Rognstadvegen 64",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "975273881",
+     "navn": "Jaren skole",
+     "registrertNavn": "JAREN SKOLE",
+     "naeringskode": "85.201",
+     "naering": "Ordinær grunnskoleundervisning",
+     "ansatte": 32,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Rognstadvegen 64",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    }
+   ],
+   "kategori": "skole",
+   "kategorier": [
+    "skole"
+   ],
+   "erRaadhus": false,
+   "tittel": "Jaren skole",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.418329798293556,
+    "lon": 10.56592287033677,
+    "presisjon": "adresse",
+    "treff": "Rognstadvegen 64",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "salemvegen 8|2760",
+   "adresse": "Salemvegen 8",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "988757926",
+     "navn": "Liavegen bofellesskap",
+     "registrertNavn": "GRAN KOMMUNE LIAVEGEN BOFELLESSKAP",
+     "naeringskode": "87.202",
+     "naering": "Omsorgstjenester i botilbud for personer med utviklingshemming eller med tilsvarende funksjonsnedsettelse",
+     "ansatte": null,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Salemvegen 8",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Liavegen bofellesskap",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.41455347972149,
+    "lon": 10.508739313624563,
+    "presisjon": "adresse",
+    "treff": "Salemvegen 8A",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "movegen 41|2770",
+   "adresse": "Movegen 41",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "993034460",
+     "navn": "Lindheim bolig",
+     "registrertNavn": "GRAN KOMMUNE LINDHEIM BOLIG",
+     "naeringskode": "87.202",
+     "naering": "Omsorgstjenester i botilbud for personer med utviklingshemming eller med tilsvarende funksjonsnedsettelse",
+     "ansatte": 32,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Movegen 41",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Lindheim bolig",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.39867415044975,
+    "lon": 10.565809800040364,
+    "presisjon": "adresse",
+    "treff": "Movegen 41A",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "morstadvegen 39|2750",
+   "adresse": "Morstadvegen 39",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "974596202",
+     "navn": "Lunner og Gran brann og redning",
+     "registrertNavn": "LUNNER OG GRAN BRANN OG REDNING",
+     "naeringskode": "84.250",
+     "naering": "Brannvernaktiviteter",
+     "ansatte": 51,
+     "avdeling": "Lunner og Gran brann og redning",
+     "kommunal": true,
+     "adresse": "Morstadvegen 39",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "beredskap"
+    },
+    {
+     "orgnr": "911665794",
+     "navn": "Lunner og Gran interkommunale legevakt",
+     "registrertNavn": "LUNNER OG GRAN INTERKOMMUNALE LEGEVAKT",
+     "naeringskode": "86.210",
+     "naering": "Allmennlegetjenester",
+     "ansatte": 41,
+     "avdeling": "Lunner og Gran interkommunale legevakt",
+     "kommunal": true,
+     "adresse": "Morstadvegen 39",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "beredskap"
+    }
+   ],
+   "kategori": "beredskap",
+   "kategorier": [
+    "beredskap"
+   ],
+   "erRaadhus": false,
+   "tittel": "Lunner og Gran brann og redning",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.35071769196937,
+    "lon": 10.577099812179629,
+    "presisjon": "adresse",
+    "treff": "Morstadvegen 39",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "markatun 1|2760",
+   "adresse": "Markatun 1",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "875321692",
+     "navn": "Marka barnehage",
+     "registrertNavn": "MARKA BARNEHAGE",
+     "naeringskode": "85.100",
+     "naering": "Førskoleundervisning og drift av barnehager",
+     "ansatte": 25,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Markatun 1",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "barnehage"
+    }
+   ],
+   "kategori": "barnehage",
+   "kategorier": [
+    "barnehage"
+   ],
+   "erRaadhus": false,
+   "tittel": "Marka barnehage",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.41134575428467,
+    "lon": 10.503256127997098,
+    "presisjon": "adresse",
+    "treff": "Markatun 1",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "markavegen 22|2760",
+   "adresse": "Markavegen 22",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "988701815",
+     "navn": "Aktivitetstilbud til eldre og hjemmeboende personer med demens avdeling Marka",
+     "registrertNavn": "GRAN KOMMUNE AKTIVITETSTILBUD TIL ELDRE OG HJEMMEBOENDE PERSONER MED DEMENS AVDELING MARKA",
+     "naeringskode": "88.102",
+     "naering": "Dagaktivitetstilbud tilpasset målgrupper",
+     "ansatte": null,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Markavegen 22",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "990028680",
+     "navn": "Hjelpemiddelsentralen",
+     "registrertNavn": "GRAN KOMMUNE HJELPEMIDDELSENTRALEN",
+     "naeringskode": "88.996",
+     "naering": "Andre sosialtjenester uten botilbud ellers",
+     "ansatte": 5,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Markavegen 22",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "974596253",
+     "navn": "Marka helse- og omsorgssenter",
+     "registrertNavn": "GRAN KOMMUNE MARKA HELSE- OG OMSORGSSENTER",
+     "naeringskode": "87.102",
+     "naering": "Sykehjemstjenester",
+     "ansatte": 198,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Markavegen 22",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Marka helse- og omsorgssenter",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.41204440065428,
+    "lon": 10.505881292203822,
+    "presisjon": "adresse",
+    "treff": "Markavegen 22",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "org:988757918",
+   "adresse": "",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "988757918",
+     "navn": "Markatun bofellesskap",
+     "registrertNavn": "GRAN KOMMUNE MARKATUN BOFELLESSKAP",
+     "naeringskode": "87.202",
+     "naering": "Omsorgstjenester i botilbud for personer med utviklingshemming eller med tilsvarende funksjonsnedsettelse",
+     "ansatte": 26,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Markatun bofellesskap",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.41134575428467,
+    "lon": 10.503256127997098,
+    "presisjon": "omtrentlig",
+    "treff": "Markatun 1",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "storgata 16|2750",
+   "adresse": "Storgata 16",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "974596237",
+     "navn": "NAV Lunner og Gran",
+     "registrertNavn": "NAV LUNNER OG GRAN",
+     "naeringskode": "88.995",
+     "naering": "Sosialkontortjenester",
+     "ansatte": 38,
+     "avdeling": "NAV Lunner og Gran",
+     "kommunal": true,
+     "adresse": "Storgata 16",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "beredskap"
+    }
+   ],
+   "kategori": "beredskap",
+   "kategorier": [
+    "beredskap"
+   ],
+   "erRaadhus": false,
+   "tittel": "NAV Lunner og Gran",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.35704171633435,
+    "lon": 10.571720042274606,
+    "presisjon": "adresse",
+    "treff": "Storgata 16",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "nordre ålsvegen 21a|2770",
+   "adresse": "Nordre Ålsvegen 21A",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "911662906",
+     "navn": "Nordre Ålsveg bofellesskap",
+     "registrertNavn": "GRAN KOMMUNE NORDRE ÅLSVEG BOFELLESSKAP",
+     "naeringskode": "87.202",
+     "naering": "Omsorgstjenester i botilbud for personer med utviklingshemming eller med tilsvarende funksjonsnedsettelse",
+     "ansatte": 22,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Nordre Ålsvegen 21A",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Nordre Ålsveg bofellesskap",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.395648230514745,
+    "lon": 10.55332505116199,
+    "presisjon": "adresse",
+    "treff": "Nordre Ålsvegen 21A",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "valhallavegen 5|2760",
+   "adresse": "Valhallavegen 5",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "918687254",
+     "navn": "Park og friluft",
+     "registrertNavn": "GRAN KOMMUNE PARK OG FRILUFT",
+     "naeringskode": "81.300",
+     "naering": "Beplantning av hager og parkanlegg",
+     "ansatte": null,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Valhallavegen 5",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "teknisk"
+    }
+   ],
+   "kategori": "teknisk",
+   "kategorier": [
+    "teknisk"
+   ],
+   "erRaadhus": false,
+   "tittel": "Park og friluft",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.41734,
+    "lon": 10.50931,
+    "presisjon": "omtrentlig",
+    "treff": "Valhallavegen"
+   }
+  },
+  {
+   "id": "rognebakken 8|2770",
+   "adresse": "Rognebakken 8",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "974714868",
+     "navn": "Politiets fellestjenester Jaren",
+     "registrertNavn": "POLITIETS FELLESTJENESTER JAREN",
+     "naeringskode": "84.240",
+     "naering": "Aktiviteter utført av politi- og påtalemyndighet",
+     "ansatte": 70,
+     "avdeling": "",
+     "kommunal": false,
+     "adresse": "Rognebakken 8",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "andre"
+    },
+    {
+     "orgnr": "917296154",
+     "navn": "Politiets it-enhet avd samband - Hadeland",
+     "registrertNavn": "POLITIETS IT-ENHET AVD SAMBAND - HADELAND",
+     "naeringskode": "84.240",
+     "naering": "Aktiviteter utført av politi- og påtalemyndighet",
+     "ansatte": 36,
+     "avdeling": "",
+     "kommunal": false,
+     "adresse": "Rognebakken 8",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "andre"
+    }
+   ],
+   "kategori": "andre",
+   "kategorier": [
+    "andre"
+   ],
+   "erRaadhus": false,
+   "tittel": "Politiets fellestjenester Jaren",
+   "kommunal": false,
+   "posisjon": {
+    "lat": 60.40623477225372,
+    "lon": 10.551577034101776,
+    "presisjon": "adresse",
+    "treff": "Rognebakken 8",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "gagnumsvegen 20|2750",
+   "adresse": "Gagnumsvegen 20",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "975337170",
+     "navn": "Rakalauv barnehage SA",
+     "registrertNavn": "RAKALAUV BARNEHAGE SA",
+     "naeringskode": "85.100",
+     "naering": "Førskoleundervisning og drift av barnehager",
+     "ansatte": 30,
+     "avdeling": "",
+     "kommunal": false,
+     "adresse": "Gagnumsvegen 20",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "andre"
+    }
+   ],
+   "kategori": "andre",
+   "kategorier": [
+    "andre"
+   ],
+   "erRaadhus": false,
+   "tittel": "Rakalauv barnehage SA",
+   "kommunal": false,
+   "posisjon": {
+    "lat": 60.33431864425865,
+    "lon": 10.536966261081895,
+    "presisjon": "adresse",
+    "treff": "Gagnumsvegen 20",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "rogne|2770",
+   "adresse": "Rogne",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "988757934",
+     "navn": "Rogne boliger",
+     "registrertNavn": "GRAN KOMMUNE ROGNE BOLIGER",
+     "naeringskode": "87.202",
+     "naering": "Omsorgstjenester i botilbud for personer med utviklingshemming eller med tilsvarende funksjonsnedsettelse",
+     "ansatte": 31,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Rogne",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Rogne boliger",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.4015,
+    "lon": 10.54478,
+    "presisjon": "omtrentlig",
+    "treff": "Rogne"
+   }
+  },
+  {
+   "id": "rækkengutua|2760",
+   "adresse": "Rækkengutua",
+   "postnummer": "2760",
+   "poststed": "Brandbu",
+   "virksomheter": [
+    {
+     "orgnr": "818686862",
+     "navn": "Rækkengutua",
+     "registrertNavn": "GRAN KOMMUNE RÆKKENGUTUA",
+     "naeringskode": "87.202",
+     "naering": "Omsorgstjenester i botilbud for personer med utviklingshemming eller med tilsvarende funksjonsnedsettelse",
+     "ansatte": 9,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Rækkengutua",
+     "postnummer": "2760",
+     "poststed": "Brandbu",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Rækkengutua",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.39301,
+    "lon": 10.48856,
+    "presisjon": "omtrentlig",
+    "treff": "Rækkengutua"
+   }
+  },
+  {
+   "id": "røysumslinna 43|2770",
+   "adresse": "Røysumslinna 43",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "973469770",
+     "navn": "Røysum barnehage",
+     "registrertNavn": "RØYSUM BARNEHAGE",
+     "naeringskode": "85.100",
+     "naering": "Førskoleundervisning og drift av barnehager",
+     "ansatte": 11,
+     "avdeling": "",
+     "kommunal": false,
+     "adresse": "Røysumslinna 43",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "andre"
+    }
+   ],
+   "kategori": "andre",
+   "kategorier": [
+    "andre"
+   ],
+   "erRaadhus": false,
+   "tittel": "Røysum barnehage",
+   "kommunal": false,
+   "posisjon": {
+    "lat": 60.39157397171825,
+    "lon": 10.528326489024748,
+    "presisjon": "adresse",
+    "treff": "Røysumslinna 43",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "linlykkja|2750",
+   "adresse": "Linlykkja",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "988758620",
+     "navn": "Skjervum bofellesskap",
+     "registrertNavn": "GRAN KOMMUNE SKJERVUM BOFELLESSKAP",
+     "naeringskode": "87.202",
+     "naering": "Omsorgstjenester i botilbud for personer med utviklingshemming eller med tilsvarende funksjonsnedsettelse",
+     "ansatte": 45,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Linlykkja",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Skjervum bofellesskap",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.36961,
+    "lon": 10.58075,
+    "presisjon": "omtrentlig",
+    "treff": "Linlykkja"
+   }
+  },
+  {
+   "id": "sykehjemsvegen 7|2750",
+   "adresse": "Sykehjemsvegen 7",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "888701842",
+     "navn": "Aktivitetstilbud til eldre og hjemmeboende personer med demens avdeling Skjervum",
+     "registrertNavn": "GRAN KOMMUNE AKTIVITETSTILBUD TIL ELDRE OG HJEMMEBOENDE PERSONER MED DEMENS AVDELING SKJERVUM",
+     "naeringskode": "88.102",
+     "naering": "Dagaktivitetstilbud tilpasset målgrupper",
+     "ansatte": 21,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Sykehjemsvegen 7",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "974596245",
+     "navn": "Skjervum helse- og omsorgssenter",
+     "registrertNavn": "GRAN KOMMUNE SKJERVUM HELSE- OG OMSORGSSENTER",
+     "naeringskode": "87.102",
+     "naering": "Sykehjemstjenester",
+     "ansatte": 109,
+     "avdeling": "Helse og omsorg",
+     "kommunal": true,
+     "adresse": "Sykehjemsvegen 7",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "993582603",
+     "navn": "Skjervumshagans avlastningsenhet",
+     "registrertNavn": "GRAN KOMMUNE SKJERVUMSHAGANS AVLASTNINGSENHET",
+     "naeringskode": "87.104",
+     "naering": "Tjenester i avlastningsboliger/-institusjoner",
+     "ansatte": 35,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Sykehjemsvegen 7",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    },
+    {
+     "orgnr": "926381067",
+     "navn": "Solgløtt",
+     "registrertNavn": "GRAN KOMMUNE SOLGLØTT",
+     "naeringskode": "87.202",
+     "naering": "Omsorgstjenester i botilbud for personer med utviklingshemming eller med tilsvarende funksjonsnedsettelse",
+     "ansatte": 22,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Sykehjemsvegen 7",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Skjervum helse- og omsorgssenter",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.369621793420194,
+    "lon": 10.577167779319742,
+    "presisjon": "adresse",
+    "treff": "Sykehjemsvegen 7",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "nordre ålsvegen 86|2750",
+   "adresse": "Nordre Ålsvegen 86",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "975303780",
+     "navn": "Solheim barnehage",
+     "registrertNavn": "SOLHEIM BARNEHAGE",
+     "naeringskode": "85.100",
+     "naering": "Førskoleundervisning og drift av barnehager",
+     "ansatte": 32,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Nordre Ålsvegen 86",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "barnehage"
+    }
+   ],
+   "kategori": "barnehage",
+   "kategorier": [
+    "barnehage"
+   ],
+   "erRaadhus": false,
+   "tittel": "Solheim barnehage",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.38270982876255,
+    "lon": 10.57687537468591,
+    "presisjon": "adresse",
+    "treff": "Nordre Ålsvegen 86",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "søndre ålsvegen 72|2750",
+   "adresse": "Søndre Ålsvegen 72",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "918986723",
+     "navn": "Søndre Ålsvegen 72",
+     "registrertNavn": "GRAN KOMMUNE SØNDRE ÅLSVEGEN 72",
+     "naeringskode": "87.202",
+     "naering": "Omsorgstjenester i botilbud for personer med utviklingshemming eller med tilsvarende funksjonsnedsettelse",
+     "ansatte": null,
+     "avdeling": "Familie og velferd",
+     "kommunal": true,
+     "adresse": "Søndre Ålsvegen 72",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "helse"
+    }
+   ],
+   "kategori": "helse",
+   "kategorier": [
+    "helse"
+   ],
+   "erRaadhus": false,
+   "tittel": "Søndre Ålsvegen 72",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.3565986502344,
+    "lon": 10.592363773379384,
+    "presisjon": "adresse",
+    "treff": "Søndre Ålsvegen 72",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "søndre ålsvegen 2|2750",
+   "adresse": "Søndre Ålsvegen 2",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "988701041",
+     "navn": "Trintom SFO",
+     "registrertNavn": "TRINTOM SFO",
+     "naeringskode": "88.910",
+     "naering": "Dagaktivitetstilbud for barn",
+     "ansatte": 20,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Søndre Ålsvegen 2",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    },
+    {
+     "orgnr": "975273857",
+     "navn": "Trintom skole",
+     "registrertNavn": "TRINTOM SKOLE",
+     "naeringskode": "85.201",
+     "naering": "Ordinær grunnskoleundervisning",
+     "ansatte": 66,
+     "avdeling": "Oppvekst",
+     "kommunal": true,
+     "adresse": "Søndre Ålsvegen 2",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "skole"
+    }
+   ],
+   "kategori": "skole",
+   "kategorier": [
+    "skole"
+   ],
+   "erRaadhus": false,
+   "tittel": "Trintom skole",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.359394138640134,
+    "lon": 10.58613690040599,
+    "presisjon": "adresse",
+    "treff": "Søndre Ålsvegen 2",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "trulserudvegen 2|2770",
+   "adresse": "Trulserudvegen 2",
+   "postnummer": "2770",
+   "poststed": "Jaren",
+   "virksomheter": [
+    {
+     "orgnr": "885466532",
+     "navn": "Trulserudenga barnehage",
+     "registrertNavn": "TRULSERUDENGA BARNEHAGE",
+     "naeringskode": "85.100",
+     "naering": "Førskoleundervisning og drift av barnehager",
+     "ansatte": 34,
+     "avdeling": "",
+     "kommunal": false,
+     "adresse": "Trulserudvegen 2",
+     "postnummer": "2770",
+     "poststed": "Jaren",
+     "kommunenummer": "3446",
+     "kategori": "andre"
+    }
+   ],
+   "kategori": "andre",
+   "kategorier": [
+    "andre"
+   ],
+   "erRaadhus": false,
+   "tittel": "Trulserudenga barnehage",
+   "kommunal": false,
+   "posisjon": {
+    "lat": 60.41282472716077,
+    "lon": 10.549805943512096,
+    "presisjon": "adresse",
+    "treff": "Trulserudvegen 2",
+    "kommunenummer": "3446"
+   }
+  },
+  {
+   "id": "storgata 39|2750",
+   "adresse": "Storgata 39",
+   "postnummer": "2750",
+   "poststed": "Gran",
+   "virksomheter": [
+    {
+     "orgnr": "937263961",
+     "navn": "Ung Hadeland kommunalt oppgavefelleskap (UH-KO)",
+     "registrertNavn": "UNG HADELAND KOMMUNALT OPPGAVEFELLESKAP (UH-KO)",
+     "naeringskode": "88.910",
+     "naering": "Dagaktivitetstilbud for barn",
+     "ansatte": 27,
+     "avdeling": "Kultur og samfunn",
+     "kommunal": true,
+     "adresse": "Storgata 39",
+     "postnummer": "2750",
+     "poststed": "Gran",
+     "kommunenummer": "3446",
+     "kategori": "kultur"
+    }
+   ],
+   "kategori": "kultur",
+   "kategorier": [
+    "kultur"
+   ],
+   "erRaadhus": false,
+   "tittel": "Ung Hadeland kommunalt oppgavefelleskap (UH-KO)",
+   "kommunal": true,
+   "posisjon": {
+    "lat": 60.35897960441651,
+    "lon": 10.57089240420628,
+    "presisjon": "adresse",
+    "treff": "Storgata 39",
+    "kommunenummer": "3446"
+   }
+  }
+ ]
+}
