@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Skogsprotokoll harehund</title>
+  <meta name="description" content="Skogsprotokoll og jaktprøveprotokoll for harehundprøver (NHKF) – loslogg i skogen, lospoeng, egenskapspoeng og premiegrad. Fungerer uten nett.">
+  <meta name="theme-color" content="#1c2a1f">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topp">
+    <a href="#/" class="merke" aria-label="Til oversikten">
+      <img src="icon.svg" alt="" width="28" height="28">
+      <span>Skogsprotokoll <small>harehund</small></span>
+    </a>
+    <span id="topp-status" class="topp-status"></span>
+  </header>
+  <main id="app" aria-live="polite"></main>
+  <dialog id="ark" class="ark"></dialog>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

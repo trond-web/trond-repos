@@ -1,0 +1,17 @@
+{
+  "id": "./",
+  "name": "Skogsprotokoll harehund",
+  "short_name": "Skogsprotokoll",
+  "description": "Skogsprotokoll og jaktprøveprotokoll for harehundprøver (NHKF). Fungerer uten nett. Utviklet av Trond Harald Sand.",
+  "lang": "no",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1c2a1f",
+  "theme_color": "#1c2a1f",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
