@@ -12,10 +12,13 @@ export const LOSDYR = {
 // Støvere premieres på hare og rev. Beagle/drever (småhund) også på rådyr og hjort (kap. 14.4).
 export const LOVLIGE_LOSDYR = { stover: ['hare', 'rev'], smahund: ['hare', 'rev', 'radyr', 'hjort'] };
 
+// Rasene NHKF har ansvar for (nhkf.net/raser). Beagle og drever prøves som småhund.
 export const RASER = [
-  ['Dunker', 'stover'], ['Haldenstøver', 'stover'], ['Hamiltonstøver', 'stover'], ['Finsk støver', 'stover'],
-  ['Schillerstøver', 'stover'], ['Smålandsstøver', 'stover'], ['Plott', 'stover'], ['Beagle', 'smahund'],
-  ['Drever', 'smahund'], ['Annen støver', 'stover'],
+  ['Bernerstøver', 'stover'], ['Dunker', 'stover'], ['Finsk støver', 'stover'], ['Gotlandsstøver', 'stover'],
+  ['Haldenstøver', 'stover'], ['Hamiltonstøver', 'stover'], ['Hygen', 'stover'], ['Istarski korthåret støver', 'stover'],
+  ['Istarski strihåret støver', 'stover'], ['Jurastøver', 'stover'], ['Luzernstøver', 'stover'], ['Russisk flekket støver', 'stover'],
+  ['Russisk støver', 'stover'], ['Schillerstøver', 'stover'], ['Schweizerstøver', 'stover'], ['Smålandsstøver', 'stover'],
+  ['Beagle', 'smahund'], ['Drever', 'smahund'],
 ];
 
 export function gruppeForRase(rase) {
