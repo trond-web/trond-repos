@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.37.0** (2026-10-19) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.38.0** (2026-10-19) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -620,6 +620,54 @@ Kilder: [Landbruksdirektoratet om § 26](https://www.landbruksdirektoratet.no/nb
 [Mattilsynet: krav til sprøytejournalen](https://www.mattilsynet.no/planter-og-dyrking/plantevernmidler/veileder-til-forskrift-om-plantevernmidler/journalforing-ved-bruk-av-plantevernmidler/krav-til-sproytejournalen),
 [NLR: plantevernjournalen](https://www.nlr.no/nyhetsarkiv/default/2025/slik-fyller-du-ut-plantevernjournalen).
 Tallene for husdyrgjødsel er typiske verdier – bruk egen gjødselanalyse når den finnes.
+
+## Maskin – John Deere og ISOBUS (Skifteplan › 🚜 Maskin)
+
+Skifteplanen henger sammen med traktoren: data går ut til skjermen, og utført arbeid kommer tilbake til gjødseljournalen, sprøytejournalen, avlingen per skifte og KSL. Logikken ligger i `js/maskindata.js` (ingen DOM), grensesnittet i `js/maskin-ui.js` og mellomleddet til John Deere i `jd-relay.js`.
+
+**Til traktoren** (John Deere Gen4/G5 og andre ISOBUS-terminaler):
+- **Skiftegrenser** som Shapefile (WGS84), med kolonnene CLIENT, FARM og FIELD, slik at skjermen kan knytte dem til kunde, gård og skifte.
+- **Kjørespor (AB-linjer)** langs den lengste siden av hvert skifte, forlenget over hele skiftet. Linjene kan vises i kartet. De gir mindre overlapp og færre hull.
+- **Gjødselkart (Rx)** for en planlagt gjødsling, med kolonnene `RATE_KGHA` (kg/ha) og `RATE_DAA`.
+  - Har skiftet avlingskart fra en tidligere høsting, deles det i soner for lav, middels og høy avling.
+  - N justeres etter forventet avling i sonen med Gjødslingshåndbokas korreksjon (kg N per 100 kg avling), maks ±25 %.
+  - Gjødsel flyttes dit avlingspotensialet er, uten at totalen øker.
+- **ISOXML** (ISO 11783-10, `TASKDATA/TASKDATA.XML`) med kunde, gård, skifter (PFD/PLN), AB-linjer (GGP/GPN) og oppgaver med behandlingssoner (TSK/TZN/PDV, DDI 0006 i mg/m²).
+- **Overføring:**
+  1. **USB:** «Last ned til USB (ZIP)». Pakk ut på rota av en USB-pinne, slik at mappa `Rx` ligger øverst. På skjermen: Data Manager › Import Data. `LES_MEG.txt` i pakka forklarer stegene.
+  2. **Trådløst:** «Send til Operations Center» legger ZIP-fila under Filer i organisasjonen. Derfra sendes den til skjermen med Data Sync eller «Send til maskin» (JDLink).
+
+**Fra traktoren:**
+- **Kilder:**
+  - Shapefile-eksport fra Operations Center (ZIP, også deflate-komprimert), som punkter eller flater.
+  - ISOXML TASKDATA med tidslogger (`TLG*.XML/BIN`, DDI 1/2/6/7).
+  - Henting rett fra Operations Center (Field Operations → Shapefile, metrisk).
+- **Gjenkjenning:** Kolonnene gjenkjennes automatisk (AppliedRate, Yld_Mass_Dry, Product, IsoTime …). Type og enhet kan overstyres før innlesing. UTM-filer (f.eks. EUREF89 UTM 32/33) regnes om.
+- **Fordeling på skiftene:** Punktene fordeles på skiftene med snitt, dekning og overlapp.
+  - **Gjødsling:** registreres som utført i gjødseljournalen. En planlagt gjødsling med samme produkt merkes utført med faktisk mengde og dato, og den planlagte mengden tas vare på. Produktet kjennes igjen fra navnet («YaraMila 22-3-10», «OPTI-KAS») og NPK leses fra navnet.
+  - **Sprøyting:** går til sprøytejournalen med preparat og dose i ml/daa. Skadegjører, begrunnelse og karenstid fylles ut etterpå, og kontrollen varsler til det er gjort.
+  - **Høsting:** gir registrert avling per skifte og et avlingskart i 20 m-ruter. Det brukes i neste års gjødselkart.
+- **Duplikater:** Samme fil leses ikke inn to ganger.
+- **KSL:** 1.1.3 (skifteregistrering), 1.2.3 (gjødseljournal) og 1.5.4 (sprøytejournal) dokumenteres fra maskindataene. KSL viser hvor mange registreringer som kom fra maskinen.
+
+**Økonomi:** Gevinsten regnes ut per år, med egne priser for gjødsel, korn og sprøytemiddel:
+- avvik fra gjødslingsplanen i kg og kroner
+- overlapp i prosent og kroner, som viser verdien av seksjonskontroll og AB-linjer
+- gjødsel flyttet med variabel gjødsling
+- avling mot forventet i kroner
+- antall journalføringer som ikke måtte føres for hånd
+
+**Oppsett av John Deere Operations Center** (valgfritt; alt over fungerer også med filer):
+1. Registrer en applikasjon på [developer.deere.com](https://developer.deere.com). Be om tilgang til Organizations, Fields, Field Operations og Files.
+2. Legg inn Redirect URI `https://skogiq-production.up.railway.app/api/jd/callback`.
+3. Sett miljøvariablene på Railway:
+   - `JD_CLIENT_ID` og `JD_CLIENT_SECRET`
+   - `JD_REDIRECT` (som over)
+   - `JD_API`: `https://partnerapi.deere.com/platform` når appen er godkjent for produksjon. Standard er sandkassen `https://sandboxapi.deere.com/platform`.
+   - `JD_FIL` (valgfri): husker tilkoblingene mellom omstarter.
+4. I appen: Skifteplan › Maskin › «Koble til John Deere». Har appen ikke tilgang til organisasjonen ennå, sendes du til Deeres side for å gi tilgang og deretter tilbake.
+
+Klienthemmeligheten og tokenene ligger bare på serveren. Nettleseren har en tilfeldig nøkkel som peker til tilkoblingen. Token fornyes automatisk med refresh token. Tilbake-adressen må være appens egen, så serveren kan ikke brukes til å videresende brukere til andre sider.
 
 ## Publisering på Railway
 
