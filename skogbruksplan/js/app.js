@@ -603,7 +603,8 @@ async function lastAr5(logg = () => {}) {
   if (!grense) throw new Error('Planen mangler eiendomsgrense');
   const klipping = await lastKlipping();
   if (!klipping) throw new Error('Geometribiblioteket kunne ikke lastes');
-  const flater = await hentAr5(grense, { klipp: klippTil(grense, klipping), logg });
+  const foren = (gs) => { const mp = klipping.union(...gs.map((g) => g.coordinates)); return mp.length === 1 ? { type: 'Polygon', coordinates: mp[0] } : { type: 'MultiPolygon', coordinates: mp }; };
+  const flater = await hentAr5(grense, { klipp: klippTil(grense, klipping), foren, logg });
   S.markslag = lagFigurer(flater, nyId);
   const sum = {}; for (const f of flater) sum[f.kategori] = (sum[f.kategori] || 0) + f.areal;
   S.metadata = { ...S.metadata, ar5: Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, Math.round(v * 10) / 10])) };

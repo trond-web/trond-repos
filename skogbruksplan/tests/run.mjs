@@ -18,7 +18,7 @@ import { lagKontekst } from '../js/ai-kontekst.js';
 import { markdownTilHtml } from '../js/assistent.js';
 import { brannnivaa, retningslinjerFor, risikoPerBestand, forebyggendeTiltak, nySkade, beregnSkade, forsikringsvurdering, oppgaverFor, brannkostnader, skademeldingTekst, naboer, iBrannsesong } from '../js/skade.js';
 import { RAPPORTER, lagRapport, lagRapportCsv, hogstprognose } from '../js/rapporter.js';
-import { klassifiser as klassifiserMarkslag, lagFigurer, arealfordeling, svgTilGeometri } from '../js/markslag.js';
+import { klassifiser as klassifiserMarkslag, lagFigurer, arealfordeling, svgTilGeometri, lesMvt, mvtFlateGeometri, hentAr5 } from '../js/markslag.js';
 import { genererTiltak, anvend as anvendMotor, endringer as motorEndringer, plantetall, maalTetthet, oppdaterBestand } from '../js/tiltaksmotor.js';
 import * as SP from '../js/skifteplan.js';
 import * as DF from '../js/driftsforhold.js';
@@ -1051,6 +1051,46 @@ test('AR5: geometri fra SVG-utskriften (flater med ugyldig geometri i KML)', () 
   const [x, y] = geoTilUtm(...g.coordinates[0][0][0], 33);
   assert.ok(Math.abs(x - 300010) < 0.5 && Math.abs(y - 6700090) < 0.5, `${x} ${y}`);
   assert.equal(svgTilGeometri('<svg></svg>', b, 1000, 1000), null);
+});
+
+test('Markslag: AR5 som vektorflis (MVT) – attributter, hull, klipping mot ruten og henting', async () => {
+  // Minimal protobuf-skriver for testflisen.
+  const vi = (n) => { const u = []; do { let b = n % 128; n = Math.floor(n / 128); if (n) b |= 128; u.push(b); } while (n); return u; };
+  const fld = (f, bytes) => [...vi(f * 8 + 2), ...vi(bytes.length), ...bytes]; const tall = (f, n) => [...vi(f * 8), ...vi(n)];
+  const str = (t) => [...new TextEncoder().encode(t)]; const zz = (n) => (n < 0 ? -2 * n - 1 : 2 * n);
+  const geom = (...rr) => { let x = 0; let y = 0; return rr.flatMap((pts) => { const g = [...vi((1 & 7) | (1 << 3))]; g.push(...vi(zz(pts[0][0] - x)), ...vi(zz(pts[0][1] - y))); [x, y] = pts[0]; g.push(...vi(2 | ((pts.length - 1) << 3))); for (const [a, b] of pts.slice(1)) { g.push(...vi(zz(a - x)), ...vi(zz(b - y))); x = a; y = b; } g.push(...vi(7 | (1 << 3))); return g; }); };
+  // Flate 1: kvadrat fra -160 til 2048 (går ut i bufferen) med et hull; flate 2: lite kvadrat. Attributter som i AR5.
+  const g1 = geom([[-160, -160], [2048, -160], [2048, 2048], [-160, 2048]], [[500, 500], [500, 1000], [1000, 1000], [1000, 500]]);
+  const g2 = geom([[3000, 3000], [3500, 3000], [3500, 3500], [3000, 3500]]);
+  const lag = [...fld(1, str('Arealtype')), ...fld(3, str('artype')), ...fld(3, str('arskogbon')), ...fld(3, str('sl_sdeid')), ...fld(3, str('artype_beskrivelse')),
+    ...fld(4, tall(5, 30)), ...fld(4, tall(5, 13)), ...fld(4, tall(5, 111)), ...fld(4, fld(1, str('Skog'))), ...fld(4, tall(5, 60)), ...fld(4, tall(5, 222)), ...fld(4, fld(1, str('Myr'))),
+    ...fld(2, [...tall(1, 111), ...fld(2, [0, 0, 1, 1, 2, 2, 3, 3]), ...tall(3, 3), ...fld(4, g1)]),
+    ...fld(2, [...tall(1, 222), ...fld(2, [0, 4, 2, 5, 3, 6]), ...tall(3, 3), ...fld(4, g2)]), ...tall(5, 4096), ...tall(15, 2)];
+  const u8 = new Uint8Array(fld(3, lag));
+  const [l] = lesMvt(u8);
+  assert.equal(l.navn, 'Arealtype'); assert.equal(l.utstrekning, 4096); assert.equal(l.flater.length, 2);
+  assert.deepEqual(l.flater[0].attributter, { artype: 30, arskogbon: 13, sl_sdeid: 111, artype_beskrivelse: 'Skog' });
+  assert.equal(l.flater[1].attributter.artype_beskrivelse, 'Myr'); assert.equal(l.flater[0].ringer.length, 2);
+  // Ruten er 2048 × 2048 m → 0,5 m per enhet. Bufferen klippes bort: flate 1 blir 1024 × 1024 m minus hullet 250 × 250 m.
+  const b = [300000, 6700000, 302048, 6702048];
+  const g = mvtFlateGeometri(l.flater[0], b, 4096);
+  assert.equal(g.type, 'Polygon'); assert.equal(g.coordinates.length, 2, 'hullet er med');
+  assert.ok(Math.abs(arealM2(g) - (1024 * 1024 - 250 * 250)) / (1024 * 1024) < 0.01, `${arealM2(g)}`);
+  const [x, y] = geoTilUtm(...g.coordinates[0].reduce((a, p) => (p[0] < a[0] ? p : a)), 33);
+  assert.ok(Math.abs(x - 300000) < 0.5 && y <= 6702048.5 && y >= 6701023, `${x} ${y}`);
+  // Henting: én rute dekker en liten eiendom; myra klassifiseres og vann/attributter følger med.
+  const [lo0, la0] = utmTilGeo(300100, 6700100, 33); const [lo1, la1] = utmTilGeo(301900, 6701900, 33);
+  const grense = { type: 'Polygon', coordinates: [[[lo0, la0], [lo1, la0], [lo1, la1], [lo0, la1], [lo0, la0]]] };
+  const urler = [];
+  const hent = async (u) => { urler.push(u); return { ok: true, status: 200, arrayBuffer: async () => u8.slice().buffer }; };
+  const fl = await hentAr5(grense, { hent });
+  assert.ok(urler.every((u) => /FORMAT=mvt/.test(u)) && urler.length >= 1, urler.join('\n'));
+  assert.deepEqual(fl.map((f) => f.kategori).sort(), ['myr', 'produktiv']);
+  assert.equal(fl.find((f) => f.kategori === 'produktiv').ar5.bonitet, 'Middels');
+  // Leverer ikke tjenesten vektorfliser (XML-feilmelding), brukes KML.
+  const kml = []; const hentX = async (u) => { kml.push(u); return /FORMAT=mvt/.test(u) ? { ok: true, status: 200, arrayBuffer: async () => new TextEncoder().encode('<?xml version="1.0"?><ServiceExceptionReport/>').buffer } : { ok: true, status: 200, text: async () => '<kml></kml>' }; };
+  await hentAr5(grense, { hent: hentX }).catch(() => null);
+  assert.ok(kml.some((u) => /FORMAT=kml/.test(u)));
 });
 
 test('Karbon: faktorer, scenarioer mot referanse, usikkerhet, egnethet, prosjekt og varsler', () => {

@@ -375,7 +375,9 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   logg('markslag', 'aktiv', 'Henter markslag fra AR5 (NIBIO) …');
   let ar5 = []; let ar5Feil = null;
   try {
-    ar5 = await hentAr5(eiendom.geometry, { hent, boksTreff, klipp: (g) => klipp(g)?.geometry || null, logg: (t) => logg('markslag', 'aktiv', t) });
+    // Bare kartruter som faktisk berører eiendommen (ikke bare boksen rundt en teig) hentes.
+    const flateTreff = (gb) => boksTreff(gb) && trygg(() => T.booleanIntersects(T.bboxPolygon(gb), eiendom)) !== false;
+    ar5 = await hentAr5(eiendom.geometry, { hent, boksTreff: flateTreff, klipp: (g) => klipp(g)?.geometry || null, foren: (gs) => forening(gs.map((g) => feat(g)))?.geometry, logg: (t) => logg('markslag', 'aktiv', t) });
   } catch (e) { ar5Feil = e.message; }
   // AR5 kan være flere tiår gammel (mye er feltkartlagt rundt 1990). Gjengrodd mark står da fortsatt som impediment
   // eller åpen fastmark. Viser nyere data produktiv skog på mesteparten av figuren – SR16 med volum og bonitet, eller en
