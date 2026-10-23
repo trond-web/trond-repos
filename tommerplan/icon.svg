@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="16" fill="#1f2a1c"/>
+  <!-- Tømmerstabel med kalender-rutenett -->
+  <circle cx="20" cy="44" r="8" fill="#c99a5b"/><circle cx="20" cy="44" r="4" fill="#e8cf9f"/>
+  <circle cx="36" cy="44" r="8" fill="#c99a5b"/><circle cx="36" cy="44" r="4" fill="#e8cf9f"/>
+  <circle cx="28" cy="31" r="8" fill="#b07f42"/><circle cx="28" cy="31" r="4" fill="#e8cf9f"/>
+  <path d="M42 14 L50 26 L46 26 L52 34 L44 34 Z" fill="#5c9c68"/>
+  <rect x="44" y="40" width="10" height="3" rx="1.5" fill="#e9a23b"/>
+  <rect x="44" y="46" width="7" height="3" rx="1.5" fill="#e9a23b"/>
+</svg>
