@@ -1,6 +1,6 @@
 // Service worker: hele appen fungerer uten nett i skogen.
-const APP = 'skogsprotokoll-v6';
-const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'js/app.js', 'js/regler.js'];
+const APP = 'skogsprotokoll-v7';
+const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'js/app.js', 'js/regler.js', 'js/resultater.js'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(APP).then((c) => c.addAll(SKALL)).then(() => self.skipWaiting()));
