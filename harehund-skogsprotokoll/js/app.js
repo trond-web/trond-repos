@@ -3,6 +3,7 @@ import {
   LOSDYR, LOVLIGE_LOSDYR, RASER, MOMENTER, TILLEGG, SKALA, UTFALL, KOBLINGSGRUNNER, HENDELSER, MIN,
   beregn, beregnEP, gruppeForRase, alderMnd, klokke, fmtTid, forslagTilleggsopplysninger, sorterHendelser, kravTabell,
 } from './regler.js';
+import { DOGWEB_KODER, dogwebResultat, resultaterPerHund, premielister, premielisteCsv } from './resultater.js';
 
 const NOKKEL = 'harehund-skogsprotokoll-v1';
 const app = document.getElementById('app');
@@ -99,6 +100,7 @@ function rute() {
   const [, side, id, fane] = location.hash.split('/');
   stoppTikk();
   if (side === 'prove' && finn(id)) return visProve(finn(id), fane || 'skog');
+  if (side === 'resultater') return visResultater(id || 'premieliste');
   return visListe();
 }
 window.addEventListener('hashchange', rute);
@@ -117,6 +119,7 @@ function visListe() {
       og lager en ferdig utfylt jaktprøveprotokoll. Alt lagres på telefonen og virker uten dekning.</p>
       <div class="knapperad">
         <button class="knapp primar" data-handling="ny">+ Ny prøve</button>
+        <a class="knapp" href="#/resultater">Resultater</a>
         <button class="knapp" data-handling="eksempel">Vis eksempel</button>
         <label class="knapp">Importer…<input type="file" accept="application/json,.json" data-handling="importer" hidden></label>
       </div>
@@ -138,6 +141,95 @@ function listeKort(p) {
     <div class="prove-tall"><span class="merkelapp ${r.premiegrad ? `p${r.premiegrad}` : ''}">${esc(status)}</span>
     <span>LP ${r.lospoeng} · EP ${r.egenskapspoeng} · PP ${r.premiepoeng}</span></div>
   </a>`;
+}
+
+// ---------- Resultater (som i DogWeb) ----------
+function visResultater(visning) {
+  document.getElementById('topp-status').textContent = 'Resultater';
+  delete app.dataset.prove;
+  delete app.dataset.fane;
+  const faner = [['premieliste', 'Premieliste'], ['hund', 'Per hund']];
+  app.innerHTML = `
+    <nav class="faner">${faner.map(([id, navn]) => `<a href="#/resultater/${id}" class="${id === visning ? 'aktiv' : ''}">${navn}</a>`).join('')}</nav>
+    ${visning === 'hund' ? resultaterHundHtml() : premielisteHtml()}`;
+}
+
+const premieTekst = (r) => (r.premiegrad ? `${r.premiegrad}` : '0');
+
+function premielisteHtml() {
+  const lister = premielister(data.prover);
+  if (!lister.length) return '<p class="tom">Ingen prøver ennå.</p>';
+  return `
+    <div class="verktoy ikke-print"><button class="knapp" data-handling="skriv">Skriv ut / lagre PDF</button></div>
+    <p class="dempet ikke-print">Satt opp som premielisten i DogWeb/Arra: vektede egenskapspoeng, rangert etter premiegrad og så konkurransepoeng.
+      Prøver med samme ref.nr. samles i én liste. Bare avsluttede prøver kommer med.</p>
+    ${lister.map((l, i) => `
+    <article class="premieliste">
+      <header>
+        <div><strong>Norske Harehund Klubbers Forbund</strong><br><strong class="tittel">PREMIELISTE</strong></div>
+        <div>Arrangør: ${esc(l.arrangor) || '—'}${l.sted ? `<br>Sted: ${esc(l.sted)}` : ''}</div>
+        <div>Prøvens ref.nr: ${esc(l.refnr) || '—'}<br>Prøveperiode: ${datoKort(l.fra)}${l.til !== l.fra ? ` – ${datoKort(l.til)}` : ''}<br>Prøvetype: ${esc(proveTypeNavn(l.type))}</div>
+      </header>
+      ${l.rader.length ? `<div class="tabell-rull"><table class="pl">
+        <thead><tr>
+          ${l.type === 'EP' ? '<th class="v">Dag</th>' : ''}<th>Kat.</th><th>Reg.nr.<br>Tittel</th><th>Hundens navn<br>Rase<br>Eier</th>
+          ${DOGWEB_KODER.slice(0, 9).map(([, , navn]) => `<th class="v"><span>${navn}</span></th>`).join('')}
+          <th class="v"><span>Egensk.poeng</span></th><th class="v"><span>Lospoeng</span></th><th class="v"><span>Sum premiepoeng</span></th><th class="v"><span>Premiegrad</span></th>
+          ${DOGWEB_KODER.slice(9).map(([, , navn]) => `<th class="v"><span>${navn}</span></th>`).join('')}
+          <th class="v"><span>Sum konk.poeng</span></th><th class="v"><span>Losdyr</span></th><th class="v"><span>Mark</span></th>
+          <th class="v"><span>Graverende</span></th><th class="v"><span>Trukket</span></th><th class="v"><span>RR-prøve</span></th>
+        </tr></thead>
+        <tbody>${l.rader.map((r) => `<tr class="${r.premiegrad ? `p${r.premiegrad}` : ''}">
+          ${l.type === 'EP' ? `<td>${r.dag}</td>` : ''}<td>${esc(r.kat)}</td><td>${esc(r.regnr)}</td>
+          <td><a href="#/prove/${r.id}/protokoll">${esc(r.navn) || '—'}</a><br><span class="dempet">${esc(r.rase)}</span><br><span class="dempet">${esc(r.eier)}</span></td>
+          ${DOGWEB_KODER.slice(0, 9).map(([, id]) => `<td>${r.poeng[id]}</td>`).join('')}
+          <td>${r.egenskapspoeng}</td><td>${r.lospoeng}</td><td><strong>${r.premiepoeng}</strong></td><td><strong>${premieTekst(r)}</strong></td>
+          ${DOGWEB_KODER.slice(9).map(([, id]) => `<td>${r.poeng[id]}</td>`).join('')}
+          <td>${r.konkurransepoeng}</td><td>${esc(r.losdyr)}</td><td>${esc(r.mark)}</td><td>${r.graverende}</td><td>${r.trukket}</td><td>${r.rr}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>` : '<p class="dempet">Ingen avsluttede prøver i denne lista ennå.</p>'}
+      ${l.ep.length ? `<h3>Eliteprøve – samlet</h3><table class="pl ep-tabell"><thead><tr><th>Kat.</th><th>Hund</th><th>Premiepoeng dag 1 + 2</th><th>EP-premie</th></tr></thead>
+        <tbody>${l.ep.map((e) => `<tr><td>${esc(e.kat)}</td><td>${esc(e.navn)} <span class="dempet">${esc(e.regnr)}</span></td><td>${e.premiepoeng}</td><td><strong>${e.premie ? `${e.premie}. EP` : '0'}</strong></td></tr>`).join('')}</tbody></table>` : ''}
+      ${l.uferdige ? `<p class="dempet ikke-print">${l.uferdige} prøve(r) i denne lista er ikke avsluttet og er ikke tatt med.</p>` : ''}
+      <footer>Korrekt premieliste bekreftes. Dato: ______________ Prøveleder: ______________________</footer>
+      <div class="knapperad ikke-print"><button class="knapp liten" data-handling="csv" data-liste="${i}">Last ned som CSV (Excel)</button></div>
+    </article>`).join('')}`;
+}
+
+function proveTypeNavn(t) {
+  return { ÅP: 'Åpen', SP: 'Småhund', EP: 'Elite', Annen: 'Annen' }[t] || t;
+}
+const datoKort = (d) => (d ? d.split('-').reverse().join('.') : '');
+
+function dogwebDetaljer(l) {
+  return `<ul class="dogweb-detaljer">
+    ${l.klasse ? `<li><span>Klasse:</span> ${esc(l.klasse)}</li>` : ''}
+    ${l.dommer ? `<li><span>Dommer:</span> ${esc(l.dommer)}</li>` : ''}
+    <li class="koder">${l.felter.map(([k, v]) => `<span class="kode">${k}: ${esc(v)}</span>`).join('')}</li>
+  </ul>`;
+}
+
+function resultaterHundHtml() {
+  const hunder = resultaterPerHund(data.prover);
+  if (!hunder.length) return '<p class="tom">Ingen avsluttede prøver ennå.</p>';
+  return `<p class="dempet">Satt opp som fanen «Harehundprøve» på hundens side i DogWeb. Trykk på en linje for å se detaljene.</p>
+    ${hunder.map((h) => `
+    <section class="kort dogweb-hund">
+      <h2>${esc(h.hund.navn || 'Uten navn')} <span class="dempet">${esc(h.hund.regnr)}</span></h2>
+      <div class="dempet">${esc(h.hund.rase)}${h.eier ? ` · Eier: ${esc(h.eier)}` : ''}</div>
+      <div class="dogweb-tittel">Harehundprøve <span class="antall">${h.linjer.length}</span></div>
+      ${h.linjer.map((l) => `
+      <details class="dogweb-linje">
+        <summary>
+          <div class="plass"><div class="dato">${datoKort(l.dato)}</div><div class="sted">${esc(l.sted)}</div>
+            <div class="poeng">${l.premie ? `<span class="pokal" aria-hidden="true">🏆</span>${esc(l.premie)}` : ''}${l.dager ? `<div class="dagpremier">${l.dager.join(', ')}</div>` : ''}</div></div>
+          <div class="klubb"><div class="aar">${(l.dato || '').slice(0, 4)}</div><div class="arrangor">${esc(l.arrangor)}</div><div class="pil" aria-hidden="true">›</div></div>
+        </summary>
+        ${l.dagerDetaljer ? l.dagerDetaljer.map((d) => `<div class="dag-tittel">Dag ${d.dag} · ${datoKort(d.dato)}</div>${dogwebDetaljer(d)}`).join('') + `<p class="dempet">Premiepoeng samlet: ${l.premiepoeng}</p>` : dogwebDetaljer(l)}
+      </details>`).join('')}
+    </section>`).join('')}
+    <p class="dempet liten">Koder som i DogWeb: MA mark · LD losdyr · LT lospoeng · JL jaktlyst · SK søk og samarbeid · FO fotarbeid · MF/MT målbruk i fot/tap ·
+      AL/AT arbeid i los/tap · MN nyansering · MH hørbarhet · KO kondisjon · LY lydighet.</p>`;
 }
 
 // ---------- Prøve med faner ----------
@@ -562,6 +654,11 @@ function protokollFane(p, r) {
     <button class="knapp" data-handling="eksporter">Eksporter (JSON)</button>
   </div>
   ${r.regelsjekk.filter((v) => v.niva !== 'info').map((v) => `<p class="varsel ${v.niva} ikke-print">${esc(v.tekst)}</p>`).join('')}
+  <section class="kort ikke-print">
+    <h2>Slik blir resultatet i DogWeb</h2>
+    ${dogwebDetaljer(dogwebResultat(p, r))}
+    <a class="knapp liten" href="#/resultater/premieliste">Se premielisten</a>
+  </section>
   <article class="protokoll">
     <header>
       <div><strong>NHKF</strong> · Jaktprøveprotokoll${p.arrangor ? ` · ${esc(p.arrangor)}` : ''}</div>
@@ -670,6 +767,12 @@ app.addEventListener('click', (ev) => {
     location.hash = '#/';
     return rute();
   }
+  if (handling === 'csv') {
+    const liste = premielister(data.prover)[Number(b.dataset.liste)];
+    if (liste) lastNed(`premieliste-${(liste.refnr || liste.arrangor || 'prove').replace(/\W+/g, '-')}.csv`, `\ufeff${premielisteCsv(liste)}`, 'text/csv');
+    return;
+  }
+  if (handling === 'skriv' && !p) { window.print(); return; }
   if (handling === 'ny') { const n = nyProve(); data.prover.push(n); lagre(); location.hash = `#/prove/${n.id}/info`; return; }
   if (handling === 'eksempel') { const n = eksempel(); data.prover.push(n); lagre(); location.hash = `#/prove/${n.id}/protokoll`; return; }
   if (!p || location.hash === '' || location.hash === '#/') return;
@@ -768,9 +871,9 @@ function normaliserTemp(v) {
   return String(v ?? '').trim().replace(/[−–]/g, '-').replace(',', '.').replace(/[^\d.-]/g, '').replace(/(?!^)-/g, '');
 }
 
-function lastNed(navn, innhold) {
+function lastNed(navn, innhold, type = 'application/json') {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([innhold], { type: 'application/json' }));
+  a.href = URL.createObjectURL(new Blob([innhold], { type }));
   a.download = navn;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);

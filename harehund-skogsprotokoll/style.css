@@ -224,6 +224,48 @@ textarea { resize: vertical; }
 .signaturer canvas { width: 100%; height: auto; aspect-ratio: 600 / 160; border: 1px dashed #9a978c; border-radius: 6px; background: #fdfcf8; touch-action: none; }
 .signaturer .rad-mellom { font-size: .8rem; color: #5d675f; margin-top: .2rem; }
 
+/* Premieliste (som i DogWeb/Arra) */
+.premieliste { background: #fff; color: #111; border: 1px solid #c9c6bb; border-radius: 6px; padding: 14px; margin-bottom: 16px; font-size: .85rem; page: premieliste; }
+.premieliste a { color: #1f5a35; }
+.premieliste .dempet { color: #5d675f; }
+.premieliste header { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .5rem 1rem; border-bottom: 2px solid #111; padding-bottom: .5rem; margin-bottom: .6rem; }
+.premieliste .tittel { font-size: 1.1rem; letter-spacing: .04em; }
+.premieliste footer { margin-top: .8rem; font-size: .85rem; }
+.tabell-rull { overflow-x: auto; }
+.pl { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.pl th, .pl td { border: 1px solid #c4c1b6; padding: .25rem .35rem; text-align: center; vertical-align: middle; }
+.pl td:nth-child(-n+3), .pl th:nth-child(-n+3) { text-align: left; }
+.pl th { background: #f2f0e8; font-weight: 600; font-size: .78rem; }
+.pl th.v { height: 9.5rem; white-space: nowrap; vertical-align: bottom; padding: .3rem .1rem; }
+.pl th.v span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; }
+.pl tr.p1 td { background: #fbf3dc; }
+.ep-tabell { margin-top: .4rem; }
+.ep-tabell td:nth-child(2) { text-align: left; }
+
+/* Per hund (som hundens side i DogWeb) */
+.dogweb-tittel { margin: .8rem 0 .3rem; font-weight: 700; border-bottom: 2px solid var(--gronn); padding-bottom: .3rem; }
+.dogweb-tittel .antall { background: var(--gronn); color: #fff; border-radius: 999px; padding: 0 .5rem; font-size: .8rem; margin-left: .3rem; }
+.dogweb-linje { border-bottom: 1px solid var(--linje); }
+.dogweb-linje summary { list-style: none; display: flex; justify-content: space-between; gap: .8rem; padding: .6rem 0; cursor: pointer; }
+.dogweb-linje summary::-webkit-details-marker { display: none; }
+.dogweb-linje .plass, .dogweb-linje .klubb { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.dogweb-linje .klubb { text-align: right; align-items: flex-end; }
+.dogweb-linje .dato, .dogweb-linje .aar { font-weight: 700; }
+.dogweb-linje .sted, .dogweb-linje .arrangor { color: var(--dempet); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
+.dogweb-linje .poeng { font-weight: 600; }
+.dogweb-linje .pokal { margin-right: .3rem; }
+.dogweb-linje .dagpremier { font-size: .85em; color: var(--dempet); font-weight: 400; }
+.dogweb-linje .pil { transition: transform .2s; font-size: 1.3rem; line-height: 1; }
+.dogweb-linje[open] .pil { transform: rotate(90deg); }
+.dogweb-detaljer { list-style: none; margin: 0 0 .7rem; padding: .5rem .7rem; background: var(--bg); border-radius: 8px; }
+.dogweb-detaljer li { margin: .15rem 0; }
+.dogweb-detaljer li > span:first-child { font-weight: 600; }
+.dogweb-detaljer .koder { display: flex; flex-wrap: wrap; gap: .25rem .9rem; margin-top: .3rem; font-variant-numeric: tabular-nums; }
+.dogweb-detaljer .kode { font-weight: 400 !important; }
+.dag-tittel { font-weight: 600; margin-top: .4rem; }
+
+@page premieliste { size: A4 landscape; margin: 10mm; }
+
 @media print {
   @page { size: A4; margin: 12mm; }
   body { background: #fff; }
@@ -234,6 +276,9 @@ textarea { resize: vertical; }
   .signaturer { grid-template-columns: 1fr 1fr; }
   .signaturer canvas { border-color: #ccc; }
   .ny-side { break-before: page; }
+  .premieliste { border: 0; padding: 0; font-size: 8pt; break-after: page; }
+  .tabell-rull { overflow: visible; }
+  .pl th.v { height: 7.5rem; }
   tr { break-inside: avoid; }
 }
 

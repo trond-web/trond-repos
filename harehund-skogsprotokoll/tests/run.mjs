@@ -1,5 +1,6 @@
 // Kjør med: node tests/run.mjs
 import assert from 'node:assert/strict';
+import { dogwebResultat, premielister, premielisteCsv, resultaterPerHund } from '../js/resultater.js';
 import {
   beregn, beregnEP, RASER, lesLogg, losgrupper, premiegradFor, maksLospoeng, aktiveMomenter, gruppeForRase, alderMnd, klovdyrGrense, MIN,
 } from '../js/regler.js';
@@ -197,6 +198,29 @@ test('eliteprøve summerer to dager', () => {
   assert.equal(beregnEP(full(svak), d2).premie, 2);
   const kortDag = prove([h(0, 'slipp'), h(30, 'uttak', { losdyr: 'hare' }), h(151, 'slutt'), h(200, 'avslutt')], { poeng: toppen });
   assert.equal(beregnEP(full(toppen), kortDag).premie, 0);
+});
+
+test('resultater som i DogWeb: koder, premieliste med vektede poeng og rangering', () => {
+  const poeng = { jaktlyst: 4, samarbeid: 3, fotarbeid: 3, malbrukFot: 4, malbrukTap: 4, arbeidLos: 3, arbeidTap: 3, nyansering: 4, horbarhet: 3, kondisjon: 4, lydighet: 3 };
+  const felles = { refnr: '44-21064', arrangor: 'Buskerud Harehundklubb', type: 'ÅP', mark: 'Snø', mal: 'E' };
+  // Samme tall som Reipi i Buskerud-protokollen: 65 lospoeng, 55 egenskapspoeng, 120 premiepoeng, 3. premie, 127 konkurransepoeng.
+  const reipi = prove([h(0, 'slipp'), h(30, 'fot'), h(75, 'uttak', { losdyr: 'hare' }), h(141, 'slutt'), h(400, 'avslutt')],
+    { ...felles, id: 'reipi', katnr: '1002', hund: { navn: 'Reipi', regnr: 'NO32907/18', rase: 'Finsk Støver', gruppe: 'stover' }, poeng });
+  const ivo = prove([h(0, 'slipp'), h(100, 'avslutt')], { ...felles, id: 'ivo', katnr: '1001', hund: { navn: 'Hs Ivo', regnr: 'NO37136/18', rase: 'Dunker', gruppe: 'stover' }, utfall: 'T', tilleggsopplysninger: 'Trukket' });
+  const d = dogwebResultat(reipi);
+  assert.deepEqual(d.felter, [['MA', 'Sn'], ['LD', 'Ha'], ['LT', 65], ['JL', 4], ['SK', 3], ['FO', 3], ['MF', 4], ['MT', 4], ['AL', 3], ['AT', 3], ['MN', 4], ['MH', 3], ['KO', 4], ['LY', 3], ['Mål', 'E'], ['Premie', 3]]);
+  assert.equal(d.premie, '3. premie');
+  const [liste] = premielister([ivo, reipi]);
+  assert.equal(liste.rader.length, 2);
+  assert.equal(liste.rader[0].kat, '1002'); // premiert hund først
+  const r = liste.rader[0];
+  assert.deepEqual([r.poeng.jaktlyst, r.poeng.samarbeid, r.poeng.fotarbeid, r.poeng.malbrukFot, r.poeng.malbrukTap, r.poeng.arbeidLos, r.poeng.arbeidTap, r.poeng.nyansering, r.poeng.horbarhet], [12, 3, 6, 4, 8, 6, 6, 4, 6]);
+  assert.deepEqual([r.egenskapspoeng, r.lospoeng, r.premiepoeng, r.premiegrad, r.konkurransepoeng, r.losdyr, r.mark], [55, 65, 120, 3, 127, 'Ha', 'Sn']);
+  assert.equal(liste.rader[1].trukket, 'T');
+  assert.match(premielisteCsv(liste).split('\r\n')[1], /^1002;NO32907\/18;Reipi;Finsk Støver;;12;3;6;4;8;6;6;4;6;55;65;120;3;4;3;127;Ha;Sn;;;$/);
+  const perHund = resultaterPerHund([ivo, reipi]);
+  assert.equal(perHund.length, 2);
+  assert.equal(perHund.find((x) => x.hund.navn === 'Reipi').linjer[0].premie, '3. premie');
 });
 
 console.log(`\n${ok} tester OK`);

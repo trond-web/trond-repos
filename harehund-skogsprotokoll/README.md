@@ -18,6 +18,14 @@ Bygger på «Regler for jaktprøver for hunder tilsluttet NHKF», gjeldende fra 
 - Regelsjekk: varsel ved full tid, klovdyrjag over aldersgrensen, under 5 timer løs, og poeng som krever mer
   (for eksempel jaktlyst 5 under 6 timer eller nyansering 5 uten to observasjoner).
 
+Resultater settes opp som i DogWeb:
+
+- **Premieliste** per prøve (samme ref.nr. samles) med kolonnene fra Arra/DogWeb-premielisten: vektede egenskapspoeng,
+  egenskapspoeng, lospoeng, premiepoeng, premiegrad, kondisjon, lydighet, konkurransepoeng, losdyr, mark, G, trukket og RR.
+  Rangert etter premiegrad og konkurransepoeng. Kan skrives ut liggende eller lastes ned som CSV.
+- **Per hund** som fanen «Harehundprøve» i DogWeb: dato, sted, premie og arrangør, med detaljer i DogWebs koder
+  (MA, LD, LT, JL, SK, FO, MF, MT, AL, AT, MN, MH, KO, LY, Mål, Premie). EP vises som én linje med premie per dag.
+
 Dommerkollegiet fastsetter alltid endelig premiering.
 
 ## Kjøre lokalt
