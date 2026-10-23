@@ -1,0 +1,27 @@
+{
+  "version": "3.6",
+  "country_code": 578,
+  "_merknad": "For drift: bruk heller Skogforsk sin anbefalte norske spi-fil (Norwegian recommended species group instructions) og endre den, siden barkfunksjoner og stammeprofil er kalibrert der.",
+  "species_groups": [
+    {
+      "species_group_user_id": "NO1_Gran",
+      "name": "GRAN",
+      "presentation_order": 1,
+      "dbh_height_cm": 130,
+      "stem_types": {"11": "Sagtømmer", "12": "Massevirke"},
+      "grades": {"1": "Kv1", "2": "Kv2", "3": "Råte"},
+      "start_grade": 1,
+      "bark_function": {"SwedishZacco": {"ConstantA": 0.48, "FactorB": 0.054}}
+    },
+    {
+      "species_group_user_id": "NO1_Furu",
+      "name": "FURU",
+      "presentation_order": 2,
+      "dbh_height_cm": 130,
+      "stem_types": {"11": "Sagtømmer", "12": "Massevirke"},
+      "grades": {"1": "Kv1", "2": "Kv2", "3": "Råte"},
+      "start_grade": 1,
+      "bark_function": {"SwedishZacco": {"ConstantA": 0.3, "FactorB": 0.065}}
+    }
+  ]
+}

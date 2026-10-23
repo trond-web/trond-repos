@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stanford2010-verktoy"
+version = "1.0.0"
+description = "Lese, lage, validere og overføre StanForD 2010-filer (hpr, hqc, fpr, mom, pin, spi, oin) for hogstmaskiner og lassbærere"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+xsd = ["lxml>=4.9"]
+
+[project.scripts]
+sf2010 = "stanford2010.cli:main"
+
+[tool.setuptools]
+packages = ["stanford2010"]
+
+[tool.setuptools.package-data]
+stanford2010 = ["web/index.html"]

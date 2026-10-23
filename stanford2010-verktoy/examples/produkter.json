@@ -1,0 +1,76 @@
+{
+  "version": "3.6",
+  "country_code": 578,
+  "products": [
+    {
+      "product_user_id": "GRAN-SAG-2026",
+      "name": "Gran sagtømmer",
+      "species_group_user_id": "NO1_Gran",
+      "group": "TIMMER",
+      "stem_type_code": 11,
+      "presentation_order": 1,
+      "destination": {"BusinessName": "Eksempel Sagbruk AS", "BusinessID": "999999999"},
+      "diameter_classes_mm": [140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400],
+      "diameter_max_mm": 600,
+      "diameter_min_top_mm": 140,
+      "diameter_max_butt_mm": 700,
+      "length_classes_cm": [370, 400, 430, 460, 490, 520, 550],
+      "length_max_cm": 559,
+      "length_margin_cm": 0,
+      "cutting_window_cm": [3, 7],
+      "volume_diameter_category": "Calculated Norwegian mid",
+      "volume_diameter_adjustment": "Measured diameter rounded downwards to cm",
+      "volume_length_category": "Rounded downwards to nearest dm-module",
+      "permitted_grades": [1, 2],
+      "prices": {
+        "default": 520,
+        "by_diameter": {"140": 430, "160": 460, "180": 490, "200": 520, "220": 540, "240": 560}
+      },
+      "forbidden_cells": [[140, 550], [160, 550]]
+    },
+    {
+      "product_user_id": "GRAN-MASSE-2026",
+      "name": "Gran massevirke",
+      "species_group_user_id": "NO1_Gran",
+      "group": "MASSA",
+      "stem_type_code": 12,
+      "presentation_order": 2,
+      "diameter_classes_mm": [50, 100, 150, 200],
+      "diameter_max_mm": 650,
+      "diameter_min_top_mm": 50,
+      "length_classes_cm": [300, 345, 400, 450, 500],
+      "length_max_cm": 530,
+      "cutting_window_cm": [2, 7],
+      "prices": 280
+    },
+    {
+      "product_user_id": "FURU-SAG-2026",
+      "name": "Furu sagtømmer",
+      "species_group_user_id": "NO1_Furu",
+      "group": "TIMMER",
+      "stem_type_code": 11,
+      "presentation_order": 3,
+      "diameter_classes_mm": [150, 170, 190, 210, 230, 250, 270, 290, 310, 330, 350],
+      "diameter_max_mm": 600,
+      "diameter_min_top_mm": 150,
+      "length_classes_cm": [400, 430, 460, 490, 520, 550],
+      "length_max_cm": 559,
+      "cutting_window_cm": [3, 7],
+      "prices": {"default": 500, "by_diameter": {"150": 410, "170": 440, "190": 470}}
+    },
+    {
+      "product_user_id": "FURU-MASSE-2026",
+      "name": "Furu massevirke",
+      "species_group_user_id": "NO1_Furu",
+      "group": "MASSA",
+      "stem_type_code": 12,
+      "presentation_order": 4,
+      "diameter_classes_mm": [50, 100, 150, 200],
+      "diameter_max_mm": 650,
+      "diameter_min_top_mm": 50,
+      "length_classes_cm": [300, 345, 400, 450, 500],
+      "length_max_cm": 530,
+      "prices": 270
+    }
+  ]
+}
