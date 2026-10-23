@@ -179,7 +179,7 @@ details summary { cursor: pointer; color: var(--gronn); margin-top: .5rem; }
 }
 
 @media print {
-  .topp, .faner, .bunn, .knapp, .pil, details summary { display: none !important; }
+  .topp, .faner, .knapp, .pil, details summary { display: none !important; }
   body { background: #fff; color: #000; }
   .kort { border: 0; padding: 0; break-inside: avoid; }
   main { max-width: none; padding: 0; }

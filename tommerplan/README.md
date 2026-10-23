@@ -1,5 +1,7 @@
 # Tømmerplan – produksjonsplanlegger for tømmer
 
+Laget av **Trond Harald Sand**.
+
 Nettleserapp som planlegger hele kjeden fra hogst til mottak: hogstmaskin → lassbærer → velteplass → skogsbilveg →
 tømmerbil → sagbruk, massevirke eller energi. Den simulerer dag for dag og viser hvor flaskehalsen er.
 Alt lagres lokalt i nettleseren (ingen server og ingen innlogging), og appen virker uten nett (PWA).
@@ -38,4 +40,4 @@ python3 -m http.server -d tommerplan 8000
 node tommerplan/tests/run.mjs
 ```
 
-Utviklet av Trond Harald Sand.
+Laget av Trond Harald Sand.

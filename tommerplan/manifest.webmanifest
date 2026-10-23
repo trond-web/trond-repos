@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Tømmerplan – produksjonsplanlegger for tømmer",
   "short_name": "Tømmerplan",
-  "description": "Planlegg hogst, terrengtransport, velteplass, tømmerbil og leveranser. Utviklet av Trond Harald Sand.",
+  "description": "Planlegg hogst, terrengtransport, velteplass, tømmerbil og leveranser. Laget av Trond Harald Sand.",
   "lang": "no",
   "start_url": "./",
   "scope": "./",

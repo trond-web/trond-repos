@@ -117,5 +117,6 @@ export function logistikkSide() {
     <section class="kort">
       <h2>Kilder</h2>
       <ul class="kilder">${KILDER.map(([t, u]) => `<li><a href="${u}" target="_blank" rel="noopener">${t}</a></li>`).join('')}</ul>
-    </section>`;
+    </section>
+    <p class="dempet">Tømmerplan og denne veiledningen er laget av Trond Harald Sand.</p>`;
 }

@@ -1,5 +1,5 @@
 // Service worker: planleggeren virker uten nett.
-const APP = 'tommerplan-v1';
+const APP = 'tommerplan-v2';
 const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'js/app.js', 'js/motor.js', 'js/demo.js', 'js/graf.js', 'js/logistikk.js'];
 
 self.addEventListener('install', (e) => {
