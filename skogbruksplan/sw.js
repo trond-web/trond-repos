@@ -1,5 +1,5 @@
 // Service worker: appen og besøkte/nedlastede kartfliser fungerer uten nett.
-const APP = 'skogiq-app-v71';
+const APP = 'skogiq-app-v72';
 const FLISER = 'kartfliser-v1';
 const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'ikon-180.png', 'ikon-192.png', 'ikon-512.png', 'ikon-maskerbar-512.png',
   'felt.html', 'felt.css', 'felt.webmanifest', 'js/felt-app.js', 'js/offline-kart.js', 'js/sporlogg.js', 'js/sporlogg-ui.js', 'js/tiltak-endring.js', 'js/flate-geometri.js', 'js/flate-redigering.js', 'js/treff.js', 'js/oppdrag-felt.js', 'js/ungskog.js', 'js/effekt-html.js', 'js/oppdrag-utvalg.js', 'js/tetthet.js', 'js/drone.js', 'js/drone-felt.js', 'js/skog3d.js', 'js/skog3d-data.js', 'js/skog3d-traer.js', 'js/skog3d-veg.js', 'js/skog3d-bunn.js', 'js/skog3d-omgivelser.js', 'js/skog3d-objekter.js', 'js/felt-ar.js', 'js/ar-data.js', 'js/plan-synk.js', 'js/skog3d-vaer.js', 'js/skog3d-vaerlag.js',

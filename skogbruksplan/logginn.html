@@ -40,7 +40,8 @@
   import { RAILWAY, LS_OKT } from './js/innlogging.js';
   const API = /github\.io$/.test(location.hostname) ? RAILWAY : '';
   // Bare adresser i appen selv (ingen videresending til andre nettsteder).
-  const neste = (() => { const n = new URLSearchParams(location.search).get('neste') || ''; return /^(\/(?!\/)|[\w.-]*(\.html)?([?#].*)?$)/.test(n) && !/^[a-z]+:/i.test(n) ? (n || './') : './'; })();
+  // «?full» og «#…» gjelder appen i samme mappe (./), ikke innloggingssiden.
+  const neste = (() => { const n = new URLSearchParams(location.search).get('neste') || ''; if (!/^(\/(?!\/)|(\.\/)?[\w.-]*([?#].*)?$)/.test(n) || /^[a-z]+:/i.test(n)) return './'; return /^[?#]/.test(n) ? `./${n}` : n || './'; })();
   const skjema = document.getElementById('skjema'); const feil = document.getElementById('feil');
   skjema.bruker.focus();
   skjema.addEventListener('submit', async (e) => {
