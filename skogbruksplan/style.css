@@ -700,6 +700,27 @@ progress { accent-color: var(--accent); height: 8px; }
 .md-rad { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
 .md-rad > span { font-variant-numeric: tabular-nums; }
 .md-rad > small { color: var(--text-2); display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+/* Satellitt (Sentinel-2) – panel i kartet, skillelinje ved sammenligning og bildestripe per bestand */
+.sat-panel { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 800; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: center; max-width: calc(100% - 32px); background: var(--surface-glass); backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 14px; padding: 8px 12px; box-shadow: 0 6px 20px rgba(0,0,0,.18); font-size: 13px; color: var(--text); }
+.sat-panel label { display: flex; gap: 6px; align-items: center; }
+.sat-panel select { padding: 3px 6px; border-radius: 8px; border: 1px solid var(--border-sterk); background: var(--surface); color: var(--text); }
+.sat-panel input[type="range"] { width: min(220px, 50vw); accent-color: var(--accent); }
+.sat-panel small { color: var(--text-2); }
+.sat-linje { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); z-index: 790; pointer-events: none; }
+.sat-linje::before, .sat-linje::after { position: absolute; top: 46%; padding: 2px 8px; border-radius: 99px; background: rgba(16,36,28,.82); color: #fff; font: 700 12px/1.4 system-ui, sans-serif; white-space: nowrap; }
+.sat-linje::before { content: attr(data-venstre); right: 8px; }
+.sat-linje::after { content: attr(data-hoyre); left: 8px; }
+.sat-detalj { margin-top: 10px; }
+.sat-detalj summary { cursor: pointer; font-weight: 600; }
+.sat-stripe { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; margin: 8px 0 4px; }
+.sat-bilde { position: relative; padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #1d2a22; cursor: pointer; aspect-ratio: 1; }
+.sat-bilde img, .sat-bilde svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sat-bilde img { object-fit: cover; }
+.sat-bilde svg path { fill: none; stroke: #ffe14d; stroke-width: 2.4; vector-effect: non-scaling-stroke; }
+.sat-bilde span { position: absolute; left: 6px; top: 6px; padding: 1px 7px; border-radius: 99px; background: rgba(16,36,28,.82); color: #fff; font: 700 12px/1.4 system-ui, sans-serif; }
+.sat-bilde.for-takst img { filter: saturate(.5) brightness(.8); }
+.sat-bilde:hover, .sat-bilde:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (max-width: 760px) { .sat-panel { bottom: 76px; } }
 .sp-tabell td { white-space: normal; }
 .sp-gammel { color: var(--critical); font-weight: 600; }
 .sp-detalj { margin-top: 14px; }

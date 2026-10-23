@@ -33,6 +33,7 @@ import * as VEG from '../js/vegetasjon.js';
 import * as OPP from '../js/oppdrag.js';
 import * as KSL from '../js/ksl.js';
 import * as MD from '../js/maskindata.js';
+import * as SAT from '../js/satellitt.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
@@ -1905,6 +1906,27 @@ test('John Deere Operations Center: innlogging, fornyet token, filer og operasjo
   const st = await kjor('/api/jd/status', `/api/jd/status?n=${n}`); assert.equal(JSON.parse(st.kropp).tilkoblet, true); assert.equal(st.hoder['Access-Control-Allow-Origin'], 'https://trond-web.github.io');
   const ukjent = await kjor('/api/jd/organisasjoner', `/api/jd/organisasjoner?n=${'c'.repeat(32)}`); assert.equal(ukjent.status, 401);
   assert.equal(relay.loggUt(n), true); assert.equal(relay.status(n).tilkoblet, false);
+});
+
+test('Satellitt: Sentinel-2-utsnitt og bildestripe per bestand', async () => {
+  const { tilGeoPunkt } = await import('../js/flate-geometri.js');
+  const o = [600000, 6700000]; const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => tilGeoPunkt([o[0] + x, o[1] + y]));
+  assert.deepEqual(SAT.SATELLITT_AAR.slice(0, 2), [2018, 2019]); assert.equal(SAT.SISTE_SATELLITTAAR, SAT.SATELLITT_AAR.at(-1));
+  const g = { type: 'Polygon', coordinates: [ring(0, 0, 400, 100)] };
+  const u = SAT.utsnitt(g, { px: 200, margin: 0.25 });
+  assert.ok(Math.abs((u.bbox[2] - u.bbox[0]) - (u.bbox[3] - u.bbox[1])) < 1e-6, 'kvadratisk');
+  assert.ok(u.sideM > 550 && u.sideM < 650, String(u.sideM)); // 400 m × 1,5
+  const tall = u.sti.match(/-?\d+(\.\d+)?/g).map(Number); assert.ok(tall.every((v) => v >= 0 && v <= 200)); assert.ok(u.sti.startsWith('M') && u.sti.endsWith('Z'));
+  // Lite bestand: minst 250 m utsnitt
+  assert.ok(SAT.utsnitt({ type: 'Polygon', coordinates: [ring(0, 0, 20, 20)] }, { margin: 0 }).sideM >= 249);
+  const url = new URL(SAT.bildeUrl(2025, u.bbox, 300));
+  assert.equal(url.origin + url.pathname, 'https://wms.geonorge.no/skwms1/wms.sentinel2');
+  assert.equal(url.searchParams.get('LAYERS'), '2025'); assert.equal(url.searchParams.get('CRS'), 'EPSG:3857'); assert.equal(url.searchParams.get('WIDTH'), '300');
+  const html = SAT.bestandStripeHtml({ geometri: g, takstAar: 2020 });
+  assert.equal((html.match(/data-sat-aar=/g) || []).length, SAT.SATELLITT_AAR.length);
+  assert.equal((html.match(/for-takst/g) || []).length, 3); // 2018–2020
+  assert.ok(html.includes('CC BY 4.0') && html.includes('loading="lazy"'));
+  assert.equal(SAT.bestandStripeHtml({}), '');
 });
 
 test('AR i felt: grenser, stier, miljø, kulturminner, retning og varsler', async () => {
