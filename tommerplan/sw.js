@@ -1,6 +1,6 @@
 // Service worker: planleggeren virker uten nett.
-const APP = 'tommerplan-v3';
-const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'js/app.js', 'js/motor.js', 'js/demo.js', 'js/graf.js', 'js/logistikk.js', 'js/ordre.js'];
+const APP = 'tommerplan-v4';
+const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'ikon-180.png', 'ikon-192.png', 'ikon-512.png', 'ikon-maskerbar-512.png', 'js/app.js', 'js/motor.js', 'js/demo.js', 'js/graf.js', 'js/logistikk.js', 'js/ordre.js'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(APP).then((c) => c.addAll(SKALL)).then(() => self.skipWaiting()));
