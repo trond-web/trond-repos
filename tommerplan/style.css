@@ -1,0 +1,186 @@
+:root {
+  --bg: #f4f2ec;
+  --flate: #ffffff;
+  --tekst: #1d231e;
+  --dempet: #5d675f;
+  --linje: #dcd8cc;
+  --rutenett: #e8e5dc;
+  --gronn: #2f6b43;
+  --gronn-lys: #e2efe4;
+  --fare: #b3322c;
+  --fare-lys: #f8e3e1;
+  --advarsel: #8a6100;
+  --advarsel-lys: #fbf0d4;
+  --info-lys: #e6edf7;
+  --topp: #1f2a1c;
+  /* Sortimenter (kategorisk rekkefølge, validert palett) */
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+  /* Sesongbånd */
+  --band-vinter: rgba(42, 120, 214, .09);
+  --band-tele: rgba(179, 50, 44, .11);
+  --band-sommer: rgba(237, 161, 0, .12);
+  --seg-drift: #2f6b43;
+  --seg-flytt: #9aa39b;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111612; --flate: #1b221d; --tekst: #e8ebe6; --dempet: #a1aba3; --linje: #2f3a32; --rutenett: #26302a;
+    --gronn: #6cbf86; --gronn-lys: #1f3326; --fare: #f07b72; --fare-lys: #3a1f1d; --advarsel: #f0c25a; --advarsel-lys: #352b14;
+    --info-lys: #1c2638; --topp: #0b100c;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+    --band-vinter: rgba(57, 135, 229, .14); --band-tele: rgba(240, 123, 114, .14); --band-sommer: rgba(201, 133, 0, .16);
+    --seg-drift: #4f9e68; --seg-flytt: #5d675f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111612; --flate: #1b221d; --tekst: #e8ebe6; --dempet: #a1aba3; --linje: #2f3a32; --rutenett: #26302a;
+  --gronn: #6cbf86; --gronn-lys: #1f3326; --fare: #f07b72; --fare-lys: #3a1f1d; --advarsel: #f0c25a; --advarsel-lys: #352b14;
+  --info-lys: #1c2638; --topp: #0b100c;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+  --band-vinter: rgba(57, 135, 229, .14); --band-tele: rgba(240, 123, 114, .14); --band-sommer: rgba(201, 133, 0, .16);
+  --seg-drift: #4f9e68; --seg-flytt: #5d675f;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--tekst);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+a { color: var(--gronn); }
+h1 { font-size: 1.4rem; margin: 0 0 .6rem; }
+h2 { font-size: 1.05rem; margin: 0 0 .6rem; }
+.dempet { color: var(--dempet); }
+small { font-size: .82em; }
+
+.topp {
+  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  background: var(--topp); color: #f1ede1; padding: calc(.5rem + env(safe-area-inset-top)) 16px .5rem;
+}
+.merke { display: flex; align-items: center; gap: .5rem; color: inherit; text-decoration: none; font-weight: 600; }
+.merke small { font-weight: 400; opacity: .75; }
+.topp-status { font-size: .85rem; opacity: .85; text-align: right; }
+
+.faner {
+  display: flex; gap: .25rem; overflow-x: auto; padding: .5rem 16px 0; background: var(--flate);
+  border-bottom: 1px solid var(--linje); scrollbar-width: none; position: sticky; top: 44px; z-index: 9;
+}
+.faner a {
+  white-space: nowrap; padding: .5rem .75rem; text-decoration: none; color: var(--dempet); border-bottom: 3px solid transparent; font-weight: 500;
+}
+.faner a[aria-current="page"] { color: var(--tekst); border-bottom-color: var(--gronn); }
+
+main { max-width: 1180px; margin: 0 auto; padding: 16px; }
+.bunn { text-align: center; color: var(--dempet); font-size: .8rem; padding: 1rem 16px 2rem; }
+
+.kort { background: var(--flate); border: 1px solid var(--linje); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.kort-topp { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.verktoy { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .5rem; }
+.verktoy h1 { margin: 0; }
+
+.fliser { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.flis { background: var(--flate); border: 1px solid var(--linje); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.flis span { color: var(--dempet); font-size: .82rem; }
+.flis b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.flis small { color: var(--dempet); }
+
+.varsler { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.varsler li { display: flex; gap: .5rem; padding: .5rem .75rem; border-radius: 8px; background: var(--info-lys); }
+.varsler .v-feil { background: var(--fare-lys); }
+.varsler .v-advarsel { background: var(--advarsel-lys); }
+.varsler a { white-space: nowrap; }
+.ok { margin: 0; }
+
+.rull { overflow-x: auto; }
+.graf { width: 100%; min-width: 640px; height: auto; display: block; font: 11px system-ui, sans-serif; }
+.graf .akse { fill: var(--dempet); }
+.graf .radnavn { fill: var(--tekst); font-size: 12px; }
+.graf .rutenett { stroke: var(--rutenett); stroke-width: 1; }
+.graf .akselinje { stroke: var(--dempet); stroke-width: 1; }
+.graf .grenselinje { stroke: var(--fare); stroke-dasharray: 4 3; }
+.graf .sikte { stroke: var(--dempet); stroke-width: 1; opacity: 0; }
+.graf .punkt { opacity: 0; }
+.graf .treff:hover .sikte, .graf .treff:hover .punkt { opacity: 1; }
+.graf .seg-tekst { fill: #fff; font-size: 11px; pointer-events: none; }
+.band-vinter { fill: var(--band-vinter); background: var(--band-vinter); }
+.band-tele { fill: var(--band-tele); background: var(--band-tele); }
+.band-sommer { fill: var(--band-sommer); background: var(--band-sommer); }
+.seg-drift { fill: var(--seg-drift); background: var(--seg-drift); }
+.seg-flytt { fill: var(--seg-flytt); background: var(--seg-flytt); }
+.seg-vent { fill: url(#skravur); stroke: var(--linje); background: repeating-linear-gradient(45deg, var(--flate) 0 3px, var(--dempet) 3px 4px); }
+
+.forklaring { display: flex; flex-wrap: wrap; gap: .4rem 1rem; font-size: .82rem; color: var(--dempet); margin: .25rem 0 .5rem; }
+.forklaring span { display: inline-flex; align-items: center; gap: .35rem; }
+.forklaring i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid var(--linje); }
+
+.graftips {
+  position: fixed; z-index: 50; pointer-events: none; white-space: pre-line; background: var(--flate); color: var(--tekst);
+  border: 1px solid var(--linje); border-radius: 8px; padding: 6px 9px; font-size: .8rem; box-shadow: 0 4px 16px rgba(0, 0, 0, .15); max-width: 280px;
+}
+
+.tabell-rull { overflow-x: auto; }
+.tabell { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tabell th, .tabell td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--linje); vertical-align: top; }
+.tabell th { font-size: .8rem; color: var(--dempet); font-weight: 600; white-space: nowrap; }
+.tabell td.flaske { font-weight: 700; color: var(--fare); }
+.tabell td.lav { background: var(--advarsel-lys); }
+.tabell .pil { white-space: nowrap; width: 1%; }
+.pil button { border: 1px solid var(--linje); background: var(--flate); color: var(--tekst); border-radius: 6px; width: 26px; height: 26px; cursor: pointer; margin-right: 2px; }
+.maler { display: inline-block; width: 70px; height: 8px; border-radius: 4px; background: var(--rutenett); vertical-align: middle; overflow: hidden; }
+.maler i { display: block; height: 100%; background: var(--gronn); border-radius: 4px; }
+.merke-tele, .merke-vinter, .merke-sommer { padding: 0 5px; border-radius: 4px; color: var(--tekst); }
+.merke-tele { background: var(--band-tele); }
+.merke-vinter { background: var(--band-vinter); }
+.merke-sommer { background: var(--band-sommer); }
+details summary { cursor: pointer; color: var(--gronn); margin-top: .5rem; }
+
+.knapp {
+  display: inline-flex; align-items: center; justify-content: center; gap: .35rem; border: 0; border-radius: 8px; cursor: pointer;
+  background: var(--gronn); color: #fff; padding: .55rem .9rem; font: inherit; font-weight: 600; text-decoration: none;
+}
+.knapp.liten { padding: .3rem .6rem; font-size: .85rem; }
+.knapp.sekundar { background: transparent; color: var(--tekst); border: 1px solid var(--linje); }
+.knapp.fare { background: transparent; color: var(--fare); border: 1px solid var(--fare); }
+.knapper { display: flex; gap: .5rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+.knapper span { flex: 1; }
+.knapper.venstre span { flex: 0; }
+
+.skjema label { display: flex; flex-direction: column; gap: 3px; font-size: .85rem; color: var(--dempet); }
+.skjema input, .skjema select {
+  font: inherit; color: var(--tekst); background: var(--bg); border: 1px solid var(--linje); border-radius: 8px; padding: .45rem .55rem; min-width: 0;
+}
+.skjema .rad, .skjema .rad6 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.skjema .rad6 { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+.skjema fieldset { border: 1px solid var(--linje); border-radius: 10px; margin: 0 0 12px; padding: 10px 12px 2px; }
+.skjema legend { font-weight: 600; padding: 0 4px; }
+.skjema > label { margin-bottom: 10px; }
+.avkrysning { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 6px; margin-bottom: 10px; }
+.avkrysning label { flex-direction: row; align-items: center; gap: .4rem; color: var(--tekst); }
+
+.ark { border: 0; border-radius: 14px; padding: 18px; width: min(760px, calc(100vw - 24px)); max-height: calc(100vh - 32px); background: var(--flate); color: var(--tekst); }
+.ark::backdrop { background: rgba(0, 0, 0, .45); }
+
+.ingress { font-size: 1.05rem; max-width: 70ch; }
+.kjede { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.kjede span { display: inline-flex; align-items: center; gap: .4rem; }
+.kjede b { background: var(--gronn-lys); padding: .3rem .6rem; border-radius: 6px; }
+.kjede i { color: var(--dempet); font-style: normal; }
+.i-appen { background: var(--gronn-lys); padding: .5rem .75rem; border-radius: 8px; margin: .5rem 0 0; }
+.kort ul { padding-left: 1.2rem; margin: 0; }
+.kort li { margin-bottom: .3rem; }
+
+@media (max-width: 600px) {
+  .topp-status { display: none; }
+  .flis b { font-size: 1.15rem; }
+}
+
+@media print {
+  .topp, .faner, .bunn, .knapp, .pil, details summary { display: none !important; }
+  body { background: #fff; color: #000; }
+  .kort { border: 0; padding: 0; break-inside: avoid; }
+  main { max-width: none; padding: 0; }
+}
