@@ -1,5 +1,6 @@
 // SkogIQ Felt – mobilversjon med kartet i fokus: bestandsinfo, GPS, registreringer med bilde, tiltak som utføres i
 // felt og offline-kart. Bruker de samme planene (IndexedDB) som fullversjonen, og varsler den om endringer.
+import './innlogging.js'; // først: økten følger med alle kall til serveren
 import { hent, lagre, listPlaner, hentPlan, lagrePlan } from './store.js';
 import { TRESLAG, HK_ROMERTALL, HK_NAVN, TILTAKSTYPER, STANDARD_INNSTILLINGER, startTilstand, nyId, rettFeilHogd } from './model.js';
 import { punktIGeometri, etikettPunkt, bbox } from './proj.js';
@@ -558,7 +559,7 @@ function visMer() {
     ${installert ? '<p>✓ SkogIQ Felt er installert på enheten.</p>' : installHendelse ? '<div class="knapper"><button type="button" class="knapp primar" data-h="installer">Installer SkogIQ Felt</button></div><p class="hint">Appen legges på hjemskjermen og åpnes i fullskjerm.</p>' : ios ? '<p>Trykk på <b>Del</b> <span aria-hidden="true">⬆︎</span> i Safari og velg <b>Legg til på Hjem-skjerm</b>.</p>' : '<p class="hint">Bruk «Installer app» / «Legg til på startskjermen» i nettleserens meny.</p>'}
     <h3>Innstillinger</h3>
     <label class="bryter"><span>Start alltid i mobilversjonen</span><input type="checkbox" id="startFelt" ${ls.get(LS.start) === '1' ? 'checked' : ''}></label>
-    <div class="knapper"><a class="knapp" href="./?full">Åpne fullversjonen</a></div>
+    <div class="knapper"><a class="knapp" href="./?full">Åpne fullversjonen</a><button type="button" class="knapp" data-logg-ut>Logg ut</button></div>
     <p class="hint">SkogIQ Felt ${esc(VERSJON)} · utviklet av ${esc(UTVIKLER)} · samme data som fullversjonen, lagret lokalt på enheten.</p>`, { hoy: true });
 }
 async function lastNedOffline() {
