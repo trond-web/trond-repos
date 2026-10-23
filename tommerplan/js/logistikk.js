@@ -9,6 +9,8 @@ const KILDER = [
   ['Statens vegvesen – Prøveordning for tømmervogntog inntil 74 tonn', 'https://www.vegvesen.no/fag/fokusomrader/forskning-innovasjon-og-utvikling/proveordninger/proveordning-for-tommervogntog-inntil-74-tonn/skal-prove-tommervogntog-pa-74-tonn/'],
   ['Statsforvalteren – Skogsbilveger', 'https://www.statsforvalteren.no/nb/ostfold-buskerud-oslo-og-akershus/landbruk-og-mat/skogbruk/skogsbilveger/'],
   ['Gran kommune – Aksellastrestriksjoner (des. 2025)', 'https://www.gran.kommune.no/download/18.52dd642a19afcffccbb28b0/1765801086949/Aksellastrestriksjoner%20Gran%20Kommune%20desember%202025.pdf'],
+  ['Skogdata – Sluttrapport utvikling av VSYS VirkesHandel', 'https://www.skogtiltaksfondet.no/wp-content/uploads/2023/06/2014-24_SluttRapport-Utvikling-av-VSYS-VirkesHandel-.pdf'],
+  ['Skogdata – Systemstøtte og EUDR (PEFC-webinar 2024)', 'https://cdn.pefc.org/pefc.no/media/2024-09/1f608afc-0c8c-4ad5-8389-bf7beae9bd73/598f3039-2f7b-5f07-af32-7b29ad975ff3.pdf'],
   ['Statsforvalteren – Stormskader og barkbillefare', 'https://www.statsforvalteren.no/nn/vestfold-og-telemark/landbruk-og-mat/skogbruk/stormskader-og-barkbillefare/'],
 ];
 
@@ -87,6 +89,17 @@ const KRAV = [
       'Kartlegg flaskehalsen (hogst, terrengtransport, velteplass, bil eller mottak) og øk kapasiteten der, ikke andre steder.',
     ],
     app: 'Lager per uke, framkjørt mot levert, bilutnyttelse og varsler om ledige maskiner viser hvor flaskehalsen er.',
+  },
+  {
+    tittel: '9. Én ordrekjede: innkjøp, produksjon og salg i VSYS Virkeshandel',
+    punkter: [
+      'Det meste av virkesomsetningen i Norge går gjennom Skogdatas VSYS: Virkeshandel, Transport, Innmåling og Pris og avregning.',
+      'I Virkeshandel har hver aktør innkjøpsordrer (IO) mot leverandør og salgsordrer (SO) mot kunde. Kjøperens IO er selgerens SO, og IO og SO kobles sammen.',
+      'Produksjonsmodulen samler produsert fra hogstmaskin og framkjørt fra lassbærer. Transport melder transportert, og Norsk Virkesmåling melder innmålt.',
+      'Skogdata tilbyr API og en kopi av databasen (replikadatabase) for egne rapporter. Meldinger mellom aktørene går etter papinet-standarden. Tilgangen gis av Skogdata.',
+      'Fra skogeieravtalen (IO) hentes også grunnlaget for EUDR, blant annet hogstpolygon, volum og treslag.',
+    ],
+    app: 'Fanen Ordre leser inn IO, SO og PO fra CSV-uttrekk og kobler dem til drifter, mottak og maskinlag. SO styrer ukevolum per sortiment, og faktisk produksjon er startpunktet for resten av planen. Ordreplanen kan lastes ned og sjekkes mot VSYS.',
   },
 ];
 

@@ -58,6 +58,7 @@ export const STANDARD_INNSTILLINGER = {
   lastetid: 0.75,
   lossetid: 0.4,
   veifaktor: 1.3,
+  standardKm: 50, // brukes når drift eller mottak mangler koordinater og km ikke er overstyrt
   // Kalibrering av hogstmaskin: m³/G15h = hogstA · middelstamme^hogstB
   hogstA: 40,
   hogstB: 0.6,
@@ -146,7 +147,7 @@ export function veiKm(drift, mottak, inn) {
   const over = drift.avstander?.[mottak.id];
   if (over !== undefined && over !== '' && Number.isFinite(+over)) return +over;
   const luft = avstandKm(drift, mottak);
-  return luft === null ? null : luft * inn.veifaktor;
+  return luft === null ? (+inn.standardKm || null) : luft * inn.veifaktor;
 }
 
 // Timer for én tur: tom inn, lastet ut, lasting og lossing.
@@ -167,6 +168,51 @@ export function maksAlder(sortId, s, inn) {
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const r1 = (x) => Math.round(x * 10) / 10;
 
+// ---------- Ordre (som i VSYS Virkeshandel) ----------
+// Innkjøpsordre (IO) mot skogeier/leverandør gir volum per sortiment på en drift. En IO-linje kan kobles til en
+// salgsordre (SO), og da går virket bare dit. SO mot kunde gir hvor mye et mottak tar imot per uke og sortiment
+// innenfor ordreperioden. Produksjonsordre (PO) gir maskinlag og datoer, og faktisk produsert, framkjørt og
+// transportert brukes som utgangspunkt slik at resten planlegges fra der drifta står.
+export function anvendOrdre(plan) {
+  const o = plan.ordre || {};
+  const drifter = (plan.drifter || []).map((d) => ({ ...d, volum: { ...(d.volum || {}) }, _io: [], _po: [] }));
+  const finn = (id) => drifter.find((d) => d.id === id);
+  for (const io of o.io || []) {
+    const d = finn(io.drift);
+    if (!d) continue;
+    const linjer = (io.linjer || []).filter((l) => SORT_ID.includes(l.sortiment));
+    if (linjer.length && !d._io.some((x) => x.linjer?.length)) d.volum = {};
+    d._io.push(io);
+    for (const l of linjer) {
+      d.volum[l.sortiment] = (+d.volum[l.sortiment] || 0) + (+l.volum || 0);
+      if (l.so) (d.binding ||= {})[l.sortiment] = l.so;
+    }
+  }
+  for (const po of o.po || []) {
+    const d = finn(po.drift) || finn((o.io || []).find((io) => io.id === po.io)?.drift);
+    if (!d) continue;
+    d._po.push(po);
+    if (po.lag) d.lag = po.lag;
+    if (po.fra) d.tidligst = po.fra;
+    if (po.til) d.frist = po.til;
+    const f = po.faktisk;
+    if (f && ['produsert', 'framkjort', 'transportert'].some((k) => +f[k] > 0)) {
+      const g = d.faktisk || { produsert: 0, framkjort: 0, transportert: 0, dato: '' };
+      d.faktisk = {
+        produsert: g.produsert + (+f.produsert || 0), framkjort: g.framkjort + (+f.framkjort || 0),
+        transportert: g.transportert + (+f.transportert || 0), dato: [g.dato, f.dato].filter(Boolean).sort().pop() || '',
+      };
+    }
+  }
+  return drifter;
+}
+
+const soPeriode = (so, start, slutt) => {
+  const fra = so.fra ? Math.max(tilDag(so.fra), start) : start;
+  const til = so.til ? tilDag(so.til) : slutt;
+  return { fra, til, uker: Math.max(1, Math.ceil((til - (so.fra ? tilDag(so.fra) : start) + 1) / 7)) };
+};
+
 // ---------- Simulering ----------
 export function planlegg(plan) {
   const inn = { ...STANDARD_INNSTILLINGER, ...(plan.innstillinger || {}) };
@@ -175,22 +221,32 @@ export function planlegg(plan) {
   const antDager = Math.max(1, Math.round(inn.uker)) * 7;
   const lagListe = plan.lag || [];
   const mottakListe = plan.mottak || [];
-  const drifter = (plan.drifter || []).filter((d) => totalVolum(d) > 0);
+  const drifter = anvendOrdre(plan).filter((d) => totalVolum(d) > 0);
+  const salg = (plan.ordre?.so || []).filter((so) => so.linjer?.length);
+  const sluttDag = start + antDager - 1;
 
   const varsler = [];
   const varsle = (niva, tekst, ekstra = {}) => varsler.push({ niva, tekst, ...ekstra });
   const varsletEn = new Set();
   const varsleEn = (nokkel, niva, tekst, ekstra) => { if (!varsletEn.has(nokkel)) { varsletEn.add(nokkel); varsle(niva, tekst, ekstra); } };
 
-  // Tilstand per drift
+  // Tilstand per drift. Faktiske tall fra produksjonsordren er utgangspunktet.
   const D = new Map(drifter.map((d) => {
-    const tot = totalVolum(d);
-    const andel = Object.fromEntries(SORT_ID.map((id) => [id, (+d.volum?.[id] || 0) / tot]));
-    return [d.id, {
-      drift: d, tot, andel, hogd: 0, iSkog: 0, framkjort: 0, levert: 0,
-      lager: Object.fromEntries(SORT_ID.map((id) => [id, []])), // FIFO-partier { dag, m3 }
-      start: null, hogstFerdig: null, framkjortFerdig: null, sisteLevering: null, fullDager: 0,
-    }];
+    const f = d.faktisk || {};
+    const hogd = Math.max(0, +f.produsert || 0);
+    const framkjort = Math.min(hogd, Math.max(0, +f.framkjort || 0));
+    const levert = Math.min(framkjort, Math.max(0, +f.transportert || 0));
+    const tot = Math.max(totalVolum(d), hogd);
+    const andel = Object.fromEntries(SORT_ID.map((id) => [id, (+d.volum?.[id] || 0) / totalVolum(d)]));
+    const fd = f.dato ? Math.min(tilDag(f.dato), start) : start;
+    const lager = Object.fromEntries(SORT_ID.map((id) => [id, andel[id] > 0 && framkjort - levert > 0.5 ? [{ dag: fd, m3: (framkjort - levert) * andel[id] }] : []]));
+    const st = {
+      drift: d, tot, andel, hogd, iSkog: hogd - framkjort, framkjort, levert, levertFor: levert, faktisk: hogd > 0,
+      lager, // FIFO-partier { dag, m3 }
+      start: hogd > 0 ? fd : null, hogstFerdig: hogd >= tot - 1e-6 && hogd > 0 ? fd : null, framkjortFerdig: null, sisteLevering: null, fullDager: 0,
+    };
+    if (hogd >= tot - 1e-6 && st.iSkog < 1e-6 && hogd > 0) st.framkjortFerdig = fd;
+    return [d.id, st];
   }));
   const lagerSum = (st, id) => st.lager[id].reduce((s, p) => s + p.m3, 0);
   const lagerTot = (st) => SORT_ID.reduce((s, id) => s + lagerSum(st, id), 0);
@@ -204,10 +260,31 @@ export function planlegg(plan) {
   for (const d of drifter) {
     if (!lagListe.some((l) => l.id === d.lag)) varsle('feil', `«${d.navn}» har ikke noe maskinlag og blir ikke hogd.`, { drift: d.id });
   }
+  const mottakMedSo = new Set(salg.map((so) => so.mottak));
+  const mal = [
+    ...mottakListe.filter((m) => !mottakMedSo.has(m.id)).map((m) => ({ key: m.id, m, sortimenter: m.sortimenter || [] })),
+    ...salg.flatMap((so) => {
+      const m = mottakListe.find((x) => x.id === so.mottak);
+      if (!m) { varsle('feil', `Salgsordre ${so.ordrenr || 'utkast'} (${so.kunde || 'uten kunde'}) har ikke noe mottak/leveringssted i planen.`, { so: so.id }); return []; }
+      const p = soPeriode(so, start, sluttDag);
+      return so.linjer.map((l, i) => ({ key: `${so.id}|${i}`, m, so, linje: i, sortimenter: [l.sortiment], ...p, rate: (+l.volum || 0) / p.uker, volum: +l.volum || 0 }));
+    }),
+  ];
+  for (const d of drifter) {
+    const mangler = mal.filter((x) => x.sortimenter.some((id) => +d.volum?.[id] > 0) && avstandKm(d, x.m) === null && !(d.avstander?.[x.m.id] > 0));
+    if (mangler.length) {
+      varsle('info', `«${d.navn}» mangler koordinater eller km til ${[...new Set(mangler.map((x) => x.m.navn))].join(', ')}. Bruker ${inn.standardKm} km til det er lagt inn.`, { drift: d.id });
+    }
+    for (const [sort, soId] of Object.entries(d.binding || {})) {
+      if (!mal.some((x) => x.so?.id === soId && x.sortimenter.includes(sort))) {
+        varsle('feil', `«${d.navn}»: ${sortiment(sort).navn.toLowerCase()} er koblet til en salgsordre som ikke har linje for dette sortimentet.`, { drift: d.id });
+      }
+    }
+  }
   for (const d of drifter) {
     for (const id of SORT_ID) {
-      if ((+d.volum?.[id] || 0) > 0 && !mottakListe.some((m) => m.sortimenter?.includes(id))) {
-        varsleEn(`ingenmottak-${id}`, 'feil', `Ingen mottak tar imot ${sortiment(id).navn.toLowerCase()}. Legg til et mottak eller en leveranseavtale.`);
+      if ((+d.volum?.[id] || 0) > 0 && !mal.some((x) => x.sortimenter.includes(id))) {
+        varsleEn(`ingenmottak-${id}`, 'feil', `Ingen mottak tar imot ${sortiment(id).navn.toLowerCase()}. Legg til et mottak eller en salgsordre${mottakMedSo.size ? ' (mottak med salgsordre tar bare imot sortimentene som står i ordrene)' : ''}.`);
       }
     }
   }
@@ -221,6 +298,7 @@ export function planlegg(plan) {
   const uker = [];
   let uke = null;
   const kvoteIgjen = {};
+  const soIgjen = {}; // resterende volum per SO-linje, så ordren ikke overleveres
   const leveranser = [];
   let bilTimerBrukt = 0;
   let bilTimerTilgj = 0;
@@ -235,10 +313,17 @@ export function planlegg(plan) {
       uke = {
         uke: s.uke, aar: isoUke(dag).aar, mandag: tilIso(dag - ud), sesong: { vinter: s.vinter, tele: s.tele, sommer: s.sommer },
         hogd: 0, framkjort: 0, levert: Object.fromEntries(SORT_ID.map((id) => [id, 0])), lager: {},
-        perMottak: Object.fromEntries(mottakListe.map((m) => [m.id, 0])), bilTimer: 0, bilTimerTilgj: 0, lass: 0,
+        perMottak: Object.fromEntries(mottakListe.map((m) => [m.id, 0])), kvote: Object.fromEntries(mottakListe.map((m) => [m.id, 0])),
+        bilTimer: 0, bilTimerTilgj: 0, lass: 0,
       };
       uker.push(uke);
-      for (const m of mottakListe) kvoteIgjen[m.id] = +m.kvote || 0;
+      const ma = dag - ud;
+      for (const x of mal) {
+        if (x.so && soIgjen[x.key] === undefined) soIgjen[x.key] = x.volum;
+        const k = x.so ? (ma + 6 >= x.fra && ma <= x.til ? Math.min(x.rate, soIgjen[x.key]) : 0) : (+x.m.kvote || 0);
+        kvoteIgjen[x.key] = k;
+        uke.kvote[x.m.id] += k;
+      }
     }
 
     // 1) Hogst og terrengtransport
@@ -320,20 +405,22 @@ export function planlegg(plan) {
           else stengt.set(nokkel + (sp ? `-${dag}` : ''), { d, arsak, fra: s.uke, til: s.uke, fraDag: dag, tilDag: dag, maks: lagerTot(st) });
           continue;
         }
-        const valg = mottakListe
-          .filter((m) => m.sortimenter?.includes(id) && kvoteIgjen[m.id] > 0)
-          .map((m) => ({ m, t: turTimer(d, m, inn) }))
+        const bundet = d.binding?.[id];
+        const valg = mal
+          .filter((x) => x.sortimenter.includes(id) && kvoteIgjen[x.key] > 0 && (!bundet || x.so?.id === bundet))
+          .map((x) => ({ ...x, t: turTimer(d, x.m, inn) }))
           .filter((x) => x.t !== null)
           .sort((a, b) => a.t - b.t);
-        for (const { m, t } of valg) {
+        for (const { m, t, key, so } of valg) {
           if (t > inn.bilTimer) varsleEn(`lang-${d.id}-${m.id}`, 'info', `En tur fra «${d.navn}» til ${m.navn} tar ${r1(t)} t, mer enn én bildag.`, { drift: d.id });
-          while (timerIgjen >= Math.min(t, inn.bilTimer) && kvoteIgjen[m.id] > 0) {
+          while (timerIgjen >= Math.min(t, inn.bilTimer) && kvoteIgjen[key] > 0) {
             const paLager = lagerSum(st, id);
             const helLass = paLager >= inn.lassM3 - 1e-6;
             // Restlass kjøres når drifta er ferdig framkjørt, eller når det haster
             if (!helLass && !(ferdigFramkjort(st) || k.alder >= maksAlder(id, s, inn) * 0.8) ) break;
             if (paLager < 0.5) break;
-            const m3 = Math.min(inn.lassM3, paLager);
+            if (so && soIgjen[key] < 0.5) break;
+            const m3 = Math.min(inn.lassM3, paLager, so ? Math.max(soIgjen[key], inn.lassM3 / 2) : Infinity);
             let igjen = m3;
             let alderSum = 0;
             while (igjen > 1e-9) {
@@ -348,12 +435,13 @@ export function planlegg(plan) {
             bilTimerBrukt += t;
             uke.bilTimer += t;
             uke.lass++;
-            kvoteIgjen[m.id] -= m3;
+            kvoteIgjen[key] -= m3;
+            if (so) soIgjen[key] -= m3;
             st.levert += m3;
             st.sisteLevering = dag;
             uke.levert[id] += m3;
             uke.perMottak[m.id] += m3;
-            leveranser.push({ dato: tilIso(dag), drift: d.id, sortiment: id, mottak: m.id, m3, alder: alderSum / m3, timer: t });
+            leveranser.push({ dato: tilIso(dag), drift: d.id, sortiment: id, mottak: m.id, so: so?.id || null, soKey: so ? key : null, io: d._io[0]?.id || null, m3, alder: alderSum / m3, timer: t });
           }
           if (!st.lager[id].length) break;
         }
@@ -367,7 +455,8 @@ export function planlegg(plan) {
       gamle.forEach((id) => varsletEn.add(`alder-${st.drift.id}-${id}`));
       const grenser = [...new Set(gamle.map((id) => maksAlder(id, s, inn)))].join('/');
       const navn = gamle.map((id, i) => (i ? sortiment(id).navn.toLowerCase() : sortiment(id).navn)).join(', ');
-      varsle('advarsel', `${navn} på «${st.drift.navn}» har ligget mer enn ${grenser} dager ved velteplass (${tilIso(dag)})${s.sommer ? ' – risiko for blåved og barkbille' : ''}.`,
+      const sommergrense = s.sommer && gamle.some((id) => maksAlder(id, s, inn) === inn.maksLagringSommer);
+      varsle('advarsel', `${navn} på «${st.drift.navn}» har ligget mer enn ${grenser} dager ved velteplass (${tilIso(dag)})${sommergrense ? ' – risiko for blåved og barkbille' : ''}.`,
         { drift: st.drift.id, dato: tilIso(dag) });
     }
     const tot = dagLagerTot();
@@ -378,10 +467,10 @@ export function planlegg(plan) {
   }
 
   // Oppsummering per drift
-  const sluttDag = start + antDager - 1;
   const driftRes = drifter.map((d) => {
     const st = D.get(d.id);
     const rest = st.tot - st.levert;
+    if (st.levert > st.tot + 1) varsle('advarsel', `«${d.navn}»: transportert (${Math.round(st.levert)} m³) er mer enn volumet i innkjøpsordren.`, { drift: d.id });
     if (st.start === null) {
       varsle('advarsel', `«${d.navn}» blir ikke startet innen planperioden.`, { drift: d.id });
     } else if (st.framkjortFerdig === null) {
@@ -399,7 +488,8 @@ export function planlegg(plan) {
       hogstFerdig: st.hogstFerdig === null ? null : tilIso(st.hogstFerdig),
       framkjortFerdig: st.framkjortFerdig === null ? null : tilIso(st.framkjortFerdig),
       sisteLevering: st.sisteLevering === null ? null : tilIso(st.sisteLevering),
-      fullDager: st.fullDager,
+      fullDager: st.fullDager, levertFor: st.levertFor, faktisk: st.faktisk,
+      io: d._io.map((x) => x.id), po: d._po.map((x) => x.id),
     };
   });
 
@@ -413,12 +503,57 @@ export function planlegg(plan) {
     }
   }
 
-  // Mottak: leveranse mot avtale
+  // Mottak: leveranse mot avtale (ukekvote eller salgsordre)
   const mottakRes = mottakListe.map((m) => {
     const levert = uker.reduce((s, u) => s + u.perMottak[m.id], 0);
-    const avtalt = (+m.kvote || 0) * uker.length;
-    return { id: m.id, navn: m.navn, levert, avtalt, andel: avtalt ? levert / avtalt : null };
+    const avtalt = uker.reduce((s, u) => s + u.kvote[m.id], 0);
+    return { id: m.id, navn: m.navn, levert, avtalt, andel: avtalt ? levert / avtalt : null, salgsordre: mottakMedSo.has(m.id) };
   });
+
+  // Ordre: planlagt mot avtalt
+  const sum = (liste) => liste.reduce((s, l) => s + l.m3, 0);
+  const soRes = salg.map((so) => {
+    const linjer = so.linjer.map((l, i) => {
+      const lev = leveranser.filter((x) => x.soKey === `${so.id}|${i}`);
+      const p = soPeriode(so, start, sluttDag);
+      const levert = sum(lev);
+      const innen = sum(lev.filter((x) => tilDag(x.dato) <= p.til));
+      return { sortiment: l.sortiment, volum: +l.volum || 0, pris: +l.pris || 0, levert, innenPeriode: innen, verdi: levert * (+l.pris || 0) };
+    });
+    const volum = linjer.reduce((s, l) => s + l.volum, 0);
+    const innen = linjer.reduce((s, l) => s + l.innenPeriode, 0);
+    const til = so.til || tilIso(sluttDag);
+    if (volum > 0 && innen < volum * 0.98 && til <= tilIso(sluttDag)) {
+      varsle('advarsel', `Salgsordre ${so.ordrenr || 'utkast'} (${so.kunde || 'kunde'}): planen leverer ${Math.round(innen)} av ${Math.round(volum)} m³ innen ${til}.`, { so: so.id, dato: til });
+    }
+    return { id: so.id, ordrenr: so.ordrenr, volum, levert: linjer.reduce((s, l) => s + l.levert, 0), innenPeriode: innen, verdi: linjer.reduce((s, l) => s + l.verdi, 0), linjer };
+  });
+  const ioRes = (plan.ordre?.io || []).map((io) => {
+    const dr = driftRes.find((d) => d.id === io.drift);
+    const lev = leveranser.filter((x) => x.drift === io.drift);
+    const linjer = (io.linjer || []).map((l) => ({ sortiment: l.sortiment, volum: +l.volum || 0, so: l.so || '', levert: sum(lev.filter((x) => x.sortiment === l.sortiment)) }));
+    const volum = linjer.reduce((s, l) => s + l.volum, 0);
+    if (!dr) varsle('feil', `Innkjøpsordre ${io.ordrenr || 'utkast'} (${io.leverandor || 'leverandør'}) er ikke koblet til noen drift.`, { io: io.id });
+    return { id: io.id, ordrenr: io.ordrenr, volum, levert: dr ? dr.levert : 0, start: dr?.start || null, framkjortFerdig: dr?.framkjortFerdig || null, sisteLevering: dr?.sisteLevering || null, linjer };
+  });
+  const poRes = (plan.ordre?.po || []).map((po) => {
+    const dId = po.drift || (plan.ordre?.io || []).find((io) => io.id === po.io)?.drift;
+    const dr = driftRes.find((d) => d.id === dId);
+    if (!dr) varsle('feil', `Produksjonsordre ${po.ordrenr || 'utkast'} er ikke koblet til noen drift.`, { po: po.id });
+    return { id: po.id, ordrenr: po.ordrenr, drift: dId, start: dr?.start || null, hogstFerdig: dr?.hogstFerdig || null, framkjortFerdig: dr?.framkjortFerdig || null, hogd: dr?.hogd || 0, framkjort: dr?.framkjort || 0 };
+  });
+  // Balanse: salg mot det som er kjøpt inn (IO) eller planlagt hogd, per sortiment
+  for (const id of SORT_ID) {
+    const solgt = salg.reduce((s, so) => s + so.linjer.filter((l) => l.sortiment === id).reduce((a, l) => a + (+l.volum || 0), 0), 0);
+    const tilgang = drifter.reduce((s, d) => s + (+d.volum?.[id] || 0), 0);
+    if (solgt > tilgang * 1.02 && solgt > 0) {
+      varsle('advarsel', `Salgsordrene på ${sortiment(id).navn.toLowerCase()} (${Math.round(solgt)} m³) er større enn det som er kjøpt inn eller planlagt hogd (${Math.round(tilgang)} m³).`);
+    }
+    const friMottak = mal.some((x) => !x.so && x.sortimenter.includes(id));
+    if (salg.length && !friMottak && mal.some((x) => x.sortimenter.includes(id)) && tilgang > solgt * 1.02 + 1) {
+      varsle('advarsel', `Det mangler salgsordre for ${Math.round(tilgang - solgt)} m³ ${sortiment(id).navn.toLowerCase()}: ${Math.round(tilgang)} m³ skal hogges, men bare ${Math.round(solgt)} m³ er solgt.`);
+    }
+  }
 
   const totLevert = leveranser.reduce((s, l) => s + l.m3, 0);
   const snittAlder = totLevert ? leveranser.reduce((s, l) => s + l.alder * l.m3, 0) / totLevert : 0;
@@ -430,7 +565,7 @@ export function planlegg(plan) {
 
   return {
     inn, start: startIso, slutt: tilIso(sluttDag), uker, leveranser, varsler,
-    drifter: driftRes, mottak: mottakRes,
+    drifter: driftRes, mottak: mottakRes, ordre: { so: soRes, io: ioRes, po: poRes },
     lag: L.map((l) => ({ id: l.lag.id, navn: l.lag.navn, segmenter: l.segmenter.map((x) => ({ ...x, fra: tilIso(x.fra), til: tilIso(x.til) })), ventDager: l.ventDager })),
     nokkel: {
       totVolum, levert: totLevert, hogd: driftRes.reduce((s, d) => s + d.hogd, 0),

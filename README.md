@@ -9,4 +9,4 @@
 - [`nordfjella-villrein/`](nordfjella-villrein/) – jaktkart for villreinjakt i Nordfjella: grensa for villreinområdet, eiendomsgrenser, GPS og kart som virker uten nett
 - [`gran-kommune/`](gran-kommune/) – Gran kommune: kart over rådhus, skoler, barnehager, institusjoner og andre tjenestesteder, med vær, temperatur og avstand fra Gran rådhus
 - [`harehund-skogsprotokoll/`](harehund-skogsprotokoll/) – skogsprotokoll for harehundprøver (NHKF): loslogg i skogen, lospoeng, egenskapspoeng, premiegrad og ferdig jaktprøveprotokoll – virker uten nett
-- [`tommerplan/`](tommerplan/) – Tømmerplan: produksjonsplanlegger for tømmer – hogst, lassbærer, velteplass, tømmerbil og leveranser til mottak, med sesong, teleløsning, lagringstid og flaskehalser
+- [`tommerplan/`](tommerplan/) – Tømmerplan: produksjonsplanlegger for tømmer – hogst, lassbærer, velteplass, tømmerbil og leveranser til mottak, med sesong, teleløsning, lagringstid og flaskehalser, koblet til innkjøps-, salgs- og produksjonsordre i Skogdata VSYS Virkeshandel

@@ -5,6 +5,7 @@ import {
   neste_mandag, leveranseCsv, totalVolum, STANDARD_INNSTILLINGER as INN,
 } from '../js/motor.js';
 import { demoPlan } from '../js/demo.js';
+import { lesCsv, finnKolonner, tolkSortiment, tall, dato, importerOrdre, ordreFraPlan, ordreCsv, MAL_CSV } from '../js/ordre.js';
 
 let ok = 0;
 const test = (navn, fn) => { fn(); ok++; console.log('✓', navn); };
@@ -125,6 +126,172 @@ test('demo-planen går gjennom uten feil og leverer det meste', () => {
 test('drift uten mottak for sortimentet gir feil', () => {
   const r = planlegg(plan({ drifter: [drift({ volum: { gs: 100, en: 50 } })] }));
   assert.ok(r.varsler.some((v) => v.niva === 'feil' && /energivirke/.test(v.tekst)));
+});
+
+test('CSV, tall, datoer og kolonnenavn fra VSYS-uttrekk', () => {
+  const { kolonner, rader } = lesCsv('﻿Ordrenr;Sortiment;Volum\r\n1;"Sag, gran";"1 234,5"\r\n\r\n2;Massevirke gran;800\r\n');
+  assert.deepEqual(kolonner, ['Ordrenr', 'Sortiment', 'Volum']);
+  assert.equal(rader.length, 2);
+  assert.equal(rader[0].Sortiment, 'Sag, gran');
+  assert.equal(tall(rader[0].Volum), 1234.5);
+  assert.equal(tall('1.234,50'), 1234.5);
+  assert.equal(dato('3.1.2027'), '2027-01-03');
+  assert.equal(dato('2027-01-03T00:00'), '2027-01-03');
+  const k = finnKolonner(['Ordrenummer', 'Skogeier', 'Velteplass', 'Sortimentskode', 'Kvantum', 'Salgsordrenr', 'Fremkjørt']);
+  assert.equal(k.ordrenr, 'Ordrenummer');
+  assert.equal(k.leverandor, 'Skogeier');
+  assert.equal(k.hentested, 'Velteplass');
+  assert.equal(k.volum, 'Kvantum');
+  assert.equal(k.kobletSo, 'Salgsordrenr');
+  assert.equal(k.framkjort, 'Fremkjørt');
+  assert.equal(lesCsv('a,b\n1,2').rader[0].b, '2');
+});
+
+test('sortimenter tolkes fra navn, og egne koder går foran', () => {
+  assert.equal(tolkSortiment('Sagtømmer gran'), 'gs');
+  assert.equal(tolkSortiment('Gran sagtømmer'), 'gs');
+  assert.equal(tolkSortiment('Furu skurtømmer'), 'fs');
+  assert.equal(tolkSortiment('Massevirke gran'), 'gm');
+  assert.equal(tolkSortiment('Gran slipmasse'), 'gm');
+  assert.equal(tolkSortiment('Furu cellulose'), 'fm');
+  assert.equal(tolkSortiment('Bjørk massevirke'), 'lm');
+  assert.equal(tolkSortiment('Energiflis'), 'en');
+  assert.equal(tolkSortiment('1210'), null);
+  assert.equal(tolkSortiment('1210', { 1210: 'gs' }), 'gs');
+});
+
+test('import av IO, SO og PO kobler til drift, mottak og lag', () => {
+  const p = demoPlan('2026-10-26');
+  const r = importerOrdre(p, MAL_CSV);
+  assert.equal(r.feil, undefined);
+  assert.deepEqual([r.io, r.so, r.po], [1, 2, 1]);
+  assert.deepEqual(r.nyeDrifter, []);
+  assert.deepEqual(r.nyeMottak, []);
+  const io = p.ordre.io[0];
+  assert.equal(io.drift, 'd1');
+  assert.equal(io.linjer.length, 2);
+  const so = p.ordre.so.find((x) => x.ordrenr === '500118');
+  assert.equal(so.mottak, 'sag');
+  assert.equal(so.fra, '2026-11-01');
+  assert.equal(io.linjer[0].so, so.id); // IO–SO-kobling
+  const po = p.ordre.po[0];
+  assert.equal(po.drift, 'd1');
+  assert.equal(po.lag, 'lag1');
+  assert.equal(po.faktisk.produsert, 850);
+  // Samme fil på nytt oppdaterer i stedet for å lage nye ordre
+  importerOrdre(p, MAL_CSV);
+  assert.equal(p.ordre.io.length, 1);
+  assert.equal(p.ordre.so.length, 2);
+});
+
+test('ukjent drift og mottak opprettes, ukjente sortimentkoder meldes', () => {
+  const p = { innstillinger: {}, lag: [lag], mottak: [], drifter: [] };
+  const r = importerOrdre(p, 'Ordrenr;Skogeier;Hentested;Sortiment;Volum\n9;Kari;Nytt felt;Sagtømmer gran;300\n9;Kari;Nytt felt;1210;50\n', 'io');
+  assert.deepEqual(r.nyeDrifter, ['Nytt felt']);
+  assert.deepEqual(r.ukjenteSortimenter, ['1210']);
+  assert.equal(p.drifter[0].lag, 'l');
+  const s = importerOrdre(p, 'Ordrenr;Kunde;Leveringssted;Sortiment;Volum\n5;Sag AS;Sagbruket;Sagtømmer gran;300\n', 'so');
+  assert.deepEqual(s.nyeMottak, ['Sagbruket']);
+  assert.deepEqual(p.mottak[0].sortimenter, ['gs']);
+  assert.ok(importerOrdre(p, 'Navn;Volum\nx;1\n').feil);
+});
+
+test('salgsordre styrer kvote per sortiment og periode, IO-volum styrer drifta', () => {
+  const p = plan({
+    mottak: [mottak({ kvote: 99999 })],
+    ordre: {
+      io: [{ id: 'io1', ordrenr: '1', drift: 'd', linjer: [{ sortiment: 'gs', volum: 400 }, { sortiment: 'gm', volum: 200 }] }],
+      so: [
+        { id: 's1', ordrenr: '10', mottak: 'm', fra: '2027-05-17', til: '2027-06-13', linjer: [{ sortiment: 'gs', volum: 400, pris: 500 }] },
+        { id: 's2', ordrenr: '11', mottak: 'm', fra: '2027-05-03', til: '2027-07-11', linjer: [{ sortiment: 'gm', volum: 200 }] },
+      ],
+    },
+  });
+  const r = planlegg(p);
+  assert.equal(Math.round(r.drifter[0].tot), 600); // fra IO, ikke drift.volum (1000)
+  const gs = r.leveranser.filter((l) => l.sortiment === 'gs');
+  assert.ok(gs.every((l) => l.dato >= '2027-05-17' && l.so === 's1'), gs.map((l) => l.dato).join(','));
+  for (const u of r.uker) assert.ok(u.levert.gs <= 100 + 40 + 1e-6); // 400 m³ over 4 uker, hele lass kan gå ett lass over
+  const so1 = r.ordre.so.find((x) => x.id === 's1');
+  assert.equal(Math.round(so1.innenPeriode), 400);
+  for (const so of r.ordre.so) assert.ok(so.levert <= so.volum + 1e-6, `${so.ordrenr}: ${so.levert} > ${so.volum}`); // ingen overlevering
+  assert.equal(so1.verdi, 400 * 500);
+  assert.equal(r.mottak[0].salgsordre, true);
+  assert.equal(Math.round(r.ordre.io[0].levert), 600);
+});
+
+test('IO-linje koblet til SO leverer bare dit, og salg uten dekning varsles', () => {
+  const p = plan({
+    mottak: [mottak(), mottak({ id: 'nær', navn: 'Nær', lon: 10.92 })],
+    ordre: {
+      io: [{ id: 'io1', drift: 'd', linjer: [{ sortiment: 'gs', volum: 300, so: 's1' }] }],
+      so: [
+        { id: 's1', ordrenr: 'A', mottak: 'm', linjer: [{ sortiment: 'gs', volum: 300 }] },
+        { id: 's2', ordrenr: 'B', mottak: 'nær', linjer: [{ sortiment: 'gs', volum: 900 }] },
+      ],
+    },
+  });
+  const r = planlegg(p);
+  assert.ok(r.leveranser.length > 0 && r.leveranser.every((l) => l.mottak === 'm'));
+  assert.ok(r.varsler.some((v) => /større enn det som er kjøpt inn/.test(v.tekst)));
+  assert.ok(r.varsler.some((v) => /Salgsordre B/.test(v.tekst)));
+});
+
+test('produksjonsordre: faktisk produsert, framkjørt og transportert er startpunktet', () => {
+  const p = plan({
+    ordre: { po: [{ id: 'p1', ordrenr: '7', drift: 'd', faktisk: { produsert: 600, framkjort: 500, transportert: 300, dato: '2027-04-30' } }] },
+  });
+  const r = planlegg(p);
+  const d = r.drifter[0];
+  assert.equal(Math.round(d.levert), 1000);
+  assert.equal(d.levertFor, 300);
+  assert.equal(Math.round(r.uker.reduce((s, u) => s + u.hogd, 0)), 400); // bare resten hogges
+  assert.equal(Math.round(r.nokkel.levert), 700); // planlagte lass etter statusdato
+  assert.ok(d.start <= '2027-04-30');
+  const forste = r.leveranser[0];
+  assert.ok(forste.alder >= 3); // virket ved vegen ble lagt der før planstart
+  assert.equal(r.ordre.po[0].drift, 'd');
+});
+
+test('ordreutkast fra planen og eksport av ordreplanen', () => {
+  const p = demoPlan('2026-10-26');
+  const r0 = planlegg(p);
+  const n = ordreFraPlan(p, r0);
+  assert.deepEqual(n, { io: 8, so: 3, po: 8 });
+  const r = planlegg(p);
+  assert.ok(Math.abs(r.nokkel.totVolum - r0.nokkel.totVolum) < 1);
+  // SO-volumet spres jevnt over perioden, som er strengere enn en fast ukekvote
+  assert.ok(r.nokkel.levert > 0.8 * r0.nokkel.levert, `${r.nokkel.levert} mot ${r0.nokkel.levert}`);
+  assert.equal(r.varsler.filter((v) => v.niva === 'feil').length, 0);
+  const csv = ordreCsv(p, r);
+  const rader = csv.split('\r\n');
+  assert.ok(rader[0].startsWith('﻿Ordretype;Ordrenr'));
+  assert.equal(rader.filter((x) => x.startsWith('PO;')).length, 8);
+  // Eksporten kan leses inn igjen
+  const { rader: lest } = lesCsv(csv);
+  assert.equal(lest.length, rader.length - 1);
+});
+
+test('ordreutkast dekker sortimenter som mangler salgsordre etter import', () => {
+  const p = demoPlan('2026-10-26');
+  importerOrdre(p, MAL_CSV);
+  const r0 = planlegg(p);
+  assert.ok(r0.varsler.some((v) => v.niva === 'feil' && /tar bare imot sortimentene/.test(v.tekst)));
+  ordreFraPlan(p, r0);
+  const r = planlegg(p);
+  assert.equal(r.varsler.filter((v) => v.niva === 'feil').length, 0, r.varsler.filter((v) => v.niva === 'feil').map((v) => v.tekst).join(' | '));
+  // Sagbruket har nå SO 500118 fra VSYS (gran) og ett utkast for resten av granen og furua
+  const sag = p.ordre.so.filter((x) => x.mottak === 'sag');
+  assert.equal(sag.length, 2);
+  assert.deepEqual(sag[1].linjer.map((l) => l.sortiment), ['gs', 'fs']);
+  assert.ok(!r.varsler.some((v) => /mangler salgsordre/.test(v.tekst)));
+  assert.ok(r0.varsler.some((v) => /mangler salgsordre for \d+ m³ sagtømmer gran/.test(v.tekst)));
+});
+
+test('mangler koordinater: standardavstand brukes og meldes', () => {
+  const r = planlegg(plan({ drifter: [drift({ lat: '', lon: '' })] }));
+  assert.ok(r.nokkel.levert > 0);
+  assert.ok(r.varsler.some((v) => /mangler koordinater/.test(v.tekst)));
 });
 
 console.log(`\n${ok} tester ok`);
