@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.38.0** (2026-10-19) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.39.0** (2026-10-23) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -20,7 +20,7 @@ uten innlogging. Dataene lagres bare på din egen enhet (IndexedDB), og du kan n
 | Område | Funksjon |
 |---|---|
 | **Import** | SOSI (`.sos`), GeoJSON og CSV. Feltnavn som `BESTANDNR`, `TRESLAG`, `BONITET` (`17` eller `G17`), `HOGSTKLASSE` (`5` eller `V`), `ALDER`, `VOLUM`/`VOLUM_DAA`, `TREANTALL`, `TILTAK` gjenkjennes automatisk. Koordinatsystem (EUREF89 UTM32/33/35 eller WGS84) leses fra filen eller gjettes. Ved ny import flettes data på bestandsnummer, så du kan oppdatere planen uten å miste egne tiltak. |
-| **Kart** | Kartverkets topografiske kart (farge og gråtone) og flyfoto. Overlegg fra NIBIO: SR16 volum, treslag, bonitet og trehøyde, og AR5 arealtype. Du kan sammenligne planen med nyere fjernmålingsdata. Bestandene kan fargelegges etter hogstklasse, treslag, bonitet, volum, planlagte tiltak eller hogstklasse i et framtidig år. |
+| **Kart** | Kartverkets topografiske kart (farge og gråtone), flyfoto og satellittbilder (Sentinel-2, én skyfri sommermosaikk per år 2018–2025, med glider for å sammenligne to år). Overlegg fra NIBIO: SR16 volum, treslag, bonitet og trehøyde, og AR5 arealtype. Du kan sammenligne planen med nyere fjernmålingsdata. Bestandene kan fargelegges etter hogstklasse, treslag, bonitet, volum, planlagte tiltak eller hogstklasse i et framtidig år. |
 | **Bestand** | Tabell som kan sorteres og filtreres, med summer. Alle felt kan redigeres, du kan tegne nye bestand og flytte grenser. Hvert bestand viser beregnet tilvekst, volum om 10 år, når det blir hogstmodent og rotnetto ved hogst nå. Felt fra importen som appen ikke kjenner, tas vare på. |
 | **Tiltak** | Tiltaksplan per år med m³, netto og skogfondavsetning. **«Foreslå tiltak»** finner hogstmodne bestand og foreslår sluttavvirkning, planting, ungskogpleie og tynning. Sluttavvirkningen **spres jevnt over N år**. Miljøfigurer får aldri forslag om hogst. Når et tiltak markeres som utført, oppdateres bestandet (f.eks. til HK I etter hogst). |
 | **Framskriving** | Simulerer eiendommen år for år i 10–50 år, med eller uten tiltaksplanen. Viser stående volum, tilvekst, avvirkning, netto og CO₂. Glidebryteren viser hogstklassekartet i et valgt år. |
@@ -493,6 +493,21 @@ Planlagte tiltak kan samles til **oppdrag** og sendes til en utfører, for eksem
   - Når status settes til *utført*, kan alle tiltakene i oppdraget markeres som utført, og bestandene oppdateres som ved enkelttiltak.
   - Tiltak i et oppdrag får et merke med oppdragsnummer og status i tiltakslisten. Bestandene i oppdraget som er åpent, utheves med oransje i kartet.
 - **Arbeidsordre:** «Skriv ut arbeidsordre» lager en side for utskrift eller PDF. Den har utfører, periode og omfang, de oppdragsspesifikke feltene og instruksen. Den har også kart med bestandene i oppdraget, bilvei, traktorvei, sti og velteplasser, en bestandstabell, sjekklisten og felt for kvittering.
+
+## Satellittbilder – se endringer siden taksten (Sentinel-2)
+
+Kartverket lager hver sommer en skyfri mosaikk av Norge fra Sentinel-2. Bildene er tatt 1. juni–31. august og har 10 m oppløsning. Mosaikkene er åpne data (CC BY 4.0, WMS `wms.geonorge.no/skwms1/wms.sentinel2`). SkogIQ bruker dem til å se hva som har skjedd i skogen siden forrige takst. Flatehogst, stormfall og skader vises som lyse eller brune felt. Logikken ligger i `js/satellitt.js`.
+
+- **Kartlaget «Satellitt (Sentinel-2, 2018–2025)»** i lagvelgeren:
+  - Et panel nederst i kartet lar deg velge år.
+  - «Sammenlign med» et annet år deler kartet med en glider: venstre side viser det valgte året, høyre side sammenligningsåret.
+  - Bestandene tegnes med gule grenser, som på flyfoto.
+- **Per bestand:** «🛰 Satellittbilder 2018–2025» i bestandsdetaljene viser samme utsnitt for hvert år med bestandsgrensen tegnet inn.
+  - År til og med takståret er nedtonet, så endringer etter taksten er lette å se.
+  - Klikk et år for å vise det i kartet, sammenlignet med året før.
+  - Bildene lastes først når delen åpnes.
+- **Begrensninger:** Mosaikken kommer én gang i året, og 10 m oppløsning viser flatehogst og stormfall, men sjelden tynning. Bildene viser endringer, ikke volum eller høyde (det gir taksten og SR16).
+- **Kreditering:** «Inneholder modifiserte Copernicus Sentinel-data <år>, prosessert av Kartverket».
 
 ## Takst eller SR16 – urørt eller endret siden taksten?
 

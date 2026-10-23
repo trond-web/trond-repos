@@ -56,6 +56,7 @@ let kartUtvalg = null; // velg-modus: trykk på bestand i kartet og tegnede flat
 const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
 import { stabletSoyle, linje, fmt } from './charts.js';
 import { lagPlanSynk, merkSlettet, lenkeMedKode, API as SYNK_API } from './plan-synk.js';
+import { lagSatellittVisning, bestandStripeHtml, SATELLITT_AAR, SISTE_SATELLITTAAR } from './satellitt.js';
 
 const IAAR = new Date().getFullYear();
 const $ = (s, r = document) => r.querySelector(s);
@@ -117,6 +118,7 @@ let kart; let bestandLag; let misLag; let misMerker = null; let markslagLag; let
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
 let etikettLag; let flyfotoAktiv = false; let lagKontroll = null; let andreVisning = null;
+let satellitt = null; let grunnkart = {};
 
 function initKart() {
   kart = L.map('kart', { zoomControl: false, attributionControl: false, preferCanvas: false }).setView([60.85, 11.2], 9);
@@ -131,6 +133,9 @@ function initKart() {
   const flyfoto = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 20, maxNativeZoom: 19, attribution: 'Flyfoto © Esri, Maxar, Earthstar Geographics',
   });
+  // Satellitt: Kartverkets skyfrie Sentinel-2-mosaikker per sommer, med sammenligning av to år (satellitt.js).
+  satellitt = lagSatellittVisning(kart);
+  grunnkart = { graa, topo, flyfoto, satellitt: satellitt.lag };
   const wms = (url, layers, navn) => L.tileLayer.wms(url, { layers, format: 'image/png', transparent: true, opacity: 0.6, attribution: `${navn} © NIBIO` });
   const overlays = {
     'SR16 Volum (NIBIO)': wms('https://wms.nibio.no/cgi-bin/sr16', 'SRRVOLMB', 'SR16'),
@@ -152,7 +157,7 @@ function initKart() {
   document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto }, { ...overlays, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
 
   kart.on('click', (e) => {
@@ -165,10 +170,20 @@ function initKart() {
   kart.on('overlayadd overlayremove', () => { oppdaterEtiketter(); visMisMerker(); tegnLegend(); });
   // På flyfoto tegnes bestandene som i skogbruksplankart: gule grenser og hvit tekst.
   kart.on('baselayerchange', (e) => {
-    flyfotoAktiv = e.layer === flyfoto;
+    flyfotoAktiv = e.layer === flyfoto || e.layer === satellitt.lag;
     kart.getContainer().classList.toggle('flyfoto', flyfotoAktiv);
     oppdaterStiler();
   });
+}
+
+// Viser satellittbildet for året som grunnkart, sammenlignet med året før (glideren i kartet), og zoomer til bestandet.
+function visSatellittAar(aar, b) {
+  for (const l of [grunnkart.graa, grunnkart.topo, grunnkart.flyfoto]) if (l && kart.hasLayer(l)) kart.removeLayer(l);
+  const forrige = SATELLITT_AAR.includes(aar - 1) ? aar - 1 : null;
+  satellitt.vis(aar, forrige); if (!kart.hasLayer(satellitt.lag)) satellitt.lag.addTo(kart);
+  flyfotoAktiv = true; kart.getContainer().classList.add('flyfoto'); oppdaterStiler();
+  if (b?.geometri) kart.fitBounds(L.geoJSON(b.geometri).getBounds(), { padding: [60, 60], maxZoom: 16 });
+  melding(`Satellitt ${aar}${forrige ? ` – dra glideren nederst i kartet for å sammenligne med ${forrige}` : ''}.`);
 }
 
 function settValgtPunkt(ll) {
@@ -773,6 +788,7 @@ function visDetalj() {
       <label class="hel">Merknad <textarea name="merknad" rows="2">${esc(b.merknad)}</textarea></label>
     </form>
     ${ekstra.length ? `<details class="ekstra"><summary>Andre felt fra importen (${ekstra.length})</summary>${ekstra.map(([k, v]) => `<div><b>${esc(k)}</b>: ${esc(v)}</div>`).join('')}</details>` : ''}
+    ${b.geometri ? `<details class="sat-detalj" id="satDetalj"${visDetalj.satAapen ? ' open' : ''}><summary>🛰 Satellittbilder ${SATELLITT_AAR[0]}–${SISTE_SATELLITTAAR} – se endringer siden taksten</summary><div id="satStripe"></div></details>` : ''}
     ${ungskogSeksjonHtml(b)}
     <h3 style="margin-top:14px">Tiltak for bestandet</h3>
     <div id="motorBanner">${motorBannerHtml(b)}</div>
@@ -784,6 +800,13 @@ function visDetalj() {
       <button class="knapp primar" type="submit">Legg til</button>
     </form>`;
 
+  // Satellittbildene lastes først når delen åpnes (åtte bilder per bestand).
+  const satD = $('#satDetalj');
+  if (satD) {
+    const fyll = () => { if (satD.open && !$('#satStripe').innerHTML) $('#satStripe').innerHTML = bestandStripeHtml(b); };
+    satD.addEventListener('toggle', () => { visDetalj.satAapen = satD.open; fyll(); }); fyll();
+    satD.addEventListener('click', (e) => { const k = e.target.closest('[data-sat-aar]'); if (k) visSatellittAar(Number(k.dataset.satAar), b); });
+  }
   $('#detaljSkjema').addEventListener('change', (e) => {
     const f = e.target; const navn = f.name;
     let v = f.type === 'checkbox' ? f.checked : f.value;
