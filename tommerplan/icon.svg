@@ -1,10 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="16" fill="#1f2a1c"/>
-  <!-- Tømmerstabel med kalender-rutenett -->
-  <circle cx="20" cy="44" r="8" fill="#c99a5b"/><circle cx="20" cy="44" r="4" fill="#e8cf9f"/>
-  <circle cx="36" cy="44" r="8" fill="#c99a5b"/><circle cx="36" cy="44" r="4" fill="#e8cf9f"/>
-  <circle cx="28" cy="31" r="8" fill="#b07f42"/><circle cx="28" cy="31" r="4" fill="#e8cf9f"/>
-  <path d="M42 14 L50 26 L46 26 L52 34 L44 34 Z" fill="#5c9c68"/>
-  <rect x="44" y="40" width="10" height="3" rx="1.5" fill="#e9a23b"/>
-  <rect x="44" y="46" width="7" height="3" rx="1.5" fill="#e9a23b"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Tømmerplan – laget av Trond Harald Sand</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#35754a"/>
+      <stop offset="1" stop-color="#0e2115"/>
+    </linearGradient>
+    <radialGradient id="sol" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#ffe2a0"/>
+      <stop offset=".5" stop-color="#f5b54d" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#f5b54d" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ved" cx=".42" cy=".38" r=".7">
+      <stop offset="0" stop-color="#fbe5ba"/>
+      <stop offset="1" stop-color="#d8a35c"/>
+    </radialGradient>
+    <g id="stokk">
+      <circle r="52" fill="#5b3618"/>
+      <circle r="43" fill="url(#ved)"/>
+      <circle r="30" fill="none" stroke="#b47c3a" stroke-width="5"/>
+      <circle r="17" fill="none" stroke="#b47c3a" stroke-width="5"/>
+      <circle r="5.5" fill="#86561f"/>
+    </g>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- Morgensol bak skogen -->
+  <circle cx="300" cy="118" r="70" fill="url(#sol)"/>
+  <circle cx="300" cy="118" r="24" fill="#ffe2a0"/>
+  <!-- Granskog -->
+  <path d="M52 304 L102 150 L152 304 Z" fill="#1f4d2b"/>
+  <path d="M68 246 L102 112 L136 246 Z" fill="#265c34"/>
+  <path d="M150 262 L188 96 L226 262 Z" fill="#265c34"/>
+  <path d="M138 300 L188 150 L238 300 Z" fill="#1f4d2b"/>
+  <path d="M244 290 L284 168 L324 290 Z" fill="#1f4d2b"/>
+  <!-- Rute fra velteplassen til mottaket -->
+  <path d="M372 336 C 440 320, 452 268, 420 214" fill="none" stroke="#f5b54d" stroke-width="14" stroke-linecap="round" stroke-dasharray="1 25"/>
+  <!-- Kartnål: mottaket -->
+  <path d="M420 66 a46 46 0 0 1 46 46 c0 36 -46 86 -46 86 c0 0 -46 -50 -46 -86 a46 46 0 0 1 46 -46 z" fill="#f5b54d"/>
+  <circle cx="420" cy="112" r="17" fill="#0e2115"/>
+  <!-- Tømmerstabel ved velteplassen -->
+  <use href="#stokk" x="128" y="408"/>
+  <use href="#stokk" x="232" y="408"/>
+  <use href="#stokk" x="336" y="408"/>
+  <use href="#stokk" x="180" y="320"/>
+  <use href="#stokk" x="284" y="320"/>
+  <use href="#stokk" x="232" y="232"/>
 </svg>
