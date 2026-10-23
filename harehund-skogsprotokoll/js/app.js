@@ -43,8 +43,59 @@ function erLive(p) {
 }
 const beregnNaa = (p) => beregn(p, erLive(p) ? Date.now() : null);
 
+// ---------- Innlogging ----------
+// Appen er en statisk side uten server, så innloggingen sjekkes i nettleseren. Bare et saltet PBKDF2-avtrykk
+// av «brukernavn:passord» ligger i koden. Innloggingen huskes på enheten, så appen virker uten nett i skogen.
+const INNLOGGING = { salt: '34b9ef1120f5b49ee1c74dfed37c299a', avtrykk: '901e688abf896a01dce6080187ea5b49997cd4cad6f414b28965a50789fe79db', runder: 210000 };
+const INNLOGGET = 'harehund-skogsprotokoll-innlogget';
+
+function erInnlogget() {
+  try { return localStorage.getItem(INNLOGGET) === INNLOGGING.avtrykk; } catch { return sessionInnlogget; }
+}
+let sessionInnlogget = false;
+
+async function avtrykk(bruker, passord) {
+  const tekst = new TextEncoder().encode(`${bruker.trim().toLowerCase()}:${passord}`);
+  const salt = new Uint8Array(INNLOGGING.salt.match(/../g).map((x) => parseInt(x, 16)));
+  const nokkel = await crypto.subtle.importKey('raw', tekst, 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: INNLOGGING.runder }, nokkel, 256);
+  return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function visInnlogging(feil = '') {
+  document.getElementById('topp-status').textContent = '';
+  delete app.dataset.prove;
+  delete app.dataset.fane;
+  app.innerHTML = `
+    <form class="kort innlogging" data-skjema="innlogging">
+      <h1>Logg inn</h1>
+      <label class="felt"><span>Brukernavn</span><input name="bruker" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
+      <label class="felt"><span>Passord</span><input name="passord" type="password" autocomplete="current-password" required></label>
+      ${feil ? `<p class="varsel feil">${esc(feil)}</p>` : ''}
+      <div class="knapperad"><button class="knapp primar">Logg inn</button></div>
+      <p class="dempet liten">Du forblir innlogget på denne enheten til du logger ut, også uten nett.</p>
+    </form>`;
+  app.querySelector('[name="bruker"]').focus();
+}
+
+app.addEventListener('submit', async (ev) => {
+  if (ev.target.dataset.skjema !== 'innlogging') return;
+  ev.preventDefault();
+  const f = ev.target;
+  const knapp = f.querySelector('button');
+  knapp.disabled = true;
+  knapp.textContent = 'Sjekker …';
+  let ok = false;
+  try { ok = (await avtrykk(f.bruker.value, f.passord.value)) === INNLOGGING.avtrykk; } catch { /* WebCrypto mangler */ }
+  if (!ok) return visInnlogging('Feil brukernavn eller passord.');
+  sessionInnlogget = true;
+  try { localStorage.setItem(INNLOGGET, INNLOGGING.avtrykk); } catch { /* privat modus: gjelder bare denne økten */ }
+  rute();
+});
+
 // ---------- Ruting ----------
 function rute() {
+  if (!erInnlogget()) { stoppTikk(); return visInnlogging(); }
   const [, side, id, fane] = location.hash.split('/');
   stoppTikk();
   if (side === 'prove' && finn(id)) return visProve(finn(id), fane || 'skog');
@@ -74,7 +125,8 @@ function visListe() {
     ${prover.length ? `<section class="liste">${prover.map(listeKort).join('')}</section>`
     : '<p class="tom">Ingen prøver ennå. Trykk «Ny prøve» når du har fått hund og terreng.</p>'}
     <p class="fot">Bygger på «Regler for jaktprøver for hunder tilsluttet NHKF», gjeldende fra 01.07.2025. Dommerkollegiet fastsetter endelig premiering.
-    Utviklet av Trond Harald Sand.</p>`;
+    Utviklet av Trond Harald Sand.</p>
+    <p><button class="knapp liten" data-handling="logg-ut">Logg ut</button></p>`;
 }
 
 function listeKort(p) {
@@ -612,6 +664,12 @@ app.addEventListener('click', (ev) => {
   const b = ev.target.closest('button, [data-handling]');
   if (!b) return;
   const handling = b.dataset.handling;
+  if (handling === 'logg-ut') {
+    sessionInnlogget = false;
+    try { localStorage.removeItem(INNLOGGET); } catch { /* ingenting å fjerne */ }
+    location.hash = '#/';
+    return rute();
+  }
   if (handling === 'ny') { const n = nyProve(); data.prover.push(n); lagre(); location.hash = `#/prove/${n.id}/info`; return; }
   if (handling === 'eksempel') { const n = eksempel(); data.prover.push(n); lagre(); location.hash = `#/prove/${n.id}/protokoll`; return; }
   if (!p || location.hash === '' || location.hash === '#/') return;

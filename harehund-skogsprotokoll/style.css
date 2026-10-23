@@ -236,3 +236,5 @@ textarea { resize: vertical; }
   .ny-side { break-before: page; }
   tr { break-inside: avoid; }
 }
+
+.innlogging { max-width: 420px; margin: 2rem auto; display: grid; gap: .6rem; }
