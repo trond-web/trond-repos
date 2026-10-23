@@ -1,0 +1,6 @@
+__pycache__/
+*.egg-info/
+build/
+sf2010-hub/
+innboks/
+eksport/

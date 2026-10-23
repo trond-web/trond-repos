@@ -11,3 +11,4 @@
 - [`harehund-skogsprotokoll/`](harehund-skogsprotokoll/) – skogsprotokoll for harehundprøver (NHKF): loslogg i skogen, lospoeng, egenskapspoeng, premiegrad og ferdig jaktprøveprotokoll – virker uten nett
 - [`tommerplan/`](tommerplan/) – Tømmerplan: produksjonsplanlegger for tømmer – hogst, lassbærer, velteplass, tømmerbil og leveranser til mottak, med sesong, teleløsning, lagringstid og flaskehalser, koblet til innkjøps-, salgs- og produksjonsordre i Skogdata VSYS Virkeshandel
 - [`dressur/`](dressur/) – Dressurstevne: påmelding, startlister med trekning, dommermodul med innlogging og live resultatservice etter NRYFs dressurreglement (KR IV)
+- [`stanford2010-verktoy/`](stanford2010-verktoy/) – StanForD 2010-verktøy: lese hpr/hqc/fpr/mom fra hogstmaskiner og lassbærere, lage pin/spi/oin (aptering, prismatrise, treslag, objekt), validere, og overføre filer til og fra maskinen via minnepinne, mappe-agent eller StanForD REST-hub med web-verktøy

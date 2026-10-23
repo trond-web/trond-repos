@@ -1,0 +1,954 @@
+<title>Skogsmaskinfiler</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+/* Layout: verktøylinje med faner øverst, arbeidsflate under; rapportvisning har nøkkeltall, kart og tabeller, editoren har produktliste + skjema + prismatrise */
+:root{
+  --bg:#f4f6f3; --surface:#ffffff; --sunk:#eaeee8; --fg:#1b2420; --muted:#5a665f; --line:#d5dbd4;
+  --accent:#2f6b45; --accent-fg:#ffffff; --accent-soft:#e1ede4;
+  --ok:#2f6b45; --warn:#9a6a00; --warn-soft:#fbf1d9; --err:#b3261e; --err-soft:#fbe5e3;
+  --s1:#2f6b45; --s2:#b5651d; --s3:#3f5fa8; --s4:#8a4f9e; --s5:#6b7a2a;
+  --f-display:"Bitter",Georgia,serif; --f-body:"Source Sans 3",system-ui,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131815; --surface:#1a201c; --sunk:#101411; --fg:#e3e9e5; --muted:#99a59d; --line:#2d3530;
+  --accent:#7cc192; --accent-fg:#0f1a13; --accent-soft:#1f3226;
+  --ok:#7cc192; --warn:#e3b54e; --warn-soft:#352b14; --err:#f08a80; --err-soft:#3a1d1a;
+  --s1:#7cc192; --s2:#e39a5a; --s3:#86a5f0; --s4:#c99ad9; --s5:#b8c46a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131815; --surface:#1a201c; --sunk:#101411; --fg:#e3e9e5; --muted:#99a59d; --line:#2d3530;
+  --accent:#7cc192; --accent-fg:#0f1a13; --accent-soft:#1f3226;
+  --ok:#7cc192; --warn:#e3b54e; --warn-soft:#352b14; --err:#f08a80; --err-soft:#3a1d1a;
+  --s1:#7cc192; --s2:#e39a5a; --s3:#86a5f0; --s4:#c99ad9; --s5:#b8c46a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.app{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+.app>*{min-width:0}
+section.app{width:100%;max-width:none}
+header.top{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px}
+h1{font:700 1.6rem/1.15 var(--f-display);margin:0;text-wrap:balance}
+h2{font:600 1.15rem/1.25 var(--f-display);margin:0 0 10px;text-wrap:balance}
+h3{font:600 .74rem var(--f-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.sub{color:var(--muted);margin:2px 0 0}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+nav.tabs button{border:0;background:none;color:var(--muted);font:600 .95rem var(--f-body);padding:9px 14px;border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px}
+nav.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+nav.tabs button:hover{color:var(--fg)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:7px 13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.small{padding:4px 9px;font-size:.85rem}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px}
+.grid2>*{min-width:0}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:22px;text-align:center;color:var(--muted);background:var(--surface)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop strong{color:var(--fg)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+.fact .k{font:600 .7rem var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.fact .v{font:600 1.35rem var(--f-display);font-variant-numeric:tabular-nums}
+.fact .v small{font:400 .8rem var(--f-body);color:var(--muted)}
+dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:3px 14px;margin:0;font-size:.92rem}
+dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font:600 .72rem var(--f-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--sunk);position:sticky;top:0}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr.tot td{font-weight:700;border-top:2px solid var(--line)}
+.bar{height:8px;border-radius:4px;background:var(--accent);opacity:.8}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+canvas{width:100%;display:block;border-radius:8px;background:var(--sunk)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.85rem;margin-top:8px}
+.msgs{display:grid;gap:6px;margin:0;padding:0;list-style:none;font-size:.9rem}
+.msgs li{padding:6px 10px;border-radius:6px}
+.msgs li.err{background:var(--err-soft);color:var(--err)}
+.msgs li.warn{background:var(--warn-soft);color:var(--warn)}
+.msgs li.ok{background:var(--accent-soft);color:var(--ok)}
+.pill{display:inline-block;font:600 .72rem var(--f-mono);padding:2px 8px;border-radius:99px;background:var(--sunk);color:var(--muted);letter-spacing:.03em}
+.pill.ok{background:var(--accent-soft);color:var(--ok)} .pill.err{background:var(--err-soft);color:var(--err)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.editor{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px;align-items:start}
+.editor>*{min-width:0}
+.plist{display:grid;gap:4px}
+.plist button{text-align:left;border:1px solid transparent;background:none;border-radius:7px;padding:7px 10px;cursor:pointer;display:grid;gap:1px}
+.plist button[aria-current="true"]{background:var(--surface);border-color:var(--line)}
+.plist button .t{font-weight:600} .plist button .s{font:.75rem var(--f-mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px}
+.form label{display:grid;gap:4px;font-size:.85rem;color:var(--muted);min-width:0}
+.form label.wide{grid-column:1/-1}
+.form input,.form select,.form textarea{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;color:var(--fg);min-width:0;width:100%}
+.form textarea{font:.85rem var(--f-mono);min-height:70px}
+.hint{font-size:.8rem;color:var(--muted)}
+.matrix input{width:4.6em;border:1px solid var(--line);background:var(--bg);border-radius:4px;padding:3px 4px;text-align:right;font:.82rem var(--f-mono);color:var(--fg)}
+.matrix input.x{background:var(--err-soft);color:var(--err);text-align:center}
+.matrix td,.matrix th{padding:3px 5px}
+.matrix th.rowh{position:sticky;left:0;background:var(--sunk);z-index:1}
+pre.xml{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:12px;max-height:340px;overflow:auto;font:.78rem/1.45 var(--f-mono);margin:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 6px 6px 0;font-size:.92rem}
+code{font:.85em var(--f-mono);background:var(--sunk);padding:1px 5px;border-radius:4px}
+pre.cmd{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;font:.82rem var(--f-mono);margin:6px 0 0}
+.subtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.subtabs button{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 14px;cursor:pointer;font-weight:600}
+.subtabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+@media (max-width:760px){.editor{grid-template-columns:minmax(0,1fr)}.plist{grid-auto-flow:column;grid-auto-columns:minmax(160px,1fr);overflow-x:auto}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>Skogsmaskinfiler</h1>
+      <p class="sub">Les, lag og valider StanForD 2010-filer for hogstmaskiner og lassbærere</p>
+    </div>
+    <span class="pill" id="modePill">Kjører i nettleseren</span>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-les" aria-selected="true" data-tab="les">Les rapport</button>
+    <button role="tab" id="tab-lag" aria-selected="false" data-tab="lag">Lag instruksjon</button>
+    <button role="tab" id="tab-valider" aria-selected="false" data-tab="valider">Valider</button>
+    <button role="tab" id="tab-maskin" aria-selected="false" data-tab="maskin">Maskiner</button>
+  </nav>
+
+  <!-- ============ LES ============ -->
+  <section id="view-les" class="app" role="tabpanel">
+    <label class="drop" id="drop">
+      <input type="file" id="fileIn" accept=".hpr,.hqc,.fpr,.mom,.thp,.fqc,.hprz,.hqcz,.fprz,.momz,.zip,.xml,.pin,.spi,.oin" hidden>
+      <strong>Slipp en fil fra maskinen her</strong>, eller klikk for å velge<br>
+      <span class="hint">hpr, hqc, fpr, mom (også komprimert .hprz). Fila leses kun i nettleseren din.</span>
+    </label>
+    <div id="report"></div>
+  </section>
+
+  <!-- ============ LAG ============ -->
+  <section id="view-lag" class="app" role="tabpanel" hidden>
+    <div class="subtabs" role="tablist">
+      <button data-sub="pin" aria-selected="true">Produkter (pin)</button>
+      <button data-sub="spi" aria-selected="false">Treslag (spi)</button>
+      <button data-sub="oin" aria-selected="false">Objekt (oin)</button>
+    </div>
+    <div id="sub-pin">
+      <div class="editor">
+        <div>
+          <div class="plist" id="plist"></div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn small" id="addProd" type="button">+ Produkt</button>
+            <button class="btn small" id="dupProd" type="button">Dupliser</button>
+            <button class="btn small" id="delProd" type="button">Fjern</button>
+          </div>
+        </div>
+        <div class="app" style="gap:14px">
+          <div class="panel" id="pform"></div>
+          <div class="panel">
+            <div class="row" style="justify-content:space-between;margin-bottom:8px">
+              <h2 style="margin:0">Prismatrise</h2>
+              <div class="row">
+                <label class="hint" for="fillVal">Fyll alle med</label>
+                <input id="fillVal" type="number" style="width:6em;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--bg)">
+                <button class="btn small" id="fillBtn" type="button">Fyll</button>
+              </div>
+            </div>
+            <p class="hint" style="margin:0 0 8px">Pris per m³ for hver kombinasjon av toppdiameter (rader, mm) og lengde (kolonner, cm). Skriv <b>X</b> for å forby kapping.</p>
+            <div class="tbl matrix" id="matrix"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="sub-spi" hidden><div class="panel" id="spiForm"></div></div>
+    <div id="sub-oin" hidden><div class="panel" id="oinForm"></div></div>
+
+    <div class="grid2">
+      <div class="panel">
+        <h2>Kontroll</h2>
+        <ul class="msgs" id="buildMsgs"></ul>
+      </div>
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;margin-bottom:8px">
+          <h2 style="margin:0">Fil</h2>
+          <div class="row">
+            <label class="hint" for="sfVersion">Versjon</label>
+            <select id="sfVersion" style="border:1px solid var(--line);border-radius:6px;padding:4px;background:var(--bg)">
+              <option>3.0</option><option>3.1</option><option>3.2</option><option>3.3</option><option>3.4</option><option>3.5</option><option selected>3.6</option><option>4.1</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:10px">
+          <button class="btn primary" id="dlBuild" type="button">Last ned</button>
+          <button class="btn" id="dlJson" type="button">Lagre oppsett (JSON)</button>
+          <label class="btn" for="jsonIn">Åpne oppsett…</label>
+          <input type="file" id="jsonIn" accept=".json,.pin,.spi,.oin,.hpr,.hprz" hidden>
+          <button class="btn" id="sendBuild" type="button" hidden>Send til maskin…</button>
+        </div>
+        <pre class="xml" id="xmlPrev"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ VALIDER ============ -->
+  <section id="view-valider" class="app" role="tabpanel" hidden>
+    <label class="drop" id="vdrop">
+      <input type="file" id="vIn" multiple hidden>
+      <strong>Slipp filer som skal sjekkes</strong>, eller klikk for å velge<br>
+      <span class="hint">Alle StanForD 2010-typer. Regler fra Skogforsk: enheter, nøkler, R2.3, R3.7, R3.16, prismatrise og stammenummer.</span>
+    </label>
+    <div id="vres" class="app"></div>
+  </section>
+
+  <!-- ============ MASKINER ============ -->
+  <section id="view-maskin" class="app" role="tabpanel" hidden>
+    <div id="hubOff" class="app">
+      <div class="panel app" style="gap:12px">
+        <h2>Overføre filer til og fra maskinen</h2>
+        <p style="margin:0">Fra denne siden lastes filene ned. De legges på minnepinne, i maskinens importmappe eller i produsentens tjeneste.</p>
+        <p style="margin:0"><b>Viktig om nedlasting her:</b> filer lastet ned fra denne siden kommer som en <code>.zip</code> med StanForD-fila inni. Pakk ut før du legger den på minnepinnen.</p>
+        <div class="note">For å sende og hente direkte mot maskinene, kjør huben fra Python-pakken. Da får dere denne samme siden på <code>/app</code>, med innlogging og en egen fane for maskinene.</div>
+<pre class="cmd">sf2010 server --lager hub/ --brukere users.json --vert 0.0.0.0 --port 8710
+# åpne http://&lt;server&gt;:8710/app i nettleseren
+sf2010 agent --url http://&lt;server&gt;:8710 --nokkel MASKINNØKKEL --maskin &lt;ID&gt; \
+             --eksportmappe /mnt/maskin/export --importmappe /mnt/maskin/import</pre>
+      </div>
+    </div>
+    <div id="hubOn" class="app" hidden>
+      <div class="panel row" style="justify-content:space-between">
+        <div class="row">
+          <label for="apiKey" class="hint">API-nøkkel</label>
+          <input id="apiKey" type="password" autocomplete="off" style="border:1px solid var(--line);border-radius:6px;padding:6px 9px;background:var(--bg);min-width:0;width:16em">
+          <button class="btn primary" id="hubLogin" type="button">Koble til</button>
+        </div>
+        <span class="pill" id="hubState">Ikke tilkoblet</span>
+      </div>
+      <div class="grid2">
+        <div class="panel">
+          <h2>Maskiner</h2>
+          <div id="hubMachines" class="hint">Koble til for å se maskiner.</div>
+        </div>
+        <div class="panel">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <h2 style="margin:0">Rapporter fra maskinene</h2>
+            <div class="row">
+              <select id="hubType" style="border:1px solid var(--line);border-radius:6px;padding:4px;background:var(--bg)"><option>HPR</option><option>HQC</option><option>FPR</option><option>MOM</option></select>
+              <select id="hubDays" style="border:1px solid var(--line);border-radius:6px;padding:4px;background:var(--bg)"><option value="1">Siste døgn</option><option value="7" selected>Siste uke</option><option value="30">Siste 30 dager</option><option value="3650">Alle</option></select>
+              <button class="btn small" id="hubRefresh" type="button">Oppdater</button>
+            </div>
+          </div>
+          <div id="hubReports" class="hint">Koble til for å se rapporter.</div>
+        </div>
+      </div>
+      <div class="panel" id="hubSend" hidden>
+        <h2>Send instruksjon</h2>
+        <div class="form">
+          <label>Fil<select id="sendWhich"><option value="pin">Produkter (pin) fra editoren</option><option value="spi">Treslag (spi) fra editoren</option><option value="oin">Objekt (oin) fra editoren</option></select></label>
+          <label>Mottaker<select id="sendTo"></select></label>
+        </div>
+        <div class="row" style="margin-top:12px"><button class="btn primary" id="sendGo" type="button">Send</button><span id="sendRes" class="hint"></span></div>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="text/plain" id="sampleHpr">__SAMPLE_HPR__</script>
+<script>
+"use strict";
+/* ===================================================================== *
+ *  StanForD 2010 – kjerne (lesing, bygging, validering)                  *
+ * ===================================================================== */
+const NS = "urn:skogforsk:stanford2010";
+const XSI = "http://www.w3.org/2001/XMLSchema-instance";
+const TYPES = {
+  hpr:["HarvestedProduction","Hogstproduksjon","fra"], hqc:["HarvestingQualityControl","Kontrollmåling hogst","fra"],
+  thp:["TotalHarvestedProduction","Total hogstproduksjon","fra"], fpr:["ForwardedProduction","Lassbærerproduksjon","fra"],
+  fqc:["ForwardingQualityControl","Kontrollmåling lassbærer","fra"], mom:["OperationalMonitoring","Driftsoppfølging","fra"],
+  ogr:["ObjectGeographicalReport","Geografisk rapport","fra"], pin:["ProductInstruction","Produktinstruksjon","til"],
+  spi:["SpeciesGroupInstruction","Treslagsinstruksjon","til"], oin:["ObjectInstruction","Objektinstruksjon","til"],
+  ogi:["ObjectGeographicalInstruction","Geografisk instruksjon","til"], foi:["ForwardingObjectInstruction","Objektinstruksjon lassbærer","til"],
+  fdi:["ForwardingDeliveryInstruction","Leveranseinstruksjon","til"], env:["Envelope","Konvolutt","begge"]
+};
+const ROOT2EXT = Object.fromEntries(Object.entries(TYPES).map(([e,v])=>[v[0],e]));
+const UNITS = {areaUnit:"ha",diameterUnit:"mm",lengthUnit:"cm",volumeUnit:"m3",weightUnit:"kg"};
+const VDATE = {"3.0":"2014-02-06","3.1":"2015-02-06","3.2":"2016-02-04","3.3":"2017-02-06","3.4":"2018-02-06","3.5":"2019-02-07","3.6":"2020-02-07","4.0":"2022-08-15","4.1":"2025-02-05","2.0":"2011-12-04","2.1":"2013-02-05"};
+const STEM_BODIES = ["SingleTreeProcessedStem","MultiTreeProcessedStem","SingleTreeFelledStem","MultiTreeFelledStem"];
+
+// ---- DOM-hjelpere for XML ----
+const kids = (el, name) => el ? [...el.children].filter(c => c.localName === name) : [];
+const k1 = (el, path) => { let cur = el; for (const p of path.split("/")) { if (!cur) return null; cur = kids(cur, p)[0] || null; } return cur; };
+const tx = (el, path) => { const n = path ? k1(el, path) : el; const t = n && n.textContent != null ? n.textContent.trim() : ""; return t === "" ? null : t; };
+const nm = (el, path) => { const t = tx(el, path); if (t == null) return null; const v = Number(t); return Number.isFinite(v) ? v : null; };
+const slug = s => (s||"").replace("m3 (price)","m3price").replace(/[^0-9a-zA-Z]+/g,"_").replace(/^_|_$/g,"").toLowerCase();
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = (v, d=2) => v == null || Number.isNaN(v) ? "–" : Number(v).toLocaleString("nb-NO",{minimumFractionDigits:d,maximumFractionDigits:d});
+
+// ---- Fil → tekst (håndterer zip / gzip / deflate / BOM) ----
+async function bytesToText(buf, name) {
+  let u = new Uint8Array(buf);
+  if (u[0] === 0x50 && u[1] === 0x4b) {
+    if (!window.JSZip) throw new Error("Kan ikke pakke ut zip: biblioteket lastet ikke.");
+    const z = await JSZip.loadAsync(buf);
+    const f = Object.values(z.files).find(f => !f.dir);
+    if (!f) throw new Error("Tomt zip-arkiv");
+    return { text: await f.async("string"), name: f.name };
+  }
+  if (u[0] === 0x1f && u[1] === 0x8b) u = new Uint8Array(await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
+  let text = new TextDecoder("utf-8").decode(u);
+  if (!/^\s*</.test(text.replace(/^﻿/,""))) {
+    for (const fmtName of ["deflate","deflate-raw"]) {
+      try { const out = await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream(fmtName))).arrayBuffer(); text = new TextDecoder().decode(out); break; } catch(e) {}
+    }
+  }
+  return { text: text.replace(/^﻿/, ""), name };
+}
+function parseXml(text) {
+  const doc = new DOMParser().parseFromString(text, "application/xml");
+  const err = doc.getElementsByTagName("parsererror")[0];
+  if (err) throw new Error("Ikke gyldig XML: " + err.textContent.split("\n")[0].slice(0,160));
+  return doc;
+}
+function extOf(root, name) {
+  const mt = (root.getAttribute("messageType")||"").toLowerCase();
+  if (TYPES[mt]) return mt;
+  if (ROOT2EXT[root.localName]) return ROOT2EXT[root.localName];
+  const m = /\.([a-z]{3})z?$/i.exec(name||""); return m && TYPES[m[1].toLowerCase()] ? m[1].toLowerCase() : null;
+}
+
+// ---- Analyse av en melding ----
+function analyze(doc, name) {
+  const root = doc.documentElement, ext = extOf(root, name);
+  const m = k1(root, "Machine"), scope = m || root;
+  const hdr = [...root.children][0]; const header = {};
+  if (hdr && hdr.localName.endsWith("Header")) for (const c of hdr.children) header[c.localName] = c.textContent.trim();
+  const machine = m ? {
+    category: m.getAttribute("machineCategory"), key: tx(m,"MachineKey"), manufacturer: tx(m,"MachineBaseManufacturer"),
+    model: tx(m,"MachineBaseModel"), manufacturerId: tx(m,"BaseMachineManufacturerID"), application: tx(m,"MachineApplicationVersion"),
+    head: [tx(m,"MachineHeadManufacturer"), tx(m,"MachineHeadModel")].filter(Boolean).join(" ") || null,
+    contractor: tx(m,"LoggingContractor/BusinessName")
+  } : {};
+  const species = kids(scope,"SpeciesGroupDefinition").map(sg => ({key:nm(sg,"SpeciesGroupKey"), uid:tx(sg,"SpeciesGroupUserID"), name:tx(sg,"SpeciesGroupName")}));
+  const products = kids(scope,"ProductDefinition").map(pd => { const c = k1(pd,"ClassifiedProductDefinition"); const b = c || k1(pd,"UnclassifiedProductDefinition");
+    return {key:nm(pd,"ProductKey"), uid:tx(b,"ProductUserID") || tx(pd,"ProductUserID"), name:tx(b,"ProductName"), group:tx(b,"ProductGroupName"), sgKey:nm(b,"SpeciesGroupKey"), sgUid:tx(b,"SpeciesGroupUserID"), classified:!!c}; });
+  const objects = kids(scope,"ObjectDefinition").map(o => ({key:nm(o,"ObjectKey"), uid:tx(o,"ObjectUserID"), name:tx(o,"ObjectName"), start:tx(o,"StartDate"), end:tx(o,"EndDate"), area:nm(o,"ObjectArea"), org:tx(o,"LoggingOrganisation/ContactInformation/BusinessName")}));
+  const spName = Object.fromEntries(species.map(s => [s.key, s.name || s.uid]));
+  const prod = Object.fromEntries(products.map(p => [p.key, p]));
+  const stems = [], logs = [];
+  const stemEls = m ? [...m.getElementsByTagNameNS(NS, "Stem")] : [];
+  for (const st of stemEls) {
+    const body = STEM_BODIES.map(b => k1(st, b)).find(Boolean);
+    const c = k1(st, "StemCoordinates");
+    const s = { stemKey:nm(st,"StemKey"), stemNumber:nm(st,"StemNumber"), objectKey:nm(st,"ObjectKey"), speciesKey:nm(st,"SpeciesGroupKey"),
+      species: spName[nm(st,"SpeciesGroupKey")] ?? String(nm(st,"SpeciesGroupKey")), operator:nm(st,"OperatorKey"), date:tx(st,"HarvestDate"),
+      processing: tx(st,"ProcessingCategory") || (body && body.localName), lat:nm(c,"Latitude"), lon:nm(c,"Longitude"),
+      dbh: nm(body,"DBH"), nLogs: kids(body,"Log").length, m3sub:0, m3sob:0 };
+    let pos = 0;
+    for (const lg of kids(body,"Log")) {
+      const pk = nm(lg,"ProductKey"), p = prod[pk] || {};
+      let machineLen = null;
+      const meas = kids(lg,"LogMeasurement"); if (!meas.length) meas.push(null);
+      for (const me of meas) {
+        const cat = me ? (me.getAttribute("logMeasurementCategory") || "Machine") : "Machine";
+        const r = { stemKey:s.stemKey, stemNumber:s.stemNumber, logKey:nm(lg,"LogKey"), by:cat, species:s.species, productKey:pk,
+          product: p.name ?? (pk != null ? "#" + pk : null), group:p.group, startPos:pos, length:nm(me,"LogLength"), reason:tx(lg,"CuttingCategory/CuttingReason"), diam:{}, vol:{} };
+        for (const d of kids(me,"LogDiameter")) { const k = slug(d.getAttribute("logDiameterCategory")); if (!(k in r.diam) || d.getAttribute("diameterMeasurementCategory") === "Average") r.diam[k] = nm(d); }
+        for (const v of kids(lg,"LogVolume")) if ((v.getAttribute("logMeasurementCategory") || "Machine") === cat) r.vol[slug(v.getAttribute("logVolumeCategory"))] = nm(v);
+        r.m3sub = r.vol.m3sub ?? r.vol.m3subestimated ?? 0; r.m3sob = r.vol.m3sob ?? r.vol.m3sobestimated ?? 0;
+        logs.push(r);
+        if (cat === "Machine") { machineLen = r.length; s.m3sub += r.m3sub; s.m3sob += r.m3sob; }
+      }
+      pos += machineLen || 0;
+    }
+    for (const v of kids(body,"StemVolume")) { const k = v.getAttribute("stemVolumeCategory")||""; if (!s.nLogs) { if (k.includes("sub")) s.m3sub += nm(v)||0; else s.m3sob += nm(v)||0; } }
+    stems.push(s);
+  }
+  const loads = [];
+  if (ext === "fpr" && m) {
+    const del = Object.fromEntries(kids(m,"DeliveryDefinition").map(d => [nm(d,"DeliveryKey"), tx(d,"DeliveryName")]));
+    for (const ld of kids(m,"Load")) for (const pl of (kids(ld,"PartialLoad").length ? kids(ld,"PartialLoad") : [null])) {
+      const r = { loadKey:nm(ld,"LoadKey"), loadNumber:nm(ld,"LoadNumber"), operator:nm(ld,"OperatorKey"), time:tx(ld,"UnloadingTime"),
+        delivery: del[nm(pl,"DeliveryKey")] ?? nm(pl,"DeliveryKey"), volume:null, mass:nm(pl,"LoadGreenMass"), volCat:null };
+      const v = kids(pl,"LoadVolume")[0]; if (v) { r.volume = nm(v); r.volCat = v.getAttribute("loadVolumeCategory"); }
+      loads.push(r);
+    }
+  }
+  const counts = {}; if (m) for (const c of m.children) counts[c.localName] = (counts[c.localName]||0) + 1;
+  return { doc, root, ext, name, version: root.getAttribute("version"), header, machine, species, products, objects, stems, logs, loads, counts };
+}
+function summary(a) {
+  const agg = new Map();
+  for (const r of a.logs) { if (r.by !== "Machine") continue; const k = r.species + "\u0000" + r.product;
+    const o = agg.get(k) || {species:r.species, product:r.product, logs:0, m3sub:0, m3sob:0}; o.logs++; o.m3sub += r.m3sub; o.m3sob += r.m3sob; agg.set(k, o); }
+  return [...agg.values()].sort((x,y) => (x.species+x.product).localeCompare(y.species+y.product, "nb"));
+}
+function controlComparison(a) {
+  const by = new Map();
+  for (const r of a.logs) { const k = r.stemKey + "|" + r.logKey; const o = by.get(k) || {}; o[r.by] = r; by.set(k, o); }
+  const out = [];
+  for (const o of by.values()) { if (!o.Machine || !o.Operator) continue; const m = o.Machine, p = o.Operator;
+    out.push({stemKey:m.stemKey, logKey:m.logKey, product:m.product, lm:m.length, lo:p.length, dl:(m.length!=null&&p.length!=null)? m.length-p.length : null,
+      dt:(m.diam.top_ob!=null&&p.diam.top_ob!=null)? m.diam.top_ob - p.diam.top_ob : (m.diam.top_ub!=null&&p.diam.top_ub!=null? m.diam.top_ub-p.diam.top_ub : null)}); }
+  return out;
+}
+
+// ---- Validering (regler fra StanForD2010 rules, Skogforsk) ----
+function validateDoc(doc) {
+  const root = doc.documentElement, errs = [], warns = [];
+  if (root.namespaceURI !== NS) errs.push(`Rot-elementet mangler navnerommet ${NS}`);
+  const ext = (root.getAttribute("messageType")||"").toLowerCase(), t = TYPES[ext];
+  if (!t) errs.push(`Ukjent eller manglende messageType: «${ext}»`);
+  else if (t[0] !== root.localName) errs.push(`messageType=${ext} passer ikke med rot-elementet ${root.localName} (skal være ${t[0]})`);
+  for (const [k,v] of Object.entries(UNITS)) if (root.getAttribute(k) !== v) errs.push(`Attributtet ${k} skal være «${v}», er «${root.getAttribute(k) ?? ""}»`);
+  if (!VDATE[root.getAttribute("version")]) warns.push(`Ukjent versjon «${root.getAttribute("version")}»`);
+  if (t) { const h = k1(root, t[0]+"Header"); if (!h) errs.push(`Mangler ${t[0]}Header`); else for (const f of ["CreationDate","ModificationDate","CountryCode"]) if (!k1(h,f)) errs.push(`${t[0]}Header mangler ${f}`); }
+  if (ext === "hpr" || ext === "hqc") checkProduction(root, errs, warns, ext === "hpr");
+  if (ext === "pin") checkPin(root, errs, warns);
+  if (ext === "spi") checkSpi(root, errs, warns);
+  return { errs, warns, ok: errs.length === 0 };
+}
+function checkProduction(root, errs, warns, strict) {
+  const ref = strict ? errs : warns, m = k1(root, "Machine");
+  if (!m) { errs.push("Mangler Machine"); return; }
+  if (!tx(m,"MachineKey")) errs.push("Machine mangler MachineKey");
+  const prods = new Set(kids(m,"ProductDefinition").map(p => nm(p,"ProductKey")));
+  const sps = new Set(kids(m,"SpeciesGroupDefinition").map(p => nm(p,"SpeciesGroupKey")));
+  const objs = new Set(kids(m,"ObjectDefinition").map(p => nm(p,"ObjectKey")));
+  const keys = new Set(), nums = {}; let refCount = 0;
+  for (const st of m.getElementsByTagNameNS(NS,"Stem")) {
+    const sk = nm(st,"StemKey");
+    if (keys.has(sk)) errs.push(`StemKey ${sk} er ikke unik`); keys.add(sk);
+    if (!sps.has(nm(st,"SpeciesGroupKey")) && refCount++ < 20) ref.push(`Stamme ${sk}: treslag ${nm(st,"SpeciesGroupKey")} er ikke definert`);
+    const ok = nm(st,"ObjectKey"); if (objs.size && !objs.has(ok)) errs.push(`Stamme ${sk}: objekt ${ok} er ikke definert`);
+    (nums[ok] = nums[ok] || []).push(nm(st,"StemNumber"));
+    for (const lg of st.getElementsByTagNameNS(NS,"Log")) {
+      if (!prods.has(nm(lg,"ProductKey")) && refCount++ < 20) ref.push(`Stamme ${sk}: produkt ${nm(lg,"ProductKey")} brukt men ikke definert (regel R3.7)`);
+      for (const me of kids(lg,"LogMeasurement")) { const l = nm(me,"LogLength"); if (l == null || l <= 0) errs.push(`Stamme ${sk}: ugyldig stokklengde ${l}`); }
+    }
+    const c = k1(st,"StemCoordinates"); if (c) { const la = nm(c,"Latitude"), lo = nm(c,"Longitude"); if ((la!=null && Math.abs(la)>90) || (lo!=null && Math.abs(lo)>180)) errs.push(`Stamme ${sk}: koordinater utenfor gyldig område`); }
+  }
+  if (refCount > 20) ref.push(`… og ${refCount-20} flere referansefeil`);
+  for (const [ok, arr] of Object.entries(nums)) { const n = arr.filter(x => x!=null).sort((a,b)=>a-b); if (!n.length) continue;
+    const have = new Set(n), miss = []; for (let i = n[0]; i <= n[n.length-1] && miss.length < 11; i++) if (!have.has(i)) miss.push(i);
+    if (miss.length) warns.push(`Objekt ${ok}: mangler stammenummer ${miss.slice(0,10).join(", ")}${miss.length>10?" …":""} (delrapport eller tapt data)`); }
+}
+function checkPin(root, errs, warns) {
+  const seen = new Set();
+  for (const pd of kids(root,"ProductDefinition")) {
+    const uid = tx(pd,"ProductUserID"); if (!uid) { errs.push("Et produkt mangler ProductUserID"); continue; }
+    if (seen.has(uid.toLowerCase())) errs.push(`Produkt-ID «${uid}» er brukt flere ganger (store/små bokstaver telles likt, R2.3)`); seen.add(uid.toLowerCase());
+    const c = k1(pd,"ClassifiedProductDefinition"); if (!c) { errs.push(`${uid}: mangler ClassifiedProductDefinition`); continue; }
+    if (!tx(c,"SpeciesGroupUserID")) errs.push(`${uid}: mangler treslag (SpeciesGroupUserID)`);
+    const dc = k1(c,"DiameterDefinition/DiameterClasses");
+    const dia = kids(dc,"DiameterClass").map(x => nm(x,"DiameterClassLowerLimit")), dmax = nm(dc,"DiameterClassMAX");
+    const ld = k1(c,"LengthDefinition"); const len = kids(ld,"LengthClass").map(x => nm(x,"LengthClassLowerLimit")), lmax = nm(ld,"LengthClassMAX");
+    if (!dia.length || !len.length) { errs.push(`${uid}: mangler diameter- eller lengdeklasser`); continue; }
+    const asc = a => a.every((v,i) => i === 0 || v > a[i-1]);
+    if (!asc(dia)) errs.push(`${uid}: diameterklassene må være stigende og unike`);
+    if (!asc(len)) errs.push(`${uid}: lengdeklassene må være stigende og unike`);
+    if (dmax != null && dmax <= dia[dia.length-1]) errs.push(`${uid}: maks diameter (${dmax}) må være større enn største klasse (${dia[dia.length-1]})`);
+    if (lmax != null && lmax <= len[len.length-1]) errs.push(`${uid}: maks lengde (${lmax}) må være større enn største klasse (${len[len.length-1]})`);
+    const lo = nm(c,"CuttingWindowDefinition/LowerLengthLimit"), up = nm(c,"CuttingWindowDefinition/UpperLengthLimit");
+    if (lo != null && up != null && lo > up) errs.push(`${uid}: kappvinduets nedre grense (${lo}) er over øvre (${up}) (R3.16)`);
+    const items = kids(k1(c,"ProductMatrixes"),"ProductMatrixItem");
+    if (items.length !== dia.length * len.length) errs.push(`${uid}: prismatrisen dekker ikke alle ${dia.length}×${len.length} klassekombinasjoner`);
+    if (items.length && items.every(i => !nm(i,"Price"))) warns.push(`${uid}: alle priser er 0. Maskinen kan da ikke verdioptimere apteringen.`);
+  }
+}
+function checkSpi(root, errs, warns) {
+  const seen = new Set();
+  for (const sg of kids(root,"SpeciesGroupDefinition")) {
+    const uid = tx(sg,"SpeciesGroupUserID"); if (!uid) { errs.push("Et treslag mangler SpeciesGroupUserID"); continue; }
+    if (seen.has(uid.toLowerCase())) errs.push(`Treslag-ID «${uid}» er brukt flere ganger`); seen.add(uid.toLowerCase());
+    if (!k1(sg,"BarkFunction")) warns.push(`${uid}: ingen barkfunksjon. Maskinen bruker sin egen standard.`);
+  }
+}
+
+// ---- XML-bygging ----
+function X(tag, attrs, ...content) { return {tag, attrs: attrs || {}, content: content.flat().filter(c => c !== null && c !== undefined && c !== false)}; }
+const xv = v => typeof v === "boolean" ? (v ? "true" : "false") : String(v);
+function ser(n, ind = "") {
+  if (typeof n !== "object") return esc(xv(n));
+  const a = Object.entries(n.attrs).filter(([,v]) => v != null).map(([k,v]) => ` ${k}="${esc(xv(v))}"`).join("");
+  if (!n.content.length) return `${ind}<${n.tag}${a} />`;
+  if (n.content.every(c => typeof c !== "object")) return `${ind}<${n.tag}${a}>${n.content.map(c => esc(xv(c))).join("")}</${n.tag}>`;
+  return `${ind}<${n.tag}${a}>\n${n.content.map(c => ser(c, ind + "  ")).join("\n")}\n${ind}</${n.tag}>`;
+}
+const T = (tag, v, attrs) => (v === null || v === undefined || v === "") ? null : X(tag, attrs, v);
+const nowIso = () => { const d = new Date(), o = -d.getTimezoneOffset(), p = n => String(Math.trunc(Math.abs(n))).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}${o>=0?"+":"-"}${p(o/60)}:${p(o%60)}`; };
+const APP = "Skogsmaskinfiler web 1.0";
+function message(ext, version, body) {
+  const root = TYPES[ext][0], ts = nowIso();
+  const node = X(root, {...UNITS, version, messageType: ext, versionDate: VDATE[version], "xsi:schemaLocation": `${NS} ${root}_V${version.replace(".","p")}.xsd`, "xmlns:xsi": XSI, xmlns: NS},
+    X(root + "Header", null, T("SenderApplication", APP), T("CreationDate", ts), T("ModificationDate", ts), T("ApplicationVersionCreated", APP), T("ApplicationVersionModified", APP), T("CountryCode", 578)),
+    body);
+  return '<?xml version="1.0" encoding="utf-8"?>\n' + ser(node) + "\n";
+}
+const nums = s => String(s||"").split(/[\s,;]+/).map(Number).filter(Number.isFinite);
+const contact = (tag, name, id) => name || id ? X(tag, null, T("BusinessName", name), T("BusinessID", id)) : null;
+function productNode(p) {
+  const dia = [...new Set(nums(p.diameters))].sort((a,b)=>a-b), len = [...new Set(nums(p.lengths))].sort((a,b)=>a-b);
+  const r = false, cells = [];
+  for (const d of dia) for (const l of len) {
+    const v = p.matrix[d+"|"+l]; const forbid = String(v ?? "").trim().toUpperCase() === "X";
+    const price = forbid ? 0 : (Number(v) || 0);
+    cells.push(X("ProductMatrixItem", {diameterClassLowerLimit:d, lengthClassLowerLimit:l}, T("Price", price), T("Distribution",0), T("Limitation",0),
+      T("BuckingCriteria", forbid ? "Forbidden to buck the log even manually" : "No limit"),
+      X("LogColorMarking", null, T("Color1", false), T("Color2", false), T("Color3", false))));
+  }
+  const nor = p.volumeRule === "nor";
+  return X("ProductDefinition", null, T("ProductUserID", p.uid, {agency:"Other"}),
+    X("ClassifiedProductDefinition", null,
+      T("ProductName", p.name || p.uid), T("ModificationDate", nowIso()),
+      contact("ProductDestination", p.destName, p.destId),
+      T("ProductGroupName", p.group), T("StemTypeCode", p.stemType), T("ProductPresentationOrder", p.order),
+      X("DiameterDefinition", {modificationRestricted:r},
+        X("DiameterClasses", {diameterClassCategory:"Top"}, dia.map(d => X("DiameterClass", null, T("DiameterClassLowerLimit", d), T("DiameterClassName", d))),
+          T("DiameterClassMAX", p.diaMax), T("DiameterClassAdjustment","DiameterClassAdjustment1"), T("DiameterUnderBark", true)),
+        T("DiameterMINTop", p.diaMinTop ?? dia[0]), T("DiameterMAXButt", p.diaMaxButt), T("DiameterTopPosition", 10)),
+      X("LengthDefinition", {modificationRestricted:r}, T("LengthClassAdjustment","LengthClassAdjustment1"),
+        len.map(l => X("LengthClass", null, T("LengthClassLowerLimit", l), T("LengthClassMargin", 0))), T("LengthClassMAX", p.lenMax)),
+      X("PriceDefinition", {modificationRestricted:r},
+        T("VolumeDiameterAdjustment", nor ? "Measured diameter rounded downwards to cm" : "Measured diameter in mm"),
+        T("VolumeDiameterCategory", nor ? "Calculated Norwegian mid" : "All diameters (solid volume)", {volumeDiameterTopPosition:10}),
+        T("VolumeLengthCategory", nor ? "Rounded downwards to nearest dm-module" : "Physical length cm"), T("VolumeUnderBark", true)),
+      T("ManualFreeBuck", true), T("TopLogFreeBuck", true), T("ProductCondition", "Buck always"),
+      (p.cwLow !== "" && p.cwLow != null && p.cwUp !== "" && p.cwUp != null) ? X("CuttingWindowDefinition", {modificationRestricted:r}, T("LowerLengthLimit", p.cwLow), T("UpperLengthLimit", p.cwUp)) : null,
+      X("PermittedGradesDefinition", {modificationRestricted:r}, nums(p.grades).map(g => T("PermittedGradeNumber", g))),
+      X("LengthDistributionDefinition", {modificationRestricted:r}, T("DistributionAllowed", false), T("DistributionCategory","Number of logs"), T("MAXDeviation",0), T("DistributionWithinProduct", true)),
+      X("LimitationDefinition", {modificationRestricted:r}, T("LimitationCategory","No limitation"), T("LimitationResult","No action")),
+      X("ProductMatrixes", {modificationRestrictedPrice:r, modificationRestrictedDistribution:r, modificationRestrictedLimitation:r, modificationRestrictedBuckingCriteria:r, modificationRestrictedLogColorMarking:r}, cells),
+      T("SpeciesGroupUserID", p.sgUid, {agency:"Other"})));
+}
+const buildPin = (prods, v) => message("pin", v, prods.map(productNode));
+function buildSpi(list, v) {
+  return message("spi", v, list.map(s => {
+    const stemTypes = String(s.stemTypes||"").split(/[,;\n]/).map(x => x.split("=")).filter(x => x[0].trim());
+    const grades = String(s.grades||"").split(/[,;\n]/).map(x => x.split("=")).filter(x => x[0].trim());
+    return X("SpeciesGroupDefinition", null, T("SpeciesGroupModificationDate", nowIso()), T("SpeciesGroupUserID", s.uid, {agency:"Other"}), T("SpeciesGroupName", s.name || s.uid),
+      stemTypes.map(([c,n]) => X("StemTypeDefinition", null, T("StemTypeCode", c.trim()), T("StemTypeName", (n||"").trim()))),
+      T("SpeciesGroupPresentationOrder", s.order), T("DBHHeight", s.dbhHeight || 130, {modificationRestricted:false}),
+      X("Grades", {modificationRestricted:false}, T("StartGrade", grades.length ? grades[0][0].trim() : 1), grades.map(([n,name]) => X("Grade", null, T("GradeNumber", n.trim()), T("GradeName", (name||"").trim())))),
+      (s.barkA !== "" && s.barkA != null) ? X("BarkFunction", null, X("SwedishZacco", null, T("ConstantA", s.barkA), T("FactorB", s.barkB))) : null);
+  }));
+}
+function buildOin(o, v) {
+  return message("oin", v, X("ObjectDefinition", null, T("ObjectUserID", o.uid, {agency:"Other"}), T("ObjectName", o.name || o.uid), T("ObjectModificationDate", nowIso()),
+    T("ForestCertification", o.cert), (o.lfCode || o.lfDesc) ? X("LoggingForm", {agency:"Other"}, T("LoggingFormCode", o.lfCode), T("LoggingFormDescription", o.lfDesc)) : null,
+    T("ObjectArea", o.area), (o.orgName || o.orgId) ? X("LoggingOrganisation", null, contact("ContactInformation", o.orgName, o.orgId)) : null,
+    o.owner ? X("ForestOwner", null, T("BusinessName", o.owner)) : null, T("ContractNumber", o.contract), T("TextToMachine", o.text),
+    o.subUid ? X("SubObject", null, T("SubObjectUserID", o.subUid, {agency:"Other"}), T("SubObjectName", o.subName || o.subUid), T("RealEstateIDSubObject", o.realEstate, {agency:"Other"})) : null));
+}
+
+// ---- Uttrekk av pin/spi fra en hpr (kopiere oppsett mellom maskiner) ----
+function extractInstructions(a) {
+  const m = k1(a.root, "Machine"); if (!m) throw new Error("Fila mangler Machine");
+  const latest = (els, uidPath, datePath) => { const best = new Map(); for (const e of els) { const u = (tx(e,uidPath) || Math.random()+"").toLowerCase(), d = tx(e,datePath) || "";
+    if (!best.has(u) || d >= best.get(u)[0]) best.set(u, [d, e]); } return [...best.values()].map(x => x[1]); };
+  const sgUid = Object.fromEntries(kids(m,"SpeciesGroupDefinition").map(s => [tx(s,"SpeciesGroupKey"), tx(s,"SpeciesGroupUserID")]));
+  const v = a.version || "3.6", xs = new XMLSerializer();
+  const strip = (el, ...names) => { for (const n of names) for (const c of kids(el, n)) c.remove(); };
+  const indentRe = /\n\s*\n/g;
+  const spiParts = latest(kids(m,"SpeciesGroupDefinition"), "SpeciesGroupUserID", "SpeciesGroupModificationDate").map(sg => { const c = sg.cloneNode(true); strip(c, "SpeciesGroupKey"); return xs.serializeToString(c); });
+  const pinParts = latest(kids(m,"ProductDefinition").filter(p => k1(p,"ClassifiedProductDefinition")), "ClassifiedProductDefinition/ProductUserID", "ClassifiedProductDefinition/ModificationDate").map(pd => {
+    const body = k1(pd,"ClassifiedProductDefinition").cloneNode(true);
+    const uid = tx(body,"ProductUserID") || `${tx(body,"ProductName")}-${tx(pd,"ProductKey")}`, sgk = tx(body,"SpeciesGroupKey");
+    strip(body, "ProductUserID", "SpeciesGroupKey");
+    const doc = body.ownerDocument; const sg = doc.createElementNS(NS, "SpeciesGroupUserID"); sg.setAttribute("agency","Other"); sg.textContent = sgUid[sgk] || sgk; body.appendChild(sg);
+    return `<ProductDefinition><ProductUserID agency="Other">${esc(uid)}</ProductUserID>${xs.serializeToString(body)}</ProductDefinition>`;
+  });
+  const wrap = (ext, parts) => message(ext, v, X("__RAW__", null)).replace(/\s*<__RAW__ \/>/, "\n" + parts.join("\n").replace(/ xmlns="urn:skogforsk:stanford2010"/g, "").replace(indentRe, "\n"));
+  const out = { spi: wrap("spi", spiParts) }; if (pinParts.length) out.pin = wrap("pin", pinParts);
+  return out;
+}
+// Les produkter fra en pin/hpr inn i editoren
+function productsFromDoc(a) {
+  const scope = k1(a.root, "Machine") || a.root, sgUid = Object.fromEntries(kids(scope,"SpeciesGroupDefinition").map(s => [tx(s,"SpeciesGroupKey"), tx(s,"SpeciesGroupUserID")]));
+  return kids(scope,"ProductDefinition").map(pd => { const c = k1(pd,"ClassifiedProductDefinition"); if (!c) return null;
+    const dc = k1(c,"DiameterDefinition/DiameterClasses"), ld = k1(c,"LengthDefinition");
+    const p = { uid: tx(pd,"ProductUserID") || tx(c,"ProductUserID") || tx(c,"ProductName"), name: tx(c,"ProductName"), sgUid: tx(c,"SpeciesGroupUserID") || sgUid[tx(c,"SpeciesGroupKey")],
+      group: tx(c,"ProductGroupName"), stemType: tx(c,"StemTypeCode"), order: tx(c,"ProductPresentationOrder"),
+      destName: tx(c,"ProductDestination/BusinessName"), destId: tx(c,"ProductDestination/BusinessID"),
+      diameters: kids(dc,"DiameterClass").map(x => tx(x,"DiameterClassLowerLimit")).join(", "), diaMax: tx(dc,"DiameterClassMAX"),
+      diaMinTop: tx(c,"DiameterDefinition/DiameterMINTop"), diaMaxButt: tx(c,"DiameterDefinition/DiameterMAXButt"),
+      lengths: kids(ld,"LengthClass").map(x => tx(x,"LengthClassLowerLimit")).join(", "), lenMax: tx(ld,"LengthClassMAX"),
+      cwLow: tx(c,"CuttingWindowDefinition/LowerLengthLimit") ?? "", cwUp: tx(c,"CuttingWindowDefinition/UpperLengthLimit") ?? "",
+      volumeRule: (tx(c,"PriceDefinition/VolumeDiameterCategory")||"").includes("Norwegian") ? "nor" : "solid",
+      grades: kids(k1(c,"PermittedGradesDefinition"),"PermittedGradeNumber").map(g => g.textContent.trim()).join(", "), matrix: {} };
+    for (const it of kids(k1(c,"ProductMatrixes"),"ProductMatrixItem")) { const crit = tx(it,"BuckingCriteria") || "";
+      p.matrix[it.getAttribute("diameterClassLowerLimit")+"|"+it.getAttribute("lengthClassLowerLimit")] = crit.startsWith("Forbidden") ? "X" : (nm(it,"Price") ?? 0); }
+    return p; }).filter(Boolean);
+}
+
+/* ===================================================================== *
+ *  UI                                                                    *
+ * ===================================================================== */
+const $ = id => document.getElementById(id);
+const store = { get(k, d) { try { const v = localStorage.getItem("sf2010:"+k); return v ? JSON.parse(v) : d; } catch(e) { return d; } },
+                set(k, v) { try { localStorage.setItem("sf2010:"+k, JSON.stringify(v)); } catch(e) {} } };
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 3200); }
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+// ---- Faner ----
+function showTab(name) {
+  for (const b of document.querySelectorAll("nav.tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+  for (const v of ["les","lag","valider","maskin"]) $("view-"+v).hidden = v !== name;
+  if (name === "les") drawMap();
+}
+for (const b of document.querySelectorAll("nav.tabs button")) b.onclick = () => showTab(b.dataset.tab);
+
+// ---- Lagring av filer (artifact: zip via downloads-kapabilitet; hub/lokalt: vanlig nedlasting) ----
+let downloadsCap = null;
+const ALLOWED = new Set(["csv","json","txt","zip","html","md"]);
+async function saveFiles(files, zipBase) {
+  const single = files.length === 1 ? files[0] : null;
+  const ext = single ? single.name.split(".").pop().toLowerCase() : "zip";
+  let name, data;
+  if (single && (ALLOWED.has(ext) || !downloadsCap)) { name = single.name; data = new Blob([single.data]); }
+  else {
+    if (!window.JSZip) { toast("Kan ikke lage zip: biblioteket lastet ikke."); return; }
+    const z = new JSZip(); for (const f of files) z.file(f.name, f.data);
+    name = zipBase + ".zip"; data = await z.generateAsync({type:"blob", compression:"DEFLATE"});
+  }
+  if (downloadsCap) {
+    try { await downloadsCap.save({filename: name, data}); toast(`Lagret ${name}`); }
+    catch(e) { if (e && e.code === "declined") return; toast(e && e.code === "rejected_extension" ? "Filtypen kan ikke lastes ned her." : "Nedlasting er ikke tilgjengelig her."); }
+    return;
+  }
+  const url = URL.createObjectURL(data), a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000); toast(`Lastet ned ${name}`);
+}
+const toCsv = rows => { if (!rows.length) return ""; const cols = Object.keys(rows[0]);
+  const q = v => { const s = v == null ? "" : String(v); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+  return "﻿" + [cols.join(";"), ...rows.map(r => cols.map(c => q(r[c])).join(";"))].join("\n"); };
+
+// ---- Les rapport ----
+let current = null, logFilter = "", logPage = 0;
+const SPECIES_COLORS = ["--s1","--s2","--s3","--s4","--s5"];
+async function openBuffer(buf, name, label) {
+  try {
+    const {text, name: inner} = await bytesToText(buf, name);
+    const a = analyze(parseXml(text), inner || name);
+    if (!a.ext) throw new Error("Kjenner ikke igjen fila som en StanForD 2010-melding.");
+    current = a; current.label = label || name; current.text = text; logFilter = ""; logPage = 0;
+    renderReport(); showTab("les");
+  } catch(e) { $("report").innerHTML = `<ul class="msgs"><li class="err">${esc(name)}: ${esc(e.message)}</li></ul>`; showTab("les"); }
+}
+function wireDrop(zone, input, onFiles) {
+  input.onchange = () => { onFiles([...input.files]); input.value = ""; };
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+  zone.addEventListener("drop", e => { e.preventDefault(); zone.classList.remove("over"); onFiles([...e.dataTransfer.files]); });
+}
+wireDrop($("drop"), $("fileIn"), async fs => { if (fs[0]) openBuffer(await fs[0].arrayBuffer(), fs[0].name); });
+
+function renderReport() {
+  const a = current, el = $("report"); if (!a) { el.innerHTML = ""; return; }
+  const v = validateDoc(a.doc), t = TYPES[a.ext];
+  const sum = summary(a), tot = sum.reduce((s,r) => ({logs:s.logs+r.logs, sub:s.sub+r.m3sub, sob:s.sob+r.m3sob}), {logs:0,sub:0,sob:0});
+  const m = a.machine, o = a.objects[0];
+  const stemsWithVol = a.stems.filter(s => s.m3sub > 0);
+  const avgStem = stemsWithVol.length ? stemsWithVol.reduce((s,x) => s + x.m3sub, 0) / stemsWithVol.length : null;
+  const statusPill = v.errs.length ? `<span class="pill err">${v.errs.length} feil</span>` : v.warns.length ? `<span class="pill warn">${v.warns.length} advarsler</span>` : `<span class="pill ok">Gyldig</span>`;
+  let h = `<div class="panel"><div class="row" style="justify-content:space-between;align-items:start">
+    <div style="min-width:0"><h3>${esc(a.ext)} · ${esc(t[1])} · StanForD ${esc(a.version)}</h3><h2 style="margin:0;overflow-wrap:anywhere">${esc(a.label)}</h2></div>
+    <div class="row">${statusPill}</div></div>
+    <div class="row" style="margin-top:12px">
+      ${a.stems.length ? `<button class="btn small" id="csvStems" type="button">Stammer (CSV)</button><button class="btn small" id="csvLogs" type="button">Stokker (CSV)</button><button class="btn small" id="csvSum" type="button">Sammendrag (CSV)</button>` : ""}
+      ${a.loads.length ? `<button class="btn small" id="csvLoads" type="button">Lass (CSV)</button>` : ""}
+      ${(a.ext === "hpr" && a.products.some(p => p.classified)) ? `<button class="btn small" id="extract" type="button">Hent ut pin + spi</button><button class="btn small" id="toEditor" type="button">Åpne produktene i editoren</button>` : ""}
+      ${(a.ext === "pin") ? `<button class="btn small" id="toEditor" type="button">Åpne i editoren</button>` : ""}
+    </div></div>`;
+  if (a.ext === "hpr" || a.ext === "hqc") h += `<div class="facts">
+    <div class="fact"><div class="k">Volum</div><div class="v">${fmt(tot.sub)} <small>m³fub</small></div></div>
+    <div class="fact"><div class="k">Volum på bark</div><div class="v">${fmt(tot.sob)} <small>m³pb</small></div></div>
+    <div class="fact"><div class="k">Stammer</div><div class="v">${a.stems.length.toLocaleString("nb-NO")}</div></div>
+    <div class="fact"><div class="k">Stokker</div><div class="v">${tot.logs.toLocaleString("nb-NO")}</div></div>
+    <div class="fact"><div class="k">Middelstamme</div><div class="v">${avgStem == null ? "–" : fmt(avgStem,3)} <small>m³fub</small></div></div></div>`;
+  if (a.ext === "fpr") { const vol = a.loads.reduce((s,r) => s + (r.volume||0), 0), nLoads = new Set(a.loads.map(r => r.loadKey)).size;
+    h += `<div class="facts"><div class="fact"><div class="k">Lass</div><div class="v">${nLoads}</div></div><div class="fact"><div class="k">Volum</div><div class="v">${fmt(vol,1)} <small>${esc(a.loads[0]?.volCat || "m³")}</small></div></div><div class="fact"><div class="k">Snitt per lass</div><div class="v">${nLoads ? fmt(vol/nLoads,1) : "–"}</div></div></div>`; }
+  h += `<div class="grid2"><div class="panel"><h3>Maskin</h3><dl class="kv">
+    ${[["Produsent", [m.manufacturer, m.model].filter(Boolean).join(" ")],["Maskin-ID", m.manufacturerId],["Aggregat", m.head],["Program", m.application],["Entreprenør", m.contractor],["Sendt fra", a.header.SenderApplication],["Opprettet", a.header.CreationDate]]
+      .filter(x => x[1]).map(([k,v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("") || "<dt>–</dt><dd></dd>"}</dl></div>
+    <div class="panel"><h3>Objekt</h3><dl class="kv">
+    ${o ? [["Navn", o.name],["Objekt-ID", o.uid],["Oppdragsgiver", o.org],["Areal", o.area != null ? o.area + " ha" : null],["Start", o.start],["Slutt", o.end]].filter(x => x[1]).map(([k,v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("") : "<dt>Ingen objekt i fila</dt><dd></dd>"}</dl></div></div>`;
+  if (sum.length) { const maxV = Math.max(...sum.map(r => r.m3sub), 0.0001);
+    h += `<div class="panel"><h2>Volum per treslag og produkt</h2><div class="tbl"><table><thead><tr><th>Treslag</th><th>Produkt</th><th class="n">Stokker</th><th class="n">m³fub</th><th class="n">m³pb</th><th style="width:30%"></th></tr></thead><tbody>
+      ${sum.map(r => `<tr><td>${esc(r.species)}</td><td>${esc(r.product)}</td><td class="n">${r.logs}</td><td class="n">${fmt(r.m3sub,3)}</td><td class="n">${fmt(r.m3sob,3)}</td><td><div class="bar" style="width:${(r.m3sub/maxV*100).toFixed(1)}%"></div></td></tr>`).join("")}
+      <tr class="tot"><td colspan="2">Sum</td><td class="n">${tot.logs}</td><td class="n">${fmt(tot.sub,3)}</td><td class="n">${fmt(tot.sob,3)}</td><td></td></tr></tbody></table></div></div>`; }
+  if (a.stems.some(s => s.lat != null)) h += `<div class="panel"><h2>Hvor stammene ble hogd</h2><canvas id="map" height="320" aria-label="Kart over stammenes posisjon"></canvas><div class="legend" id="mapLegend"></div><p class="hint" style="margin:6px 0 0">Posisjon fra maskinens GNSS, fargelagt per treslag.</p></div>`;
+  if (a.ext === "hqc") { const cc = controlComparison(a);
+    if (cc.length) { const dl = cc.filter(r => r.dl != null).map(r => r.dl), mean = dl.reduce((s,x)=>s+x,0) / (dl.length||1);
+      h += `<div class="panel"><h2>Kontrollmåling: maskin mot klave</h2><p class="hint" style="margin:0 0 8px">Snitt lengdeavvik ${mean >= 0 ? "+" : ""}${fmt(mean,1)} cm over ${dl.length} stokker. Positivt tall betyr at maskinen måler lengre enn manuelt.</p>
+      <div class="tbl"><table><thead><tr><th class="n">Stamme</th><th class="n">Stokk</th><th class="n">Lengde maskin</th><th class="n">Lengde manuell</th><th class="n">Avvik cm</th><th class="n">Avvik toppdiam. mm</th></tr></thead><tbody>
+      ${cc.map(r => `<tr><td class="n">${r.stemKey}</td><td class="n">${r.logKey}</td><td class="n">${r.lm ?? "–"}</td><td class="n">${r.lo ?? "–"}</td><td class="n">${r.dl == null ? "–" : (r.dl>0?"+":"") + r.dl}</td><td class="n">${r.dt == null ? "–" : (r.dt>0?"+":"") + r.dt}</td></tr>`).join("")}</tbody></table></div></div>`; } }
+  if (a.logs.length) {
+    const sp = [...new Set(a.logs.map(r => r.species))];
+    h += `<div class="panel"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">Stokker</h2>
+      <select id="logFilter" style="border:1px solid var(--line);border-radius:6px;padding:4px;background:var(--bg)"><option value="">Alle treslag</option>${sp.map(s => `<option ${s===logFilter?"selected":""}>${esc(s)}</option>`).join("")}</select></div>
+      <div class="tbl" style="max-height:440px"><table><thead><tr><th class="n">Stamme</th><th class="n">Stokk</th><th>Målt av</th><th>Treslag</th><th>Produkt</th><th class="n">Start cm</th><th class="n">Lengde cm</th><th class="n">Topp ub mm</th><th class="n">m³fub</th><th>Kapp</th></tr></thead><tbody id="logRows"></tbody></table></div>
+      <div class="row" style="margin-top:8px;justify-content:space-between"><span class="hint" id="logInfo"></span><div class="row"><button class="btn small" id="logPrev" type="button">Forrige</button><button class="btn small" id="logNext" type="button">Neste</button></div></div></div>`;
+  }
+  if (a.loads.length) h += `<div class="panel"><h2>Lass</h2><div class="tbl" style="max-height:440px"><table><thead><tr><th class="n">Lass</th><th>Tid</th><th>Leveranse</th><th class="n">Volum</th><th class="n">Vekt kg</th></tr></thead><tbody>
+    ${a.loads.slice(0,500).map(r => `<tr><td class="n">${r.loadNumber ?? r.loadKey}</td><td>${esc(r.time||"")}</td><td>${esc(r.delivery ?? "")}</td><td class="n">${fmt(r.volume,2)}</td><td class="n">${r.mass ?? "–"}</td></tr>`).join("")}</tbody></table></div></div>`;
+  if (["mom","thp","ogr"].includes(a.ext) || (!a.stems.length && !a.loads.length && !["pin","spi","oin"].includes(a.ext)))
+    h += `<div class="panel"><h2>Innhold</h2><div class="tbl"><table><thead><tr><th>Element under Machine</th><th class="n">Antall</th></tr></thead><tbody>${Object.entries(a.counts).map(([k,v]) => `<tr><td>${esc(k)}</td><td class="n">${v}</td></tr>`).join("")}</tbody></table></div></div>`;
+  if (["pin","spi","oin"].includes(a.ext)) h += `<div class="panel"><h2>Innhold</h2><div class="tbl"><table><thead><tr><th>Type</th><th>ID</th><th>Navn</th></tr></thead><tbody>
+    ${a.products.map(p => `<tr><td>Produkt</td><td>${esc(p.uid)}</td><td>${esc(p.name)}</td></tr>`).join("")}${a.species.map(s => `<tr><td>Treslag</td><td>${esc(s.uid)}</td><td>${esc(s.name)}</td></tr>`).join("")}${a.objects.map(s => `<tr><td>Objekt</td><td>${esc(s.uid)}</td><td>${esc(s.name)}</td></tr>`).join("")}</tbody></table></div></div>`;
+  h += `<div class="panel"><h2>Kontroll</h2>${msgList(v)}</div>`;
+  el.innerHTML = h;
+  const base = a.label.replace(/\.[^.]+$/, "");
+  const on = (id, fn) => { const b = $(id); if (b) b.onclick = fn; };
+  on("csvStems", () => saveFiles([{name: base + "_stammer.csv", data: toCsv(a.stems.map(s => ({stamme:s.stemKey, nummer:s.stemNumber, objekt:s.objectKey, treslag:s.species, forer:s.operator, behandling:s.processing, bredde:s.lat, lengde:s.lon, dbh_mm:s.dbh, stokker:s.nLogs, m3fub:+s.m3sub.toFixed(4), m3pb:+s.m3sob.toFixed(4)})))}], base));
+  on("csvLogs", () => saveFiles([{name: base + "_stokker.csv", data: toCsv(a.logs.map(r => ({stamme:r.stemKey, stokk:r.logKey, malt_av:r.by, treslag:r.species, produkt:r.product, gruppe:r.group, start_cm:r.startPos, lengde_cm:r.length, rot_pb_mm:r.diam.butt_ob, midt_ub_mm:r.diam.mid_ub, topp_pb_mm:r.diam.top_ob, topp_ub_mm:r.diam.top_ub, m3fub:r.m3sub, m3pb:r.m3sob, kapp:r.reason})))}], base));
+  on("csvSum", () => saveFiles([{name: base + "_sammendrag.csv", data: toCsv(sum.map(r => ({treslag:r.species, produkt:r.product, stokker:r.logs, m3fub:+r.m3sub.toFixed(3), m3pb:+r.m3sob.toFixed(3)})))}], base));
+  on("csvLoads", () => saveFiles([{name: base + "_lass.csv", data: toCsv(a.loads)}], base));
+  on("extract", () => { try { const r = extractInstructions(a); saveFiles(Object.entries(r).map(([e,t]) => ({name: `${base}.${e}`, data: t})), base + "_oppsett"); } catch(e) { toast(e.message); } });
+  on("toEditor", () => { const ps = productsFromDoc(a); if (!ps.length) { toast("Fant ingen produkter."); return; } state.products = ps; state.sel = 0; persist(); renderEditor(); showTab("lag"); toast(`${ps.length} produkter lastet inn i editoren`); });
+  const lf = $("logFilter"); if (lf) { lf.onchange = () => { logFilter = lf.value; logPage = 0; renderLogs(); }; $("logPrev").onclick = () => { logPage = Math.max(0, logPage-1); renderLogs(); }; $("logNext").onclick = () => { logPage++; renderLogs(); }; renderLogs(); }
+  drawMap();
+}
+function renderLogs() {
+  const rows = current.logs.filter(r => !logFilter || r.species === logFilter), per = 100, pages = Math.max(1, Math.ceil(rows.length / per));
+  logPage = Math.min(logPage, pages - 1);
+  $("logRows").innerHTML = rows.slice(logPage*per, logPage*per + per).map(r => `<tr><td class="n">${r.stemNumber ?? r.stemKey}</td><td class="n">${r.logKey}</td><td>${r.by === "Machine" ? "Maskin" : "Manuelt"}</td><td>${esc(r.species)}</td><td>${esc(r.product)}</td><td class="n">${r.startPos}</td><td class="n">${r.length ?? "–"}</td><td class="n">${r.diam.top_ub ?? "–"}</td><td class="n">${fmt(r.m3sub,4)}</td><td>${r.reason === "Automatic" ? "Auto" : esc(r.reason || "")}</td></tr>`).join("");
+  $("logInfo").textContent = `${rows.length.toLocaleString("nb-NO")} stokker · side ${logPage+1} av ${pages}`;
+  $("logPrev").disabled = logPage === 0; $("logNext").disabled = logPage >= pages - 1;
+}
+function drawMap() {
+  const cv = $("map"); if (!cv || !current || cv.offsetParent === null) return;
+  const pts = current.stems.filter(s => s.lat != null && s.lon != null); if (!pts.length) return;
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = 320; cv.width = W*dpr; cv.height = H*dpr; const g = cv.getContext("2d"); g.scale(dpr, dpr);
+  const lats = pts.map(p => p.lat), lons = pts.map(p => p.lon), k = Math.cos((Math.min(...lats)+Math.max(...lats))/2 * Math.PI/180);
+  const x0 = Math.min(...lons), x1 = Math.max(...lons), y0 = Math.min(...lats), y1 = Math.max(...lats);
+  const spanX = Math.max((x1-x0)*k, 1e-5), spanY = Math.max(y1-y0, 1e-5), pad = 24, s = Math.min((W-2*pad)/spanX, (H-2*pad)/spanY);
+  const ox = (W - spanX*s)/2, oy = (H - spanY*s)/2;
+  g.clearRect(0,0,W,H);
+  const metersPerDeg = 111320, meters = spanY*metersPerDeg > spanX*metersPerDeg ? spanY*metersPerDeg : spanX*metersPerDeg;
+  const sp = [...new Set(pts.map(p => p.species))], col = Object.fromEntries(sp.map((x,i) => [x, cssVar(SPECIES_COLORS[i % SPECIES_COLORS.length])]));
+  for (const p of pts) { const x = ox + (p.lon - x0)*k*s, y = H - (oy + (p.lat - y0)*s), r = Math.max(2.5, Math.min(7, (p.dbh||200)/60));
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI*2); g.fillStyle = col[p.species]; g.globalAlpha = .75; g.fill(); g.globalAlpha = 1; }
+  // målestokk
+  const target = meters / 4, nice = [10,20,50,100,200,500,1000,2000].find(n => n >= target) || 5000, px = nice / metersPerDeg * s;
+  g.strokeStyle = cssVar("--muted"); g.fillStyle = cssVar("--muted"); g.lineWidth = 1.5; g.beginPath(); g.moveTo(pad, H-14); g.lineTo(pad+px, H-14); g.stroke();
+  g.font = "12px " + cssVar("--f-mono"); g.fillText(nice >= 1000 ? nice/1000 + " km" : nice + " m", pad, H-20);
+  $("mapLegend").innerHTML = sp.map(x => `<span><span class="swatch" style="background:${col[x]}"></span>${esc(x)} (${pts.filter(p => p.species===x).length})</span>`).join("") + `<span class="hint">Punktstørrelse = brysthøydediameter</span>`;
+}
+window.addEventListener("resize", () => { clearTimeout(drawMap.h); drawMap.h = setTimeout(drawMap, 120); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawMap);
+new MutationObserver(drawMap).observe(document.documentElement, {attributes:true, attributeFilter:["data-theme"]});
+function msgList(v) {
+  return `<ul class="msgs">${v.errs.map(e => `<li class="err">${esc(e)}</li>`).join("")}${v.warns.map(e => `<li class="warn">${esc(e)}</li>`).join("")}${(!v.errs.length && !v.warns.length) ? `<li class="ok">Ingen funn. Fila følger reglene som sjekkes her.</li>` : ""}</ul>`;
+}
+
+// ---- Valider ----
+wireDrop($("vdrop"), $("vIn"), async fs => {
+  const out = [];
+  for (const f of fs) { try { const {text} = await bytesToText(await f.arrayBuffer(), f.name); const doc = parseXml(text), v = validateDoc(doc);
+      out.push(`<div class="panel"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0;overflow-wrap:anywhere">${esc(f.name)}</h2>${v.errs.length ? `<span class="pill err">${v.errs.length} feil</span>` : v.warns.length ? `<span class="pill warn">${v.warns.length} advarsler</span>` : `<span class="pill ok">Gyldig</span>`}</div>${msgList(v)}</div>`); }
+    catch(e) { out.push(`<div class="panel"><h2>${esc(f.name)}</h2><ul class="msgs"><li class="err">${esc(e.message)}</li></ul></div>`); } }
+  $("vres").innerHTML = out.join("") + `<p class="hint">Full XSD-validering krever de offisielle skjemaene fra Skogforsk og gjøres med <code>sf2010 valider --xsd</code>.</p>`;
+});
+
+// ---- Editor-tilstand ----
+const EXAMPLE_PRODUCTS = [
+  {uid:"GRAN-SAG-2026", name:"Gran sagtømmer", sgUid:"NO1_Gran", group:"TIMMER", stemType:"11", order:"1", destName:"Eksempel Sagbruk AS", destId:"999999999",
+   diameters:"140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340, 360, 380, 400", diaMax:"600", diaMinTop:"140", diaMaxButt:"700",
+   lengths:"370, 400, 430, 460, 490, 520, 550", lenMax:"559", cwLow:"3", cwUp:"7", volumeRule:"nor", grades:"1, 2", prices:{base:520, byDia:{140:430,160:460,180:490,200:520,220:540,240:560}}, forbid:["140|550","160|550"]},
+  {uid:"GRAN-MASSE-2026", name:"Gran massevirke", sgUid:"NO1_Gran", group:"MASSA", stemType:"12", order:"2", diameters:"50, 100, 150, 200", diaMax:"650", diaMinTop:"50",
+   lengths:"300, 345, 400, 450, 500", lenMax:"530", cwLow:"2", cwUp:"7", volumeRule:"solid", grades:"1, 2", prices:{base:280}},
+  {uid:"FURU-SAG-2026", name:"Furu sagtømmer", sgUid:"NO1_Furu", group:"TIMMER", stemType:"11", order:"3", diameters:"150, 170, 190, 210, 230, 250, 270, 290, 310, 330, 350", diaMax:"600", diaMinTop:"150",
+   lengths:"400, 430, 460, 490, 520, 550", lenMax:"559", cwLow:"3", cwUp:"7", volumeRule:"nor", grades:"1, 2", prices:{base:500, byDia:{150:410,170:440,190:470}}},
+  {uid:"FURU-MASSE-2026", name:"Furu massevirke", sgUid:"NO1_Furu", group:"MASSA", stemType:"12", order:"4", diameters:"50, 100, 150, 200", diaMax:"650", diaMinTop:"50",
+   lengths:"300, 345, 400, 450, 500", lenMax:"530", cwLow:"", cwUp:"", volumeRule:"solid", grades:"1, 2", prices:{base:270}}
+].map(p => { const m = {}; for (const d of nums(p.diameters)) for (const l of nums(p.lengths)) m[d+"|"+l] = (p.prices.byDia && p.prices.byDia[d]) || p.prices.base;
+  for (const f of p.forbid || []) m[f] = "X"; const q = {...p, matrix: m}; delete q.prices; delete q.forbid; return q; });
+const EXAMPLE_SPI = [
+  {uid:"NO1_Gran", name:"GRAN", order:"1", dbhHeight:"130", stemTypes:"11=Sagtømmer, 12=Massevirke", grades:"1=Kv1, 2=Kv2, 3=Råte", barkA:"", barkB:""},
+  {uid:"NO1_Furu", name:"FURU", order:"2", dbhHeight:"130", stemTypes:"11=Sagtømmer, 12=Massevirke", grades:"1=Kv1, 2=Kv2, 3=Råte", barkA:"", barkB:""}];
+const EXAMPLE_OIN = {uid:"TEIG-2026-0042", name:"Nordre Hagen hogstfelt", cert:"PEFC", lfCode:"1", lfDesc:"Flatehogst", area:"12.5", orgName:"Eksempel Skog SA", orgId:"999888777",
+  owner:"Kari Nordmann", contract:"K-2026-118", text:"Spar kantsonen mot bekken. Høgstubber merket med blått bånd.", subUid:"TEIG-2026-0042-A", subName:"Delfelt A", realEstate:"3401-12/4"};
+const state = { products: store.get("products", EXAMPLE_PRODUCTS), sel: 0, spi: store.get("spi", EXAMPLE_SPI), oin: store.get("oin", EXAMPLE_OIN), sub: "pin" };
+function persist() { store.set("products", state.products); store.set("spi", state.spi); store.set("oin", state.oin); }
+const P = () => state.products[state.sel];
+
+for (const b of document.querySelectorAll(".subtabs button")) b.onclick = () => { state.sub = b.dataset.sub;
+  for (const x of document.querySelectorAll(".subtabs button")) x.setAttribute("aria-selected", String(x === b));
+  for (const s of ["pin","spi","oin"]) $("sub-"+s).hidden = s !== state.sub; refreshBuild(); };
+
+const PFIELDS = [
+  ["uid","Produkt-ID (unik hos dere)"],["name","Navn"],["sgUid","Treslag-ID (fra spi)"],["group","Produktgruppe"],
+  ["stemType","Stammetype-kode"],["order","Rekkefølge i maskinen"],["destName","Mottaker (sagbruk/fabrikk)"],["destId","Mottakers org.nr."],
+  ["diameters","Diameterklasser, nedre grense (mm)","wide"],["diaMax","Maks toppdiameter (mm)"],["diaMinTop","Min. toppdiameter (mm)"],["diaMaxButt","Maks rotdiameter (mm)"],
+  ["lengths","Lengdeklasser, nedre grense (cm)","wide"],["lenMax","Maks lengde (cm)"],["cwLow","Kappvindu nedre (cm)"],["cwUp","Kappvindu øvre (cm)"],["grades","Tillatte kvaliteter"]
+];
+function renderPList() {
+  $("plist").innerHTML = state.products.map((p,i) => `<button type="button" data-i="${i}" aria-current="${i===state.sel}"><span class="t">${esc(p.name || p.uid || "Uten navn")}</span><span class="s">${esc(p.uid)} · ${esc(p.sgUid)}</span></button>`).join("");
+  for (const b of $("plist").querySelectorAll("button")) b.onclick = () => { state.sel = +b.dataset.i; renderEditor(); };
+}
+function renderPForm() {
+  const p = P(); if (!p) { $("pform").innerHTML = `<p class="hint">Ingen produkter. Legg til et produkt.</p>`; return; }
+  $("pform").innerHTML = `<h2>${esc(p.name || "Produkt")}</h2><div class="form">${PFIELDS.map(([k,l,w]) => `<label class="${w||""}">${l}<input id="pf-${k}" value="${esc(p[k] ?? "")}"></label>`).join("")}
+    <label>Volumberegning<select id="pf-volumeRule"><option value="nor" ${p.volumeRule==="nor"?"selected":""}>Norsk midtdiameter, dm-modul</option><option value="solid" ${p.volumeRule!=="nor"?"selected":""}>Alle diametre, fysisk lengde</option></select></label></div>
+    <p class="hint" style="margin:10px 0 0">Klasser skrives med komma mellom, f.eks. «370, 400, 430». Endringer i klassene beholder prisene for kombinasjoner som finnes fra før.</p>`;
+  for (const [k] of PFIELDS) $("pf-"+k).onchange = e => { const old = {d:P().diameters, l:P().lengths}; P()[k] = e.target.value;
+    if (k === "diameters" || k === "lengths") remapMatrix(P(), old); persist(); renderPList(); if (k === "name") $("pform").querySelector("h2").textContent = e.target.value; if (k==="diameters"||k==="lengths") renderMatrix(); refreshBuild(); };
+  $("pf-volumeRule").onchange = e => { P().volumeRule = e.target.value; persist(); refreshBuild(); };
+}
+function remapMatrix(p, old) {
+  const fallback = Object.values(p.matrix).find(v => v !== "X" && v !== "" && v != null) ?? 0, m = {};
+  for (const d of nums(p.diameters)) for (const l of nums(p.lengths)) m[d+"|"+l] = p.matrix[d+"|"+l] ?? fallback;
+  p.matrix = m;
+}
+function renderMatrix() {
+  const p = P(); if (!p) { $("matrix").innerHTML = ""; return; }
+  const dia = [...new Set(nums(p.diameters))].sort((a,b)=>a-b), len = [...new Set(nums(p.lengths))].sort((a,b)=>a-b);
+  $("matrix").innerHTML = `<table><thead><tr><th class="rowh">mm \\ cm</th>${len.map(l => `<th class="n">${l}</th>`).join("")}</tr></thead><tbody>
+    ${dia.map(d => `<tr><th class="rowh n">${d}</th>${len.map(l => { const v = p.matrix[d+"|"+l] ?? ""; const x = String(v).toUpperCase() === "X";
+      return `<td><input id="m-${d}-${l}" data-k="${d}|${l}" class="${x?"x":""}" value="${esc(v)}" aria-label="Pris diameter ${d} lengde ${l}" inputmode="decimal"></td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
+  for (const inp of $("matrix").querySelectorAll("input")) inp.onchange = () => { let v = inp.value.trim(); if (v.toUpperCase() === "X") v = "X"; else v = v === "" ? 0 : Number(v.replace(",", ".")) || 0;
+    P().matrix[inp.dataset.k] = v; inp.value = v; inp.classList.toggle("x", v === "X"); persist(); refreshBuild(); };
+}
+$("fillBtn").onclick = () => { const v = Number($("fillVal").value); if (!Number.isFinite(v) || $("fillVal").value === "") { toast("Skriv inn en pris først."); return; }
+  for (const k in P().matrix) if (P().matrix[k] !== "X") P().matrix[k] = v; persist(); renderMatrix(); refreshBuild(); };
+$("addProd").onclick = () => { state.products.push({uid:"NYTT-PRODUKT-" + (state.products.length+1), name:"Nytt produkt", sgUid: state.spi[0]?.uid || "NO1_Gran", group:"", stemType:"", order:String(state.products.length+1),
+  diameters:"100, 150, 200", diaMax:"600", diaMinTop:"100", diaMaxButt:"", lengths:"300, 400, 500", lenMax:"530", cwLow:"", cwUp:"", volumeRule:"solid", grades:"1, 2", matrix:{}});
+  state.sel = state.products.length - 1; remapMatrix(state.products[state.sel], {}); for (const k in state.products[state.sel].matrix) state.products[state.sel].matrix[k] = 300; persist(); renderEditor(); };
+$("dupProd").onclick = () => { if (!P()) return; const c = JSON.parse(JSON.stringify(P())); c.uid += "-KOPI"; c.name += " (kopi)"; state.products.splice(state.sel+1, 0, c); state.sel++; persist(); renderEditor(); };
+$("delProd").onclick = () => { if (!P()) return; state.products.splice(state.sel, 1); state.sel = Math.max(0, state.sel-1); persist(); renderEditor(); };
+
+function renderSpi() {
+  $("spiForm").innerHTML = `<h2>Treslag</h2><p class="hint" style="margin:0 0 12px">Treslag-ID-ene må stemme med «Treslag-ID» på produktene. For drift: start heller fra Skogforsks anbefalte norske spi-fil, eller hent ut fra en kalibrert maskin, siden barkfunksjon og stammeprofil er justert der.</p>
+    ${state.spi.map((s,i) => `<div class="form" style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)">
+      ${[["uid","Treslag-ID"],["name","Navn"],["order","Rekkefølge"],["dbhHeight","Brysthøyde (cm)"],["stemTypes","Stammetyper (kode=navn)","wide"],["grades","Kvaliteter (nr=navn)","wide"],["barkA","Bark: konstant A (valgfri)"],["barkB","Bark: faktor B (valgfri)"]]
+        .map(([k,l,w]) => `<label class="${w||""}">${l}<input id="sg-${i}-${k}" data-i="${i}" data-k="${k}" value="${esc(s[k] ?? "")}"></label>`).join("")}
+      <div class="row"><button class="btn small" type="button" data-del="${i}">Fjern treslag</button></div></div>`).join("")}
+    <button class="btn small" type="button" id="addSg">+ Treslag</button>`;
+  for (const inp of $("spiForm").querySelectorAll("input")) inp.onchange = () => { state.spi[+inp.dataset.i][inp.dataset.k] = inp.value; persist(); refreshBuild(); };
+  for (const b of $("spiForm").querySelectorAll("[data-del]")) b.onclick = () => { state.spi.splice(+b.dataset.del, 1); persist(); renderSpi(); refreshBuild(); };
+  $("addSg").onclick = () => { state.spi.push({uid:"NO1_Nytt", name:"NYTT", order:String(state.spi.length+1), dbhHeight:"130", stemTypes:"11=Sagtømmer, 12=Massevirke", grades:"1=Kv1, 2=Kv2", barkA:"", barkB:""}); persist(); renderSpi(); refreshBuild(); };
+}
+function renderOin() {
+  const o = state.oin;
+  $("oinForm").innerHTML = `<h2>Hogstobjekt</h2><div class="form">${[["uid","Objekt-ID"],["name","Navn"],["cert","Sertifisering (PEFC, FSC …)"],["area","Areal (ha)"],["lfCode","Hogstform kode"],["lfDesc","Hogstform"],["orgName","Oppdragsgiver"],["orgId","Oppdragsgivers org.nr."],["owner","Skogeier"],["contract","Kontraktnummer"],["subUid","Delobjekt-ID"],["subName","Delobjekt navn"],["realEstate","Gnr/bnr (kommune-gnr/bnr)"],["text","Tekst til føreren","wide"]]
+    .map(([k,l,w]) => `<label class="${w||""}">${l}${k==="text" ? `<textarea id="ob-${k}" data-k="${k}">${esc(o[k] ?? "")}</textarea>` : `<input id="ob-${k}" data-k="${k}" value="${esc(o[k] ?? "")}">`}</label>`).join("")}</div>
+    <p class="hint" style="margin:10px 0 0">Areal oppgis i hektar i fila. Org.nr. brukes av huben til å styre hvem som ser rapportene fra objektet.</p>`;
+  for (const inp of $("oinForm").querySelectorAll("input,textarea")) inp.onchange = () => { state.oin[inp.dataset.k] = inp.value; persist(); refreshBuild(); };
+}
+function currentBuild() {
+  const v = $("sfVersion").value;
+  if (state.sub === "pin") return {ext:"pin", text: buildPin(state.products, v), name: "aptering.pin"};
+  if (state.sub === "spi") return {ext:"spi", text: buildSpi(state.spi, v), name: "treslag.spi"};
+  return {ext:"oin", text: buildOin(state.oin, v), name: (state.oin.uid || "objekt").replace(/[^\w.-]+/g,"_") + ".oin"};
+}
+function buildFor(ext) { const save = state.sub; state.sub = ext; const b = currentBuild(); state.sub = save; return b; }
+function refreshBuild() {
+  const b = currentBuild(), v = validateDoc(parseXml(b.text));
+  // ekstra kryssjekk: produktenes treslag finnes i spi-editoren
+  if (b.ext === "pin") { const ids = new Set(state.spi.map(s => (s.uid||"").toLowerCase())); const miss = [...new Set(state.products.map(p => p.sgUid).filter(x => x && !ids.has(x.toLowerCase())))];
+    if (miss.length) v.warns.push(`Treslag-ID ${miss.join(", ")} finnes ikke i treslag-fanen. Sjekk at maskinen har dem fra før.`); }
+  $("buildMsgs").innerHTML = msgList(v).replace(/^<ul class="msgs">|<\/ul>$/g, "");
+  const lines = b.text.split("\n"), shown = lines.length > 220 ? lines.slice(0,220).join("\n") + `\n… (${lines.length - 220} linjer til)` : b.text;
+  $("xmlPrev").textContent = shown;
+  $("dlBuild").textContent = `Last ned ${b.name}`;
+  $("dlBuild").classList.toggle("primary", v.ok);
+}
+$("sfVersion").onchange = refreshBuild;
+$("dlBuild").onclick = () => { const b = currentBuild(); const v = validateDoc(parseXml(b.text)); if (!v.ok) { toast("Rett feilene under Kontroll først."); return; } saveFiles([{name: b.name, data: b.text}], b.name.replace(".", "_")); };
+$("dlJson").onclick = () => saveFiles([{name: "skogsmaskin-oppsett.json", data: JSON.stringify({products: state.products, species: state.spi, object: state.oin}, null, 2)}], "oppsett");
+$("jsonIn").onchange = async () => { const f = $("jsonIn").files[0]; $("jsonIn").value = ""; if (!f) return;
+  try { if (/\.json$/i.test(f.name)) { const j = JSON.parse(await f.text());
+      if (Array.isArray(j.products) && j.products[0] && "matrix" in j.products[0]) { state.products = j.products; if (j.species) state.spi = j.species; if (j.object) state.oin = j.object; }
+      else if (Array.isArray(j.products)) state.products = j.products.map(cliToEditor); // CLI-formatet (examples/produkter.json)
+      else throw new Error("Kjenner ikke igjen JSON-formatet.");
+    } else { const {text} = await bytesToText(await f.arrayBuffer(), f.name); const a = analyze(parseXml(text), f.name); const ps = productsFromDoc(a); if (!ps.length) throw new Error("Fant ingen produkter i fila."); state.products = ps; }
+    state.sel = 0; persist(); renderEditor(); renderSpi(); renderOin(); toast("Oppsettet er lastet inn");
+  } catch(e) { toast(e.message); } };
+function cliToEditor(p) {
+  const m = {}, dia = p.diameter_classes_mm || [], len = p.length_classes_cm || [], pr = p.prices;
+  dia.forEach((d,di) => len.forEach((l,li) => { let v = typeof pr === "number" ? pr : pr?.matrix ? pr.matrix[di][li] : (pr?.by_diameter?.[d] ?? pr?.default ?? 0); m[d+"|"+l] = v; }));
+  for (const [d,l] of p.forbidden_cells || []) m[d+"|"+l] = "X";
+  return {uid:p.product_user_id, name:p.name, sgUid:p.species_group_user_id, group:p.group, stemType:p.stem_type_code, order:p.presentation_order, destName:p.destination?.BusinessName, destId:p.destination?.BusinessID,
+    diameters: dia.join(", "), diaMax:p.diameter_max_mm, diaMinTop:p.diameter_min_top_mm, diaMaxButt:p.diameter_max_butt_mm, lengths: len.join(", "), lenMax:p.length_max_cm,
+    cwLow:p.cutting_window_cm?.[0] ?? "", cwUp:p.cutting_window_cm?.[1] ?? "", volumeRule:(p.volume_diameter_category||"").includes("Norwegian") ? "nor" : "solid", grades:(p.permitted_grades||[1,2]).join(", "), matrix:m};
+}
+function renderEditor() { renderPList(); renderPForm(); renderMatrix(); refreshBuild(); }
+
+/* ===================================================================== *
+ *  Hub-modus: siden serveres av «sf2010 server» på /app                 *
+ * ===================================================================== */
+const hub = { key: null, machines: [] };
+const API = "/File/v0.1";
+async function hubFetch(path, opts = {}) {
+  const r = await fetch(path, {...opts, headers: {...(opts.headers||{}), "X-SF2010-Web": "1", Authorization: "Basic " + btoa(unescape(encodeURIComponent(":" + hub.key)))}});
+  if (!r.ok) { let msg = r.statusText; try { const d = new DOMParser().parseFromString(await r.text(), "application/xml"); msg = (d.querySelector("Message")?.textContent || msg) + [...d.querySelectorAll("Entry")].map(e => " · " + e.textContent).join(""); } catch(e) {}
+    const err = new Error(`${r.status} ${msg}`); err.status = r.status; throw err; }
+  return r;
+}
+const entries = async r => [...new DOMParser().parseFromString(await r.text(), "application/xml").querySelectorAll("Entry")].map(e => e.textContent);
+async function hubConnect() {
+  hub.key = $("apiKey").value.trim(); if (!hub.key) { toast("Skriv inn API-nøkkelen."); return; }
+  try { await hubFetch(API); try { sessionStorage.setItem("sf2010:key", hub.key); } catch(e) {}
+    $("hubState").textContent = "Tilkoblet"; $("hubState").className = "pill ok"; $("hubSend").hidden = false; $("sendBuild").hidden = false;
+    await hubMachines(); await hubReports();
+  } catch(e) { $("hubState").textContent = e.status === 401 ? "Feil nøkkel" : "Ingen kontakt"; $("hubState").className = "pill err"; }
+}
+async function hubMachines() {
+  hub.machines = await entries(await hubFetch(`${API}/PIN`));
+  const rows = await Promise.all(hub.machines.map(async mId => { let last = null; try { last = (await entries(await hubFetch(`${API}/status/syncronization/${encodeURIComponent(mId)}`)))[0]; } catch(e) {} return [mId, last]; }));
+  $("hubMachines").innerHTML = rows.length ? `<div class="tbl"><table><thead><tr><th>Maskin-ID</th><th>Sist i kontakt</th><th></th></tr></thead><tbody>${rows.map(([mId, last]) => {
+      const age = last ? (Date.now() - Date.parse(last)) / 36e5 : null, pill = age == null ? `<span class="pill">Aldri</span>` : age < 2 ? `<span class="pill ok">Nylig</span>` : age < 48 ? `<span class="pill warn">${Math.round(age)} t siden</span>` : `<span class="pill err">${Math.round(age/24)} d siden</span>`;
+      return `<tr><td style="font-family:var(--f-mono)">${esc(mId)}</td><td>${last ? esc(new Date(last).toLocaleString("nb-NO")) : "–"}</td><td>${pill}</td></tr>`; }).join("")}</tbody></table></div>` : `<p class="hint">Ingen maskiner registrert. Maskiner dukker opp når agenten kobler til, eller med <code>--maskin</code> når huben startes.</p>`;
+  $("sendTo").innerHTML = hub.machines.map(mId => `<option value="m:${esc(mId)}">Maskin ${esc(mId)}</option>`).join("") + `<option value="b:">Alle maskiner hos en oppdragsgiver (kun pin/spi)…</option>`;
+}
+async function hubReports() {
+  const t = $("hubType").value, days = +$("hubDays").value, start = new Date(Date.now() - days*864e5).toISOString().replace(/\.\d+Z$/, "Z");
+  const ids = await entries(await hubFetch(`${API}/${t}?StartDate=${encodeURIComponent(start)}`));
+  if (!ids.length) { $("hubReports").innerHTML = `<p class="hint">Ingen ${t}-filer i perioden.</p>`; return; }
+  const meta = await Promise.all(ids.slice(-60).reverse().map(async id => { try { const r = await hubFetch(`${API}/${t}/${id}`, {method:"HEAD"});
+      const cd = r.headers.get("Content-Disposition") || "", name = (/filename="?([^";]+)/.exec(cd) || [])[1] || id; return {id, name: name.replace(/^[0-9a-f]{12}_/, ""), size: +r.headers.get("Content-Length") || 0}; } catch(e) { return {id, name:id, size:0}; } }));
+  $("hubReports").innerHTML = `<div class="tbl" style="max-height:360px"><table><thead><tr><th>Fil</th><th class="n">Størrelse</th><th></th></tr></thead><tbody>${meta.map(m => `<tr><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis">${esc(m.name)}</td><td class="n">${m.size ? fmt(m.size/1024,0) + " kB" : "–"}</td><td><button class="btn small" type="button" data-open="${esc(m.id)}" data-name="${esc(m.name)}">Åpne</button></td></tr>`).join("")}</tbody></table></div>
+    ${ids.length > 60 ? `<p class="hint">Viser de 60 nyeste av ${ids.length}.</p>` : ""}`;
+  for (const b of $("hubReports").querySelectorAll("[data-open]")) b.onclick = async () => { try { const r = await hubFetch(`${API}/${t}/${b.dataset.open}`); openBuffer(await r.arrayBuffer(), b.dataset.name); } catch(e) { toast(e.message); } };
+}
+$("hubLogin").onclick = hubConnect;
+$("apiKey").addEventListener("keydown", e => { if (e.key === "Enter") hubConnect(); });
+$("hubRefresh").onclick = () => hubReports().catch(e => toast(e.message));
+$("hubType").onchange = $("hubDays").onchange = () => hubReports().catch(e => toast(e.message));
+$("sendBuild").onclick = () => { $("sendWhich").value = state.sub; showTab("maskin"); $("sendTo").focus(); };
+$("sendGo").onclick = async () => {
+  const ext = $("sendWhich").value, b = buildFor(ext), v = validateDoc(parseXml(b.text));
+  if (!v.ok) { $("sendRes").textContent = "Fila har feil. Rett dem i «Lag instruksjon» først."; return; }
+  let to = $("sendTo").value, path;
+  if (to.startsWith("m:")) path = `${API}/${ext.toUpperCase()}/${encodeURIComponent(to.slice(2))}`;
+  else { if (ext === "oin") { $("sendRes").textContent = "Objektinstruksjoner sendes alltid til én maskin."; return; }
+    const bid = $("sendBid")?.value || (state.oin.orgId || ""); path = `${API}/${ext.toUpperCase()}` + (bid ? `?BusinessID=${encodeURIComponent(bid)}` : ""); }
+  try { await hubFetch(path, {method:"POST", body: b.text, headers: {"Content-Type":"application/xml", "Content-Disposition": `attachment; filename="${b.name}"`}});
+    $("sendRes").textContent = `Sendt ${b.name}. Maskinen henter den neste gang agenten synker.`; toast("Sendt");
+  } catch(e) { $("sendRes").textContent = "Ikke sendt: " + e.message; }
+};
+$("sendTo").onchange = () => { const old = $("sendBidWrap"); if (old) old.remove(); if ($("sendTo").value.startsWith("b:")) {
+  const l = document.createElement("label"); l.id = "sendBidWrap"; l.innerHTML = `Oppdragsgivers org.nr.<input id="sendBid" value="${esc(state.oin.orgId || "")}">`; $("sendTo").closest(".form").appendChild(l); } };
+
+/* ===================================================================== *
+ *  Oppstart                                                              *
+ * ===================================================================== */
+(async function init() {
+  renderEditor(); renderSpi(); renderOin();
+  const sample = $("sampleHpr").textContent.trim();
+  if (sample.startsWith("<")) { current = null; await openBuffer(new TextEncoder().encode(sample).buffer, "eksempel.hpr", "Eksempelfil (simulert hogst, 45 stammer)"); }
+  // Kjører vi i Claude (artifact) eller servert av huben?
+  if (window.claude && typeof window.claude.use === "function") {
+    $("modePill").textContent = "Filene leses kun i nettleseren";
+    try { downloadsCap = await window.claude.use("downloads"); } catch(e) { downloadsCap = null; }
+  } else if (location.protocol.startsWith("http")) {
+    try { const r = await fetch(API, {headers: {"X-SF2010-Web": "1"}}); if (r.status === 401 || r.ok) {
+      $("hubOff").hidden = true; $("hubOn").hidden = false; $("modePill").textContent = "Koblet til hub: " + location.host; $("modePill").className = "pill ok";
+      try { const k = sessionStorage.getItem("sf2010:key"); if (k) { $("apiKey").value = k; hubConnect(); } } catch(e) {}
+    } } catch(e) {}
+  }
+})();
+</script>

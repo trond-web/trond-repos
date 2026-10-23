@@ -1,0 +1,18 @@
+{
+  "version": "3.6",
+  "country_code": 578,
+  "object": {
+    "object_user_id": "TEIG-2026-0042",
+    "name": "Nordre Hagen hogstfelt",
+    "certification": "PEFC",
+    "logging_form": {"code": "1", "description": "Flatehogst"},
+    "area_ha": 12.5,
+    "logging_organisation": {"BusinessName": "Eksempel Skog SA", "BusinessID": "999888777"},
+    "forest_owner": {"FirstName": "Kari", "LastName": "Nordmann"},
+    "contract_number": "K-2026-118",
+    "text_to_machine": "Spar kantsonen mot bekken. Høgstubber merket med blått bånd.",
+    "sub_objects": [
+      {"user_id": "TEIG-2026-0042-A", "name": "Delfelt A", "real_estate_id": "3401-12/4"}
+    ]
+  }
+}

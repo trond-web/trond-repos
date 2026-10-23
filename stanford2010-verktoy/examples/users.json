@@ -1,0 +1,18 @@
+{
+  "kontor-ENDRE-MEG": {
+    "name": "Skogkontor (full tilgang)",
+    "role": "office",
+    "business_ids": ["*"]
+  },
+  "oppdragsgiver-ENDRE-MEG": {
+    "name": "Oppdragsgiver – ser kun egne objekter",
+    "role": "office",
+    "business_ids": ["999888777"]
+  },
+  "maskin-ENDRE-MEG": {
+    "name": "John Deere 1170G",
+    "role": "machine",
+    "machine_id": "1WJ1170GTPL003867",
+    "business_ids": ["999888777"]
+  }
+}
