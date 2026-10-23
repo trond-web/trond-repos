@@ -1,3 +1,4 @@
+import './innlogging.js'; // først: økten følger med alle kall til serveren
 import { arealM2, punktIGeometri, bbox, fraWgs84, etikettPunkt } from './proj.js';
 import { lagSosi } from './sosi.js';
 import {
@@ -1882,7 +1883,7 @@ function kobleHendelser() {
     dra = null;
   });
   // Versjon og utvikler
-  for (const el of $$('[data-om-app]')) el.innerHTML = `<b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span><br>Utviklet av ${UTVIKLER}`;
+  for (const el of $$('[data-om-app]')) el.innerHTML = `<b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span><br>Utviklet av ${UTVIKLER} · <a href="#" data-logg-ut>Logg ut</a>`;
   $('#railVersjon').textContent = `v${VERSJON}`; $('#railVersjon').title = signatur();
   initKommando({ hentValg: kommandoValg });
   $('#genSkjema').addEventListener('submit', startGenerering);

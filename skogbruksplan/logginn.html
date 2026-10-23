@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="author" content="Trond Harald Sand">
+<meta name="robots" content="noindex">
+<title>Logg inn – SkogIQ.ai</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root { --bg: #e9ede7; --surface: #fbfcfa; --text: #10241c; --text-2: #43544b; --border: rgba(16,36,28,.16); --accent: #1f6b4a; --accent-hover: #185a3d; --danger: #b4302f; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0e1a15; --surface: #15241d; --text: #e6efe9; --text-2: #a9bcb1; --border: rgba(230,239,233,.16); --accent: #3f9b6e; --accent-hover: #4fae80; --danger: #ff8a7a; color-scheme: dark; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--bg); color: var(--text); font: 16px/1.45 'Schibsted Grotesk', system-ui, -apple-system, sans-serif; }
+  main { width: min(380px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 28px 24px; box-shadow: 0 12px 40px rgba(0,0,0,.12); }
+  .logo { font-size: 26px; font-weight: 800; letter-spacing: -.3px; margin: 0 0 2px; } .logo b { color: #c93a55; }
+  p { margin: 0 0 18px; color: var(--text-2); font-size: 14px; }
+  label { display: grid; gap: 4px; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+  input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button { width: 100%; font: 700 16px/1 inherit; font-family: inherit; padding: 12px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; cursor: pointer; margin-top: 4px; }
+  button:hover { background: var(--accent-hover); } button:disabled { opacity: .6; cursor: progress; }
+  .feil { color: var(--danger); font-size: 14px; min-height: 20px; margin: 10px 0 0; }
+  footer { margin-top: 18px; font-size: 12px; color: var(--text-2); text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1 class="logo">Skog<b>IQ</b>.ai</h1>
+  <p>Logg inn for å bruke skogbruksplanen.</p>
+  <form id="skjema" autocomplete="on">
+    <label>Brukernavn <input name="bruker" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+    <label>Passord <input name="passord" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Logg inn</button>
+    <div class="feil" id="feil" role="alert"></div>
+  </form>
+  <footer>Utviklet av Trond Harald Sand</footer>
+</main>
+<script type="module">
+  import { RAILWAY, LS_OKT } from './js/innlogging.js';
+  const API = /github\.io$/.test(location.hostname) ? RAILWAY : '';
+  // Bare adresser i appen selv (ingen videresending til andre nettsteder).
+  const neste = (() => { const n = new URLSearchParams(location.search).get('neste') || ''; return /^(\/(?!\/)|[\w.-]*(\.html)?([?#].*)?$)/.test(n) && !/^[a-z]+:/i.test(n) ? (n || './') : './'; })();
+  const skjema = document.getElementById('skjema'); const feil = document.getElementById('feil');
+  skjema.bruker.focus();
+  skjema.addEventListener('submit', async (e) => {
+    e.preventDefault(); feil.textContent = ''; const knapp = skjema.querySelector('button'); knapp.disabled = true;
+    try {
+      const r = await fetch(`${API}/api/logginn`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ bruker: skjema.bruker.value, passord: skjema.passord.value }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { feil.textContent = d.feil || `Serveren svarte ${r.status}`; return; }
+      try { if (d.token) localStorage.setItem(LS_OKT, d.token); localStorage.setItem('skogiq-innlogget-for', '1'); } catch { /* privat modus */ }
+      location.replace(neste || './');
+    } catch { feil.textContent = 'Ingen kontakt med SkogIQ-serveren. Sjekk nettet.'; } finally { knapp.disabled = false; }
+  });
+</script>
+</body>
+</html>

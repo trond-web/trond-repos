@@ -1,6 +1,7 @@
 // SkogIQ på fjernkontrollen (DJI RC Plus / RC Pro Enterprise – Android, nettleseren). Viser en koblingskode som skrives
 // inn i SkogIQ Felt på telefonen. Etterpå kommer droneoppdragene hit automatisk (henter hvert 5. sekund), og ruten
 // lastes ned med ett trykk og importeres i DJI Pilot 2. Server: kontroller-relay.js.
+import './innlogging.js'; // først: økten følger med alle kall til serveren
 const API = location.hostname.endsWith('github.io') ? 'https://skogiq-production.up.railway.app' : '';
 const LS = 'skogiq-kontroller-id';
 const ls = { get: () => { try { return localStorage.getItem(LS); } catch { return null; } }, set: (v) => { try { localStorage.setItem(LS, v); } catch { /* privat */ } } };

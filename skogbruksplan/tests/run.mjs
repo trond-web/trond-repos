@@ -1929,6 +1929,47 @@ test('Satellitt: Sentinel-2-utsnitt og bildestripe per bestand', async () => {
   assert.equal(SAT.bestandStripeHtml({}), '');
 });
 
+test('Innlogging: brukernavn og passord, signert økt, sperre og beskyttede sider', async () => {
+  const { lagInnlogging, innloggingApi, krevInnlogging, OKT_NAVN } = await import('../auth.js');
+  let tid = 1_000_000_000;
+  const inn = lagInnlogging({ bruker: 'test', passord: 'hemmelig1', naa: () => tid });
+  assert.equal(lagInnlogging({}).aktiv, false);
+  assert.ok(inn.sjekk('1', 'Test', 'hemmelig1').ok, 'brukernavn uten store/små bokstaver');
+  assert.ok(!inn.sjekk('1', 'test', 'feil').ok);
+  const t = inn.lagToken(); assert.equal(inn.lesToken(t).u, 'test');
+  assert.equal(inn.lesToken(`${t.split('.')[0]}.forfalsket`), null);
+  const [d] = t.split('.'); const endret = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(d, 'base64url')), exp: tid * 10 })).toString('base64url');
+  assert.equal(inn.lesToken(`${endret}.${t.split('.')[1]}`), null, 'endret utløp avvises');
+  assert.equal(lagInnlogging({ bruker: 'test', passord: 'nytt', naa: () => tid }).lesToken(t), null, 'nytt passord gjør gamle økter ugyldige');
+  tid += 31 * 86400000; assert.equal(inn.lesToken(t), null, 'utløpt'); tid -= 31 * 86400000;
+  for (let i = 0; i < 10; i++) inn.sjekk('9.9.9.9', 'test', 'galt');
+  assert.ok(inn.sjekk('9.9.9.9', 'test', 'hemmelig1').sperret, 'sperret etter 10 feil'); assert.ok(inn.sjekk('8.8.8.8', 'test', 'hemmelig1').ok);
+  // HTTP
+  const res = () => { const r = { status: 0, hoder: {}, kropp: '', writeHead(s, h = {}) { r.status = s; r.hoder = h; }, end(b = '') { r.kropp = String(b); r.ferdig?.(); } }; return r; };
+  const req = (metode, url, { hoder = {}, kropp = null } = {}) => { const h = {}; const q = { method: metode, url, headers: hoder, socket: { remoteAddress: '1.2.3.4' }, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(kropp)); f(); }, 0); }, destroy() {} }; return q; };
+  const kjorApi = (q) => new Promise((ok) => { const r = res(); r.ferdig = () => ok(r); const sti = new URL(q.url, 'http://x').pathname; if (!innloggingApi(inn, q, r, sti)) ok(null); });
+  const feilPw = await kjorApi(req('POST', '/api/logginn', { kropp: JSON.stringify({ bruker: 'test', passord: 'x' }) })); assert.equal(feilPw.status, 401);
+  const ok = await kjorApi(req('POST', '/api/logginn', { hoder: { 'x-forwarded-proto': 'https', origin: 'https://trond-web.github.io' }, kropp: JSON.stringify({ bruker: 'test', passord: 'hemmelig1' }) }));
+  assert.equal(ok.status, 200); const { token } = JSON.parse(ok.kropp); assert.ok(inn.lesToken(token));
+  assert.ok(ok.hoder['Set-Cookie'].startsWith(`${OKT_NAVN}=`) && /HttpOnly/.test(ok.hoder['Set-Cookie']) && /Secure/.test(ok.hoder['Set-Cookie']) && /SameSite=Lax/.test(ok.hoder['Set-Cookie']));
+  assert.equal(ok.hoder['Access-Control-Allow-Origin'], 'https://trond-web.github.io');
+  assert.equal((await kjorApi(req('GET', '/api/meg'))).status, 401);
+  assert.equal(JSON.parse((await kjorApi(req('GET', '/api/meg', { hoder: { authorization: `Bearer ${token}` } }))).kropp).bruker, 'test');
+  // Beskyttelse: sider → innloggingen, API → 401, åpne filer og gyldig økt slipper gjennom.
+  const sjekk = (q) => { const r = res(); return krevInnlogging(inn, q, r, new URL(q.url, 'http://x').pathname) ? r : null; };
+  const side = sjekk(req('GET', '/felt.html?kode=AB', { hoder: { accept: 'text/html' } })); assert.equal(side.status, 302); assert.equal(side.hoder.Location, '/logginn.html?neste=%2Ffelt.html%3Fkode%3DAB');
+  assert.equal(sjekk(req('GET', '/js/app.js')).status, 401);
+  assert.equal(sjekk(req('GET', '/api/plan/abc')).status, 401);
+  assert.equal(sjekk(req('GET', '/api/jd/logginn?n=1', { hoder: { accept: 'text/html' } })).status, 302);
+  for (const fri of ['/logginn.html', '/js/innlogging.js', '/healthz', '/icon.svg', '/ikon-192.png', '/manifest.webmanifest']) assert.equal(sjekk(req('GET', fri)), null, fri);
+  assert.equal(sjekk(req('OPTIONS', '/api/plan')), null);
+  assert.equal(sjekk(req('GET', '/js/app.js', { hoder: { cookie: `a=1; ${OKT_NAVN}=${encodeURIComponent(token)}` } })), null);
+  assert.equal(sjekk(req('GET', '/api/plan/abc', { hoder: { authorization: `Bearer ${token}` } })), null);
+  assert.equal(krevInnlogging(lagInnlogging({}), req('GET', '/js/app.js'), res(), '/js/app.js'), false, 'uten innlogging satt opp er alt åpent');
+  // Klienten leser utløpstiden fra tokenet.
+  const { tokenUtloper } = await import('../js/innlogging.js'); assert.equal(tokenUtloper(token), inn.lesToken(token).exp); assert.equal(tokenUtloper('tull'), 0);
+});
+
 test('AR i felt: grenser, stier, miljø, kulturminner, retning og varsler', async () => {
   const { tilGeoPunkt } = await import('../js/flate-geometri.js');
   const o = [600000, 6700000]; const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => tilGeoPunkt([o[0] + x, o[1] + y]));

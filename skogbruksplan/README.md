@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.39.0** (2026-10-23) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.40.0** (2026-10-23) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -683,6 +683,21 @@ Skifteplanen henger sammen med traktoren: data går ut til skjermen, og utført 
 4. I appen: Skifteplan › Maskin › «Koble til John Deere». Har appen ikke tilgang til organisasjonen ennå, sendes du til Deeres side for å gi tilgang og deretter tilbake.
 
 Klienthemmeligheten og tokenene ligger bare på serveren. Nettleseren har en tilfeldig nøkkel som peker til tilkoblingen. Token fornyes automatisk med refresh token. Tilbake-adressen må være appens egen, så serveren kan ikke brukes til å videresende brukere til andre sider.
+
+## Innlogging
+
+SkogIQ.ai krever brukernavn og passord. Logikken på serveren ligger i `auth.js`, i appen i `js/innlogging.js`, og innloggingssiden er `logginn.html`.
+
+- **Brukernavn og passord** settes som miljøvariabler på serveren: `APP_BRUKER` og `APP_PASSORD`, valgfritt `APP_HEMMELIGHET` for signering. De ligger aldri i koden, som er offentlig. Uten `APP_BRUKER` og `APP_PASSORD` er innloggingen slått av.
+- **Railway:** Serveren slipper ikke gjennom noen side, fil eller API-kall uten gyldig økt. Sider sendes til innloggingen, alt annet får 401.
+  - Økten er signert (HMAC), ligger i en HttpOnly-informasjonskapsel (SameSite=Lax, Secure) og varer i 30 dager.
+  - Nytt passord gjør alle gamle økter ugyldige.
+  - Etter 10 feil passord fra samme IP-adresse sperres innloggingen i 15 minutter.
+- **GitHub Pages:** Pages har ingen server. Innloggingssiden sjekker brukernavn og passord mot Railway, og økten lagres som token i nettleseren. Tokenet sendes med alle kall til serveren.
+  - Planoverføring, NVE-data, John Deere og droneoverføring virker bare når man er innlogget.
+  - Filene på Pages er offentlige, akkurat som koden i repoet. Innloggingen på Pages beskytter dermed tjenestene på serveren, ikke selve filene.
+- **Uten nett:** En enhet som har vært innlogget før slipper inn, fordi planene ligger lokalt. Serverkall krever innlogging når nettet er tilbake.
+- **Logg ut:** nederst i Planer-fanen i fullversjonen, og under Mer i SkogIQ Felt.
 
 ## Publisering på Railway
 
