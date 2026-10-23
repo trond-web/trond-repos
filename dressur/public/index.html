@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Dressurstevne</title>
+  <meta name="description" content="Påmelding, startlister og resultatservice for dressurstevner etter NRYFs reglement. Laget av Trond Harald Sand.">
+  <meta name="author" content="Trond Harald Sand">
+  <meta name="theme-color" content="#16243a">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topp">
+    <a href="#/" class="merke"><img src="icon.svg" alt="" width="30" height="30"><span id="stevnenavn">Dressurstevne<small>Påmelding og resultater</small></span></a>
+    <span class="hoyre"><a href="/dommer">Dommer</a> · <a href="/sekretariat">Sekretariat</a></span>
+  </header>
+  <nav class="faner" id="faner" aria-label="Sider">
+    <a href="#/">Stevnet</a>
+    <a href="#/pamelding">Påmelding</a>
+    <a href="#/startlister">Startlister</a>
+    <a href="#/resultater">Resultater</a>
+    <a href="#/mine">Mine påmeldinger</a>
+  </nav>
+  <main id="app" aria-live="polite"></main>
+  <footer class="bunn">Dressurstevne – påmelding og resultatservice etter NRYF KR IV · laget av <b>Trond Harald Sand</b></footer>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
