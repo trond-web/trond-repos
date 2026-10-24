@@ -15,6 +15,23 @@ Forskjellene er ca. 0,3 % per uke, omtrent det et bytte koster. En aksje beholde
 Test med 0,3 % kostnad per bytte: ca. 38 % per år mot 12 % for OSEBX, største fall −31 %. Porteføljen slo OSEBX i 57 % av ukene, mens hver enkelt aksje gjorde det bare i 51 % av ukene.
 Tallene er trolig for gode (overlevelsesskjevhet, vekter valgt i ettertid).
 
+## Krypto
+
+`analyse/krypto.mjs` skriver `data/krypto.json`, som vises i fanen «Krypto».
+Trendmodell for Bitcoin og Ethereum (70/30). Andelen er snittet av 7 trendsignaler: kurs over 50/100/150/200-dagers snitt, og opp siste 30/90/180 dager.
+Modellen handler bare når andelen endres med minst 25 %, og sjekkes ukentlig.
+
+Test 2018–2026 med 1 % gebyr + spread per handel. Testen omfatter 43 mynter, også mynter som kollapset (LUNA, FTT, EOS …):
+
+| | Per år | Største fall |
+|---|---|---|
+| Trendmodell 70/30 BTC/ETH | ca. 28 % | ca. −46 % |
+| Kjøp og hold Bitcoin | ca. 33 % | ca. −74 % |
+| 20 største mynter likt vektet | ca. 2 % | ca. −85 % |
+
+Trendmodellen gir ikke mer avkastning enn å holde Bitcoin. Den gir omtrent det samme med betydelig mindre fall.
+Fanen forklarer også kjøp, salg, gebyrer, sikkerhet og skatt i Norge.
+
 ## Min portefølje
 
 Under «Min portefølje» limer du inn beholdningen fra nettbanken: én linje per aksje med ticker, markedsverdi og urealisert gevinst/tap,

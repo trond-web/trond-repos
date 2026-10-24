@@ -73,6 +73,7 @@ async function start() {
   visListe();
   visMarked();
   visUke();
+  lastKrypto();
   visPortefolje();
   visTest();
   visMetode();
@@ -404,6 +405,161 @@ function visUke() {
         <li>Testen bruker dagens aksjeliste og vekter valgt i ettertid, så tallene er trolig for gode. Skatt er ikke regnet med. Bruk gjerne aksjesparekonto, så du ikke skattes for hvert bytte.</li>
       </ul>
     </div>`;
+}
+
+// ---------- Krypto ----------
+
+const KRYPTOPOTT = "borsradar.kryptopott.v1";
+const SIGNALNAVN = { KJØP: "Eie fullt", HOLD: "Eie delvis", SELG: "Ikke eie" };
+let krypto = null;
+
+async function lastKrypto() {
+  try {
+    const svar = await fetch("data/krypto.json", { cache: "no-cache" });
+    if (!svar.ok) throw new Error(`HTTP ${svar.status}`);
+    krypto = await svar.json();
+    visKrypto();
+  } catch (feil) {
+    $("#krypto").innerHTML = `<p class="tom">Kryptoanalysen er ikke tilgjengelig (${esc(feil.message)}).</p>`;
+  }
+}
+
+function lesPott() {
+  try { return lesTall(localStorage.getItem(KRYPTOPOTT)) || null; } catch { return null; }
+}
+
+function visKrypto() {
+  const k = krypto, m = k.modell, t = k.test;
+  const pott = lesPott();
+  const kryptoAndel = Object.values(k.anbefaling).reduce((s, x) => s + x, 0);
+  const myntkort = (h) => {
+    const vekt = k.anbefaling[h.t] ?? 0;
+    return `<div class="beholdning ${h.signal}">
+      <div class="beholdning-topp">
+        <div>
+          <span class="handlingsmerke ${h.signal}">${esc(SIGNALNAVN[h.signal])}</span>
+          <b>${esc(h.navn)}</b> <span class="mono dempet">${esc(h.t)}</span>
+          <div class="hjelp" style="margin:2px 0 0">${h.kursNok ? `${tall(h.kursNok, 0)} kr · ` : ""}${tall(h.kursUsd, 0)} $ ·
+            7 d <span class="${fargeKlasse(h.endring7d)}">${pst(h.endring7d)}</span> · 30 d <span class="${fargeKlasse(h.endring30d)}">${pst(h.endring30d)}</span> ·
+            12 mnd <span class="${fargeKlasse(h.endring365d)}">${pst(h.endring365d, 0)}</span> · ${pst(h.fraTopp, 0)} fra toppen</div>
+        </div>
+        <span class="merke ${h.signal}">${Math.round(h.trendandel * 7)}/7<small>signaler</small></span>
+      </div>
+      <ul class="sjekkliste">${m.signaler.map((navn, i) => `<li class="${h.signaler[i] ? "ja" : "nei"}">${h.signaler[i] ? "✓" : "✗"} ${esc(navn)}</li>`).join("")}</ul>
+      <p class="notat">Anbefalt andel av kryptopotten: <b>${pst(vekt, 0, false)}</b> (modellen har ${pst(h.modellandel, 0, false)} i ${esc(h.navn)} når alle signalene er positive)${pott ? ` = <b>${kr(pott * vekt)}</b>` : ""}.</p>
+    </div>`;
+  };
+  const graf = linjegraf(
+    [
+      { verdier: t.altcoins.kurve.map((p) => p.v), farge: "#94a3b8", bredde: 1.3, stiplet: true },
+      { verdier: t.holdBtc.kurve.map((p) => p.v), farge: cssFarge("--sma200") },
+      { verdier: t.trend7030.kurve.map((p) => p.v), farge: cssFarge("--aksent"), bredde: 2.2 },
+    ],
+    t.holdBtc.kurve.map((p) => p.dato.slice(0, 7)),
+    { hoyde: 260, prosent: true, logaritmisk: true },
+  );
+  const strat = [
+    ["trend7030", "<b>Trendmodell 70/30 BTC/ETH</b>"],
+    ["trendBtc", "Trendmodell kun Bitcoin"],
+    ["holdBtc", "Kjøp og hold Bitcoin"],
+    ["altcoins", "20 største mynter likt vektet"],
+  ];
+  const aar = Object.keys(t.holdBtc.perAar);
+  $("#krypto").innerHTML = `
+    <div class="kort">
+      <h2>Krypto: hva modellen sier nå</h2>
+      <p class="hjelp">Signalene oppdateres to ganger i døgnet (kurser til ${esc(k.hoved[0].dato.split("-").reverse().join("."))}). Sjekk én gang i uka, og handle bare når andelen endrer seg tydelig.</p>
+      <div class="pott">
+        <label for="pott">Hvor mye vil du ha i krypto totalt?</label>
+        <input id="pott" inputmode="decimal" placeholder="f.eks. 20 000" value="${pott ? tall(pott, 0) : ""}"> kr
+      </div>
+      <div class="fordeling">
+        ${k.hoved.map((h) => `<div style="flex:${Math.max(k.anbefaling[h.t], 0.001)}" class="del ${h.t}">${esc(h.t)} ${pst(k.anbefaling[h.t], 0, false)}</div>`).join("")}
+        <div style="flex:${Math.max(1 - kryptoAndel, 0.001)}" class="del kontanter">Kroner ${pst(1 - kryptoAndel, 0, false)}</div>
+      </div>
+      ${pott ? `<p class="hjelp" style="margin-top:6px">Av ${kr(pott)}: ${k.hoved.map((h) => `${esc(h.navn)} ${kr(pott * k.anbefaling[h.t])}`).join(", ")}, og ${kr(pott * (1 - kryptoAndel))} i kroner (bank eller rentefond).</p>` : ""}
+      ${k.hoved.map(myntkort).join("")}
+    </div>
+
+    <div class="kort">
+      <h2>Har det virket?</h2>
+      <p class="hjelp">Testet uke for uke fra ${esc(t.fra)} til ${esc(t.til)}, med ${tall(m.kostnad * 100, 0)} % i gebyr og spread for hvert kjøp og salg.
+        Testen omfatter ${k.antallMynterITest} mynter, også mynter som senere kollapset (Terra/LUNA, FTX-token, EOS m.fl.), så altcoin-tallene ikke blir pyntet.</p>
+      ${graf}
+      <div class="forklaring"><span><i style="background:var(--aksent)"></i>Trendmodell 70/30</span><span><i style="background:var(--sma200)"></i>Hold Bitcoin</span><span><i style="background:#94a3b8"></i>20 største mynter</span></div>
+      <div class="tabell-wrap"><table>
+        <tr><th></th><th>Per år</th><th>Største fall</th><th>Handler/år</th></tr>
+        ${strat.map(([n, navn]) => `<tr><td>${navn}</td><td class="tall">${pst(t[n].aarlig, 0)}</td><td class="tall ned">${pst(t[n].maksFall, 0)}</td><td class="tall">${tall(t[n].handlerPerAar, 0)}</td></tr>`).join("")}
+      </table></div>
+      <h3>År for år</h3>
+      <div class="tabell-wrap"><table>
+        <tr><th>År</th>${strat.map(([, navn]) => `<th>${navn.replace(/<\/?b>/g, "")}</th>`).join("")}</tr>
+        ${aar.map((y) => `<tr><td>${y}${y === k.hoved[0].dato.slice(0, 4) ? " (hittil)" : ""}</td>${strat.map(([n]) => `<td class="tall ${fargeKlasse(t[n].perAar[y])}">${pst(t[n].perAar[y], 0)}</td>`).join("")}</tr>`).join("")}
+      </table></div>
+      <h3>Hva testen viser</h3>
+      <ul class="hjelp" style="padding-left:18px">
+        <li><b>Trendmodellen gir ikke mer avkastning enn å holde Bitcoin.</b> Den gir omtrent det samme med mye mindre fall. I 2018 og 2022, da Bitcoin falt 48 % og 64 %, falt modellen bare 10–27 %. Til gjengjeld får den bare med seg deler av de største oppgangene.</li>
+        <li><b>Altcoins har vært en dårlig investering.</b> De 20 største myntene likt vektet ga langt mindre enn Bitcoin og falt opptil ${pst(-t.altcoins.maksFall, 0, false)}. Å jakte på myntene som stiger mest, tapte penger etter gebyrer.</li>
+        <li>Valget av «riktig» trendregel (f.eks. 50 eller 200 dager) ga svært ulike resultater. Modellen bruker derfor snittet av 7 signaler i stedet for å satse på én regel.</li>
+      </ul>
+    </div>
+
+    <div class="kort">
+      <h2>Andre store mynter</h2>
+      <p class="hjelp">Bare til informasjon. Modellen anbefaler ikke altcoins, se testen over.</p>
+      <div class="tabell-wrap"><table>
+        <tr><th>Mynt</th><th>Kurs</th><th>30 d</th><th>12 mnd</th><th>Fra toppen</th><th>Trend</th></tr>
+        ${k.andre.sort((a, b) => b.trendandel - a.trendandel).map((a) => `<tr><td>${esc(a.navn)} <small class="dempet">${esc(a.t)}</small></td><td class="tall">${a.kursNok != null ? `${tall(a.kursNok, a.kursNok < 10 ? 2 : 0)} kr` : "–"}</td>
+          <td class="tall ${fargeKlasse(a.endring30d)}">${pst(a.endring30d, 0)}</td><td class="tall ${fargeKlasse(a.endring365d)}">${pst(a.endring365d, 0)}</td>
+          <td class="tall ned">${pst(a.fraTopp, 0)}</td><td class="tall">${Math.round(a.trendandel * 7)}/7</td></tr>`).join("")}
+      </table></div>
+    </div>
+
+    <div class="kort tekst">
+      <h2>Slik kjøper og selger du krypto i Norge</h2>
+      <h3>1. Velg en norsk eller regulert plattform</h3>
+      <ul>
+        <li><b>Firi</b> (norsk, BankID, handler i kroner): ca. 0,7 % gebyr per kjøp og salg, pluss spread. 45 kr for å ta ut krypto.</li>
+        <li><b>Bare Bitcoin</b> (norsk, bare bitcoin): ca. 0,7 % pluss spread.</li>
+        <li><b>eToro</b>: ca. 1 %, kontoen er i dollar, så du betaler også for veksling (0,5–1,5 %).</li>
+        <li>Sjekk totalprisen i appen før du handler. Spreaden (forskjellen mellom kjøps- og salgskurs) er ofte en like stor skjult kostnad som gebyret.</li>
+      </ul>
+      <h3>2. Kjøp og selg</h3>
+      <ul>
+        <li>Overfør penger med bankoverføring. Det er billigst; kort og Vipps koster mer.</li>
+        <li>Kjøp Bitcoin og Ethereum etter andelene over. Handle bare når anbefalt andel endrer seg med minst ${pst(m.terskel, 0, false)}, ellers spiser gebyrene gevinsten.</li>
+        <li>Når signalet går til «Ikke eie», selger du til kroner. Når det snur, kjøper du tilbake. Modellen handlet i snitt ${tall(t.trend7030.handlerPerAar, 0)} ganger i året.</li>
+      </ul>
+      <h3>3. Sikkerhet</h3>
+      <ul>
+        <li>Slå på totrinnsinnlogging. Del aldri passord, gjenopprettingsfrase eller BankID med noen.</li>
+        <li>Store beløp over lang tid bør ligge i en egen maskinvarelommebok (hardware wallet). Mister du gjenopprettingsfrasen, er pengene borte for godt.</li>
+        <li>Ingen seriøse aktører lover sikker avkastning. Kontakt via sosiale medier om «kryptoinvestering» er nesten alltid svindel.</li>
+      </ul>
+      <h3>4. Skatt</h3>
+      <ul>
+        <li>Gevinst skattlegges med 22 %, og tap gir fradrag med 22 %. Gebyrer trekkes fra.</li>
+        <li>Hvert salg og hvert bytte mellom mynter er en skattepliktig hendelse. Krypto kan ikke ligge på aksjesparekonto, så hyppig handel gir mer skattearbeid.</li>
+        <li>Beholdningen per 1. januar teller med i formuesskatten.</li>
+        <li>Alle handler skal føres i skattemeldingen. Fra 2026 rapporterer kryptobørsene direkte til Skatteetaten. Ta vare på oversiktene fra børsen.</li>
+      </ul>
+      <h3>5. Hvor mye?</h3>
+      <ul>
+        <li>Bruk bare penger du tåler å tape helt. Også med trendmodellen falt verdien med nesten halvparten underveis.</li>
+        <li>La krypto være en liten del av sparingen, slik at et kraftig fall ikke ødelegger økonomien din.</li>
+      </ul>
+      <p class="hjelp">Kilder: <a href="https://www.skatteetaten.no/presse/nyhetsrommet/okning-i-antall-som-rapporterer-krypto-i-skattemeldingen/" target="_blank" rel="noopener">Skatteetaten</a>,
+        <a href="https://www.smartepenger.no/skatt/3108-skatteregler-for-bitcoin-og-andre-kryptovalutaer" target="_blank" rel="noopener">Smarte Penger</a>,
+        <a href="https://financer.dk/spar/kryptovaluta" target="_blank" rel="noopener">Financer</a>,
+        <a href="https://euenergy.live/no/artikler/beste-kryptobors" target="_blank" rel="noopener">EU Energy</a>.
+        Gebyrer og skatteregler endrer seg. Sjekk hos plattformen og på skatteetaten.no.</p>
+    </div>`;
+
+  $("#pott").addEventListener("change", (e) => {
+    const x = lesTall(e.target.value);
+    try { x ? localStorage.setItem(KRYPTOPOTT, String(x)) : localStorage.removeItem(KRYPTOPOTT); } catch { /* ignorer */ }
+    visKrypto();
+  });
 }
 
 // ---------- Marked og nyheter ----------

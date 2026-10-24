@@ -15,6 +15,7 @@ import { raaFaktorer, forberedHendelser, tverrsnittFaktorer, finnIndeks, forskyv
 import { icHistorikk, beregnVekter, scor, MODELLER, MIN_MND, signalFor, KJOP_GRENSE, SELG_GRENSE } from "./modell.mjs";
 import { tolkInnsidemelding } from "./innside.mjs";
 import { ukesvalg, UKEMODELL, UKEFAKTORER } from "./uke.mjs";
+import { kryptoanalyse } from "./krypto.mjs";
 
 const HER = dirname(fileURLToPath(import.meta.url));
 const DATA = join(HER, "..", "data");
@@ -527,6 +528,16 @@ async function main() {
   };
   await mkdir(dirname(UTFIL), { recursive: true });
   await writeFile(UTFIL, JSON.stringify(ut));
+
+  // Krypto skrives til egen fil, så en feil her ikke stopper aksjeanalysen
+  try {
+    const k = await kryptoanalyse();
+    await writeFile(join(dirname(UTFIL), "krypto.json"), JSON.stringify(k));
+    const b = k.test;
+    console.log(`Krypto: BTC ${k.hoved[0].signal} (${Math.round(k.hoved[0].trendandel * 7)}/7), ETH ${k.hoved[1].signal} (${Math.round(k.hoved[1].trendandel * 7)}/7). Test ${b.fra}–${b.til}: hold BTC ${pst(b.holdBtc.aarlig)}/år (fall ${pst(b.holdBtc.maksFall)}), trend 70/30 ${pst(b.trend7030.aarlig)}/år (fall ${pst(b.trend7030.maksFall)}), altcoins ${pst(b.altcoins.aarlig)}/år (fall ${pst(b.altcoins.maksFall)})`);
+  } catch (feil) {
+    console.warn("Krypto feilet:", feil.message);
+  }
   const tell = (k, s) => resultat.filter((r) => r[k].signal === s).length;
   console.log(`Ferdig: ${resultat.length} aksjer → ${UTFIL}`);
   for (const k of ["samlet", "kort", "lang"]) console.log(`  ${k}: KJØP ${tell(k, "KJØP")}, HOLD ${tell(k, "HOLD")}, SELG ${tell(k, "SELG")}`);

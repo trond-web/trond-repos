@@ -273,3 +273,15 @@ textarea { width: 100%; font: 14px/1.5 "JetBrains Mono", monospace; padding: 10p
   .portefolje-tall { grid-template-columns: 1fr; }
   .sektorfordeling .sektorrad { grid-template-columns: 110px 1fr 44px; }
 }
+
+/* ---- Krypto ---- */
+.pott { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; margin: 8px 0; }
+.pott input { width: 140px; }
+.fordeling { display: flex; height: 32px; border-radius: 10px; overflow: hidden; font-size: 12px; font-weight: 600; margin: 6px 0; }
+.fordeling .del { display: flex; align-items: center; justify-content: center; color: #fff; white-space: nowrap; overflow: hidden; min-width: 0; }
+.fordeling .BTC { background: #f7931a; }
+.fordeling .ETH { background: #627eea; }
+.fordeling .kontanter { background: var(--flate2); color: var(--dempet); }
+.sjekkliste { list-style: none; padding: 0; margin: 8px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 2px 12px; font-size: 13px; }
+.sjekkliste .ja { color: var(--kjop); }
+.sjekkliste .nei { color: var(--selg); }
