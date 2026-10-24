@@ -10,6 +10,7 @@ import { arealM2 } from './proj.js';
 import { fmt } from './charts.js';
 import { signatur } from './versjon.js';
 import { lagMaskinUi } from './maskin-ui.js';
+import { lagDreneringUi } from './drenering-ui.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -33,6 +34,8 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
   const aar = () => Number(SP().aar) || iAar;
   const lagre = (kartOgsaa = true) => { endret({ kart: false }); if (kartOgsaa) tegnKart(); tegn(); };
   const finn = (id) => SP().skifter.find((s) => s.id === id);
+  // Grøfteplan per skifte (drenering-ui.js).
+  const dren = lagDreneringUi({ hentPlan, lagre: (k) => lagre(k), melding, aar });
 
   // ---------- kart ----------
   function tegnKart() {
@@ -47,6 +50,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
       l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (tegner) tegner.klikk(e.latlng); else velg(sk.id, { zoom: false }); });
       l.addTo(lag);
     }
+    dren.tegnKart(lag, p.skifter);
     const vis = p.visLag || {};
     for (const [id, c] of Object.entries(JORDSMONN_KARTLAG)) {
       if (vis[id] && !wms[id]) wms[id] = L.tileLayer.wms(c.url, { layers: c.lag, format: 'image/png', transparent: true, opacity: 0.6, attribution: 'Jordsmonn © NIBIO' }).addTo(kart);
@@ -219,6 +223,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
         <ul class="sp-korr">${[`${b.kultur.navn}: norm ved ${b.kultur.grunn || b.kultur.normavling} ${b.enhet}/daa`, ...b.korreksjoner].map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
         ${b.kultur.anslag ? '<p class="hint">Normtallene for denne kulturen er veiledende anslag – kontroller mot Gjødslingshåndboka.</p>' : ''}
         <div class="knapperad"><button type="button" class="knapp liten primar" data-sp="til-gjodsling">Planlegg gjødsling</button></div>` : '<p class="hint">Velg vekst for planåret for å beregne gjødselbehovet.</p>'}
+      ${dren.html(sk)}
       <div class="skjema" style="margin-top:12px"><label class="hel">Notat <textarea rows="2" data-sp-felt="notat" placeholder="Drenering, stein, kjøreskader, ugras …">${esc(sk.notat)}</textarea></label></div>
     </div>`;
   }
@@ -393,6 +398,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     const u = e.target.closest('[data-sp-under]'); if (u) { underfane = u.dataset.spUnder; tegn(); return; }
     const ul = e.target.closest('[data-sp-under-lenke]'); if (ul) { e.preventDefault(); underfane = ul.dataset.spUnderLenke; tegn(); return; }
     if (underfane === 'maskin' && await maskin.klikk(e)) return;
+    if (valgt && e.target.closest('[data-dr-k]') && await dren.klikk(e, finn(valgt), tegn)) return;
     const gh = e.target.closest('[data-sp-gh]');
     if (gh) {
       const [skId, gId] = gh.closest('[data-sp-g]').dataset.spG.split(':'); const sk = finn(skId); const g = sk?.gjodsling.find((x) => x.id === gId); if (!g) return;
@@ -451,6 +457,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
   });
   panel.addEventListener('change', (e) => {
     if (underfane === 'maskin' && maskin.endring(e)) return;
+    if (valgt && e.target.dataset?.dr && finn(valgt) && dren.endring(e, finn(valgt))) return;
     const t = e.target; const p = SP(); const sk = finn(valgt);
     if (t.matches('[data-sp-aar]')) { p.aar = Number(t.value); lagre(); return; }
     if (t.matches('[data-sp-region]')) { p.region = t.value; lagre(false); return; }

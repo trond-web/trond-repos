@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.40.1** (2026-10-23) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.41.0** (2026-10-24) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -635,6 +635,68 @@ Kilder: [Landbruksdirektoratet om § 26](https://www.landbruksdirektoratet.no/nb
 [Mattilsynet: krav til sprøytejournalen](https://www.mattilsynet.no/planter-og-dyrking/plantevernmidler/veileder-til-forskrift-om-plantevernmidler/journalforing-ved-bruk-av-plantevernmidler/krav-til-sproytejournalen),
 [NLR: plantevernjournalen](https://www.nlr.no/nyhetsarkiv/default/2025/slik-fyller-du-ut-plantevernjournalen).
 Tallene for husdyrgjødsel er typiske verdier – bruk egen gjødselanalyse når den finnes.
+
+## Grøfteplan – drenering av skifter (Skifteplan › skifte › Grøfteplan)
+
+I hvert skifte kan du lage en systematisk grøfteplan. Logikken ligger i `js/drenering.js` og grensesnittet i `js/drenering-ui.js`.
+
+- **Grøfteavstand og dybde** foreslås fra jordarten (NIBIO jordsmonn) og årsnedbøren, etter NLRs tabell:
+
+  | Jordart | 600–800 mm | 800–1200 mm |
+  |---|---|---|
+  | Leire og silt | 5–8 m | 4–8 m |
+  | Morene | 6–12 m | 6–10 m |
+  | Sterkt omdannet myr | 6–8 m | 4–8 m |
+  | Lite omdannet myr | 10–12 m | 8–10 m |
+
+  - Sand er et anslag. Der er usystematisk grøfting vanligst.
+  - Svak naturlig drenering gir avstand i nedre del av intervallet.
+  - Dybden er 0,9–1,0 m på fastmark og 1,2–1,5 m på myr.
+  - Alt kan endres.
+- **Terrenget** hentes fra Kartverkets høydedata som et rutenett over skiftet. Et plan tilpasset terrenget gir fallretning og helning.
+  - **Samlegrøften** legges med fallet, med utløp i laveste ende. Utløpsrøret skal være uslisset og minst 2 m.
+  - **Sugegrøftene** legges på tvers av fallet, med så mye vinkel på kotene at de får minst 1:200 fall mot samlegrøften. Vinkelen er maks 35°.
+  - **Lange sugegrøfter:** Én samlegrøft betjener sugegrøfter på opptil 200 m på hver side. Er skiftet bredere, legges det flere samlegrøfter.
+  - **Lite fall:** Er terrenget for flatt til å gi fall, varsler planen at fallet må lages med dybden.
+- **Rør:** Sugegrøftene har 50/60 mm drensrør. Samlegrøften dimensjoneres for 0,1 l/s per daa etter Manning for korrugert rør (n = 0,016). Vanlige dimensjoner er 60, 100, 118, 160 og 200 mm ytre diameter.
+- **Økonomi:**
+  - Kostnaden regnes per meter grøft (standard 50 kr/m for grøftehjul, plog eller kjedegraver) og per kum.
+  - Tilskuddet er 4000 kr/daa for systematisk grøfting.
+  - Netto kostnad vises per daa og år over 30 år med 4 % rente, og omregnes til kg korn per daa og år.
+- **Søknad og gjennomføring:**
+  - Planen har status (plan, søkt, innvilget, utført, ferdigmeldt) og felt for om arealet er grøftet før, utløp, oppstart, ferdig, søknadsdato og faktisk kostnad.
+  - «Skriv ut dreneringsplan» lager planen til søknaden: arealet, utførelse, kart over grøftene, kostnad og tilskudd, og miljøvurdering.
+  - Søknaden sendes kommunen (Altinn) **før arbeidet starter**. Det gis ikke tilskudd til påbegynt arbeid.
+- **Til grøftemaskinen:** grøftene som Shapefile (WGS84) og GeoJSON med type, rør, lengde, fall og dybde.
+- **I kartet:** Grøftene vises i skiftekartet med samlegrøft, sugegrøfter og utløp.
+
+## Krav og frister (KSL › Krav og frister)
+
+Alle dokumentasjonskravene for gården er samlet på ett sted. Hvert krav vurderes ut fra dataene i planen og vises med status (mangler, følg opp, OK), tekst, frist, hjemmel med lenke og «Gå til». Logikken ligger i `js/krav.js` og grensesnittet i `js/krav-ui.js`.
+
+- **Gjødsel og jord:**
+  - gjødslingsplan med skiftekart
+  - gjødseljournal (årlig fra 2026)
+  - jordprøver (maks 8 år)
+  - fosfor per daa mot grensen (3,5 kg P/daa fram til 2027, deretter lavere)
+  - spredetid for husdyrgjødsel
+  - lagerkapasitet for husdyrgjødsel (minst 8 måneder)
+  - nok spredeareal for fosforet i husdyrgjødsla (beregner hvor mange daa som mangler)
+- **Plantevern:** autorisasjonsbevis (10 år), funksjonstest av sprøyte (3 år), plantevernjournal med IPV og karenstid.
+- **Søknader og tilskudd:**
+  - produksjonstilskudd (15. oktober, og del 1 for husdyr 15. mars), med arealer fra skifteplanen
+  - RMP (15. oktober), med forslag til tiltak fra skifteplanen: stubb over vinteren, direktesåing og nedfelling
+  - drenering: søknad før oppstart og ferdigmelding etter utførelse
+- **Miljø:** vegetasjonssone mot vassdrag, og høstpløying på erosjonsutsatt jord (regionale miljøkrav).
+- **Husdyr:**
+  - Husdyrregisteret: hendelser innen 7 dager
+  - legemiddeljournal, som oppbevares minst 5 år, med tilbakeholdstid for melk og kjøtt og tidligste slaktedato
+  - beite for storfe: 8 uker i løsdrift, 16 uker på bås i sone 1–4 og 12 uker på bås i sone 5–7
+- **Skog:** foryngelsesplikt innen 3 år etter hogst, per bestand.
+- **KSL og HMS:** årlig egenrevisjon, periodiske kontroller og avvik.
+- **Årshjul:** frister for de neste 12 månedene. Kravoversikten kan skrives ut.
+- **Registre** for det som ikke føres andre steder: husdyrslag og oppstalling, husdyrgjødsel per år, lagervolum og leid spredeareal, søknadsdatoer, beitesesong og legemiddeljournal.
+- Regler for spredetid, fosforgrenser, RMP og regionale miljøkrav varierer mellom fylker og vannområder. Kravene er en hjelp til å holde orden, ikke en juridisk vurdering.
 
 ## Maskin – John Deere og ISOBUS (Skifteplan › 🚜 Maskin)
 

@@ -6,6 +6,7 @@ import {
 } from './ksl.js';
 import { lagreVerdi, hentVerdi } from './store.js';
 import { signatur } from './versjon.js';
+import { lagKravUi } from './krav-ui.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -21,6 +22,8 @@ export function initKsl({ hentPlan, endret, melding, nyId, iAar, visFane }) {
   const S = () => hentPlan();
   const K = () => sikreKsl(S());
   const lagre = () => { endret({ kart: false }); tegn(); };
+  // Krav og frister for hele gården (krav-ui.js).
+  const kravUi = lagKravUi({ hentPlan, endret, melding, nyId, aar: () => aar });
 
   // ---------- oversikt ----------
   function oversiktHtml() {
@@ -183,7 +186,7 @@ export function initKsl({ hentPlan, endret, melding, nyId, iAar, visFane }) {
   function tegn() {
     const el = $('#kslInnhold'); if (!el) return;
     $$('#kslUnder [data-ksl-under]').forEach((b) => b.classList.toggle('aktiv', b.dataset.kslUnder === under));
-    el.innerHTML = under === 'revisjon' ? revisjonHtml() : under === 'avvik' ? avvikHtml() : under === 'kontroller' ? kontrollerHtml() : under === 'dokumenter' ? dokumenterHtml() : oversiktHtml();
+    el.innerHTML = under === 'revisjon' ? revisjonHtml() : under === 'avvik' ? avvikHtml() : under === 'kontroller' ? kontrollerHtml() : under === 'dokumenter' ? dokumenterHtml() : under === 'krav' ? kravUi.html() : oversiktHtml();
   }
 
   // ---------- hendelser ----------
@@ -192,6 +195,7 @@ export function initKsl({ hentPlan, endret, melding, nyId, iAar, visFane }) {
   panel.addEventListener('click', async (e) => {
     const gaa = e.target.closest('[data-ksl-gaa]');
     if (gaa) { e.preventDefault(); const m = gaa.dataset.kslGaa; if (m === 'revisjon') { under = 'revisjon'; tegn(); } else if (m.startsWith('ksl:')) { under = m.slice(4); tegn(); } else visFane(m); return; }
+    if (under === 'krav' && kravUi.klikk(e, tegn)) return;
     const dokLenke = e.target.closest('[data-ksl-dok]');
     if (dokLenke) { e.preventDefault(); apneFil(dokLenke.dataset.kslDok); return; }
     const svar = e.target.closest('[data-ksl-svar]');
@@ -219,6 +223,7 @@ export function initKsl({ hentPlan, endret, melding, nyId, iAar, visFane }) {
     if (h === 'slett-dok') { const id = e.target.closest('[data-dok]').dataset.dok; const d = ksl.dokumenter.find((x) => x.id === id); if (d && confirm(`Slette «${d.navn}»?`)) { if (d.fil) await lagreVerdi(`fil:${d.fil.id}`, undefined); ksl.dokumenter = ksl.dokumenter.filter((x) => x !== d); lagre(); } }
   });
   panel.addEventListener('change', (e) => {
+    if (under === 'krav' && kravUi.endring(e, tegn)) return;
     const f = e.target; const ksl = K();
     if (f.id === 'kslAnsvarlig') { ksl.ansvarlig = f.value.trim(); lagre(); return; }
     if (f.dataset.kslKap) { const n = Number(f.dataset.kslKap); ksl.kapitler = f.checked ? [...new Set([...ksl.kapitler, n])].sort((a, b) => a - b) : ksl.kapitler.filter((x) => x !== n); ksl.kapitlerValgt = true; lagre(); return; }
