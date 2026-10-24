@@ -34,6 +34,8 @@ import * as OPP from '../js/oppdrag.js';
 import * as KSL from '../js/ksl.js';
 import * as MD from '../js/maskindata.js';
 import * as SAT from '../js/satellitt.js';
+import * as DREN from '../js/drenering.js';
+import * as KRAV from '../js/krav.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
@@ -1968,6 +1970,79 @@ test('Innlogging: brukernavn og passord, signert økt, sperre og beskyttede side
   assert.equal(krevInnlogging(lagInnlogging({}), req('GET', '/js/app.js'), res(), '/js/app.js'), false, 'uten innlogging satt opp er alt åpent');
   // Klienten leser utløpstiden fra tokenet.
   const { tokenUtloper } = await import('../js/innlogging.js'); assert.equal(tokenUtloper(token), inn.lesToken(token).exp); assert.equal(tokenUtloper('tull'), 0);
+});
+
+test('Grøfteplan: avstand fra jordart, fall fra terrenget, rør, utløp, økonomi og eksport', async () => {
+  const { tilGeoPunkt, tilUtmPunkt } = await import('../js/flate-geometri.js');
+  const o = [600000, 6700000]; const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => tilGeoPunkt([o[0] + x, o[1] + y]));
+  const sk = { id: 's1', nr: '1', areal: 60, geometri: { type: 'Polygon', coordinates: [ring(0, 0, 300, 200)] }, jordsmonn: { tekstur: 'Siltig mellomleire', drenering: 'Delvis selvdrenert' }, vekster: { 2026: { kultur: 'bygg' } } };
+  assert.equal(DREN.jordartFor(sk), 'leire'); assert.equal(DREN.jordartFor({ jordsmonn: { tekstur: 'Sand' } }), 'sand'); assert.equal(DREN.jordartFor({ jordsmonn: { tekstur: 'Torv', organisk: 'Myr' } }), 'myrOmdannet');
+  const f = DREN.foreslaParametre(sk); assert.deepEqual(f.intervall, [5, 8]); assert.ok(f.avstand >= 5 && f.avstand <= 6.5, String(f.avstand)); assert.ok(f.dybde >= 0.9 && f.dybde <= 1);
+  assert.ok(DREN.foreslaParametre({ ...sk, jordsmonn: { tekstur: 'Torv' } }).dybde >= 1.2);
+  assert.deepEqual(DREN.foreslaParametre(sk, { nedbor: '800-1200' }).intervall, [4, 8]);
+  // Terreng som faller 2 % mot sør (y-retning).
+  const terreng = DREN.lagTerreng({ x0: o[0] - 10, y0: o[1] - 10, x1: o[0] + 310, y1: o[1] + 210, n: 9, z: [...Array(81)].map((_, k) => 100 + Math.floor(k / 9) * (220 / 8) * 0.02) });
+  const p = DREN.lagGrofteplan(sk, terreng, { avstand: 8, dybde: 1, pris: 3.9 });
+  assert.ok(Math.abs(p.helning - 2) < 0.1, String(p.helning)); assert.equal(p.retning, 180);
+  // Samlegrøft med fallet (nord–sør), utløp i sør (laveste ende)
+  const [ux, uy] = tilUtmPunkt(p.utlop[0]); assert.ok(uy - o[1] < 5 && Math.abs(ux - o[0] - 150) < 5, `${ux - o[0]} ${uy - o[1]}`);
+  assert.ok(p.samle[0].fall > 1.9 && p.samle[0].fall < 2.1); assert.ok(p.samle[0].lengde > 190);
+  // Sugegrøfter på tvers av fallet med minst 1:200 fall mot samlegrøften
+  assert.ok(p.sug.length > 40 && p.sug.every((g) => g.fall >= 0.5 - 1e-6), p.sug.map((g) => g.fall).join(','));
+  assert.ok(p.vinkel > 5 && p.vinkel < 25, String(p.vinkel));
+  assert.ok(Math.abs(p.sum.perDaa - 1000 / 8) < 25, String(p.sum.perDaa)); // ca. 125 m grøft per daa ved 8 m avstand
+  assert.equal(p.samle[0].ror >= 100, true); assert.ok(Math.abs(p.samle[0].q - 6) < 0.01); // 60 daa × 0,1 l/s
+  assert.equal(p.okonomi.tilskudd, 240000); assert.ok(p.okonomi.kostnad > p.okonomi.tilskudd); assert.ok(p.okonomi.breakEvenKg > 0);
+  assert.deepEqual(p.varsler, []);
+  // Flatt skifte: varsel om at fallet må lages med dybden
+  const flat = DREN.lagGrofteplan(sk, DREN.lagTerreng({ x0: o[0] - 10, y0: o[1] - 10, x1: o[0] + 310, y1: o[1] + 210, n: 9, z: Array(81).fill(50) }), { avstand: 8 });
+  assert.ok(flat.varsler.some((v) => /flatt/.test(v)) && flat.sug.length > 0);
+  // Rør: kapasitet øker med diameter og fall
+  assert.ok(DREN.kapasitet(83, 0.005) > DREN.kapasitet(50, 0.005) * 2.5); assert.equal(DREN.velgRor(1, 0.01).ytre, 60); assert.ok(DREN.velgRor(80, 0.003).ytre >= 160);
+  // Eksport og status
+  sk.drenering = { plan: p, avstand: 8, dybde: 1, status: 'plan' };
+  const gj = DREN.grofterGeojson(sk); assert.equal(gj.features.filter((x) => x.properties.type === 'sugegrøft').length, p.sug.length); assert.equal(gj.features.filter((x) => x.properties.type === 'utløp').length, 1);
+  assert.ok(DREN.grofteSkisse(sk).startsWith('<svg') && DREN.grofteSkisse(sk).includes('Utløp'));
+  assert.deepEqual(DREN.dreneringStatus(sk.drenering).mangler, ['om arealet er grøftet før', 'beskrivelse av utløp', 'planlagt oppstart']);
+  // Høydedata fra Kartverket (punkt-API, maks 50 per kall)
+  const kall = []; const hent = async (u) => { const pts = JSON.parse(new URL(u).searchParams.get('punkter')); kall.push(pts.length); return { ok: true, json: async () => ({ punkter: pts.map(([, y]) => ({ z: 100 + (y - 60) * 1000 })) }) }; };
+  const t2 = await DREN.hentTerreng(sk.geometri, { hent, n: 9 }); assert.deepEqual(kall, [50, 31]); assert.ok(Number.isFinite(t2(o[0] + 10, o[1] + 10)));
+});
+
+test('Krav og frister: gjødsel, plantevern, søknader, drenering, husdyr, beite, legemidler og skog', async () => {
+  const { tilGeoPunkt } = await import('../js/flate-geometri.js');
+  const o = [600000, 6700000]; const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => tilGeoPunkt([o[0] + x, o[1] + y]));
+  const sk = { id: 's1', nr: '1', areal: 100, geometri: { type: 'Polygon', coordinates: [ring(0, 0, 400, 250)] }, vekster: { 2026: { kultur: 'bygg', avling: 500, jordarbeiding: 'hostploying' }, 2025: { kultur: 'bygg' } }, jordprove: { dato: '2022-05-01' }, jordsmonn: { erosjon: { klasse: 3, tekst: 'Høy erosjonsrisiko' } }, gjodsling: [{ id: 'g', aar: 2026, type: 'mineral', produkt: 'f22310', mengde: 50, dato: '2026-05-05', status: 'utfort' }] };
+  const S = { eiendom: { navn: 'Testgard' }, skifteplan: { aar: 2026, region: 'innland', skifter: [sk], sproyting: [{ id: 'sp', dato: '2026-06-01', skifter: ['s1'], preparat: 'X', dose: '100', skadegjorer: 'ugras', karens: 30 }], ipv: {} }, bestand: [] };
+  const k = (id, s = S, idag = '2026-10-24') => KRAV.vurderKrav(s, 2026, idag).find((x) => x.id === id);
+  assert.equal(k('gjodseljournal').status, 'ok');
+  assert.equal(k('erosjon').status, 'delvis');
+  assert.equal(k('funksjonstest').status, 'mangler'); assert.equal(k('autorisasjon').status, 'mangler');
+  assert.equal(k('pt').status, 'delvis'); assert.equal(k('pt', S, '2026-11-02').status, 'mangler');
+  KRAV.sikreGard(S).soknader[2026] = { pt: '2026-10-10' }; assert.equal(k('pt').status, 'ok');
+  assert.equal(k('lager'), undefined, 'uten husdyr gjelder ikke husdyrkravene');
+  // Husdyr: lager, spredeareal (fosfor), beite, legemiddeljournal
+  const g = KRAV.sikreGard(S); g.husdyr.typer = ['storfe']; g.husdyr.oppstalling = 'bas'; g.husdyr.sone = '1-4';
+  g.husdyr.gjodsel = [{ type: 'storfe', tonn: 600 }]; g.husdyr.lager = 300;
+  assert.equal(k('lager').status, 'mangler'); g.husdyr.lager = 420; assert.equal(k('lager').status, 'ok'); // 8/12 × 600 = 400 m³
+  const sp = k('spredeareal'); assert.equal(sp.status, 'ok', sp.tekst); // 600 t × 0,5 kg P = 300 kg P på 100 daa = 3,0 ≤ 3,5
+  g.husdyr.gjodsel[0].tonn = 800; assert.equal(k('spredeareal').status, 'mangler'); assert.ok(/daa mer spredeareal/.test(k('spredeareal').tekst));
+  assert.ok(/16 uker/.test(k('beite').navn)); g.beite[2026] = { slipp: '2026-05-20', inn: '2026-09-01' }; assert.equal(k('beite').status, 'mangler'); g.beite[2026].inn = '2026-09-20'; assert.equal(k('beite').status, 'ok');
+  assert.equal(k('legemiddel').status, 'delvis'); g.legemiddel.push({ id: 'l', dato: '2026-03-03', dyr: 'Ku 123', legemiddel: 'Penicillin', mengde: '20 ml', tilbakeholdMelk: 5, tilbakeholdKjott: 10 }); assert.equal(k('legemiddel').status, 'ok');
+  assert.equal(k('ptVaar').status, 'mangler');
+  // RMP: stubb over vinteren gir tiltak
+  sk.vekster[2026].jordarbeiding = 'stubb'; assert.deepEqual(KRAV.rmpTiltak(S, 2026).map((t) => t.id), ['stubb']); assert.equal(k('erosjon').status, 'ok');
+  // Drenering: oppstart passert uten søknad → mangler
+  sk.drenering = { plan: { sum: {} }, status: 'plan', oppstart: '2026-09-01' }; assert.equal(k('drenering-s1').status, 'mangler');
+  sk.drenering.sokt = '2026-08-15'; assert.equal(k('drenering-s1').status, 'ok'); sk.drenering.utfort = '2026-10-01'; assert.equal(k('drenering-s1').status, 'delvis');
+  // Skog: foryngelsesplikt 3 år etter hogst
+  S.bestand = [{ id: 'b1', nr: '7', tiltak: [{ type: 'sluttavvirkning', status: 'utfort', utfortDato: '2022-06-10' }] }];
+  assert.equal(k('foryngelse-b1').status, 'mangler'); assert.equal(k('foryngelse-b1').frist, '2025-06-10');
+  S.bestand[0].tiltak.push({ type: 'planting', status: 'utfort', utfortDato: '2023-05-20' }); assert.equal(k('foryngelse-b1').status, 'ok');
+  // Årshjul: sortert, innen 12 måneder, med faste frister
+  const h = KRAV.aarshjul(S, 2026, '2026-10-24'); assert.ok(h.length >= 2 && h.every((x, i) => !i || h[i - 1].dato <= x.dato));
+  assert.ok(h.some((x) => x.dato === '2027-03-15') && h.some((x) => x.dato === '2027-04-01'));
+  assert.ok(h.every((x) => x.dato >= '2026-10-24' && x.dato <= '2027-10-24'));
 });
 
 test('AR i felt: grenser, stier, miljø, kulturminner, retning og varsler', async () => {
