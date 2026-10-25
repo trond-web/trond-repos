@@ -400,6 +400,26 @@ async function fetchSporet(loc, force) {
 
 const WEBCAM_RADIUS_KM = 20;
 
+// Faste kamera som ikke ligger i Sporet, vist først for stedene i «steder».
+// YouTube-direktesendinger vises med det løpende oppdaterte stillbildet fra sendingen,
+// og bildet lenker til selve sendingen.
+const EXTRA_WEBCAMS = [
+  {
+    id: "yt-pellestova",
+    name: "Pellestova Hotell, Hafjell",
+    lat: 61.22624,
+    lon: 10.54466,
+    steder: ["oyerfjellet"],
+    cams: [
+      {
+        url: "https://i.ytimg.com/vi/nWxnu1h9tSc/maxresdefault_live.jpg",
+        link: "https://www.youtube.com/watch?v=nWxnu1h9tSc",
+        text: "980 moh · direkte på YouTube",
+      },
+    ],
+  },
+];
+
 function distanceKm(lat1, lon1, lat2, lon2) {
   const rad = Math.PI / 180;
   const a =
@@ -439,10 +459,15 @@ async function fetchWebcams(force) {
 }
 
 function webcamsNear(loc) {
-  return (state.webcams || [])
+  const pinned = EXTRA_WEBCAMS.filter((p) => p.steder.includes(loc.id)).map((p) => ({
+    ...p,
+    km: distanceKm(loc.lat, loc.lon, p.lat, p.lon),
+  }));
+  const sporet = (state.webcams || [])
     .map((p) => ({ ...p, km: distanceKm(loc.lat, loc.lon, p.lat, p.lon) }))
     .filter((p) => p.km <= WEBCAM_RADIUS_KM)
     .sort((a, b) => a.km - b.km);
+  return [...pinned, ...sporet];
 }
 
 /* ------------------------- data: Netatmo -------------------------- */
@@ -920,7 +945,7 @@ function camTile(p, c, big) {
   const title = c.text && c.text !== p.name ? c.text : "";
   return `
     <figure class="cam${big ? " cam-big" : ""}">
-      <a href="${escapeHtml(c.url)}" target="_blank" rel="noopener">
+      <a href="${escapeHtml(c.link || c.url)}" target="_blank" rel="noopener">
         <img src="${escapeHtml(camUrl(c.url))}" alt="Webkamera ${escapeHtml(p.name)}" loading="lazy"
           referrerpolicy="no-referrer" onerror="this.closest('.cam').classList.add('cam-broken')">
         <span class="cam-error">📷 Bildet er ikke tilgjengelig nå</span>
