@@ -8,6 +8,7 @@
 - [`team-sjusjoen/`](team-sjusjoen/) – nettsiden til Team Sjusjøen Kaffebryggeriet (Ski Classics Pro Team): laget, løpere, terminliste, partnere og kontakt
 - [`nordfjella-villrein/`](nordfjella-villrein/) – jaktkart for villreinjakt i Nordfjella: grensa for villreinområdet, eiendomsgrenser, GPS og kart som virker uten nett
 - [`gran-kommune/`](gran-kommune/) – Gran kommune: kart over rådhus, skoler, barnehager, institusjoner og andre tjenestesteder, med vær, temperatur og avstand fra Gran rådhus
+- [`gran-turveier/`](gran-turveier/) – Turveier i Gran: de mest brukte tur- og sykkelveiene i Gran, rangert etter bruk (Strava-varmekart, Turrutebasen, NVDB), med turer nær deg, høydeprofil, vær og ukemål på 150 minutter for bedre folkehelse
 - [`harehund-skogsprotokoll/`](harehund-skogsprotokoll/) – skogsprotokoll for harehundprøver (NHKF): loslogg i skogen, lospoeng, egenskapspoeng, premiegrad og ferdig jaktprøveprotokoll – virker uten nett
 - [`tommerplan/`](tommerplan/) – Tømmerplan: produksjonsplanlegger for tømmer – hogst, lassbærer, velteplass, tømmerbil og leveranser til mottak, med sesong, teleløsning, lagringstid og flaskehalser, koblet til innkjøps-, salgs- og produksjonsordre i Skogdata VSYS Virkeshandel
 - [`dressur/`](dressur/) – Dressurstevne: påmelding, startlister med trekning, dommermodul med innlogging og live resultatservice etter NRYFs dressurreglement (KR IV)

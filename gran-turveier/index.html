@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Turveier i Gran</title>
+<meta name="description" content="De mest brukte tur- og sykkelveiene i Gran kommune, rangert etter faktisk bruk. Finn en tur nær deg, se lengde, tid og stigning, og nå ukemålet på 150 minutter aktivitet.">
+<meta name="theme-color" content="#0f5a4f">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topp">
+  <a class="merke" href="./" aria-label="Turveier i Gran">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 26c5-1 6-7 11-8s6 4 13-6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="24" cy="7" r="3" fill="currentColor"/></svg>
+    <span>Turveier i Gran <em>mest brukte tur- og sykkelveier</em></span>
+  </a>
+  <div class="verktoy">
+    <button id="nermeg" class="knapp" type="button">Turer nær meg</button>
+  </div>
+</header>
+
+<main class="flate">
+  <section class="kartkolonne" aria-label="Kart">
+    <div id="kart"></div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <aside class="liste" aria-label="Ruter">
+    <div id="oversikt">
+      <section class="ukemaal" id="ukemaal" aria-label="Ukemål"></section>
+      <section class="ukenstur" id="ukenstur" aria-label="Ukens tur"></section>
+
+      <div class="filter">
+        <div id="typer" class="faner" role="tablist" aria-label="Type rute"></div>
+        <div class="filterrad">
+          <label>Lengde
+            <select id="lengde">
+              <option value="">Alle</option>
+              <option value="0-3">Under 3 km</option>
+              <option value="3-8">3–8 km</option>
+              <option value="8-20">8–20 km</option>
+              <option value="20-">Over 20 km</option>
+            </select>
+          </label>
+          <label>Sorter
+            <select id="sortering">
+              <option value="bruk">Mest brukt</option>
+              <option value="naer">Nærmest</option>
+              <option value="kort">Kortest</option>
+              <option value="lang">Lengst</option>
+              <option value="flat">Minst stigning</option>
+            </select>
+          </label>
+        </div>
+        <form id="sok" class="sok" autocomplete="off">
+          <input id="sokefelt" type="search" placeholder="Fra adresse, f.eks. «Jarenstranda 2»" aria-label="Finn turer nær en adresse">
+          <button class="knapp sekundaer" type="submit">Søk</button>
+        </form>
+        <ul id="forslag" class="forslag" hidden></ul>
+        <p id="fra" class="liten fra" hidden></p>
+      </div>
+
+      <ol id="ruter" class="ruter"></ol>
+
+      <details class="om">
+        <summary>Hvordan måles bruken?</summary>
+        <p>Rutene kommer fra Kartverkets <strong>Turrutebasen</strong> (merkede stier og sykkelruter) og Statens vegvesens
+          vegdatabank <strong>NVDB</strong> (veger og gang- og sykkelveger). Bruken er målt med <strong>Strava Global Heatmap</strong>:
+          et anonymisert, samlet varmekart over alle registrerte aktiviteter det siste året. For hver rute leser vi
+          intensiteten langs hele traseen hver 15. meter og regner ut en <strong>bruksindeks</strong> fra 0 til 100.</p>
+        <p>Indeksen er <em>relativ</em>: den sier hvilke ruter som brukes mest sammenlignet med andre ruter i Gran,
+          ikke hvor mange som går der. Strava-brukere er ikke et perfekt utvalg av innbyggerne – løpere og syklister er
+          overrepresentert, turgåere og barn underrepresentert. Turstier rangeres etter alle aktiviteter, sykkelruter
+          etter sykkelturer.</p>
+        <p>Tid, energi og skritt er anslag: gange 4,5 km/t og sykkel 16 km/t, pluss tid for stigning. Energi gjelder en
+          person på <span id="vekttekst">70</span> kg (<button id="vekt" class="lenkeknapp" type="button">endre</button>).</p>
+      </details>
+
+      <footer class="kilder liten">
+        <p><strong>Kilder:</strong> turruter fra <a href="https://kartkatalog.geonorge.no/?text=tur-%20og%20friluftsruter" target="_blank" rel="noopener">Turrutebasen</a> (Kartverket, åpne data),
+          veger fra <a href="https://nvdbapiles.atlas.vegvesen.no/" target="_blank" rel="noopener">NVDB</a> (Statens vegvesen, NLOD),
+          bruk fra <a href="https://www.strava.com/maps/global-heatmap" target="_blank" rel="noopener">Strava Global Heatmap</a>,
+          høyder fra <a href="https://ws.geonorge.no/hoydedata/v1/" target="_blank" rel="noopener">Kartverkets høydedata</a>,
+          vær fra <a href="https://api.met.no/" target="_blank" rel="noopener">Meteorologisk institutt</a> (CC BY 4.0), kart fra Kartverket.</p>
+        <p>Anbefalingen om 150 minutter aktivitet i uka er fra <a href="https://www.helsedirektoratet.no/faglige-rad/fysisk-aktivitet-for-barn-unge-voksne-eldre-og-gravide" target="_blank" rel="noopener">Helsedirektoratet</a>. <span id="hentet"></span></p>
+      </footer>
+    </div>
+
+    <article id="detalj" class="detalj" hidden></article>
+  </aside>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

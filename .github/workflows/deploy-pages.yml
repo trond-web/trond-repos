@@ -13,6 +13,7 @@ on:
       - "team-sjusjoen/**"
       - "nordfjella-villrein/**"
       - "gran-kommune/**"
+      - "gran-turveier/**"
       - "harehund-skogsprotokoll/**"
       - "tommerplan/**"
       - ".github/workflows/deploy-pages.yml"
@@ -55,7 +56,7 @@ jobs:
       # tretetthet-flyfoto ligger fortsatt på rot-URL-en, øvrige apper under egne stier
       - name: Assemble site
         run: |
-          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom _site/borsradar _site/team-sjusjoen _site/nordfjella-villrein _site/gran-kommune _site/harehund-skogsprotokoll _site/tommerplan
+          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom _site/borsradar _site/team-sjusjoen _site/nordfjella-villrein _site/gran-kommune _site/gran-turveier _site/harehund-skogsprotokoll _site/tommerplan
           cp -r tretetthet-flyfoto/. _site/
           cp -r snovill-skifore/. _site/snovill-skifore/
           cp -r therese-helge/. _site/therese-helge/
@@ -64,13 +65,14 @@ jobs:
           cp -r borsradar/. _site/borsradar/
           cp -r team-sjusjoen/. _site/team-sjusjoen/
           cp -r gran-kommune/. _site/gran-kommune/
+          cp -r gran-turveier/. _site/gran-turveier/
           cp -r harehund-skogsprotokoll/. _site/harehund-skogsprotokoll/
           cp -r tommerplan/. _site/tommerplan/
           # Nordfjella villrein kjører på Railway (med server). Pages sender videre dit og rydder bort den gamle appen.
           cp nordfjella-villrein/pages-videresending/* _site/nordfjella-villrein/
           rm -f _site/team-sjusjoen/bilder/README.md
           # Tester, verktøy og serverfiler (Railway) publiseres ikke på GitHub Pages
-          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/gran-kommune/tests _site/gran-kommune/data/hent-data.mjs _site/borsradar/analyse _site/borsradar/data/innsidehandel.json _site/harehund-skogsprotokoll/tests _site/harehund-skogsprotokoll/README.md _site/tommerplan/tests _site/tommerplan/README.md
+          rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/gran-kommune/tests _site/gran-kommune/data/hent-data.mjs _site/gran-turveier/tests _site/gran-turveier/README.md _site/gran-turveier/data/hent-data.mjs _site/gran-turveier/data/ruter.mjs _site/gran-turveier/data/png.mjs _site/borsradar/analyse _site/borsradar/data/innsidehandel.json _site/harehund-skogsprotokoll/tests _site/harehund-skogsprotokoll/README.md _site/tommerplan/tests _site/tommerplan/README.md
 
       # Snøvill: snødybde, snømengde og smelting fra NVE/seNorge legges ved som datafil
       - name: Snødata fra NVE (Snøvill)
@@ -89,6 +91,12 @@ jobs:
         continue-on-error: true
         timeout-minutes: 5
         run: node gran-kommune/data/hent-data.mjs _site/gran-kommune/data/steder.json
+
+      # Turveier i Gran: turruter, vegnett og bruksindeks fra varmekartet på nytt
+      - name: Turveier i Gran
+        continue-on-error: true
+        timeout-minutes: 10
+        run: node gran-turveier/data/hent-data.mjs _site/gran-turveier/data/ruter.json
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
