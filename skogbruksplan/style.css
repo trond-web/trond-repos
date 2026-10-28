@@ -863,6 +863,24 @@ progress { accent-color: var(--accent); height: 8px; }
 .tb-steg li.ferdig button { color: var(--accent); border-color: var(--accent); }
 .md-rad.tb-billigst { border-left: 4px solid var(--good); }
 .md-rad.tb-valgt { outline: 2px solid var(--accent); }
+/* StanForD 2010 (Tiltak › Oppdrag › Hogstmaskin) */
+.kort.sf { border: 1px solid color-mix(in srgb, #8a5a2b 35%, var(--border)); background: color-mix(in srgb, #8a5a2b 5%, var(--surface)); margin: 8px 0 12px; }
+.sf-del { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
+.sf-del:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+.sf-del h5 { margin: 0 0 6px; font-size: 14px; }
+.sf-varsel { margin: 6px 0; padding: 6px 10px; border-radius: 8px; background: var(--surface-2); border-left: 3px solid var(--warning); font-size: 13px; }
+.sf-avkrysning { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 8px; }
+.sf .tabell { overflow-x: auto; max-width: 100%; }
+.sf-liste { margin: 6px 0; padding-left: 18px; font-size: 13px; }
+.sf-liste li { margin-bottom: 4px; }
+.sf-tabell { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sf-tabell th, .sf-tabell td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+.sf-tabell th { color: var(--text-2); font-weight: 600; }
+.sf-tabell .t { text-align: right; font-variant-numeric: tabular-nums; }
+.sf-tall { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 8px; }
+.sf-tall div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; display: grid; }
+.sf-tall b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.sf-tall span { font-size: 12px; color: var(--text-2); }
 .ksl-fremdrift { height: 6px; border-radius: 99px; background: var(--surface-2); margin-top: 10px; overflow: hidden; }
 .ksl-fremdrift span { display: block; height: 100%; background: var(--accent); }
 .ksl-kap { margin: 18px 0 8px; }

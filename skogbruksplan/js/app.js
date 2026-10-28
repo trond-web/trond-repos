@@ -1130,6 +1130,22 @@ function settUtfort(b, t, ferdig) {
 }
 
 // ---------------------------------------------------------------- oppdrag
+// Produksjonsdata fra hogstmaskinen (StanForD 2010): hogd flate, kjørespor, velteplasser og stammer per treslag.
+let stanfordLag = null;
+const STAMME_FARGE = { G: '#1f6b4a', F: '#c98500', L: '#8fbf3f' };
+function visStanfordLag(gj) {
+  if (stanfordLag) { stanfordLag.remove(); stanfordLag = null; }
+  if (!gj || !kart) return;
+  const r = L.canvas({ padding: 0.3 });
+  stanfordLag = L.geoJSON(gj, {
+    renderer: r, interactive: false,
+    style: (f) => (f.properties.lag === 'hogd' ? { color: '#b5651d', weight: 1, fillColor: '#f39c4a', fillOpacity: 0.35 } : { color: '#d03b3b', weight: 3, dashArray: '6 4' }),
+    pointToLayer: (f, ll) => (f.properties.lag === 'stamme'
+      ? L.circleMarker(ll, { renderer: r, radius: 2, stroke: false, fillOpacity: 0.85, fillColor: STAMME_FARGE[f.properties.treslag] || '#555' })
+      : L.circleMarker(ll, { renderer: r, radius: 7, color: '#fff', weight: 2, fillColor: '#2a78d6', fillOpacity: 1 })),
+  }).addTo(kart);
+  const b = stanfordLag.getBounds(); if (b.isValid()) kart.fitBounds(b, { maxZoom: 17, ...synligPadding(kart, 40) });
+}
 function settValgModus(paa, maal = null) {
   if (!paa && kartUtvalg && harEndringer(kartUtvalg)) { rullTilbake(kartUtvalg); endret({ kart: true }); }
   valgModus = paa; maalOppdrag = paa ? maal : null; if (!paa) valgteTiltak = new Set();
@@ -1943,6 +1959,7 @@ function kobleHendelser() {
       if (erMobil()) settArk('halv');
     },
     startValg: (o) => { visTiltakVisning('plan'); settValgModus(true, o); },
+    visKartlag: visStanfordLag,
   });
   $('#tiltakVisning').addEventListener('click', (e) => { const b = e.target.closest('[data-tv]'); if (b) visTiltakVisning(b.dataset.tv); });
   $('#velgTiltakBtn').addEventListener('click', () => settValgModus(!valgModus));
