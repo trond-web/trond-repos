@@ -16,6 +16,7 @@ on:
       - "gran-turveier/**"
       - "harehund-skogsprotokoll/**"
       - "tommerplan/**"
+      - "stanford2010-verktoy/stanford2010/web/**"
       - ".github/workflows/deploy-pages.yml"
   schedule:
     # Børsradar: ny analyse hver handelsdag etter børsslutt (18:45 norsk sommertid / 17:45 vintertid)
@@ -56,7 +57,7 @@ jobs:
       # tretetthet-flyfoto ligger fortsatt på rot-URL-en, øvrige apper under egne stier
       - name: Assemble site
         run: |
-          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom _site/borsradar _site/team-sjusjoen _site/nordfjella-villrein _site/gran-kommune _site/gran-turveier _site/harehund-skogsprotokoll _site/tommerplan
+          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom _site/borsradar _site/team-sjusjoen _site/nordfjella-villrein _site/gran-kommune _site/gran-turveier _site/harehund-skogsprotokoll _site/tommerplan _site/stanford2010-verktoy
           cp -r tretetthet-flyfoto/. _site/
           cp -r snovill-skifore/. _site/snovill-skifore/
           cp -r therese-helge/. _site/therese-helge/
@@ -68,6 +69,8 @@ jobs:
           cp -r gran-turveier/. _site/gran-turveier/
           cp -r harehund-skogsprotokoll/. _site/harehund-skogsprotokoll/
           cp -r tommerplan/. _site/tommerplan/
+          # StanForD 2010-verktøyet: kun den ferdigbygde nettsiden (Python-pakken publiseres ikke)
+          cp stanford2010-verktoy/stanford2010/web/index.html _site/stanford2010-verktoy/index.html
           # Nordfjella villrein kjører på Railway (med server). Pages sender videre dit og rydder bort den gamle appen.
           cp nordfjella-villrein/pages-videresending/* _site/nordfjella-villrein/
           rm -f _site/team-sjusjoen/bilder/README.md

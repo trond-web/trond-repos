@@ -118,10 +118,17 @@ write_file(pin, "aptering.pin")
 
 ## Web-verktøy
 
+Nettside: **<https://trond-web.github.io/trond-repos/stanford2010-verktoy/>** (publiseres fra
+`main` via GitHub Pages). Alt skjer i nettleseren, ingen filer sendes noe sted.
+
+
 `sf2010 server` gir også et web-verktøy på **`/app`** (f.eks. `http://server:8710/app`):
 
 - **Les rapport:** slipp inn hpr/hqc/fpr/mom og få volum per treslag og produkt, kart over
   stammene, stokkliste, kontrollmåling (hqc) og lass (fpr), med CSV-eksport.
+- **Analyse:** slipp inn én eller flere hpr/hqc/mom/fpr og få samme analyse som `sf2010 analyser`:
+  sortiment, apteringsutfall og verdi, diameterfordeling, stammekart, produktivitet, kontrollmåling med
+  justerbare krav, tidsfordeling, stopp og drivstoff. «Prøv med eksempelfiler» viser en simulert hogst.
 - **Lag instruksjon:** rediger produkter med prismatrise (skriv `X` for å forby kapping),
   treslag og hogstobjekt. Kontrollen kjøres mens du skriver. Last ned eller send rett til maskinen.
 - **Valider:** sjekk vilkårlige StanForD-filer.

@@ -77,6 +77,9 @@ def simulate(pin: ET.Element, n_stems: int = 50, seed: int | None = None,
     sgs = sorted({p["species_group_user_id"] for p in products})
     species = [{"key": 10 + i, "species_group_user_id": s, "name": s} for i, s in enumerate(sgs)]
     sg_key = {s["species_group_user_id"]: s["key"] for s in species}
+    # Stammene spres over et kvadrat som gir ca. 600 stammer per hektar (sluttavvirkning)
+    half_m = math.sqrt(max(n_stems, 1) / 600 * 10_000) / 2
+    dlat, dlon = half_m / 111_000, half_m / (111_000 * math.cos(math.radians(lat)))
     stems = []
     for n in range(1, n_stems + 1):
         sg = rnd.choice(sgs)
@@ -122,8 +125,8 @@ def simulate(pin: ET.Element, n_stems: int = 50, seed: int | None = None,
         stems.append({
             "harvest_date": t.isoformat(timespec="seconds"),
             "key": n * 100, "number": n, "species_group_key": sg_key[sg], "operator_key": 1,
-            "dbh_mm": round(dbh), "lat": round(lat + rnd.uniform(-0.002, 0.002), 7),
-            "lon": round(lon + rnd.uniform(-0.004, 0.004), 7), "alt": 300, "logs": logs,
+            "dbh_mm": round(dbh), "lat": round(lat + rnd.uniform(-dlat, dlat), 7),
+            "lon": round(lon + rnd.uniform(-dlon, dlon), 7), "alt": 300, "logs": logs,
         })
     spec = {
         "version": pin.get("version"),
