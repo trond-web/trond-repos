@@ -10,6 +10,7 @@ import { lagRelay, kontrollerApi } from './kontroller-relay.js';
 import { lagPlanRelay, planApi } from './plan-relay.js';
 import { lagJdRelay, jdApi, JD_SANDKASSE } from './jd-relay.js';
 import { lagInnlogging, innloggingApi, krevInnlogging, corsFor } from './auth.js';
+import { lagTilbudRelay, tilbudApi } from './tilbud-relay.js';
 
 const ROT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8080;
@@ -29,7 +30,7 @@ const TYPER = {
   '.sos': 'text/plain; charset=utf-8',
 };
 // Mapper og filer som ikke skal publiseres.
-const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|package(-lock)?\.json|railway\.json)$|\/\./;
+const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|package(-lock)?\.json|railway\.json)$|\/\./;
 const KOMPRIMER = /^(text\/|application\/(json|geo\+json|manifest\+json)|image\/svg)/;
 
 const SIKKERHET = {
@@ -68,6 +69,8 @@ async function nve(sti, res, req) {
 const relay = lagRelay({ fil: process.env.KONTROLLER_FIL || null });
 // Overføring og synkronisering av planer mellom PC og mobil (se plan-relay.js).
 const planRelay = lagPlanRelay({ fil: process.env.PLAN_FIL || null });
+// Tilbudsforespørsler til utførere (tilbud-relay.js). Mottakerne svarer via lenke uten innlogging.
+const tilbudRelay = lagTilbudRelay({ fil: process.env.TILBUD_FIL || null });
 // Innlogging (auth.js): brukernavn og passord settes som miljøvariabler på serveren, aldri i koden.
 const innlogging = lagInnlogging({ bruker: process.env.APP_BRUKER || '', passord: process.env.APP_PASSORD || '', hemmelighet: process.env.APP_HEMMELIGHET || '' });
 // John Deere Operations Center (se jd-relay.js). Uten JD_CLIENT_ID/JD_CLIENT_SECRET svarer /api/jd/status at det ikke er satt opp.
@@ -84,7 +87,12 @@ const server = http.createServer(async (req, res) => {
   // Forhåndssjekk (CORS) fra appen på GitHub Pages: Authorization-hodet bærer innloggingen.
   if (req.method === 'OPTIONS' && sti.startsWith('/api/')) { const c = corsFor(req); res.writeHead(204, { ...c, ...(c['Access-Control-Allow-Origin'] ? { 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Max-Age': '600' } : {}) }); return res.end(); }
   if (innloggingApi(innlogging, req, res, sti, SIKKERHET)) return;
+  // Utførernes visning og svar er åpne (personlig kode i lenken). Oppdragsgiverens kall (opprette, hente svar, tildele)
+  // krever innlogging når den er slått på, og eiernøkkelen.
+  const utforerKall = (req.method === 'GET' && /^\/api\/tilbud\/[a-f0-9]{16}$/.test(sti)) || (req.method === 'POST' && /^\/api\/tilbud\/[a-f0-9]{16}\/svar$/.test(sti));
+  if (utforerKall && tilbudApi(tilbudRelay, req, res, sti, SIKKERHET)) return;
   if (krevInnlogging(innlogging, req, res, sti, SIKKERHET)) return;
+  if (tilbudApi(tilbudRelay, req, res, sti, SIKKERHET)) return;
   if (kontrollerApi(relay, req, res, sti, SIKKERHET)) return;
   if (planApi(planRelay, req, res, sti, SIKKERHET)) return;
   if (jdApi(jdRelay, req, res, sti, SIKKERHET)) return;

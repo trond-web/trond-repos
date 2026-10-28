@@ -36,6 +36,7 @@ import * as MD from '../js/maskindata.js';
 import * as SAT from '../js/satellitt.js';
 import * as DREN from '../js/drenering.js';
 import * as KRAV from '../js/krav.js';
+import * as TB from '../js/tilbud.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
@@ -2043,6 +2044,79 @@ test('Krav og frister: gjødsel, plantevern, søknader, drenering, husdyr, beite
   const h = KRAV.aarshjul(S, 2026, '2026-10-24'); assert.ok(h.length >= 2 && h.every((x, i) => !i || h[i - 1].dato <= x.dato));
   assert.ok(h.some((x) => x.dato === '2027-03-15') && h.some((x) => x.dato === '2027-04-01'));
   assert.ok(h.every((x) => x.dato >= '2026-10-24' && x.dato <= '2027-10-24'));
+});
+
+test('Tilbud: forespørsel fra oppdrag, offentlig innhold, sammenligning og tildeling', async () => {
+  const OP = await import('../js/oppdrag.js');
+  const { tilGeoPunkt } = await import('../js/flate-geometri.js');
+  const o0 = [600000, 6700000]; const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]].map(([x, y]) => tilGeoPunkt([o0[0] + x, o0[1] + y]));
+  let n = 0; const nyId = (p) => `${p}${++n}`;
+  const S = { eiendom: { navn: 'Testskogen', kommune: 'Løten', eier: 'Ola Nordmann' }, bestand: [
+    { id: 'b1', nr: '5', areal: 12, treslag: 'G', bonitet: 17, alder: 85, geometri: { type: 'Polygon', coordinates: [ring(0, 0, 100, 120)] }, tiltak: [{ id: 't1', type: 'planting', aar: 2027, status: 'planlagt' }] },
+    { id: 'b2', nr: '6', areal: 8, treslag: 'G', bonitet: 14, alder: 90, geometri: { type: 'Polygon', coordinates: [ring(100, 0, 180, 100)] }, tiltak: [{ id: 't2', type: 'planting', aar: 2027, status: 'planlagt' }] }] };
+  const { oppdrag: [o] } = OP.lagOppdrag(S, S.bestand.map((b) => ({ bestand: b, tiltak: b.tiltak[0] })), { nyId, iAar: 2026 });
+  const f = TB.nyForesporsel(S, o, { idag: '2026-10-28', kontakt: { navn: 'Ola', telefon: '900 00 000' } });
+  assert.equal(f.prisform, 'enhet'); assert.equal(f.enhet, 'plante'); assert.equal(f.mengde, 4400); // 220 planter/daa × 20 daa
+  assert.equal(f.svarfrist, '2026-11-11'); assert.ok(f.krav.includes('skatteattest') && f.krav.includes('tariff') && f.krav.includes('pefc') && !f.krav.includes('sha'));
+  assert.ok(f.beskrivelse.includes('Plantetall: 220 per daa'));
+  assert.ok(TB.nyForesporsel(S, { ...o, type: 'vei' }, {}).krav.includes('sha'));
+  assert.equal(TB.prisformFor('sluttavvirkning').enhet, 'm³'); assert.equal(TB.prisformFor('vei').form, 'fast');
+  assert.deepEqual(TB.mangler(f), ['minst én mottaker']);
+  f.mottakere = [{ id: 'm1', navn: 'Kari', firma: 'Plantelaget AS', epost: 'kari@example.no' }, { id: 'm2', navn: 'Per', firma: 'Skogkultur Per', telefon: '+47 911 11 111' }, { id: 'm3', navn: 'Lise', firma: 'Billig & Rask', epost: 'l@example.no' }];
+  assert.deepEqual(TB.mangler(f), []);
+  // Det utførerne ser: omfang, kart og krav – ikke andre mottakere, nøkler eller eierens interne data.
+  const pub = TB.offentligForesporsel(S, o, f, { tiltakNavn: (t) => (t === 'planting' ? 'Planting' : t) });
+  assert.equal(pub.omfang.bestand.length, 2); assert.equal(pub.omfang.areal, 20); assert.equal(pub.kart.length, 2); assert.equal(pub.sted, 'Testskogen, Løten');
+  const json = JSON.stringify(pub); assert.ok(!json.includes('Plantelaget') && !json.includes('kari@') && !json.includes('mottaker'));
+  assert.ok(pub.krav.every((k) => k.tekst));
+  // Sammenligning: total fra enhetspris × mengde, krav, frist og gyldighet.
+  f.svar = [
+    { mottakerId: 'm1', prisform: 'enhet', enhetspris: 4.5, oppstart: '2027-05-10', ferdig: '2027-06-01', gyldigTil: '2099-01-01', krav: Object.fromEntries(f.krav.map((k) => [k, true])), mottatt: '2026-11-05T10:00:00Z' },
+    { mottakerId: 'm2', prisform: 'enhet', enhetspris: 4.2, krav: Object.fromEntries(f.krav.map((k) => [k, true])), mottatt: '2026-11-12T10:00:00Z' },
+    { mottakerId: 'm3', prisform: 'enhet', enhetspris: 3.1, krav: { mva: true }, mottatt: '2026-11-06T10:00:00Z' }];
+  const r = TB.sammenlign(f, 20);
+  assert.deepEqual(r.map((x) => x.mottakerId), ['m3', 'm2', 'm1']);
+  assert.equal(r.find((x) => x.mottakerId === 'm1').total, 19800); assert.equal(r.find((x) => x.mottakerId === 'm1').perDaa, 990);
+  assert.ok(r.find((x) => x.mottakerId === 'm2').billigst, 'billigste med alle krav (m3 mangler krav)');
+  assert.ok(r.find((x) => x.mottakerId === 'm2').etterFrist); assert.ok(!r.find((x) => x.mottakerId === 'm3').kravAlle);
+  // Tildeling: utfører, avtale, periode og status i oppdraget.
+  TB.tildel(o, f, 'm1', { idag: '2026-11-15' });
+  assert.equal(f.status, 'tildelt'); assert.equal(o.status, 'bestilt'); assert.equal(o.utforer.navn, 'Plantelaget AS'); assert.equal(o.avtale.pris, 19800); assert.equal(o.periode.fra, '2027-05-10');
+  // Meldinger
+  const t = TB.foresporselTekst(pub, f.mottakere[0], 'https://x/tilbud.html?f=1&k=2'); assert.ok(t.tekst.includes('https://x/tilbud.html?f=1&k=2') && t.emne.includes(o.nr));
+  assert.ok(TB.akseptTekst(o, f, f.svar[0], f.mottakere[0]).tekst.replace(/\s/g, ' ').includes('19 800'));
+  assert.ok(TB.mailto('a@b.no', t).startsWith('mailto:a%40b.no?subject=')); assert.ok(TB.smsLenke('+47 911 11 111', 'hei').startsWith('sms:+4791111111?body='));
+});
+
+test('Tilbud på serveren: eiernøkkel, personlige koder, svar, avgjort og opprydding', async () => {
+  const { lagTilbudRelay, tilbudApi } = await import('../tilbud-relay.js');
+  let tid = 1_000_000; const r = lagTilbudRelay({ naa: () => tid });
+  const ny = r.opprett({ data: { tittel: 'Planting', svarfrist: '2026-11-11' }, mottakere: [{ id: 'm1', navn: 'Kari' }, { id: 'm2', navn: 'Per' }] });
+  assert.match(ny.id, /^[a-f0-9]{16}$/); assert.match(ny.eier, /^[a-f0-9]{32}$/); assert.ok(ny.koder.m1 && ny.koder.m2 && ny.koder.m1 !== ny.koder.m2);
+  assert.equal(r.vis(ny.id, 'feil').status, 404); assert.equal(r.svarFor(ny.id, 'feil').status, 404);
+  const v = r.vis(ny.id, ny.koder.m1); assert.equal(v.data.tittel, 'Planting'); assert.equal(v.mottaker.navn, 'Kari'); assert.equal(v.svar, null);
+  assert.ok(!JSON.stringify(v).includes('Per'), 'mottakeren ser ikke de andre');
+  assert.equal(r.svar(ny.id, ny.koder.m1, { kommentar: 'uten pris' }).status, 400);
+  assert.ok(r.svar(ny.id, ny.koder.m1, { prisform: 'enhet', enhetspris: '4,5'.replace(',', '.'), firma: 'Plantelaget', orgnr: '912 345 678', krav: { pefc: true, 'ond<script>': true }, ukjent: 'x' }).ok);
+  const sv = r.svarFor(ny.id, ny.eier); assert.equal(sv.svar.length, 1); assert.equal(sv.svar[0].enhetspris, 4.5); assert.equal(sv.svar[0].orgnr, '912345678'); assert.deepEqual(sv.svar[0].krav, { pefc: true }); assert.equal(sv.svar[0].ukjent, undefined);
+  assert.ok(sv.apnet.m1 && !sv.apnet.m2);
+  assert.equal(r.vis(ny.id, ny.koder.m1).svar.enhetspris, 4.5, 'mottakeren ser sitt eget svar');
+  // Ny mottaker etter utsending
+  const d = r.oppdater(ny.id, ny.eier, { mottakere: [{ id: 'm3', navn: 'Lise' }] }); assert.ok(d.koder.m3);
+  // Tildeling: ingen nye svar, vinneren ser at tilbudet er akseptert
+  r.oppdater(ny.id, ny.eier, { status: 'tildelt', mottakere: { valgt: 'm1' } });
+  assert.equal(r.svar(ny.id, ny.koder.m2, { enhetspris: 3 }).status, 409);
+  assert.equal(r.vis(ny.id, ny.koder.m1).vunnet, true); assert.equal(r.vis(ny.id, ny.koder.m2).vunnet, false);
+  assert.equal(r.opprett({ data: { x: 'a'.repeat(500 * 1024) } }).status, 413);
+  // Rydding etter 180 dager uten bruk
+  tid += 181 * 86400000; r.opprett({ data: { tittel: 'ny' } }); assert.equal(r.vis(ny.id, ny.koder.m1).status, 404);
+  // HTTP
+  const kjor = (metode, url, kropp) => new Promise((ok) => { const h = {}; const req = { method: metode, url, headers: { origin: 'https://trond-web.github.io' }, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(JSON.stringify(kropp))); f(); }, 0); }, destroy() {} }; const res = { writeHead(s, hd) { this.s = s; this.h = hd; }, end(b) { ok({ status: this.s, hoder: this.h, kropp: JSON.parse(b) }); } }; tilbudApi(r, req, res, new URL(url, 'http://x').pathname); });
+  const p = await kjor('POST', '/api/tilbud', { data: { tittel: 'Vei' }, mottakere: [{ id: 'a', navn: 'A' }] }); assert.equal(p.status, 200); assert.equal(p.hoder['Access-Control-Allow-Origin'], 'https://trond-web.github.io');
+  assert.equal((await kjor('GET', `/api/tilbud/${p.kropp.id}?k=${p.kropp.koder.a}`)).kropp.data.tittel, 'Vei');
+  assert.equal((await kjor('POST', `/api/tilbud/${p.kropp.id}/svar?k=${p.kropp.koder.a}`, { pris: 250000 })).status, 200);
+  assert.equal((await kjor('GET', `/api/tilbud/${p.kropp.id}/svar?e=${p.kropp.eier}`)).kropp.svar[0].pris, 250000);
+  assert.equal((await kjor('GET', `/api/tilbud/${p.kropp.id}/svar?e=feil`)).status, 404);
 });
 
 test('AR i felt: grenser, stier, miljø, kulturminner, retning og varsler', async () => {
