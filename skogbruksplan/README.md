@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.42.0** (2026-10-28) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.43.0** (2026-10-28) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -538,6 +538,70 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## Hogstmaskin og lassbærer – StanForD 2010 (Tiltak › Oppdrag › 🌲 Hogstmaskin)
+
+Hogstoppdrag (sluttavvirkning, tynning og lukket hogst) kan sendes til hogstmaskin og lassbærer som et filsett etter
+**StanForD 2010**, Skogforsks standard for skogsmaskiner. Etter drift leses produksjonsfilene fra maskinene tilbake, og
+oppdraget, bestandene og kartet ajourføres automatisk. Filsettet støtter Komatsu MaxiXT, John Deere TimberMatic, Ponsse
+Opti og andre maskiner med StanForD 2010.
+
+**1 · Til maskinen.** «⬇ Last ned filsett (ZIP)» lager en mappe som kopieres til en minnepinne. Mappen inneholder:
+
+| Fil | Melding | Innhold |
+|---|---|---|
+| `.oin` | ObjectInstruction | Hogstobjektet: oppdragsnummer, skogeier, eiendom (kommune-gnr/bnr), PEFC, hogstform og areal. Hvert bestand er et delobjekt med bestandets ID. Tekst til fører har instruks, kjøper, sortiment, gjensettingstrær og miljøhensyn. Lista over sortimenter som skal apteres står også her. |
+| `.ogi` + `.shp/.shx/.dbf/.prj` | ObjectGeographicalInstruction | Kartlag: bestandene i oppdraget, hensynsflater og hensynspunkter med varsel og varselavstand, veier, stier og bekker, velteplasser og et tomt lag for kjørespor (TrackingFile). Varselavstandene følger Norsk PEFC Skogstandard: nøkkelbiotop 10 m, kulturminne 5 m, rovfuglreir 50 m, bekk 10 m og sti 2,5 m. |
+| `.spi` | SpeciesGroupInstruction | Treslagsgruppene gran, furu og lauv, med kvaliteter og Skogforsks barkfunksjoner. |
+| `.pin` | ProductInstruction | En enkel apteringsinstruks for sagtømmer og massevirke per treslag. Den har diameter- og lengdeklasser og en prismatrise som følger prisene i planen. Har tømmerkjøperen en egen pin, brukes den i stedet. |
+| `.foi` / `.fdi` | Forwarding Object/Delivery Instruction | Lassbæreren: leveranser (ett per sortiment, med kjøper) og velteplasser med koordinater. |
+| `.env` | StanForD2010Envelope | Kartinstruksen og alle kartfilene samlet i én fil (Base64). |
+| `LES_MEG.txt` | – | Hva filene er, og hvordan de legges inn i Komatsu, John Deere og Ponsse. |
+
+Du velger skjemaversjon: **3.6** (anbefalt) eller **3.3** for eldre maskiner. Kartkoordinatene kan være WGS84 eller
+EUREF89 UTM 32/33. Filene er validert mot Skogforsks XSD-skjemaer for begge versjonene. Når filsettet lastes ned, lagres
+objekt-ID-en på oppdraget, og et utkast får status «Bestilt».
+
+**2 · Etter drift.** «📂 Les inn produksjonsfiler» tar løse filer, ZIP, komprimerte filer (`.hprz` og lignende) og
+`.env`. Dette leses:
+
+* **hpr** (HarvestedProduction): hver stamme med posisjon ved kranspissen, treslag, diameter, stokker, sortiment og volum (m³fub og m³pb).
+* **thp** (TotalHarvestedProduction): summer per delobjekt, brukt når det ikke finnes hpr.
+* **fpr** (ForwardedProduction): lass og dellass per leveranse og velteplass.
+* **mom** (OperationalMonitoring): driftstid og drivstoff.
+* **hqc** (HarvestingQualityControl): antall kontrollmålte stammer.
+* **ogr** (ObjectGeographicalReport): kjørespor og objekter føreren har registrert i maskinkartet.
+
+Stammene fordeles på bestandene etter delobjekt. Mangler det, brukes stammens posisjon i bestandsflaten. Stammer
+utenfor oppdraget og filer fra andre objekter vises som advarsel. Før noe endres, får du se hva som skjer med hvert
+bestand. «✓ Ajourfør» gjør dette:
+
+* Tiltakene merkes utført, med dato og virkelig volum og stammetall fra maskinen.
+* Bestandene oppdateres:
+  * **Flatehogst** der minst 60 % av flaten er hogd: hogstklasse I (alder 0, volum 0).
+  * **Delvis hogd flate, tynning og lukket hogst:** volumet per daa reduseres med det som faktisk er tatt ut, og treantallet reduseres med antall stammer.
+  * Hvert bestand får en hogsthistorikk med volum, sortiment og treslag.
+* Oppdraget får status «Utført» når alle hogsttiltakene har stammer, ellers «Pågår».
+* Kartet viser:
+  * hogd flate (10 m-ruter med stammer)
+  * stammene, farget etter treslag
+  * kjørespor og velteplasser
+* Nye objekter føreren har registrert (fra ogr) kan legges inn i miljøregistreringene.
+
+Resultatet vises i oppdraget:
+
+* m³, stammer og middelstamme
+* sortiment og treslag
+* tall per bestand
+* lassbærer, med andel kjørt fram
+* m³ per time og liter per m³
+
+Resultatet kan lastes ned som CSV. Filene kan leses inn flere ganger, for eksempel daglige hpr-filer. Samme stamme
+telles bare én gang, og bare endringen siden forrige import trekkes fra volumet. Uten maskin kan flyten prøves med
+«Prøv med simulert drift», som lager hpr og fpr for oppdraget.
+
+Neste steg i standarden er versjon 4.0, der kartet sendes som GeoJSON inne i ogi, og den løpende meldingen hpd
+(HarvestedDeltaProduction). Produksjonsfiler i 4.0 kan allerede leses. Kilde: [Skogforsk – StanForD 2010](https://www.skogforsk.se/english/projects/stanford/).
 
 ## Satellittbilder – se endringer siden taksten (Sentinel-2)
 

@@ -37,6 +37,7 @@ import * as SAT from '../js/satellitt.js';
 import * as DREN from '../js/drenering.js';
 import * as KRAV from '../js/krav.js';
 import * as TB from '../js/tilbud.js';
+import * as SF from '../js/stanford.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
@@ -2246,6 +2247,153 @@ test('Vær i den virtuelle skogen: sol, MET-varsel, snødybde og værscener', as
   assert.ok(VR.vaerScene(VR.forhandsvaer('sol'), natt).natt); assert.ok(VR.vaerScene(VR.forhandsvaer('sol'), natt).sol.styrke < 0.2);
   assert.ok(VR.vaerScene(VR.forhandsvaer('torden'), dag).torden);
   assert.match(VR.vaerTekst({ ...v, snodybde: 37 }), /3 °C · lett regn · vind 5,1 m\/s fra SV · 0,6 mm\/t · 37 cm snø/);
+});
+
+// Plan med tre hogstbestand, miljøobjekter og velteplass for StanForD-testene.
+function stanfordPlan() {
+  const S = lagDemo(2026);
+  const kand = S.bestand.filter((b) => b.geometri).sort((a, b) => (b.volumDaa || 0) - (a.volumDaa || 0)).slice(0, 3);
+  kand.forEach((b, i) => { b.tiltak = [{ id: `t${i}`, type: i === 2 ? 'tynning' : 'sluttavvirkning', aar: 2026, status: 'planlagt' }]; b.treantall = 120; });
+  const [lx, ly] = kand[0].geometri.coordinates.flat(Infinity);
+  S.pefc = { ...tomPefc(), objekter: [
+    { id: 'km1', type: 'kulturminne', navn: 'Kullgrop', geometri: { type: 'Polygon', coordinates: [[[lx, ly], [lx + 0.0003, ly], [lx + 0.0003, ly + 0.0002], [lx, ly]]] } },
+    { id: 'll1', type: 'livslopstre', navn: 'Gammel osp', geometri: { type: 'Point', coordinates: [lx + 0.0002, ly + 0.0001] } },
+    { id: 'b1', type: 'vann', navn: 'Bekk', geometri: { type: 'LineString', coordinates: [[lx, ly], [lx + 0.001, ly + 0.001]] } }] };
+  S.veier = { veier: [], stier: [], punkter: [{ id: 'vp1', type: 'velteplass', navn: 'Velteplass ved bommen', geometri: { type: 'Point', coordinates: [lx, ly] } }] };
+  const { oppdrag } = OPP.lagOppdrag(S, kand.map((b) => ({ bestand: b, tiltak: b.tiltak[0] })), { nyId: (p) => `${p}${Math.random().toString(36).slice(2, 8)}`, iAar: 2026 });
+  const hogst = oppdrag.find((o) => o.type === 'sluttavvirkning'); hogst.felt.kjoper = 'Viken Skog'; hogst.merknad = 'Pass på <bekk> & stier';
+  return { S, kand, hogst, tynning: oppdrag.find((o) => o.type === 'tynning') };
+}
+const tekstFiler = (filer) => filer.map((f) => ({ navn: f.navn, data: typeof f.data === 'string' ? new TextEncoder().encode(f.data) : f.data }));
+
+test('StanForD 2010: filsett til hogstmaskin og lassbærer (oin, ogi med Shapefile, spi, pin, foi, fdi, env)', async () => {
+  const { S, kand, hogst } = stanfordPlan();
+  const fs = SF.lagFilsett(S, hogst, { versjon: '3.6', naa: new Date('2026-10-28T10:00:00') });
+  const navn = fs.filer.map((f) => f.navn);
+  for (const e of ['oin', 'ogi', 'spi', 'pin', 'foi', 'fdi']) assert.ok(navn.some((n) => n.endsWith(`.${e}`)), e);
+  assert.ok(navn.some((n) => n.endsWith('_kart.env')) && navn.includes('LES_MEG.txt'));
+  const fil = (e) => fs.filer.find((f) => f.navn.endsWith(e)).data;
+  // oin: objekt-ID, ett delobjekt per bestand, sortimenter og tekst til fører (escapet).
+  const oin = SF.lesXml(fil('.oin')).c[0];
+  assert.equal(oin.n, 'ObjectInstruction'); assert.equal(oin.a.messageType, 'oin'); assert.equal(oin.a.version, '3.6');
+  assert.match(fil('.oin'), /xmlns="urn:skogforsk:stanford2010"/);
+  assert.match(fil('.oin'), /<ObjectUserID agency="ForestOwner">SkogIQ-O-2026-01<\/ObjectUserID>/);
+  assert.match(fil('.oin'), /<CreationDate>2026-10-28T10:00:00[+-]\d\d:\d\d<\/CreationDate>/);
+  const def = oin.c.find((c) => c.n === 'ObjectDefinition');
+  const sub = def.c.filter((c) => c.n === 'SubObject').map((c) => c.c.find((x) => x.n === 'SubObjectUserID').t);
+  assert.deepEqual(sub.sort(), kand.slice(0, 2).map((b) => b.id).sort());
+  assert.ok(def.c.filter((c) => c.n === 'ProductUserID').length >= 4);
+  assert.match(def.c.find((c) => c.n === 'TextToMachine').t, /Viken Skog[\s\S]*Pass på <bekk> & stier[\s\S]*Kulturminne/);
+  assert.match(fil('.oin'), /Pass på &lt;bekk&gt; &amp; stier/);
+  // ogi: kartlag med shapefiler som finnes i filsettet, varsel og sporlag.
+  const lag = [...fil('.ogi').matchAll(/<GISFileName>([^<]+)<\/GISFileName>/g)].map((m) => m[1]);
+  assert.ok(lag.length >= 5); for (const l of lag) for (const e of ['shp', 'shx', 'dbf', 'prj']) assert.ok(navn.includes(l.replace(/shp$/, e)), l);
+  assert.match(fil('.ogi'), /<TrackingFile>true<\/TrackingFile>/); assert.match(fil('.ogi'), /<ColumnNameWarningDistance>VARSELAVST<\/ColumnNameWarningDistance>/);
+  const hensyn = MD.lesShapefile(fil('_hensyn.shp'), fil('_hensyn.dbf'), fil('_hensyn.prj'));
+  assert.equal(hensyn.find((h) => h.egenskaper.TYPE === 'kulturminne').egenskaper.VARSELAVST, 5);
+  const best = MD.lesShapefile(fil('_bestand.shp'), fil('_bestand.dbf'), fil('_bestand.prj'));
+  assert.equal(best.length, 2); assert.ok(Math.abs(arealM2(best[0].geometri) - arealM2(kand.find((b) => b.id === best[0].egenskaper.DELOBJEKT).geometri)) < 50);
+  assert.equal(MD.lesShapefile(fil('_velteplass.shp'), fil('_velteplass.dbf')).length, 1);
+  // UTM: koordinater i meter, .prj med sone.
+  const utm = SF.lagFilsett(S, hogst, { versjon: '3.3', koordsys: 'EPSG:25833' });
+  const uf = (e) => utm.filer.find((f) => f.navn.endsWith(e)).data;
+  assert.match(new TextDecoder().decode(uf('_bestand.prj')), /UTM_Zone_33N/); assert.ok(new DataView(uf('_bestand.shp').buffer).getFloat64(36, true) > 100000);
+  assert.doesNotMatch(uf('.oin'), /countryCodeCategory/); // 3.3 har ikke attributtet
+  // pin og fdi: sortiment per treslag, prismatrise og leveranse per sortiment med kjøper.
+  assert.match(fil('.pin'), /<ProductName>Gran sagtømmer<\/ProductName>[\s\S]*<ProductMatrixItem diameterClassLowerLimit="130" lengthClassLowerLimit="370">/);
+  assert.match(fil('.fdi'), /<DeliveryUserID agency="ForestOwner">LEV_GRAN_SAG<\/DeliveryUserID>[\s\S]*<DeliveryDestination>Viken Skog<\/DeliveryDestination>/);
+  assert.match(fil('.foi'), /<LocationName>Velteplass ved bommen<\/LocationName>/);
+  // env: ogi og kartfilene innebygd – kan pakkes ut igjen.
+  const ut = await SF.lesProduksjonsfiler(tekstFiler([...SF.simulerDrift(S, hogst, { maksStammer: 50 }), { navn: 'kart.env', data: fil('_kart.env') }]));
+  assert.ok(ut.filer.some((f) => f.endsWith('.ogi')) && ut.filer.filter((f) => f.endsWith('.shp')).length >= 5);
+  // ZIP med mappe.
+  const zip = await MD.lesZip(SF.zipAv(fs)); assert.equal(zip.length, fs.filer.length); assert.ok(zip.every((z) => z.navn.startsWith(`${fs.mappe}/`)));
+  assert.throws(() => SF.lagFilsett(S, { ...hogst, linjer: [] }), /ingen bestand/);
+});
+
+test('StanForD 2010: produksjonsfiler tilbake – ajourføring av oppdrag, bestand og kart', async () => {
+  const { S, kand, hogst, tynning } = stanfordPlan();
+  const sim = tekstFiler(SF.simulerDrift(S, hogst, { naa: new Date('2026-11-02T12:00:00') }));
+  const data = await SF.lesProduksjonsfiler(sim);
+  assert.deepEqual(data.meldinger.map((m) => m.type).sort(), ['fpr', 'hpr']);
+  const res = SF.beregnResultat(S, hogst, data);
+  assert.equal(res.bestand.length, 2); assert.equal(res.utenfor, 0);
+  assert.ok(res.m3 > 1000 && res.stammer > 2000, `${res.m3} ${res.stammer}`);
+  assert.ok(res.sortiment.sagtommer > 0 && res.sortiment.massevirke > 0 && res.treslag.G > res.treslag.F);
+  assert.ok(res.bestand.every((b) => b.dekning > 0.6 && b.fra === '2026-10-31' || b.fra === '2026-11-01'));
+  assert.ok(Math.abs(res.lassbaerer.m3 - res.m3) < 1);
+  const liste = SF.ajourfor(S, hogst, res, data, { importId: SF.importNokkel(sim), naa: new Date('2026-11-02T12:00:00') });
+  assert.equal(liste.length, 2);
+  for (const b of kand.slice(0, 2)) { assert.equal(b.alder, 0); assert.equal(b.volumDaa, 0); assert.equal(b.tiltak[0].status, 'utfort'); assert.ok(b.tiltak[0].utfortM3 > 100); assert.equal(b.hogsthistorikk.length, 1); }
+  assert.equal(hogst.status, 'utfort'); assert.ok(hogst.utfortDato);
+  const gj = SF.kartGeojson(hogst);
+  assert.ok(gj.features.some((f) => f.properties.lag === 'hogd' && f.geometry.type === 'MultiPolygon'));
+  assert.ok(gj.features.filter((f) => f.properties.lag === 'stamme').length > 1000 && gj.features.some((f) => f.properties.lag === 'velteplass'));
+  // Samme filer igjen: ingen dobbel ajourføring.
+  SF.ajourfor(S, hogst, SF.beregnResultat(S, hogst, await SF.lesProduksjonsfiler(sim)), data, { importId: SF.importNokkel(sim) });
+  assert.equal(hogst.stanford.importer.length, 1); assert.equal(kand[0].hogsthistorikk.length, 1);
+
+  // Tynning: volum og treantall reduseres med uttaket; ny fil senere trekker bare fra endringen.
+  const b3 = kand[2]; const for_ = b3.volumDaa;
+  const d1 = await SF.lesProduksjonsfiler(tekstFiler(SF.simulerDrift(S, tynning, { andel: 0.5, seed: 3 })));
+  const r1 = SF.beregnResultat(S, tynning, d1); SF.ajourfor(S, tynning, r1, d1);
+  const etter1 = b3.volumDaa; assert.ok(etter1 < for_ && Math.abs(etter1 - (for_ - r1.m3 / b3.areal)) < 0.2, `${for_} ${etter1}`);
+  assert.ok(b3.treantall < 120);
+  const d2 = await SF.lesProduksjonsfiler(tekstFiler(SF.simulerDrift(S, tynning, { andel: 1, seed: 3 })));
+  const r2 = SF.beregnResultat(S, tynning, d2); const e2 = SF.endringer(S, tynning, r2);
+  assert.ok(Math.abs(e2[0].delta - (r2.m3 - r1.m3)) < 0.2); SF.ajourfor(S, tynning, r2, d2);
+  assert.ok(Math.abs(b3.volumDaa - Math.max(0, for_ - r2.m3 / b3.areal)) < 0.3, `${b3.volumDaa}`);
+  assert.equal(tynning.status, 'utfort');
+});
+
+test('StanForD 2010: lesing av hpr fra maskin (Komatsu-format), hprz, thp, mom, fpr og ogr', async () => {
+  const { S, kand, hogst } = stanfordPlan();
+  const [lon, lat] = (() => { const g = kand[0].geometri; const r = (g.type === 'Polygon' ? g.coordinates : g.coordinates[0])[0]; const c = r.reduce((a, p) => [a[0] + p[0] / r.length, a[1] + p[1] / r.length], [0, 0]); return MD.iGeometri(c, g) ? c : r[0]; })();
+  // Utdrag med samme oppbygging som en hpr fra Komatsu MaxiXT (navnerom-prefiks, ukjent delobjekt, flere volumkategorier).
+  const hpr = `<?xml version="1.0" encoding="utf-8"?><sf:HarvestedProduction xmlns:sf="urn:skogforsk:stanford2010" messageType="hpr" version="3.3" versionDate="2017-02-06" areaUnit="ha" diameterUnit="mm" lengthUnit="cm" volumeUnit="m3" weightUnit="kg">
+    <sf:Machine machineCategory="Harvester"><sf:MachineKey>637151882044030000</sf:MachineKey><sf:MachineUserID>9013061272</sf:MachineUserID><sf:MachineBaseManufacturer>Komatsu Forest</sf:MachineBaseManufacturer><sf:MachineBaseModel>901XC-6</sf:MachineBaseModel>
+    <sf:SpeciesGroupDefinition><sf:SpeciesGroupUserID agency="Seller">NO1_GRAN</sf:SpeciesGroupUserID><sf:SpeciesGroupName>GRAN</sf:SpeciesGroupName><sf:Extension><x>1</x></sf:Extension><sf:SpeciesGroupKey>446</sf:SpeciesGroupKey></sf:SpeciesGroupDefinition>
+    <sf:ProductDefinition><sf:ProductKey>8015</sf:ProductKey><sf:ClassifiedProductDefinition><sf:ProductName>197 Massevirke</sf:ProductName><sf:ProductGroupName>Massevirke</sf:ProductGroupName><sf:ProductMatrixes><sf:ProductMatrixItem/></sf:ProductMatrixes></sf:ClassifiedProductDefinition></sf:ProductDefinition>
+    <sf:ProductDefinition><sf:ProductKey>8019</sf:ProductKey><sf:ClassifiedProductDefinition><sf:ProductName>140 SCA Sagtømmer</sf:ProductName><sf:ProductGroupName>Tømmer</sf:ProductGroupName></sf:ClassifiedProductDefinition></sf:ProductDefinition>
+    <sf:ObjectDefinition><sf:ObjectUserID agency="LoggingOrganisation">61221</sf:ObjectUserID><sf:ObjectName>Kjøpers objekt</sf:ObjectName><sf:ObjectKey>91</sf:ObjectKey><sf:SubObject><sf:SubObjectUserID agency="Other">abc</sf:SubObjectUserID><sf:SubObjectName>Sluttavvirkning</sf:SubObjectName><sf:SubObjectKey>184</sf:SubObjectKey></sf:SubObject></sf:ObjectDefinition>
+    ${[0, 1, 2].map((i) => `<sf:Stem><sf:StemKey>${337463 + i}</sf:StemKey><sf:ObjectKey>91</sf:ObjectKey><sf:SubObjectKey>184</sf:SubObjectKey><sf:SpeciesGroupKey>446</sf:SpeciesGroupKey><sf:HarvestDate>2026-10-1${i}T08:00:00+02:00</sf:HarvestDate>
+      <sf:StemCoordinates receiverPosition="Base machine position" coordinateReferenceSystem="WGS84"><sf:Latitude latitudeCategory="North">${lat + 0.01}</sf:Latitude><sf:Longitude longitudeCategory="East">${lon}</sf:Longitude><sf:Altitude>537</sf:Altitude></sf:StemCoordinates>
+      <sf:StemCoordinates receiverPosition="Crane tip position when felling the tree" coordinateReferenceSystem="WGS84"><sf:Latitude latitudeCategory="North">${lat}</sf:Latitude><sf:Longitude longitudeCategory="East">${lon}</sf:Longitude><sf:Altitude>537</sf:Altitude></sf:StemCoordinates>
+      <sf:Extension><sf:Extension>nested</sf:Extension></sf:Extension>
+      <sf:SingleTreeProcessedStem><sf:DBH>456</sf:DBH><sf:StemDiameters><sf:DiameterValue diameterPosition="0">559</sf:DiameterValue></sf:StemDiameters>
+        <sf:Log><sf:LogKey>1</sf:LogKey><sf:ProductKey>8019</sf:ProductKey><sf:LogVolume logVolumeCategory="m3 (price)" logMeasurementCategory="Machine">0.4589</sf:LogVolume><sf:LogVolume logVolumeCategory="m3sob" logMeasurementCategory="Machine">0.5095</sf:LogVolume><sf:LogVolume logVolumeCategory="m3sub" logMeasurementCategory="Machine">0.4500</sf:LogVolume></sf:Log>
+        <sf:Log><sf:LogKey>2</sf:LogKey><sf:ProductKey>8015</sf:ProductKey><sf:LogVolume logVolumeCategory="m3sub" logMeasurementCategory="Machine">0.1000</sf:LogVolume></sf:Log>
+      </sf:SingleTreeProcessedStem></sf:Stem>`).join('')}
+    </sf:Machine></sf:HarvestedProduction>`;
+  const mom = `<OperationalMonitoring xmlns="urn:skogforsk:stanford2010" messageType="mom" version="3.3"><Machine machineCategory="Harvester"><MachineBaseManufacturer>Komatsu Forest</MachineBaseManufacturer><ObjectDefinition><ObjectUserID>61221</ObjectUserID><ObjectKey>91</ObjectKey></ObjectDefinition>
+    <CombinedMachineWorkTime><ObjectKey>91</ObjectKey><CombinedMachineRunTime><MachineRunTimeCategory>Processing</MachineRunTimeCategory><TimeLength>5400</TimeLength></CombinedMachineRunTime><CombinedMachineRunTime><MachineRunTimeCategory>Terrain travel</MachineRunTimeCategory><TimeLength>1800</TimeLength></CombinedMachineRunTime><OtherMachineData><FuelConsumption>31</FuelConsumption></OtherMachineData></CombinedMachineWorkTime></Machine></OperationalMonitoring>`;
+  const thp = `<TotalHarvestedProduction xmlns="urn:skogforsk:stanford2010" messageType="thp" version="3.6"><Machine machineCategory="Harvester"><SpeciesGroupDefinition><SpeciesGroupName>Furu</SpeciesGroupName><SpeciesGroupKey>2</SpeciesGroupKey></SpeciesGroupDefinition><ProductDefinition><ProductKey>5</ProductKey><ClassifiedProductDefinition><ProductName>Furu sag</ProductName></ClassifiedProductDefinition></ProductDefinition>
+    <ObjectDefinition><ObjectUserID>SkogIQ-O-2026-01</ObjectUserID><ObjectKey>1</ObjectKey><SubObject><SubObjectUserID>${kand[1].id}</SubObjectUserID><SubObjectKey>7</SubObjectKey></SubObject></ObjectDefinition>
+    <Total><ObjectKey>1</ObjectKey><SubObjectKey>7</SubObjectKey><SpeciesGroupKey>2</SpeciesGroupKey><TotalNumberOfStems>40</TotalNumberOfStems><TotalStemVolume totalStemVolumeCategory="m3sub">22.5</TotalStemVolume><TotalLogs><ProductKey>5</ProductKey><TotalProductNumberOfLogs>80</TotalProductNumberOfLogs><TotalProductVolume totalProductVolumeCategory="m3sub">22.5</TotalProductVolume></TotalLogs></Total></Machine></TotalHarvestedProduction>`;
+  const gz = new Uint8Array(zlib.gzipSync(Buffer.from(hpr)));
+  const data = await SF.lesProduksjonsfiler([{ navn: 'K901.hprz', data: gz }, { navn: 'K901.mom', data: new TextEncoder().encode(mom) }]);
+  const h = data.meldinger.find((m) => m.type === 'hpr');
+  assert.equal(h.stammer.length, 3); assert.equal(h.maskiner[0].produsent, 'Komatsu Forest');
+  const s0 = h.stammer[0]; assert.equal(s0.treslag, 'G'); assert.deepEqual(s0.pos, [lon, lat]); assert.equal(s0.fub, 0.55); assert.equal(s0.dato, '2026-10-10');
+  assert.deepEqual(s0.stokker.map((l) => l.sortiment), ['sagtommer', 'massevirke']);
+  const res = SF.beregnResultat(S, hogst, data);
+  assert.equal(res.bestand.length, 1); assert.equal(res.bestand[0].bestandId, kand[0].id); assert.equal(res.stammer, 3);
+  assert.deepEqual(res.andreObjekter, ['61221']); assert.equal(res.m3, 1.7); assert.equal(res.sortiment.sagtommer, 1.4);
+  assert.deepEqual(res.drift, { timer: 2, drivstoff: 31 });
+  // Bare thp (ingen posisjoner): summer per delobjekt.
+  const d2 = await SF.lesProduksjonsfiler([{ navn: 'a.thp', data: new TextEncoder().encode(thp) }]);
+  const r2 = SF.beregnResultat(S, hogst, d2); assert.equal(r2.bestand[0].bestandId, kand[1].id); assert.equal(r2.bestand[0].m3, 22.5); assert.equal(r2.treslag.F, 22.5); assert.equal(r2.bestand[0].dekning, null);
+  // ogr med kjørespor og et nytt objekt registrert av føreren.
+  const spor = MD.lagShapefile([{ geometri: { type: 'LineString', coordinates: [[lon, lat], [lon + 0.001, lat]] }, egenskaper: {} }], [{ navn: 'ID', type: 'C', lengde: 4 }], 'linje');
+  const ny = MD.lagShapefile([{ geometri: { type: 'Point', coordinates: [lon, lat] }, egenskaper: { TYPE: 'kulturminne', ID: 'n1', BESKR: 'Steingard' } }, { geometri: { type: 'Point', coordinates: [lon, lat] }, egenskaper: { TYPE: 'livslopstre', ID: 'll1', BESKR: 'Kjent' } }], [{ navn: 'TYPE', type: 'C', lengde: 16 }, { navn: 'ID', type: 'C', lengde: 8 }, { navn: 'BESKR', type: 'C', lengde: 20 }], 'punkt');
+  const ogr = `<ObjectGeographicalReport xmlns="urn:skogforsk:stanford2010" messageType="ogr"><GISLayer><GISFileName>spor.shp</GISFileName><TrackingFile>true</TrackingFile></GISLayer><GISLayer><GISFileName>hensynpkt.shp</GISFileName><GISFileModified>true</GISFileModified></GISLayer></ObjectGeographicalReport>`;
+  const pakke = MD.lagZip([{ navn: 'x.ogr', data: ogr }, { navn: 'spor.shp', data: spor.shp }, { navn: 'spor.dbf', data: spor.dbf }, { navn: 'hensynpkt.shp', data: ny.shp }, { navn: 'hensynpkt.dbf', data: ny.dbf }, { navn: 'K901.hpr', data: hpr }]);
+  const d3 = await SF.lesProduksjonsfiler([{ navn: 'maskin.zip', data: pakke }]);
+  assert.equal(d3.spor.length, 1); const nye = SF.nyeHensyn(S, d3); assert.equal(nye.length, 1); assert.equal(nye[0].type, 'kulturminne');
+  const r3 = SF.beregnResultat(S, hogst, d3); SF.ajourfor(S, hogst, r3, d3);
+  assert.equal(SF.kartGeojson(hogst).features.filter((f) => f.properties.lag === 'spor').length, 1);
+  assert.equal(hogst.status, 'pagar'); // bare ett av to bestand har stammer
+  await assert.rejects(() => SF.lesProduksjonsfiler([{ navn: 'tom.txt', data: new TextEncoder().encode('hei') }]), /Fant ingen produksjonsfiler/);
 });
 
 await Promise.all(venter);
