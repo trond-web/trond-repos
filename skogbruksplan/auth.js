@@ -43,7 +43,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', dag
 
 // Det som kan hentes uten innlogging: innloggingssiden, helsesjekken, ikoner og manifester (lastes uten
 // informasjonskapsel når appen installeres).
-const APENT = /^\/(logginn\.html|js\/innlogging\.js|healthz|api\/logginn|api\/meg|icon\.svg|ikon-[\w-]+\.png|manifest\.webmanifest|felt\.webmanifest|favicon\.ico)$/;
+const APENT = /^\/(logginn\.html|tilbud\.html|js\/tilbud-svar\.js|js\/innlogging\.js|healthz|api\/logginn|api\/meg|icon\.svg|ikon-[\w-]+\.png|manifest\.webmanifest|felt\.webmanifest|favicon\.ico)$/;
 const TILLATT_OPPHAV = /^(https:\/\/(skogiq-production\.up\.railway\.app|trond-web\.github\.io)|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/;
 export const corsFor = (req) => { const o = req.headers.origin; return o && TILLATT_OPPHAV.test(o) ? { 'Access-Control-Allow-Origin': o, Vary: 'Origin' } : {}; };
 const ip = (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '?';

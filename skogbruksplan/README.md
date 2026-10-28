@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.41.0** (2026-10-24) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.42.0** (2026-10-28) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -493,6 +493,51 @@ Planlagte tiltak kan samles til **oppdrag** og sendes til en utfører, for eksem
   - Når status settes til *utført*, kan alle tiltakene i oppdraget markeres som utført, og bestandene oppdateres som ved enkelttiltak.
   - Tiltak i et oppdrag får et merke med oppdragsnummer og status i tiltakslisten. Bestandene i oppdraget som er åpent, utheves med oransje i kartet.
 - **Arbeidsordre:** «Skriv ut arbeidsordre» lager en side for utskrift eller PDF. Den har utfører, periode og omfang, de oppdragsspesifikke feltene og instruksen. Den har også kart med bestandene i oppdraget, bilvei, traktorvei, sti og velteplasser, en bestandstabell, sjekklisten og felt for kvittering.
+
+## Tilbud på oppdrag (Tiltak › Oppdrag › 📨 Be om tilbud)
+
+Fra et oppdrag kan du be én eller flere utførere om tilbud. Hver utfører får en personlig lenke og svarer uten innlogging. Du sammenligner svarene i appen og tildeler oppdraget med ett trykk. Logikken ligger i `js/tilbud.js`, grensesnittet i `js/tilbud-ui.js`, utførerens side i `tilbud.html` og `js/tilbud-svar.js`, og mellomleddet på serveren i `tilbud-relay.js`.
+
+1. **Hva:** Tittel, beskrivelse, prisform, mengde og befaring fylles inn fra oppdraget og kan endres. Beskrivelsen lages av oppdragsfeltene og instruksen.
+   - Prisformen er satt etter det utførerne vanligvis priser etter: hogst per m³, planting per plante, markberedning, ungskogpleie og gjødsling per daa, stammekvisting per tre, grøfterensk per meter, og vei og miljøtiltak som fastpris.
+   - Mengden regnes fra oppdraget: m³, daa, eller planter fra plantetall × areal.
+2. **Krav og frister:**
+   - Svarfrist (standard 14 dager), hvor lenge tilbudet skal gjelde (30 dager), ønsket periode og betalingsvilkår. Fakturaen skal spesifisere bestand, areal og mengde, og kan belastes skogfond.
+   - Seriøsitetskrav, forhåndsvalgt etter oppdragstypen:
+     - org.nr og pris eks. mva
+     - skatteattest (ikke eldre enn 6 måneder)
+     - HMS-egenerklæring
+     - ansvarsforsikring
+     - lønns- og arbeidsvilkår minst på nivå med allmenngjort eller landsomfattende tariffavtale
+     - Norsk PEFC Skogstandard
+     - dokumentert kompetanse for maskinførere
+     - SHA-plan etter byggherreforskriften ved bygging av vei
+   - Kontaktperson for utførerne.
+3. **Mottakere og send:** Legg til utførere med navn, firma, e-post og mobil, eller velg dem fra utførerregisteret, som husker alle du har sendt til før. «📨 Send forespørsel» lager en personlig lenke til hver mottaker. Lenken sendes med «✉ E-post» eller «💬 SMS» med ferdig tekst, eller med «📋 Kopier lenke».
+
+**Utførerens side (`tilbud.html`)** viser:
+- oppdraget, svarfristen og omfanget
+- prisform og mengde
+- betaling, befaring og kontakt
+- beskrivelse og kart over bestandene, med lenke til veibeskrivelse
+- bestandstabell
+
+Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fyller utføreren ut periode, hvor lenge tilbudet gjelder, firma og org.nr, kontakt og kommentar, og bekrefter kravene. Tilbudet kan endres fram til saken er avgjort. Utføreren ser ikke de andre mottakerne. Etter tildeling ser utføreren om tilbudet er akseptert.
+
+**Sammenligning og tildeling:**
+- **Status per mottaker:** sendt, åpnet eller svart. «↻ Hent svar» henter svarene, og det skjer også når oppdraget åpnes.
+- **Tilbudene sorteres på totalpris eks. mva.** Hvert tilbud viser pris per enhet, pris per daa, periode, krav bekreftet (x av y, og hvilke som mangler), om det kom etter fristen eller er utløpt, org.nr og kommentar.
+- **Lavest pris** markeres på det billigste tilbudet som har bekreftet alle krav og fortsatt gjelder.
+- **Tilbud på telefon eller papir** kan registreres manuelt.
+- **«Velg dette tilbudet»** gir oppdraget utfører, kontakt, avtalt pris og periode, og setter status til «bestilt». Appen lager e-post med aksept til den valgte og takk for tilbudet til de andre.
+- **Uten tildeling:** Forespørselen kan avsluttes uten at noen får oppdraget.
+- **«Skriv ut forespørsel»** lager en papirversjon for dem som ikke bruker e-post.
+
+**På serveren:**
+- **Tilgang:** Oppdragsgiveren har en eiernøkkel. Hver mottaker har sin egen kode (24 hex), som bare gir tilgang til forespørselen og eget svar.
+- **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
+- **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
+- **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
 
 ## Satellittbilder – se endringer siden taksten (Sentinel-2)
 

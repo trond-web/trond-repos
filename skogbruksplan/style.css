@@ -855,6 +855,14 @@ progress { accent-color: var(--accent); height: 8px; }
 .ksl-varsel.info { border-left-color: var(--accent); }
 .md-rad.krav-avvik { border-left: 4px solid var(--critical); }
 .md-rad.krav-varsel { border-left: 4px solid var(--warning); }
+/* Tilbud (Tiltak › Oppdrag › Tilbud) */
+.kort.tb, .kort.tb-start { border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); background: color-mix(in srgb, var(--accent) 5%, var(--surface)); margin: 8px 0 12px; }
+.tb-steg { display: flex; flex-wrap: wrap; gap: 4px; list-style: none; padding: 0; margin: 10px 0 12px; }
+.tb-steg button { border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 99px; padding: 5px 12px; font: 600 13px/1.2 inherit; font-family: inherit; cursor: pointer; }
+.tb-steg li.aktiv button { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tb-steg li.ferdig button { color: var(--accent); border-color: var(--accent); }
+.md-rad.tb-billigst { border-left: 4px solid var(--good); }
+.md-rad.tb-valgt { outline: 2px solid var(--accent); }
 .ksl-fremdrift { height: 6px; border-radius: 99px; background: var(--surface-2); margin-top: 10px; overflow: hidden; }
 .ksl-fremdrift span { display: block; height: 100%; background: var(--accent); }
 .ksl-kap { margin: 18px 0 8px; }
