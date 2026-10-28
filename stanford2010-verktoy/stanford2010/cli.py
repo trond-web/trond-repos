@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from . import reader, writer
+from .messages import ext_from_name
 from .validate import validate
 from .xmlio import parse_file, write_file
 
@@ -105,10 +106,47 @@ def cmd_extract(a):
 
 
 def cmd_simulate(a):
-    from .simulator import simulate
+    from .simulator import simulate, simulate_hqc, simulate_mom
     root = simulate(parse_file(a.pin), a.stammer, a.seed, a.objekt)
     p = write_file(root, a.ut)
     _p(f"Skrev simulert hpr: {p}")
+    if a.mom:
+        _p(f"Skrev simulert mom: {write_file(simulate_mom(root, a.seed), a.mom)}")
+    if a.hqc:
+        _p(f"Skrev simulert hqc: {write_file(simulate_hqc(root, seed=a.seed), a.hqc)}")
+
+
+def cmd_analyze(a):
+    from .analysis import analyze_files
+    from .report import render_html, render_text
+    files = []
+    for f in a.filer:
+        p = Path(f)
+        files += sorted(x for x in p.rglob("*") if x.is_file() and ext_from_name(x.name)) if p.is_dir() else [p]
+    tol = {k: v for k, v in {"length_cm": a.lengde_tol, "diameter_mm": a.diameter_tol}.items() if v is not None}
+    res = analyze_files(files, tolerance=tol or None, gap_min=a.pause)
+    if not a.stille:
+        _p(render_text(res))
+    if a.html:
+        Path(a.html).parent.mkdir(parents=True, exist_ok=True)
+        Path(a.html).write_text(render_html(res, a.tittel), encoding="utf-8")
+        _p(f"Skrev rapport {a.html}")
+    if a.json:
+        reader.write_json(res, a.json)
+        _p(f"Skrev {a.json}")
+    if a.csv:
+        tables = {"hpr": ["per_species", "per_product", "per_operator", "per_day", "per_sub_object", "cutting_reasons"],
+                  "hqc": ["variables", "logs", "calibrations", "per_product"],
+                  "mom": ["time_categories", "downtime", "per_day", "per_operator", "per_object"],
+                  "fpr": ["per_delivery", "per_day"]}
+        for x in res["files"]:
+            stem = Path(x["file"]).name.split(".")[0]
+            for t in tables.get(x["type"], []):
+                if x.get(t):
+                    rows = [{k: v for k, v in r.items() if k != "histogram"} for r in x[t]]
+                    _p(f"Skrev {reader.write_csv(rows, Path(a.csv) / f'{stem}_{t}.csv')}")
+        if res["combined"]["objects"]:
+            _p(f"Skrev {reader.write_csv(res['combined']['objects'], Path(a.csv) / 'objekter.csv')}")
 
 
 def cmd_import(a):
@@ -222,7 +260,20 @@ def main(argv=None):
 
     s = sub.add_parser("simuler", help="Simuler hogst etter en pin og skriv hpr")
     s.add_argument("pin"); s.add_argument("--ut", required=True); s.add_argument("--stammer", type=int, default=50)
-    s.add_argument("--seed", type=int); s.add_argument("--objekt", default="SIM-OBJ-1"); s.set_defaults(f=cmd_simulate)
+    s.add_argument("--seed", type=int); s.add_argument("--objekt", default="SIM-OBJ-1")
+    s.add_argument("--mom", help="Skriv også driftsoppfølging (mom) til denne fila")
+    s.add_argument("--hqc", help="Skriv også kontrollmåling (hqc) til denne fila")
+    s.set_defaults(f=cmd_simulate)
+
+    s = sub.add_parser("analyser", help="Analyser hpr/hqc/mom/fpr (filer eller mapper) og lag rapport")
+    s.add_argument("filer", nargs="+"); s.add_argument("--html", help="Skriv HTML-rapport hit")
+    s.add_argument("--json", help="Skriv hele analysen som JSON"); s.add_argument("--csv", help="Mappe for CSV-tabeller")
+    s.add_argument("--tittel", default="Analyse av skogsmaskinfiler")
+    s.add_argument("--lengde-tol", type=float, help="Toleranse lengde i cm for kontrollmåling (standard 2)")
+    s.add_argument("--diameter-tol", type=float, help="Toleranse diameter i mm for kontrollmåling (standard 4)")
+    s.add_argument("--pause", type=float, default=15, help="Opphold over så mange minutter regnes ikke som driftstid")
+    s.add_argument("--stille", action="store_true", help="Ikke skriv sammendrag i terminalen")
+    s.set_defaults(f=cmd_analyze)
 
     s = sub.add_parser("importer", help="Les rapporter fra mappe/minnepinne inn i arkiv")
     s.add_argument("kilde"); s.add_argument("--arkiv", required=True); s.add_argument("--csv")

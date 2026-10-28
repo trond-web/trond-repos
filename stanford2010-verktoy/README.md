@@ -8,6 +8,9 @@ Løsningen kan:
 - **Lage** instruksjoner til maskinen: `pin` (aptering/prismatrise), `spi` (treslag),
   `oin` (hogstobjekt) – fra enkle JSON-filer, eller ved å **trekke ut oppsettet fra en
   hpr** og kopiere det til en annen maskin
+- **Analysere** rapportene: produksjon, sortiment, apteringsutfall og verdi i prismatrisen,
+  diameterfordeling, stammekart, produktivitet, kontrollmåling og kalibrering (hqc),
+  tidsfordeling, stopp og drivstoff (mom), lass (fpr) – som HTML-rapport, tekst, CSV eller JSON
 - **Validere** mot regler fra Skogforsk (og mot offisielle XSD-er, valgfritt)
 - **Kommunisere med maskinen** via mappe/minnepinne, eller via en **REST-hub** som
   følger Skogforsks spesifikasjon *StanForD File REST v1.0*, med en gateway-agent på
@@ -46,8 +49,41 @@ sf2010 valider aptering.pin treslag.spi objekt.oin
 # Kopier oppsett fra én maskin til en annen
 sf2010 trekk-ut maskinA.hpr --ut oppsett/        # gir maskinA.pin og maskinA.spi
 
-# Test uten maskin
-sf2010 simuler aptering.pin --stammer 100 --ut test.hpr
+# Analyser filer (eller hele mapper) og lag rapport
+sf2010 analyser objekt.hpr uke12.mom kontroll.hqc --html rapport.html
+sf2010 analyser innboks/ --html rapport.html --csv tabeller/ --json analyse.json
+
+# Test uten maskin (hpr + driftsoppfølging + kontrollmåling)
+sf2010 simuler aptering.pin --stammer 1000 --ut test.hpr --mom test.mom --hqc test.hqc
+```
+
+Se [STANDARD.md](STANDARD.md) for en gjennomgang av alle meldingstypene i standarden og
+hva verktøyet bruker fra hver av dem.
+
+## Analyse
+
+`sf2010 analyser` tar filer og mapper (alle `hpr/hqc/mom/fpr`, også komprimerte) og gir et
+sammendrag i terminalen, og med `--html` en rapport som er én selvstendig fil (virker uten nett,
+lys og mørk modus, kan skrives ut).
+
+| Fil | Analyse |
+|---|---|
+| hpr | Volum per treslag/sortiment/fører/dag/delobjekt, middelstamme, diameterfordeling, **apteringsutfall i prismatrisen**, **verdi** (pris × prisvolum), kappårsaker, produktivitet (anslag fra hogsttidspunkt), stammekart, m³/ha, datakvalitet |
+| hqc | Avvik maskin − manuelt mål for lengde og diametre, andel innenfor toleranse, godkjent/ikke, **forslag til kalibrering**, kalibreringshistorikk |
+| mom | Drift/stopp/stillestående per kategori, G15-tid, teknisk utnyttelse, største stopp, drivstoff per motortime/G15-t/m³, m³/G15-t, per dag/fører/objekt |
+| fpr | Lass, volum og vekt per leveranse, lasstørrelse, volum per dag, kjøreavstand |
+| flere | Nyeste hpr per maskin og objekt, og hpr koblet mot mom: m³/G15-t og l/m³ |
+
+Valg: `--lengde-tol 2 --diameter-tol 4` (toleranser for kontrollmåling), `--pause 15`
+(opphold over så mange minutter er ikke driftstid). Kravene til andel innenfor toleranse
+endres i Python: `analyze(sf, tolerance={"length_share": 0.8})`.
+
+```python
+from stanford2010 import analyze_files
+from stanford2010.report import render_html
+res = analyze_files(["objekt.hpr", "uke12.mom"])
+res["files"][0]["overview"]["value_per_m3"]      # alt er vanlige dict/list
+Path("rapport.html").write_text(render_html(res), encoding="utf-8")
 ```
 
 ### JSON for produkter (pin)
@@ -173,6 +209,10 @@ sf2010 hent HPR --url http://127.0.0.1:8710 --nokkel kontor-ENDRE-MEG --til innb
 - Bruk HTTPS ved fjerntilgang (`--cert/--key` eller en proxy foran), og bytt nøklene i
   `examples/users.json`.
 - Simulatoren bruker en forenklet stammemodell og skal ikke brukes til virkesmåling.
+- Analysen regner på det maskinen har rapportert. Produktivitet fra hpr og areal fra
+  stammekoordinater er anslag – bruk mom for tid. Verdien forutsetter at prisen i
+  prismatrisen er per m³ prisvolum.
+- Toleransene for kontrollmåling er Skogforsks mål og må sjekkes mot avtalen som gjelder.
 
 ## Struktur
 
@@ -182,8 +222,10 @@ stanford2010/
   xmlio.py        lesing/skriving, komprimerte filer (.hprz)
   reader.py       hpr/hqc/fpr/mom → tabeller
   writer.py       pin/spi/oin/hpr-byggere, uttrekk fra hpr
+  analysis.py     analyse av hpr/hqc/mom/fpr og samlet over flere filer
+  report.py       HTML- og tekstrapport (SVG-diagrammer, ingen avhengigheter)
   validate.py     regelsjekk + XSD
-  simulator.py    simulert hogstmaskin
+  simulator.py    simulert hogstmaskin (hpr, mom og hqc)
   store.py        arkiv (SQLite + filer)
   rest_server.py  StanForD File REST-hub
   rest_client.py  klient (kontor og maskin)

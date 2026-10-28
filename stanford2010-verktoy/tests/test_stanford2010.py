@@ -14,7 +14,9 @@ from stanford2010 import (build_oin, build_pin, build_spi, instructions_from_rep
                           open_file, validate, write_file)
 from stanford2010.rest_client import StanfordClient, StanfordRestError
 from stanford2010.rest_server import make_server
-from stanford2010.simulator import simulate
+from stanford2010.analysis import analyze, analyze_files, parse_time
+from stanford2010.report import render_html, render_text
+from stanford2010.simulator import simulate, simulate_hqc, simulate_mom
 from stanford2010.sync import MachineAgent, export_folder, import_folder
 from stanford2010.xmlio import compress, parse_file, to_bytes
 
@@ -189,6 +191,59 @@ class TestFolders(unittest.TestCase):
         self.assertEqual(out[0]["status"], "kopiert")
 
 
+class TestAnalysis(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.hpr = simulate(build_pin(spec("produkter.json")), 300, seed=4)
+        cls.tmp = Path(tempfile.mkdtemp())
+        for root, name in ((cls.hpr, "t.hpr"), (simulate_mom(cls.hpr, 4), "t.mom"),
+                           (simulate_hqc(cls.hpr, every=10, seed=4, length_bias_cm=3), "t.hqc")):
+            write_file(root, cls.tmp / name)
+
+    def test_simulated_files_validate(self):
+        for f in self.tmp.iterdir():
+            self.assertTrue(validate(parse_file(f)).ok, (f.name, validate(parse_file(f))))
+
+    def test_hpr(self):
+        sf = open_bytes(to_bytes(self.hpr), "t.hpr")
+        a = analyze(sf)
+        o = a["overview"]
+        self.assertEqual(o["stems"], 300)
+        self.assertAlmostEqual(o["m3sub"], sum(r["m3sub"] for r in sf.summary()), places=1)
+        self.assertAlmostEqual(sum(r["m3sub"] for r in a["per_product"]), o["m3sub"], places=1)
+        self.assertGreater(o["value"], 0)
+        self.assertGreater(o["m3_per_hour_est"], 0)
+        self.assertEqual(sum(d["stems"] for d in a["dbh_distribution"]), 300)
+        self.assertEqual(sum(c["n"] for m in a["assortment"] for c in m["cells"]), o["logs"])
+        self.assertEqual(a["quality"]["stem_number_gaps"], 0)
+
+    def test_hqc_detects_bias(self):
+        a = analyze(open_file(self.tmp / "t.hqc"))
+        length = a["variables"][0]
+        self.assertGreater(length["n"], 0)
+        self.assertGreater(length["mean"], 2)
+        self.assertFalse(length["pass"])
+        self.assertTrue(any("lengdekalibreringen" in x for x in a["advice"]))
+
+    def test_mom_and_combined(self):
+        res = analyze_files(sorted(self.tmp.iterdir()))
+        self.assertEqual(res["errors"], [])
+        mom = next(a for a in res["files"] if a["type"] == "mom")["overview"]
+        self.assertGreater(mom["g15_h"], 0)
+        self.assertLessEqual(mom["g15_h"], mom["work_h"])
+        self.assertGreater(mom["fuel_per_m3"], 0)
+        link = res["combined"]["machine_links"][0]
+        self.assertGreater(link["m3_per_g15h"], 0)
+        html = render_html(res)
+        self.assertIn("Apteringsutfall", html)
+        self.assertIn("Tidsfordeling", html)
+        self.assertIn("t.hqc", render_text(res))
+
+    def test_parse_time_variants(self):
+        for s in ("2015-04-08T06:24:07.9453365+02", "2024-03-15T08:43:05.347+01:00", "2018-02-26T12:17:41.479379+01:"):
+            self.assertIsNotNone(parse_time(s), s)
+
+
 @unittest.skipUnless(os.environ.get("SF2010_EKSEMPLER"), "SF2010_EKSEMPLER ikke satt")
 class TestRealFiles(unittest.TestCase):
     def test_all(self):
@@ -204,6 +259,9 @@ class TestRealFiles(unittest.TestCase):
                     self.assertTrue(validate(res["pin"]).ok, validate(res["pin"]))
                 if sf.ext == "fpr":
                     self.assertGreater(len(sf.loads()), 0)
+                a = analyze(sf)
+                self.assertTrue(a["supported"])
+                render_html({"files": [a], "combined": {"objects": [], "machine_links": []}})
 
 
 if __name__ == "__main__":
