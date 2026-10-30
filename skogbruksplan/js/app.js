@@ -39,6 +39,7 @@ import { synligPadding } from './kartutsnitt.js';
 import { initOppdrag } from './oppdrag-ui.js';
 import { initKsl } from './ksl-ui.js';
 import { initKarbon } from './karbon-ui.js';
+import { initHprSr16 } from './hpr-sr16-ui.js';
 import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, OPPDRAGSTYPER, typeFor as oppdragstype } from './oppdrag.js';
 const oppdragstypeNokkel = (t) => (OPPDRAGSTYPER[t] ? t : 'annet');
 import { KRAVPUNKTER } from './pefc.js';
@@ -51,7 +52,7 @@ import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vege
 
 const VEIKLASSER_NAVN = (k) => (VEIKLASSER[k] || VEIKLASSER[0]).navn;
 // Oppdrag: valg av tiltak i tiltakslisten og bestand som er uthevet i kartet for oppdraget som er åpent.
-let kslVisning = null; let karbonVisning = null;
+let kslVisning = null; let karbonVisning = null; let hprVisning = null;
 let valgModus = false; let valgteTiltak = new Set(); let maalOppdrag = null; let uthevet = new Set(); let oppdragVisning = null;
 let kartUtvalg = null; // velg-modus: trykk på bestand i kartet og tegnede flater (oppdrag-utvalg.js), deler valgteTiltak
 const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
@@ -568,6 +569,7 @@ function visFane(navn) {
   $$('.fane').forEach((f) => { f.hidden = f.id !== `fane-${navn}`; });
   if (navn !== 'tiltak' && navn !== 'karbon' && uthevet.size) { uthevet = new Set(); oppdaterStiler(); }
   if (navn === 'tiltak' && !$('#oppdragPanel').hidden) oppdragVisning?.tegn();
+  if (navn === 'data') hprVisning?.tegn();
   if (navn === 'ksl') kslVisning?.vis();
   if (navn === 'karbon') karbonVisning?.vis();
   if (navn === 'framskriving') tegnFramskriving();
@@ -1139,7 +1141,8 @@ function visStanfordLag(gj) {
   const r = L.canvas({ padding: 0.3 });
   stanfordLag = L.geoJSON(gj, {
     renderer: r, interactive: false,
-    style: (f) => (f.properties.lag === 'hogd' ? { color: '#b5651d', weight: 1, fillColor: '#f39c4a', fillOpacity: 0.35 } : { color: '#d03b3b', weight: 3, dashArray: '6 4' }),
+    style: (f) => (f.properties.lag === 'hogd' ? { color: f.properties.farge || '#b5651d', weight: 1, fillColor: f.properties.farge || '#f39c4a', fillOpacity: f.properties.farge ? 0.45 : 0.35 }
+      : f.properties.lag === 'sr16' ? { color: '#333', weight: 1, dashArray: '3 3', fill: false } : { color: '#d03b3b', weight: 3, dashArray: '6 4' }),
     pointToLayer: (f, ll) => (f.properties.lag === 'stamme'
       ? L.circleMarker(ll, { renderer: r, radius: 2, stroke: false, fillOpacity: 0.85, fillColor: STAMME_FARGE[f.properties.treslag] || '#555' })
       : L.circleMarker(ll, { renderer: r, radius: 7, color: '#fff', weight: 2, fillColor: '#2a78d6', fillOpacity: 1 })),
@@ -1328,6 +1331,9 @@ function tegnRegistreringer() {
 
 // ---------------------------------------------------------------- import / eksport
 async function importerFiler(filer, tvingModus = null) {
+  // HPR-filer (hogstmaskin, StanForD 2010) går til sammenligningen med SR16.
+  const hpr = filer.filter((f) => /\.hprz?$/i.test(f.name));
+  if (hpr.length && hprVisning) { hprVisning.lesFiler(await Promise.all(hpr.map(async (f) => ({ navn: f.name, data: new Uint8Array(await f.arrayBuffer()) })))); filer = filer.filter((f) => !hpr.includes(f)); if (!filer.length) return; }
   const ut = [];
   let samlet = S.bestand;
   for (const fil of filer) {
@@ -1949,6 +1955,8 @@ function kobleHendelser() {
       if (erMobil()) settArk('halv');
     },
   });
+  // Hogstmaskindata (HPR) mot SR16 i Data-fanen (hpr-sr16-ui.js).
+  hprVisning = initHprSr16({ hentPlan: () => S, endret, melding, visKartlag: visStanfordLag, visBestand: (id) => { if (S.bestand.some((b) => b.id === id)) velgBestand(id); } });
   oppdragVisning = initOppdrag({
     hentPlan: () => S, endret, melding, okonomi: tiltakOkonomi, settUtfort,
     tiltakNavn: (k) => TILTAKSTYPER[k]?.navn || k,

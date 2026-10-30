@@ -38,6 +38,7 @@ import * as DREN from '../js/drenering.js';
 import * as KRAV from '../js/krav.js';
 import * as TB from '../js/tilbud.js';
 import * as SF from '../js/stanford.js';
+import * as HS from '../js/hpr-sr16.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
@@ -2419,6 +2420,55 @@ test('Plan fra gnr/bnr: lang, smal eiendom – WMS-bildet holdes under NIBIOs gr
   await genererPlan({ kommune: k, gnr: 2, bnr: 1 }, { turf: T, klipping: pc, hent: mock(false), iAar: 2026 }).catch(() => null);
   assert.ok(storrelser.length >= 3 && Math.max(...storrelser) <= 2000, `bildestørrelser ${storrelser}`);
   await assert.rejects(() => genererPlan({ kommune: k, gnr: 2, bnr: 1 }, { turf: T, klipping: pc, hent: mock(true), iAar: 2026 }), /NIBIO \(sr16\) svarte med feil: Intern feil/);
+});
+
+test('Hogstmaskindata mot SR16: HPR for planen, SR16-flater, diametergrense, hogst registrert av NIBIO, bestand og CSV', async () => {
+  // To bestand side om side (200 × 200 m hver) og to SR16-flater som dekker hvert sitt bestand.
+  const g = (x, y) => utmTilGeo(250000 + x, 6650000 + y, 33);
+  const rekt = (x0, x1, y0, y1) => ({ type: 'Polygon', coordinates: [[g(x0, y0), g(x1, y0), g(x1, y1), g(x0, y1), g(x0, y0)]] });
+  const S = { bestand: [{ id: 'bA', nr: '1', treslag: 'G', bonitet: 14, areal: 40, treantall: 80, geometri: rekt(0, 200, 0, 200) }, { id: 'bB', nr: '2', treslag: 'G', bonitet: 11, areal: 40, treantall: 60, geometri: rekt(200, 400, 0, 200) }] };
+  // Stammer: hogst av den vestlige halvdelen i begge bestandene (100 × 200 m = 20 daa hver), 1 stamme per 12,5 m².
+  let k = 0; const stammer = [];
+  for (let x = 2.5; x < 100; x += 5) for (let y = 2.5; y < 200; y += 5) for (const ox of [0, 200]) for (const dy of [0, 2]) {
+    const dbh = (++k % 10 === 0) ? 70 : 180; // 10 % under 8 cm
+    stammer.push({ k: `m:${k}`, pos: g(ox + x, y + dy), dbh, fub: 0.3, treslag: 'G', dato: '2026-09-01', stokker: [] });
+  }
+  stammer.push({ k: 'utenfor', pos: g(-500, -500), dbh: 200, fub: 0.5, treslag: 'F', dato: '2026-09-02', stokker: [] });
+  // SR16: flate 1 med 800 trær/ha ≥ 10 cm (= 1600 på 20 daa), flate 2 der NIBIO har registrert hogsten i 2026.
+  const kmlPm = (id, r) => `<Placemark><name>SRVTRESLAG.${id}</name><Polygon><outerBoundaryIs><LinearRing><coordinates>${r.coordinates[0].map((p) => p.join(',')).join(' ')}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>`;
+  const gmlF = (gid, a) => `<SRVTRESLAG_feature><gid>${gid}</gid>${Object.entries(a).map(([k2, v]) => `<${k2}>${v}</${k2}>`).join('')}</SRVTRESLAG_feature>`;
+  const attrA = { srtrean: 1200, srtrean_ge8: 900, srtrean_ge10: 800, srtrean_ge16: 500, srvolub: 250, srdiam_ge8: 19, srhoydem: 180, srbonitet: 14, gran_prosent: 90, furu_prosent: 5, lauv_prosent: 5, treslag_txt: 'grandominert', d3faar: 2022, hogst: '', areal_da: 40 };
+  const urls = [];
+  const hent = async (url) => { urls.push(url); const q = new URL(url).searchParams; const ok = (t) => ({ ok: true, status: 200, text: async () => t });
+    if (q.get('REQUEST') === 'GetMap') return ok(`<kml><Document>${kmlPm(11, rekt(-5, 200, -5, 205))}${kmlPm(22, rekt(200, 405, -5, 205))}</Document></kml>`);
+    return ok(`<msGMLOutput>${gmlF(11, attrA)}${gmlF(22, { ...attrA, srtrean_ge10: 0, hogst: 2026 })}</msGMLOutput>`); };
+  const flater = await HS.hentSr16(HS.boksFor(stammer.filter((s) => s.pos)), { hent });
+  assert.equal(flater.length, 2); assert.equal(flater[0].trean[10], 800); assert.equal(flater[1].hogst, 2026);
+  assert.ok(urls.every((u) => { const q = new URL(u).searchParams; return Math.max(Number(q.get('WIDTH')), Number(q.get('HEIGHT'))) <= 2000; }));
+  const res = HS.sammenlign(S, stammer, flater);
+  const t = res.total;
+  assert.equal(t.stammer, stammer.length); assert.ok(Math.abs(t.hogdDaa - 40.1) < 0.3, `${t.hogdDaa}`);
+  // Bare flate 1 er sammenlignbar: 20 daa, 1600 hogde stammer, 90 % over 8 cm.
+  assert.ok(Math.abs(t.smlDaa - 20) < 0.3, `${t.smlDaa}`);
+  assert.equal(t.stammerTerskel[10], 1440); assert.equal(t.stammerTerskel[5], 1600);
+  assert.ok(Math.abs(t.sr16[10] - 1600) < 30, `${t.sr16[10]}`);
+  assert.ok(Math.abs(HS.andel(t, 10) - 0.9) < 0.02); assert.equal(HS.vurdering(t, 10).niva, 'ok');
+  assert.equal(t.ruterEtterHogst > 0, true); assert.equal(res.utenforPlan, 1); assert.equal(t.ruterUtenSr16, 1);
+  const fB = res.flater.find((f) => f.id === '22'); assert.match(fB.varsel.join(), /registrert hogsten \(2026\)/); assert.equal(HS.andel(fB, 10), null);
+  assert.match(HS.vurdering(fB, 10).tekst, /oppdatert etter hogsten/);
+  // Per bestand: planens treantall (per daa) på hogd areal sammenlignes med alle hogde stammer.
+  const bB = res.bestand.find((b) => b.nr === '2'); assert.ok(Math.abs(bB.plan - 1200) < 20, `${bB.plan}`); assert.equal(bB.planStammer, 1600);
+  assert.equal(res.bestand.length, 2); assert.ok(res.bestand[0].dbhSnitt > 16);
+  // Diametergrense 16 cm og 5 cm.
+  assert.equal(HS.vurdering(t, 16).niva, 'hoy'); // 1440 hogd mot 1000 i SR16
+  // Kart og CSV.
+  const gj = HS.kartGeojson(res, 10); assert.ok(gj.features.some((f) => f.properties.lag === 'hogd' && f.properties.niva === 'ok') && gj.features.some((f) => f.properties.niva === 'ukjent'));
+  assert.match(HS.csv(res, 'bestand'), /"Bestand";"Treslag"[\s\S]*"1";"G";40;80;20;20;1600;1440;1600;90;/);
+  assert.match(HS.csv(res, 'flater'), /"22";"grandominert";2022;2026;/);
+  // Tynning: få stammer gir «uttak».
+  const tynn = HS.sammenlign(S, stammer.filter((s, i) => i % 8 === 0), flater); assert.equal(HS.vurdering(tynn.total, 10).niva, 'uttak');
+  // Fil uten hpr.
+  await assert.rejects(() => HS.lesStammer([{ navn: 'a.thp', data: new TextEncoder().encode('<TotalHarvestedProduction xmlns="urn:skogforsk:stanford2010" messageType="thp"/>') }]), /thp/);
 });
 
 await Promise.all(venter);

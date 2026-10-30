@@ -863,6 +863,21 @@ progress { accent-color: var(--accent); height: 8px; }
 .tb-steg li.ferdig button { color: var(--accent); border-color: var(--accent); }
 .md-rad.tb-billigst { border-left: 4px solid var(--good); }
 .md-rad.tb-valgt { outline: 2px solid var(--accent); }
+/* Hogstmaskindata mot SR16 (Data) */
+.hs-tall div.hs-ok { border-color: #0ca30c; } .hs-tall div.hs-hoy { border-color: #d03b3b; } .hs-tall div.hs-lav { border-color: #2a78d6; } .hs-tall div.hs-uttak { border-color: #8a5a2b; }
+.hs-vurdering { margin: 6px 0; padding: 8px 12px; border-radius: 10px; background: var(--surface-2); border-left: 4px solid #8a8a85; font-weight: 600; }
+.hs-vurdering.hs-ok { border-left-color: #0ca30c; } .hs-vurdering.hs-hoy { border-left-color: #d03b3b; } .hs-vurdering.hs-lav { border-left-color: #2a78d6; } .hs-vurdering.hs-uttak { border-left-color: #8a5a2b; }
+.hs-pille { display: inline-block; min-width: 46px; padding: 1px 8px; border-radius: 99px; font-weight: 700; font-size: 12px; text-align: center; background: var(--surface-2); }
+.hs-pille.hs-ok { background: color-mix(in srgb, #0ca30c 18%, transparent); } .hs-pille.hs-hoy { background: color-mix(in srgb, #d03b3b 18%, transparent); } .hs-pille.hs-lav { background: color-mix(in srgb, #2a78d6 18%, transparent); } .hs-pille.hs-uttak { background: color-mix(in srgb, #8a5a2b 18%, transparent); }
+.hs-hist { width: 100%; max-width: 640px; height: auto; display: block; margin-top: 6px; }
+.hs-akse { font: 9px system-ui, sans-serif; fill: var(--text-2); }
+.hs-terskel, .hs-velg { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+.hs-velg { margin: 8px 0; } .hs-velg select { max-width: 100%; }
+.hs-arbeider { font-weight: 600; }
+.hs-legende span { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; }
+.hs-legende i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+#hprPanel .tabell { overflow-x: auto; }
+#hprPanel h5 { margin: 12px 0 6px; }
 /* StanForD 2010 (Tiltak › Oppdrag › Hogstmaskin) */
 .kort.sf { border: 1px solid color-mix(in srgb, #8a5a2b 35%, var(--border)); background: color-mix(in srgb, #8a5a2b 5%, var(--surface)); margin: 8px 0 12px; }
 .sf-del { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
