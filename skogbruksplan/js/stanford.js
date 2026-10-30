@@ -495,6 +495,7 @@ function lesHpr(rot) {
       const obj = d.objekter.get(tekstAv(s, 'ObjectKey')); const del = obj?.delobjekter.get(tekstAv(s, 'SubObjectKey'));
       const ts = d.treslag.get(tekstAv(s, 'SpeciesGroupKey'));
       const koord = alle(s, 'StemCoordinates'); const kran = koord.find((c) => /crane/i.test(c.a.receiverPosition || '')); const pos = koordinat(kran) || koordinat(koord[0]);
+      const base = koordinat(koord.find((c) => /base machine/i.test(c.a.receiverPosition || ''))); // maskinens posisjon – gir kjøresporet (stikkveiene)
       const stokker = dypt(s, 'Log').map((l) => {
         const vol = alle(l, 'LogVolume'); const p = d.produkter.get(tekstAv(l, 'ProductKey'));
         const mal = barn(l, 'LogMeasurement'); const dia = alle(mal, 'LogDiameter');
@@ -503,7 +504,7 @@ function lesHpr(rot) {
       const prosess = barn(s, 'SingleTreeProcessedStem') || barn(s, 'MultiTreeProcessedStem') || barn(s, 'SingleTreeFelledStem') || s;
       let fub = stokker.reduce((a, l) => a + l.fub, 0); let fpb = stokker.reduce((a, l) => a + l.fpb, 0);
       if (!stokker.length) { const sv = dypt(s, 'StemVolume'); fub = volum(sv, 'stemVolumeCategory', 'm3sub') ?? volum(sv, 'stemVolumeCategory', 'm3subEstimated') ?? 0; fpb = volum(sv, 'stemVolumeCategory', 'm3sob') ?? 0; }
-      ut.stammer.push({ k: `${mi.nokkel || mi.id}:${tekstAv(s, 'StemKey') || ut.stammer.length + 1}`, objekt: obj?.id || '', delobjekt: del?.id || '', delobjektNavn: del?.navn || '', treslag: ts?.treslag || treslagFra(ts?.navn || ''), treslagNavn: ts?.navn || '', dato: dato(tekstAv(s, 'HarvestDate')), pos, dbh: tallAv(prosess, 'DBH'), fub: r(fub, 4), fpb: r(fpb, 4), stokker });
+      ut.stammer.push({ k: `${mi.nokkel || mi.id}:${tekstAv(s, 'StemKey') || ut.stammer.length + 1}`, objekt: obj?.id || '', delobjekt: del?.id || '', delobjektNavn: del?.navn || '', treslag: ts?.treslag || treslagFra(ts?.navn || ''), treslagNavn: ts?.navn || '', dato: dato(tekstAv(s, 'HarvestDate')), pos, basePos: base, dbh: tallAv(prosess, 'DBH'), fub: r(fub, 4), fpb: r(fpb, 4), stokker });
     }
   }
   return ut;

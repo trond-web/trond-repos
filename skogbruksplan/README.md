@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.44.0** (2026-10-30) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.45.0** (2026-10-30) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -648,6 +648,36 @@ med treantallet i SR16.
   * per SR16-flate: målingsår, NIBIOs hogstregistrering, trær/ha og avvik
 * **Kartlag:** hogd areal farget etter avvik, SR16-omriss og stammene.
 * **Eksport:** CSV per bestand og per SR16-flate.
+
+**Tynning.** Når hogsten ser ut som tynning, viser kortet en egen tynningsvurdering. Det gjelder når under 60 % av
+stammene SR16 anslo er hogd, eller når tynning er planlagt i bestandene. Du kan også velge hogstform selv:
+Automatisk, Tynning eller Flatehogst. Tynningsvurderingen har:
+
+* **Grunnflate før og etter (m²/ha).** «Før» er SR16-grunnflaten. «Tatt ut» er π/4 · d² for hver stamme, fra
+  diameteren maskinen målte. Uttaket vises i prosent av grunnflaten.
+* **Treantall per daa før og etter**, og m³fub tatt ut per daa. Arealet regnes med stikkveiene, slik Statskog gjør.
+* **Tynningskvotient.** Det er middeldiameteren til trærne som er tatt, delt på middeldiameteren i bestandet før
+  (grunnflatevektet). Under 1 betyr tynning nedenfra. Over 1,1 betyr høytynning, der de beste trærne er tatt.
+* **Uttak per diameterklasse** (5–8, 8–10, 10–16 og over 16 cm). Klassene kommer fra SR16-tersklene. Søyler viser
+  trær per daa før og hvor stor del av hver klasse maskinen tok.
+* **Stikkveier fra kjøresporet.** Kjøresporet er maskinens egen posisjon (base machine), ikke kranspissen. Små
+  flyttinger under 5 m (GPS-flakking mens maskinen feller) telles ikke. Kortet viser:
+  * avstanden mellom veiene: tynnet areal delt på lengden
+  * arealandelen med 4 m bredde
+  * snitt kranavstand
+
+  Stikkveiene vises i kartet.
+* **Sjekk mot anbefalingene**, med ✓, ! eller ✗ og lenke til kilden:
+  * uttak maks 35 % av grunnflaten ([Statskog](https://statskog.s3.amazonaws.com/pdf_word/skog/Statskogs-kvalitetsstandard-for-hogst-tiltak.pdf))
+  * gjenstående grunnflate i gran ved 16–18 m overhøyde minst 24–28 m²/ha, etter bonitet ([Skogkurs](https://www.storfjord.kommune.no/getfile.php/3709256.1229.scexbaefud/Tynning.pdf))
+  * tynning nedenfra, der de beste trærne skal stå ([SNL](https://snl.no/tynning_-_skogbruk))
+  * stikkveier minst 20 m fra hverandre og maks 4,5 m brede (Statskog; [NIBIO](https://nibio.no/tema/skog/skogbehandling-og-skogskjotsel/tynning/tynning-og-skogproduksjon): 3–4 m og 20–30 m)
+  * overhøyde ved tynning: første tynning ved 12–14 m og andre ved 16–18 m (NIBIO), og vindfallsfare over 20 m (SNL)
+* **Lauvandel** i uttaket mot SR16.
+* **Tabell per bestand** med grunnflate før, uttak, etter, trær/daa, kvotient, stikkveiavstand og status. Bestand
+  med under 2 daa tynnet areal er kantruter og vises ikke.
+
+«Prøv med simulert tynning» lager en tynning med stikkveier hver 22. m og tynning nedenfra.
 
 Analysene lagres i planen (de 10 siste). «Prøv med simulert hogst» lager en HPR-fil for det største hogstmodne
 bestandet. Treantallet er den mest usikre verdien i SR16, ofte ±30–40 % per flate. Kilder:

@@ -2471,5 +2471,36 @@ test('Hogstmaskindata mot SR16: HPR for planen, SR16-flater, diametergrense, hog
   await assert.rejects(() => HS.lesStammer([{ navn: 'a.thp', data: new TextEncoder().encode('<TotalHarvestedProduction xmlns="urn:skogforsk:stanford2010" messageType="thp"/>') }]), /thp/);
 });
 
+test('Tynning med HPR mot SR16: grunnflate før/etter, kvotient, diameterklasser, stikkveier fra maskinposisjon og krav', () => {
+  const g = (x, y) => utmTilGeo(250000 + x, 6650000 + y, 33);
+  const rekt = (x0, x1, y0, y1) => ({ type: 'Polygon', coordinates: [[g(x0, y0), g(x1, y0), g(x1, y1), g(x0, y1), g(x0, y0)]] });
+  const b = { id: 'b1', nr: '7', treslag: 'G', bonitet: 14, areal: 40, treantall: 140, geometri: rekt(0, 200, 0, 200), tiltak: [{ type: 'tynning', status: 'planlagt' }] };
+  const st = HS.simulerTynning(b, { dato: '2026-09-01' });
+  assert.ok(st.length > 1500 && st.every((s) => s.basePos && s.dbh));
+  const gHa = 1400 * (Math.PI / 4) * (0.17 ** 2 + 0.055 ** 2); // samme skog som simuleringen
+  const fl = [HS.sr16Flate('1', rekt(-50, 250, -50, 250), { srtrean: 1400, srtrean_ge8: 1330, srtrean_ge10: 1250, srtrean_ge16: 780, srvolub: 180, srgrflate: gHa.toFixed(1), srhoydeo: 165, srbonitet: 14, gran_prosent: 80, furu_prosent: 8, lauv_prosent: 12, treslag_txt: 'grandominert', d3faar: 2023 })];
+  const res = HS.sammenlign({ bestand: [b] }, st, fl);
+  assert.ok(HS.erTynning(res, { bestand: [b] }));
+  assert.ok(res.harBasePos && res.kran > 2 && res.kran < 10 && res.kart.stikkveier.length >= 8);
+  const k = HS.tynning(res.total, { treslag: 'G' });
+  assert.ok(Math.abs(k.uttakG - 0.3) < 0.03, `uttak ${k.uttakG}`); // simulert ca. 30 % av grunnflaten
+  assert.ok(Math.abs(k.gFor - gHa) < 0.2 && Math.abs(k.gEtter - (k.gFor - k.gUttak)) < 0.11);
+  assert.ok(k.kvotient > 0.7 && k.kvotient < 1, `kvotient ${k.kvotient}`); // nedenfra
+  assert.ok(k.klasser[0].andel > k.klasser[3].andel, 'mer av de små trærne tatt');
+  assert.ok(Math.abs(k.avstand - 22) < 3, `stikkveiavstand ${k.avstand}`); // simulert hver 22. m
+  assert.ok(k.stikkveiAndel > 0.15 && k.stikkveiAndel < 0.22);
+  const krit = Object.fromEntries(k.kriterier.map((c) => [c.id, c]));
+  assert.equal(krit.uttak.ok, true); assert.equal(krit.form.ok, true); assert.equal(krit.stikkvei.ok, true); assert.equal(krit.tidspunkt.ok, true);
+  assert.equal(krit.grunnflate.ok, false); assert.match(krit.grunnflate.krav, /26 m²\/ha/); // bonitet 14 ved 16,5 m: 26 m²/ha
+  // Tette stikkveier (11 m) og kraftig uttak gir avvik.
+  const tett = HS.sammenlign({ bestand: [b] }, HS.simulerTynning(b, { avstand: 11, uttak: 0.45 }), fl);
+  const k2 = HS.tynning(tett.total); const kr2 = Object.fromEntries(k2.kriterier.map((c) => [c.id, c]));
+  assert.equal(kr2.stikkvei.ok, false); assert.equal(kr2.uttak.ok, false);
+  // GPS-flakking når maskinen står stille teller ikke som kjøring.
+  const stille = Array.from({ length: 40 }, (_, i) => ({ basePos: g(100 + (i % 2) * 1.5, 100 + (i % 3)), pos: g(105, 100) }));
+  assert.equal(HS.stikkveier(stille).lengde, 0);
+  assert.equal(HS.grunnflateGrense(11), 24); assert.equal(HS.grunnflateGrense(17), 28);
+});
+
 await Promise.all(venter);
 console.log(`\n${ok} tester bestått`);

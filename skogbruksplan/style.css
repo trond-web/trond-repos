@@ -877,6 +877,16 @@ progress { accent-color: var(--accent); height: 8px; }
 .hs-legende span { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; }
 .hs-legende i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 #hprPanel .tabell { overflow-x: auto; }
+.hs-form { display: inline-flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 10px; }
+.hs-form button { border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 99px; padding: 5px 12px; font: 600 13px/1.2 inherit; font-family: inherit; cursor: pointer; }
+.hs-form button.aktiv { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.hs-tynning { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; background: var(--surface); }
+.hs-krit { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.hs-krit li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: start; }
+.hs-ok-ikon, .hs-feil-ikon, .hs-obs-ikon { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font-weight: 800; color: #fff; font-size: 13px; }
+.hs-ok-ikon { background: #0ca30c; } .hs-feil-ikon { background: #d03b3b; } .hs-obs-ikon { background: #c98500; }
+.hs-fet { font-weight: 700; fill: var(--text); font-size: 11px; }
+.hs-leg { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--border); margin: 0 4px 0 8px; vertical-align: -1px; }
 #hprPanel h5 { margin: 12px 0 6px; }
 /* StanForD 2010 (Tiltak › Oppdrag › Hogstmaskin) */
 .kort.sf { border: 1px solid color-mix(in srgb, #8a5a2b 35%, var(--border)); background: color-mix(in srgb, #8a5a2b 5%, var(--surface)); margin: 8px 0 12px; }
