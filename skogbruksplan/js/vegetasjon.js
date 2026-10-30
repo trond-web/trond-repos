@@ -154,8 +154,11 @@ export async function hentVegetasjonsflater(omrader, { hent = fetch, logg = () =
   const x1 = Math.max(...omrader.map((o) => o[2])); const y1 = Math.max(...omrader.map((o) => o[3]));
   const ruter = [];
   const kml = async (b, dybde = 0) => {
-    const h = Math.max(200, Math.round((2000 * (b[3] - b[1])) / (b[2] - b[0])));
-    const tekst = await hentTekst(hent, `${VK_URL}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${VK_LAG}&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&WIDTH=2000&HEIGHT=${h}&FORMAT=kml`);
+    // Lengste side 2000 px – NIBIO avviser større bilder, og feilsvaret ville sett ut som «ikke kartlagt».
+    const dx = b[2] - b[0]; const dy = b[3] - b[1];
+    const w = dx >= dy ? 2000 : Math.max(200, Math.round((2000 * dx) / dy)); const h = dx >= dy ? Math.max(200, Math.round((2000 * dy) / dx)) : 2000;
+    const tekst = await hentTekst(hent, `${VK_URL}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${VK_LAG}&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&WIDTH=${w}&HEIGHT=${h}&FORMAT=kml`);
+    if (/<ServiceException\b/.test(tekst)) throw new Error('Vegetasjonskartet (NIBIO) svarte med feil');
     const flater = [];
     for (const [, pm] of tekst.matchAll(/<Placemark>([\s\S]*?)<\/Placemark>/g)) {
       const id = (pm.match(/<name>[^<]*?\.?(\d+)<\/name>/) || [])[1];

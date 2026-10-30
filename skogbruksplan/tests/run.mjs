@@ -6,7 +6,7 @@ import { hkGrenser, beregnetHogstklasse, hogstklasseAvvik, framskrivTilAar, star
 import { STANDARD_INNSTILLINGER, normaliserBestand, framskriv, foreslaaForEiendom, treslagFraSR16, foreslaaTiltak, laavesteHogstalder, sammendrag, tolkHogstklasse, tolkTreslag } from '../js/model.js';
 import { lesGeojson, lesCsv, lesSosi, slaaSammen } from '../js/importers.js';
 import { lagDemo } from '../js/demo.js';
-import { finnKommune, ryddKanterOgHull } from '../js/generator.js';
+import { finnKommune, ryddKanterOgHull, genererPlan } from '../js/generator.js';
 import { klassifiser, parseHtmlAlle, pakkUtKmz, parseKml } from '../js/kommuneanalyse.js';
 import zlib from 'node:zlib';
 import { pefcAlder, avstand, kontroller, kravStatus, klareringStatus, tomPefc, KRAVPUNKTER, ROVFUGLER, arealDaa } from '../js/pefc.js';
@@ -2394,6 +2394,31 @@ test('StanForD 2010: lesing av hpr fra maskin (Komatsu-format), hprz, thp, mom, 
   assert.equal(SF.kartGeojson(hogst).features.filter((f) => f.properties.lag === 'spor').length, 1);
   assert.equal(hogst.status, 'pagar'); // bare ett av to bestand har stammer
   await assert.rejects(() => SF.lesProduksjonsfiler([{ navn: 'tom.txt', data: new TextEncoder().encode('hei') }]), /Fant ingen produksjonsfiler/);
+});
+
+test('Plan fra gnr/bnr: lang, smal eiendom – WMS-bildet holdes under NIBIOs grense, og feilsvar blir ikke «0 flater»', async () => {
+  let T = null; let pc = null;
+  try { T = await import('@turf/turf'); pc = (await import('polygon-clipping')).default; } catch { return; /* valgfritt i testmiljøet */ }
+  // Som Øvre Eiker 2/1: ca. 2 × 6 km. Før ga fast bredde 2000 px en høyde på over 5000 px, og NIBIO svarte med feil.
+  const g = (x, y) => utmTilGeo(216000 + x, 6628000 + y, 33);
+  const teig = { type: 'Polygon', coordinates: [[g(0, 0), g(1800, 0), g(1800, 5600), g(0, 5600), g(0, 0)]] };
+  const storrelser = [];
+  const mock = (sr16Feil) => async (url) => {
+    const u = new URL(url); const q = u.searchParams; const svar = (tekst) => ({ ok: true, status: 200, text: async () => tekst, json: async () => JSON.parse(tekst), arrayBuffer: async () => new ArrayBuffer(0) });
+    if (u.host === 'api.kartverket.no') return svar(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: teig, properties: {} }] }));
+    const unntak = (m) => svar(`<?xml version='1.0'?><ServiceExceptionReport version="1.1.1"><ServiceException>${m}</ServiceException></ServiceExceptionReport>`);
+    if (q.get('REQUEST') === 'GetMap' && q.get('FORMAT') === 'kml') {
+      const w = Number(q.get('WIDTH')); const h = Number(q.get('HEIGHT')); storrelser.push(Math.max(w, h));
+      if (w > 4096 || h > 4096) return unntak('msWMSLoadGetMapParams(): WMS server error. Image size out of range, WIDTH and HEIGHT must be between 1 and 4096 pixels.');
+      if (sr16Feil && u.pathname.endsWith('/sr16')) return unntak('Intern feil');
+      return svar('<kml><Document></Document></kml>');
+    }
+    return svar('');
+  };
+  const k = { nr: '3314', navn: 'Øvre Eiker' };
+  await genererPlan({ kommune: k, gnr: 2, bnr: 1 }, { turf: T, klipping: pc, hent: mock(false), iAar: 2026 }).catch(() => null);
+  assert.ok(storrelser.length >= 3 && Math.max(...storrelser) <= 2000, `bildestørrelser ${storrelser}`);
+  await assert.rejects(() => genererPlan({ kommune: k, gnr: 2, bnr: 1 }, { turf: T, klipping: pc, hent: mock(true), iAar: 2026 }), /NIBIO \(sr16\) svarte med feil: Intern feil/);
 });
 
 await Promise.all(venter);
