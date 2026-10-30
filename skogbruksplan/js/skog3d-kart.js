@@ -35,8 +35,9 @@ export function projeksjon({ x, y, radius, storrelse, retning = 0, nordOpp = tru
 const iBoks = (bb, x, y, r) => bb[0] <= x + r && bb[2] >= x - r && bb[1] <= y + r && bb[3] >= y - r;
 const boks = (punkter) => { let a = Infinity; let b = Infinity; let c = -Infinity; let d = -Infinity; for (const [x, y] of punkter) { if (x < a) a = x; if (x > c) c = x; if (y < b) b = y; if (y > d) d = y; } return [a, b, c, d]; };
 
-// bestand: [{ id, nr, mp }] (planens bestand), veier: [{ linje, flate }], bekker: [{ linje }], vann: [{ mp }]
-export function lagMinikart({ bestand = [], veier = [], bekker = [], vann = [] } = {}) {
+// bestand: [{ id, nr, mp }] (planens bestand), veier: [{ linje, flate }], bekker: [{ linje }], vann: [{ mp }],
+// bratthet: { x0, y0, d, nx, ny, pst } – helning i et rutenett (lokale meter), vises som fargede ruter (bratthet.js).
+export function lagMinikart({ bestand = [], veier = [], bekker = [], vann = [], bratthet = null, farge = null } = {}) {
   const B = bestand.map((s) => ({ ...s, bb: boks(s.mp.flat(2)), senter: senterAv(s.mp) }));
   const V = veier.map((v) => ({ ...v, bb: boks(v.linje) })); const K = bekker.map((v) => ({ ...v, bb: boks(v.linje) })); const W = vann.map((v) => ({ ...v, bb: boks(v.mp.flat(2)) }));
   // Tegner kartet. Gir hva som er synlig (brukes av testene).
@@ -49,6 +50,17 @@ export function lagMinikart({ bestand = [], veier = [], bekker = [], vann = [] }
     // Rund ramme med bakgrunn
     ctx.beginPath(); ctx.arc(storrelse / 2, storrelse / 2, storrelse / 2 - 2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(232,238,224,0.94)'; ctx.fill(); ctx.clip();
     for (const w of W) if (iBoks(w.bb, x, y, r2)) { poly(w.mp); ctx.fillStyle = '#9cc7ea'; ctx.fill('evenodd'); }
+    // Bratte områder (over 33 %) som fargede ruter
+    if (bratthet && farge) {
+      const b = bratthet; const i0 = Math.max(0, Math.floor((x - r2 - b.x0) / b.d)); const i1 = Math.min(b.nx - 1, Math.ceil((x + r2 - b.x0) / b.d));
+      const j0 = Math.max(0, Math.floor((y - r2 - b.y0) / b.d)); const j1 = Math.min(b.ny - 1, Math.ceil((y + r2 - b.y0) / b.d)); synlig.bratt = 0;
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const f = farge(b.pst[j * b.nx + i]); if (!f) continue; synlig.bratt++;
+        const cx = b.x0 + i * b.d; const cy = b.y0 + j * b.d; const h = b.d / 2;
+        ctx.beginPath(); [[cx - h, cy - h], [cx + h, cy - h], [cx + h, cy + h], [cx - h, cy + h]].forEach((q, n) => { const [a, c] = P(q); if (n) ctx.lineTo(a, c); else ctx.moveTo(a, c); }); ctx.closePath();
+        ctx.fillStyle = f; ctx.globalAlpha = 0.55; ctx.fill(); ctx.globalAlpha = 1;
+      }
+    }
     for (const s of B) {
       if (!iBoks(s.bb, x, y, r2)) continue; synlig.bestand.push(s.nr);
       poly(s.mp); const her = s.id === herBid;

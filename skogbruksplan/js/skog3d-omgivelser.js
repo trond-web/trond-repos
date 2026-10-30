@@ -224,8 +224,9 @@ export function naboBestand(omg) {
 
 // Terrengpunkter: tetthet etter størrelsen (ca. hver 12. meter, høyst 41 × 41), hentet i parallell.
 export const terrengOppløsning = (R) => Math.max(10, Math.min(41, Math.ceil((2 * R) / 12) + 1));
-export async function hentHoyder(pts, { hent = (u, o) => fetch(u, o) } = {}) {
-  const ko = begrens(4); const deler = [];
+// Kartverkets punkt-API tar høyst 50 punkter per kall. parallelle = samtidige kall, framdrift(ferdig, totalt) etter hvert kall.
+export async function hentHoyder(pts, { hent = (u, o) => fetch(u, o), parallelle = 4, framdrift = null } = {}) {
+  const ko = begrens(parallelle); const deler = []; let ferdig = 0;
   for (let i = 0; i < pts.length; i += 50) deler.push(pts.slice(i, i + 50).map(([x, y]) => [Number(x.toFixed(6)), Number(y.toFixed(6))]));
   const en = async (d) => {
     for (let forsok = 0; forsok < 3; forsok++) {
@@ -233,6 +234,6 @@ export async function hentHoyder(pts, { hent = (u, o) => fetch(u, o) } = {}) {
     }
     return d.map(() => null);
   };
-  const svar = await Promise.all(deler.map((d) => ko(() => en(d))));
+  const svar = await Promise.all(deler.map((d) => ko(async () => { const r = await en(d); ferdig++; framdrift?.(ferdig, deler.length); return r; })));
   return svar.flat();
 }

@@ -40,6 +40,7 @@ import { initOppdrag } from './oppdrag-ui.js';
 import { initKsl } from './ksl-ui.js';
 import { initKarbon } from './karbon-ui.js';
 import { initHprSr16 } from './hpr-sr16-ui.js';
+import { hentBratthet, flater as brattFlater, statistikk as brattStat, vurdering as brattVurdering, KLASSER as BRATT_KLASSER } from './bratthet.js';
 import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, OPPDRAGSTYPER, typeFor as oppdragstype } from './oppdrag.js';
 const oppdragstypeNokkel = (t) => (OPPDRAGSTYPER[t] ? t : 'annet');
 import { KRAVPUNKTER } from './pefc.js';
@@ -116,7 +117,7 @@ function filnavn(ending) {
 
 // ---------------------------------------------------------------- kart
 let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks. veier)
-let kart; let bestandLag; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
+let kart; let bestandLag; let bratthetLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
 let etikettLag; let flyfotoAktiv = false; let lagKontroll = null; let andreVisning = null;
@@ -146,6 +147,7 @@ function initKart() {
     'SR16 Trehøyde (NIBIO)': wms('https://wms.nibio.no/cgi-bin/sr16', 'SRRHOYDEM', 'SR16'),
     'AR5 Arealtype (NIBIO)': wms('https://wms.nibio.no/cgi-bin/ar5', 'Arealtype', 'AR5'),
   };
+  bratthetLag = L.featureGroup();
   graa.addTo(kart);
   markslagLag = L.featureGroup().addTo(kart);
   bestandLag = L.featureGroup().addTo(kart);
@@ -159,7 +161,7 @@ function initKart() {
   document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
 
   kart.on('click', (e) => {
@@ -170,6 +172,7 @@ function initKart() {
   });
   kart.on('zoomend', () => { oppdaterEtiketter(); visMisMerker(); });
   kart.on('overlayadd overlayremove', () => { oppdaterEtiketter(); visMisMerker(); tegnLegend(); });
+  kart.on('overlayadd', (e) => { if (e.layer === bratthetLag) visBratthet(); });
   // På flyfoto tegnes bestandene som i skogbruksplankart: gule grenser og hvit tekst.
   kart.on('baselayerchange', (e) => {
     flyfotoAktiv = e.layer === flyfoto || e.layer === satellitt.lag;
@@ -259,6 +262,7 @@ function tegnLegend() {
     if (mis.some((f) => f.type === 'miljofigur')) html += `<div><i style="${miljoLegendStil}"></i>Miljøfigur (bestand)</div>`;
   }
   const vr = S.veier || {};
+  if (kart.hasLayer(bratthetLag)) html += `<b style="display:block;margin-top:6px">⛰ Bratthet (helning)</b>${BRATT_KLASSER.slice(1).map((k) => rad(k.farge, k.navn)).join('')}<div class="hint" style="font-size:11px">Over 50 %: ikke drivbart med vanlige skogsmaskiner.</div>`;
   const harBil = (vr.veier || []).some((v) => (VEIKLASSER[v.klasse] || VEIKLASSER[0]).bilvei); const harTrak = (vr.veier || []).some((v) => !(VEIKLASSER[v.klasse] || VEIKLASSER[0]).bilvei);
   if (harBil || harTrak || vr.stier?.length) {
     const strek = (farge, monster, h = 3) => `<i style="height:${h}px;align-self:center;background:${monster ? `repeating-linear-gradient(90deg, ${farge} 0 ${monster[0]}px, transparent ${monster[0]}px ${monster[0] + monster[1]}px)` : farge}"></i>`;
@@ -364,6 +368,7 @@ function tegnMarkslag() {
 function tegnBestandKart(zoom = false) {
   tegnMarkslag();
   bestandLag.clearLayers(); lagPerBestand.clear(); etikettLag.clearLayers(); etikettPerBestand.clear();
+  if (bratthetLag && kart.hasLayer(bratthetLag) && bratthetFor !== S) visBratthet(); // annen plan lastet: tegn bratthet på nytt
   terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null;
   if (grenseLag) { grenseLag.remove(); grenseLag = null; }
   if (S.eiendom.grense) {
@@ -774,6 +779,7 @@ function visDetalj() {
       <div><b>${fmt(s.volumDaa * (b.areal || 0) * rotnettoPerM3(b.treslag, inn()) / 1000)} k</b><span>kr rotnetto ved hogst nå</span></div>
       ${(() => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? `<div><b>${fmt(a.meter)} m</b><span>til nærmeste bilvei${a.meter > veiVisning.maks() ? ' – lang terrengtransport' : ''}</span></div>` : ''; })()}
     </div>
+    ${b.bratthet ? (() => { const v = brattVurdering(b.bratthet); return `<div class="bratt-linje bratt-${v.niva}"><div class="bratt-stolpe">${BRATT_KLASSER.map((k) => (b.bratthet.andel[k.id] ? `<span style="flex:${b.bratthet.andel[k.id]};background:${k.farge || '#cfe3c7'}" title="${esc(k.navn)}: ${Math.round(b.bratthet.andel[k.id] * 100)} %"></span>` : '')).join('')}</div><span>⛰ ${esc(v.tekst)}</span></div>`; })() : ''}
     <form class="skjema tre-kol" id="detaljSkjema">
       <label>Bestandsnr <input name="nr" value="${esc(b.nr)}"></label>
       <label>Teig <input name="teig" value="${esc(b.teig)}"></label>
@@ -1129,6 +1135,32 @@ function settUtfort(b, t, ferdig) {
   }
   if (ferdig && t.type === 'lukkethogst' && b.volumDaa && confirm(`Redusere volumet i bestand ${b.nr} med uttaket (${Math.round(hogstAndel('lukkethogst', inn(), t) * 100)} %)?`)) b.volumDaa = runde(b.volumDaa * (1 - hogstAndel('lukkethogst', inn(), t)), 1);
   if (ferdig && t.type === 'planting' && confirm(`Sette bestand ${b.nr} til hogstklasse II (ungskog) med alder 1?`)) { b.hogstklasse = 2; b.alder = 1; }
+}
+
+// ---------------------------------------------------------------- bratthet
+// Helning fra Kartverkets høydedata over eiendommen, delt i klasser etter hvilke driftsmetoder som virker (bratthet.js).
+let bratthetHenter = false; let bratthetFor = null; // bratthetFor: planen kartlaget er tegnet for
+async function visBratthet({ ny = false } = {}) {
+  if (!bratthetLag) return;
+  bratthetFor = S; // én gang per plan, også om noe feiler
+  const geom = S.eiendom?.grense || (S.bestand.some((b) => b.geometri) ? { type: 'MultiPolygon', coordinates: S.bestand.filter((b) => b.geometri).flatMap((b) => (b.geometri.type === 'Polygon' ? [b.geometri.coordinates] : b.geometri.coordinates)) } : null);
+  if (!geom) { melding('Planen har ingen kartflater ennå.'); return; }
+  if ((!S.bratthet || ny) && !bratthetHenter) {
+    bratthetHenter = true;
+    try {
+      const { hentHoyder } = await import('./skog3d-omgivelser.js');
+      S.bratthet = await hentBratthet(geom, { hentHoyder, framdrift: (t) => melding(t) });
+      for (const b of S.bestand) { if (!b.geometri) continue; const st = brattStat(S.bratthet, b.geometri, punktIGeometri); if (st) b.bratthet = st; else delete b.bratthet; }
+      endret({ kart: false }); if (valgtId) visDetalj();
+      const ikke = S.bestand.filter((b) => (b.bratthet?.ikkeDrivbar || 0) >= 0.3).length;
+      melding(`Bratthet beregnet (${S.bratthet.d} m rutenett).${ikke ? ` ${ikke} bestand har minst 30 % areal som ikke kan drives med vanlige skogsmaskiner.` : ''}`);
+    } catch (e) { melding(e.message || 'Klarte ikke å hente høydedata.'); bratthetHenter = false; return; }
+    bratthetHenter = false;
+  }
+  if (!S.bratthet) { bratthetLag.clearLayers(); return; }
+  bratthetLag.clearLayers(); bratthetFor = S;
+  const fl = brattFlater(S.bratthet);
+  for (const k of BRATT_KLASSER) if (fl[k.id]) L.geoJSON(fl[k.id], { interactive: false, style: { stroke: false, fillColor: k.farge, fillOpacity: 0.55 } }).addTo(bratthetLag);
 }
 
 // ---------------------------------------------------------------- oppdrag

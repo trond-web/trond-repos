@@ -40,6 +40,7 @@ import * as TB from '../js/tilbud.js';
 import * as SF from '../js/stanford.js';
 import * as HS from '../js/hpr-sr16.js';
 import * as MK from '../js/skog3d-kart.js';
+import * as BR from '../js/bratthet.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
@@ -2525,6 +2526,40 @@ test('Virtuell skog: minikart med posisjon, blikkretning, gangretning, spor og b
   assert.deepEqual(syn.bestand, ['12', '13']); assert.equal(syn.veier, 1);
   assert.ok(kall.some((k) => k[0] === 'fillText' && k[1] === '12') && kall.some((k) => k[0] === 'fillText' && k[1] === '50 m') && kall.some((k) => k[0] === 'fillText' && k[1] === 'N'));
   assert.ok(kall.some((k) => k[0] === '=strokeStyle' && k[1] === '#c25e10'), 'bestandet du står i er uthevet');
+});
+
+test('Bratthet: helning fra høydedata, klasser for drivbarhet, flater, andel per bestand og minikart', async () => {
+  // Klasser og grader
+  assert.equal(BR.klasseFor(20).id, 'lett'); assert.equal(BR.klasseFor(33).id, 'bratt'); assert.equal(BR.klasseFor(49.9).id, 'bratt');
+  assert.equal(BR.klasseFor(50).id, 'svart'); assert.equal(BR.klasseFor(80).id, 'vinsj'); assert.equal(BR.klasseFor(120).id, 'taubane');
+  assert.equal(BR.klasseFor(50).drivbar, false); assert.equal(BR.klasseFor(40).drivbar, true);
+  assert.equal(Math.round(BR.grader(100)), 45); assert.equal(Math.round(BR.grader(33)), 18);
+  assert.match(BR.tekst(62), /62 % \(32°\) – spesialdrift · bratt nok for snøskred/);
+  // Helning i et rutenett: plan med 60 % stigning mot nord (z = 0,6·y), 10 m mellom punktene
+  const nx = 6; const ny = 5; const z = []; for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) z.push(0.6 * j * 10);
+  const h = BR.helning(z, nx, ny, 10); assert.ok(h.every((v) => Math.abs(v - 60) < 1e-9));
+  const h2 = BR.helning(z.map((v, k) => (k === 7 ? NaN : v)), nx, ny, 10); assert.equal(h2[8], null); // manglende nabo
+  // Rutenett og henting: et område 200 × 100 m der vestre halvdel er flat og østre halvdel er bratt (70 %)
+  const g = (x, y) => utmTilGeo(300000 + x, 6700000 + y, 33);
+  const rekt = (x0, x1, y0, y1) => ({ type: 'Polygon', coordinates: [[g(x0, y0), g(x1, y0), g(x1, y1), g(x0, y1), g(x0, y0)]] });
+  const omr = rekt(0, 200, 0, 100);
+  const nett = BR.rutenett(omr, { maksPunkter: 6000, kant: 0 }); assert.equal(nett.d, 10); assert.ok(nett.punkter.length <= 6000);
+  assert.ok(BR.rutenett(rekt(0, 5000, 0, 5000)).d > 80); // store eiendommer får grovere nett
+  const hoyde = ([lon, lat]) => { const [x] = geoTilUtm(lon, lat, 33); const lx = x - 300000; return lx < 100 ? 0 : 0.7 * (lx - 100); };
+  let kall = 0; const br = await BR.hentBratthet(omr, { hentHoyder: async (pts) => { kall++; return pts.map(hoyde); } });
+  assert.equal(kall, 1); assert.equal(br.d, 10);
+  const fl = BR.flater(br); assert.ok(fl.svart && !fl.taubane, Object.keys(fl).join());
+  // Bestandene: vest (flatt) og øst (bratt)
+  const vest = BR.statistikk(br, rekt(10, 80, 10, 90), punktIGeometri); const ost = BR.statistikk(br, rekt(120, 190, 10, 90), punktIGeometri);
+  assert.equal(vest.ikkeDrivbar, 0); assert.equal(BR.vurdering(vest).niva, 'lett');
+  assert.equal(ost.ikkeDrivbar, 1); assert.equal(BR.vurdering(ost).niva, 'svart'); assert.match(BR.vurdering(ost).tekst, /100 % av arealet er brattere enn 50 %/);
+  await assert.rejects(() => BR.hentBratthet(omr, { hentHoyder: async (pts) => pts.map(() => null) }), /høydedata/);
+  // Minikartet tegner bratte ruter
+  const kall2 = []; const ctx = new Proxy({}, { get: (_, k) => (k in c2 ? c2[k] : (...a) => kall2.push([k, ...a])), set: (_, k, v) => { c2[k] = v; kall2.push(['=' + String(k), v]); return true; } }); const c2 = {};
+  const pst = []; for (let j = 0; j < 11; j++) for (let i = 0; i < 11; i++) pst.push(i < 5 ? 10 : 65);
+  const mk = MK.lagMinikart({ bratthet: { x0: -50, y0: -50, d: 10, nx: 11, ny: 11, pst }, farge: (p) => BR.klasseFor(p)?.farge });
+  const syn = mk.tegn(ctx, { x: 0, y: 0, radius: 80, storrelse: 256 });
+  assert.equal(syn.bratt, 66); assert.ok(kall2.some((k) => k[0] === '=fillStyle' && k[1] === '#ef8a2c'));
 });
 
 await Promise.all(venter);
