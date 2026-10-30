@@ -40,6 +40,7 @@ import { initOppdrag } from './oppdrag-ui.js';
 import { initKsl } from './ksl-ui.js';
 import { initKarbon } from './karbon-ui.js';
 import { initHprSr16 } from './hpr-sr16-ui.js';
+import { WMS as FUKT_WMS, LAG as FUKT_LAG, KLASSER as FUKT_KLASSER, perBestand as fuktPerBestand, vurdering as fuktVurdering, dekodPng as fuktDekod } from './markfukt.js';
 import { hentBratthet, flater as brattFlater, statistikk as brattStat, vurdering as brattVurdering, KLASSER as BRATT_KLASSER } from './bratthet.js';
 import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, OPPDRAGSTYPER, typeFor as oppdragstype } from './oppdrag.js';
 const oppdragstypeNokkel = (t) => (OPPDRAGSTYPER[t] ? t : 'annet');
@@ -117,7 +118,7 @@ function filnavn(ending) {
 
 // ---------------------------------------------------------------- kart
 let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks. veier)
-let kart; let bestandLag; let bratthetLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
+let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
 let etikettLag; let flyfotoAktiv = false; let lagKontroll = null; let andreVisning = null;
@@ -148,6 +149,9 @@ function initKart() {
     'AR5 Arealtype (NIBIO)': wms('https://wms.nibio.no/cgi-bin/ar5', 'Arealtype', 'AR5'),
   };
   bratthetLag = L.featureGroup();
+  // Markfuktighet og bratthet over bestandsfargene (egen pane, klikk går gjennom til bestandene)
+  kart.createPane('analysePane'); kart.getPane('analysePane').style.zIndex = 430; kart.getPane('analysePane').style.pointerEvents = 'none';
+  fuktLag = L.tileLayer.wms(FUKT_WMS, { layers: FUKT_LAG, format: 'image/png', transparent: true, opacity: 0.75, pane: 'analysePane', attribution: 'Markfuktighet © NIBIO' });
   graa.addTo(kart);
   markslagLag = L.featureGroup().addTo(kart);
   bestandLag = L.featureGroup().addTo(kart);
@@ -161,7 +165,7 @@ function initKart() {
   document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
 
   kart.on('click', (e) => {
@@ -172,7 +176,7 @@ function initKart() {
   });
   kart.on('zoomend', () => { oppdaterEtiketter(); visMisMerker(); });
   kart.on('overlayadd overlayremove', () => { oppdaterEtiketter(); visMisMerker(); tegnLegend(); });
-  kart.on('overlayadd', (e) => { if (e.layer === bratthetLag) visBratthet(); });
+  kart.on('overlayadd', (e) => { if (e.layer === bratthetLag) visBratthet(); if (e.layer === fuktLag) beregnFukt(); });
   // På flyfoto tegnes bestandene som i skogbruksplankart: gule grenser og hvit tekst.
   kart.on('baselayerchange', (e) => {
     flyfotoAktiv = e.layer === flyfoto || e.layer === satellitt.lag;
@@ -262,6 +266,7 @@ function tegnLegend() {
     if (mis.some((f) => f.type === 'miljofigur')) html += `<div><i style="${miljoLegendStil}"></i>Miljøfigur (bestand)</div>`;
   }
   const vr = S.veier || {};
+  if (fuktLag && kart.hasLayer(fuktLag)) html += `<b style="display:block;margin-top:6px">💧 Markfuktighet (dybde til grunnvann)</b>${FUKT_KLASSER.map((k) => rad(k.farge, k.leg)).join('')}<div class="hint" style="font-size:11px">Over 1 m: tørt (ikke farget). Våt mark gir sporskader.</div>`;
   if (kart.hasLayer(bratthetLag)) html += `<b style="display:block;margin-top:6px">⛰ Bratthet (helning)</b>${BRATT_KLASSER.slice(1).map((k) => rad(k.farge, k.navn)).join('')}<div class="hint" style="font-size:11px">Over 50 %: ikke drivbart med vanlige skogsmaskiner.</div>`;
   const harBil = (vr.veier || []).some((v) => (VEIKLASSER[v.klasse] || VEIKLASSER[0]).bilvei); const harTrak = (vr.veier || []).some((v) => !(VEIKLASSER[v.klasse] || VEIKLASSER[0]).bilvei);
   if (harBil || harTrak || vr.stier?.length) {
@@ -779,6 +784,7 @@ function visDetalj() {
       <div><b>${fmt(s.volumDaa * (b.areal || 0) * rotnettoPerM3(b.treslag, inn()) / 1000)} k</b><span>kr rotnetto ved hogst nå</span></div>
       ${(() => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? `<div><b>${fmt(a.meter)} m</b><span>til nærmeste bilvei${a.meter > veiVisning.maks() ? ' – lang terrengtransport' : ''}</span></div>` : ''; })()}
     </div>
+    ${b.markfukt ? (() => { const v = fuktVurdering(b.markfukt); return `<div class="bratt-linje fukt-${v.niva}"><div class="bratt-stolpe">${FUKT_KLASSER.map((k) => (b.markfukt.andeler[k.id] ? `<span style="flex:${b.markfukt.andeler[k.id]};background:${k.farge}" title="${esc(k.leg)}: ${Math.round(b.markfukt.andeler[k.id] * 100)} %"></span>` : '')).join('')}${b.markfukt.andeler.torr ? `<span style="flex:${b.markfukt.andeler.torr};background:#e6e1c8" title="Tørt: ${Math.round(b.markfukt.andeler.torr * 100)} %"></span>` : ''}</div><span>💧 ${esc(v.tekst)}</span></div>`; })() : ''}
     ${b.bratthet ? (() => { const v = brattVurdering(b.bratthet); return `<div class="bratt-linje bratt-${v.niva}"><div class="bratt-stolpe">${BRATT_KLASSER.map((k) => (b.bratthet.andel[k.id] ? `<span style="flex:${b.bratthet.andel[k.id]};background:${k.farge || '#cfe3c7'}" title="${esc(k.navn)}: ${Math.round(b.bratthet.andel[k.id] * 100)} %"></span>` : '')).join('')}</div><span>⛰ ${esc(v.tekst)}</span></div>`; })() : ''}
     <form class="skjema tre-kol" id="detaljSkjema">
       <label>Bestandsnr <input name="nr" value="${esc(b.nr)}"></label>
@@ -1160,7 +1166,22 @@ async function visBratthet({ ny = false } = {}) {
   if (!S.bratthet) { bratthetLag.clearLayers(); return; }
   bratthetLag.clearLayers(); bratthetFor = S;
   const fl = brattFlater(S.bratthet);
-  for (const k of BRATT_KLASSER) if (fl[k.id]) L.geoJSON(fl[k.id], { interactive: false, style: { stroke: false, fillColor: k.farge, fillOpacity: 0.55 } }).addTo(bratthetLag);
+  for (const k of BRATT_KLASSER) if (fl[k.id]) L.geoJSON(fl[k.id], { interactive: false, pane: 'analysePane', style: { stroke: false, fillColor: k.farge, fillOpacity: 0.6 } }).addTo(bratthetLag);
+}
+
+// Markfuktighet per bestand (NIBIO DTW, markfukt.js) – regnes én gang per plan når kartlaget slås på.
+let fuktHenter = false;
+async function beregnFukt() {
+  if (fuktHenter || S.markfuktHentet || !S.bestand.some((b) => b.geometri)) return;
+  fuktHenter = true;
+  try {
+    const st = await fuktPerBestand(S.bestand, { dekod: (u) => fuktDekod(u), framdrift: (t) => melding(t) });
+    for (const b of S.bestand) { const x = st.get(b.id); if (x) b.markfukt = x; else delete b.markfukt; }
+    S.markfuktHentet = new Date().toISOString().slice(0, 10); endret({ kart: false }); if (valgtId) visDetalj();
+    const vate = S.bestand.filter((b) => b.markfukt && ['svart', 'vat'].includes(fuktVurdering(b.markfukt).niva)).length;
+    melding(`Markfuktighet beregnet for ${st.size} bestand.${vate ? ` ${vate} bestand har mye våt mark – drives på tele, snø eller i tørre perioder.` : ''}`);
+  } catch (e) { melding(e.message || 'Klarte ikke å hente markfuktighetskartet.'); }
+  fuktHenter = false;
 }
 
 // ---------------------------------------------------------------- oppdrag

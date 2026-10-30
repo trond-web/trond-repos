@@ -37,7 +37,8 @@ const boks = (punkter) => { let a = Infinity; let b = Infinity; let c = -Infinit
 
 // bestand: [{ id, nr, mp }] (planens bestand), veier: [{ linje, flate }], bekker: [{ linje }], vann: [{ mp }],
 // bratthet: { x0, y0, d, nx, ny, pst } – helning i et rutenett (lokale meter), vises som fargede ruter (bratthet.js).
-export function lagMinikart({ bestand = [], veier = [], bekker = [], vann = [], bratthet = null, farge = null } = {}) {
+// fukt: { x0, y0, d, nx, ny, k } – markfuktighetsklasse per celle (markfukt.js), fuktFarge(klasse) → farge eller null.
+export function lagMinikart({ bestand = [], veier = [], bekker = [], vann = [], bratthet = null, farge = null, fukt = null, fuktFarge = null } = {}) {
   const B = bestand.map((s) => ({ ...s, bb: boks(s.mp.flat(2)), senter: senterAv(s.mp) }));
   const V = veier.map((v) => ({ ...v, bb: boks(v.linje) })); const K = bekker.map((v) => ({ ...v, bb: boks(v.linje) })); const W = vann.map((v) => ({ ...v, bb: boks(v.mp.flat(2)) }));
   // Tegner kartet. Gir hva som er synlig (brukes av testene).
@@ -50,6 +51,18 @@ export function lagMinikart({ bestand = [], veier = [], bekker = [], vann = [], 
     // Rund ramme med bakgrunn
     ctx.beginPath(); ctx.arc(storrelse / 2, storrelse / 2, storrelse / 2 - 2, 0, Math.PI * 2); ctx.fillStyle = 'rgba(232,238,224,0.94)'; ctx.fill(); ctx.clip();
     for (const w of W) if (iBoks(w.bb, x, y, r2)) { poly(w.mp); ctx.fillStyle = '#9cc7ea'; ctx.fill('evenodd'); }
+    // Våt mark (markfuktighet) som blå ruter, under brattheten
+    if (fukt && fuktFarge) {
+      const g = fukt; const i0 = Math.max(0, Math.floor((x - r2 - g.x0) / g.d)); const i1 = Math.min(g.nx - 1, Math.ceil((x + r2 - g.x0) / g.d));
+      const j0 = Math.max(0, Math.floor((y - r2 - g.y0) / g.d)); const j1 = Math.min(g.ny - 1, Math.ceil((y + r2 - g.y0) / g.d)); synlig.fukt = 0;
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const f = fuktFarge(g.k[j * g.nx + i]); if (!f) continue; synlig.fukt++;
+        const [a1, b1] = P([g.x0 + i * g.d - g.d / 2, g.y0 + j * g.d + g.d / 2]); const [a2, b2] = P([g.x0 + i * g.d + g.d / 2, g.y0 + j * g.d - g.d / 2]);
+        ctx.fillStyle = f; ctx.globalAlpha = 0.6; if (nordOpp) ctx.fillRect(Math.min(a1, a2), Math.min(b1, b2), Math.abs(a2 - a1) + 0.6, Math.abs(b2 - b1) + 0.6);
+        else { ctx.beginPath(); [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([u, v], n) => { const [a, c] = P([g.x0 + i * g.d + (u * g.d) / 2, g.y0 + j * g.d + (v * g.d) / 2]); if (n) ctx.lineTo(a, c); else ctx.moveTo(a, c); }); ctx.closePath(); ctx.fill(); }
+        ctx.globalAlpha = 1;
+      }
+    }
     // Bratte områder (over 33 %) som fargede ruter
     if (bratthet && farge) {
       const b = bratthet; const i0 = Math.max(0, Math.floor((x - r2 - b.x0) / b.d)); const i1 = Math.min(b.nx - 1, Math.ceil((x + r2 - b.x0) / b.d));

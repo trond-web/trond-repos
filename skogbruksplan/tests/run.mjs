@@ -41,6 +41,7 @@ import * as SF from '../js/stanford.js';
 import * as HS from '../js/hpr-sr16.js';
 import * as MK from '../js/skog3d-kart.js';
 import * as BR from '../js/bratthet.js';
+import * as MF from '../js/markfukt.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
@@ -2560,6 +2561,41 @@ test('Bratthet: helning fra høydedata, klasser for drivbarhet, flater, andel pe
   const mk = MK.lagMinikart({ bratthet: { x0: -50, y0: -50, d: 10, nx: 11, ny: 11, pst }, farge: (p) => BR.klasseFor(p)?.farge });
   const syn = mk.tegn(ctx, { x: 0, y: 0, radius: 80, storrelse: 256 });
   assert.equal(syn.bratt, 66); assert.ok(kall2.some((k) => k[0] === '=fillStyle' && k[1] === '#ef8a2c'));
+});
+
+test('Markfuktighet: NIBIO-fargene til rutenett, klasse i punkt, andel per bestand, vurdering og minikart', async () => {
+  // Syntetisk WMS-bilde 100 × 100 px over 200 × 200 m: vestre halvdel svært vått (0–25 cm), en bekk (vann) i x = 60–62 px,
+  // et fuktig belte øverst (nord), resten tørt (gjennomsiktig).
+  const w = 100; const h = 100; const data = new Uint8ClampedArray(w * h * 4);
+  const sett = (c, r, rgb, a = 255) => { const o = (r * w + c) * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = a; };
+  for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
+    if (c < 50) sett(c, r, [0, 0, 255]); else if (c >= 60 && c < 62) sett(c, r, [0, 0, 128]); else if (r < 10) sett(c, r, [0, 191, 255]); else sett(c, r, [0, 0, 0], 0);
+  }
+  const bilde = { w, h, data };
+  const g = MF.tilRutenett(bilde, [1000, 2000, 1200, 2200], 10);
+  assert.equal(g.nx, 20); assert.equal(g.ny, 20); assert.equal(g.d, 10);
+  assert.equal(MF.klasseI(g, 1050, 2100), 'd0'); assert.equal(MF.klasseI(g, 1150, 2100), null); // tørt øst
+  assert.equal(MF.klasseI(g, 1122, 2100), 'vann'); // bekken (2 px) forsvinner ikke i 10 m-rutene
+  assert.equal(MF.klasseI(g, 1150, 2195), 'd50'); // fuktig belte i nord (bildets øverste rader)
+  assert.equal(MF.klasseI(g, 5000, 5000), null);
+  assert.match(MF.tekst('d0'), /Svært vått: grunnvann 0–0,25 m/); assert.match(MF.tekst(null), /Tørt/);
+  assert.match(MF.url([0, 0, 2000, 2000], 500, 500), /markfuktighetsklasser.*WIDTH=500&HEIGHT=500/);
+  // Henting med falsk dekoder og per bestand (ruter på 2 km)
+  const vr = await MF.hent([1000, 2000, 1200, 2200], { dekod: async (u) => { assert.match(u, /BBOX=1000\.0,2000\.0,1200\.0,2200\.0/); return bilde; }, celle: 10 });
+  assert.equal(vr.k.filter((k) => k === 'd0').length, 200);
+  const gU = (x, y) => utmTilGeo(x, y, 33); const rekt = (x0, x1, y0, y1) => ({ type: 'Polygon', coordinates: [[gU(x0, y0), gU(x1, y0), gU(x1, y1), gU(x0, y1), gU(x0, y0)]] });
+  const rute = 2000; const stort = new Uint8ClampedArray(500 * 500 * 4); // 4 m piksler, vestre halvdel av ruta svært våt
+  for (let r = 0; r < 500; r++) for (let c = 0; c < 500; c++) { const o = (r * 500 + c) * 4; if (c < 250) { stort[o + 2] = 255; stort[o + 3] = 255; } }
+  const st = await MF.perBestand([{ id: 'v', geometri: rekt(300100, 300400, 6700100, 6700400) }, { id: 'o', geometri: rekt(301500, 301800, 6700100, 6700400) }], { dekod: async () => ({ w: 500, h: 500, data: stort }), rute });
+  assert.equal(st.get('v').andeler.d0, 1); assert.equal(st.get('o').andeler.torr, 1);
+  assert.equal(MF.vurdering(st.get('v')).niva, 'svart'); assert.match(MF.vurdering(st.get('v')).tekst, /100 % av arealet har grunnvann nærmere enn 25 cm/);
+  assert.equal(MF.vurdering(st.get('o')).niva, 'torr');
+  assert.equal(MF.vurdering({ andeler: { d25: 0.3, torr: 0.7 }, vat: 0.3 }).niva, 'vat');
+  // Minikartet tegner våt mark under brattheten
+  const kall = []; const ctx = new Proxy({}, { get: (_, k) => (k in c2 ? c2[k] : (...a) => kall.push([k, ...a])), set: (_, k, v) => { c2[k] = v; kall.push(['=' + String(k), v]); return true; } }); const c2 = {};
+  const lok = { ...g, x0: g.x0 - 1100, y0: g.y0 - 2100 };
+  const syn = MK.lagMinikart({ fukt: lok, fuktFarge: (k) => (k && k !== 'd75' ? MF.klasse(k).farge : null) }).tegn(ctx, { x: 0, y: 0, radius: 80, storrelse: 256 });
+  assert.ok(syn.fukt > 150); assert.ok(kall.some((k) => k[0] === '=fillStyle' && k[1] === '#0000ff'));
 });
 
 await Promise.all(venter);
