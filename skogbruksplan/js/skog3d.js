@@ -19,6 +19,7 @@ import { TRESLAG, HK_ROMERTALL, startTilstand } from './model.js';
 import { hkTekst } from './tetthet.js';
 import { middelhoyde, ungskogData, erUngskog } from './ungskog.js';
 import { etikettPunkt } from './proj.js';
+import { lagMinikart, lagSpor, retningGrader, kompassTekst } from './skog3d-kart.js';
 
 const THREE_URL = 'https://unpkg.com/three@0.160.0/build/three.module.js';
 const OYEHOYDE = 1.7;
@@ -49,6 +50,13 @@ const STIL = `
 .skog3d .s3-laster { position: absolute; inset: 0; display: grid; place-items: center; font-size: 18px; font-weight: 700; color: #10241c; background: rgba(156,195,230,.85); }
 .skog3d .s3-stikke { position: absolute; left: 24px; bottom: 70px; width: 110px; height: 110px; border-radius: 50%; background: rgba(255,255,255,.25); border: 2px solid rgba(255,255,255,.6); display: none; }
 @media (pointer: coarse) { .skog3d .s3-stikke { display: block; } }
+.skog3d .s3-kart { position: absolute; right: 14px; bottom: 14px; width: 190px; display: grid; gap: 4px; justify-items: center; }
+.skog3d .s3-kart canvas { width: 190px; height: 190px; cursor: pointer; border-radius: 50%; box-shadow: 0 6px 20px rgba(0,0,0,.28); }
+.skog3d .s3-kartinfo { background: rgba(16,36,28,.82); color: #f1f6f2; border-radius: 10px; padding: 4px 10px; font: 600 12px/1.35 system-ui, sans-serif; text-align: center; white-space: nowrap; }
+.skog3d .s3-kartinfo b { color: #9fd0ff; } .skog3d .s3-kartinfo i { color: #8ee08e; font-style: normal; }
+.skog3d .s3-kartknapper { display: flex; gap: 4px; } .skog3d .s3-kartknapper button { border: 0; border-radius: 8px; width: 30px; height: 26px; font: 700 14px/1 system-ui; background: #fbfcfa; color: #10241c; box-shadow: 0 2px 8px rgba(0,0,0,.2); cursor: pointer; }
+.skog3d .s3-kart.liten canvas { width: 120px; height: 120px; } .skog3d .s3-kart.liten { width: 120px; }
+@media (max-width: 760px) { .skog3d .s3-kart { bottom: 64px; width: 128px; } .skog3d .s3-kart canvas { width: 128px; height: 128px; } .skog3d .s3-kartinfo { font-size: 11px; } }
 `;
 
 export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
@@ -65,6 +73,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     </div>
     <div class="s3-vaerinfo" hidden></div>
     <div class="s3-framtid" hidden><span>🌲 Ungskogpleie</span><button type="button" data-fs="naa" aria-pressed="true">I dag</button><button type="button" data-fs="merket" aria-pressed="false">✂️ Merket: hva fjernes</button><button type="button" data-fs="etter" aria-pressed="false">Etter pleie</button><button type="button" data-fs="pleid" aria-pressed="false">Hogstmoden med ungskogpleie</button><button type="button" data-fs="upleid" aria-pressed="false">Hogstmoden uten pleie</button></div>
+    <div class="s3-kart" aria-label="Kart over hvor du står"><canvas width="384" height="384" title="Klikk: større eller mindre kart"></canvas><div class="s3-kartinfo"></div><div class="s3-kartknapper"><button type="button" data-kart="inn" title="Zoom inn">+</button><button type="button" data-kart="ut" title="Zoom ut">−</button><button type="button" data-kart="rot" title="Nord opp eller blikket opp">🧭</button></div></div>
     <div class="s3-stikke" id="s3stikke"></div>
     <div class="s3-hjelp">Klikk i bildet og se med musa · W A S D / piltaster for å gå · Shift for å løpe · Esc slipper musa</div>`;
   document.body.appendChild(rot);
@@ -234,6 +243,29 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     tavleTekstur.needsUpdate = true; tavle.visible = renderer.xr.isPresenting; tavleTil = performance.now() + sek * 1000;
   }
 
+  // ---------- minikart (skog3d-kart.js) ----------
+  // Planens bestand, veier, stier, bekker og vann. Pil = blikkretning, grønn strek = retningen du går, blått spor = der du har gått.
+  const minikart = lagMinikart({ bestand: planBestand.map((s) => ({ id: s.b.id, nr: String(s.b.nr ?? ''), mp: s.mp })), veier: omg.veier, bekker: omg.bekker, vann: omg.innsjoer });
+  const spor = lagSpor(); const kartRot = rot.querySelector('.s3-kart'); const kartLerret = kartRot.querySelector('canvas'); const kartCtx = kartLerret.getContext('2d'); const kartInfo = kartRot.querySelector('.s3-kartinfo');
+  const ZOOM = [40, 80, 160, 320]; let zoom = 1; let nordOpp = true; let kartTid = 0; let kartTekst = ''; let vrKart = true; let knappVS = false; let knappHS = false;
+  const kartTekstur = new THREE.CanvasTexture(kartLerret);
+  const vrKartFlate = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), new THREE.MeshBasicMaterial({ map: kartTekstur, transparent: true, depthTest: false }));
+  vrKartFlate.position.set(-0.2, -0.16, -0.5); vrKartFlate.rotation.set(0.35, 0.3, 0); vrKartFlate.renderOrder = 998; vrKartFlate.visible = false; camera.add(vrKartFlate);
+  const blikk = new THREE.Vector3();
+  function tegnKart(x, y) {
+    camera.getWorldDirection(blikk); const retning = retningGrader(blikk.x, -blikk.z);
+    spor.legg(x, y); const bevegelse = spor.bevegelse(x, y); const vr = renderer.xr.isPresenting;
+    minikart.tegn(kartCtx, { x, y, retning, bevegelse, spor: spor.punkter, herBid, radius: ZOOM[zoom], storrelse: 384, nordOpp, vr });
+    if (vr) kartTekstur.needsUpdate = true; vrKartFlate.visible = vr && vrKart;
+    const tekst = `Ser <b>${kompassTekst(retning)}</b>${bevegelse != null ? ` · går <i>${kompassTekst(bevegelse)}</i>` : ''}`;
+    if (tekst !== kartTekst) { kartTekst = tekst; kartInfo.innerHTML = tekst; }
+  }
+  kartRot.addEventListener('click', (e) => {
+    e.stopPropagation(); const k = e.target.closest('[data-kart]')?.dataset.kart;
+    if (k === 'inn') zoom = Math.max(0, zoom - 1); else if (k === 'ut') zoom = Math.min(ZOOM.length - 1, zoom + 1); else if (k === 'rot') nordOpp = !nordOpp; else if (e.target === kartLerret) kartRot.classList.toggle('liten');
+    kartTid = 0;
+  });
+
   const NAER = (x, y) => { const h = hinder(x, y); if (h === 'vei' || h === 'sti') { let best = null; let bd = 8; for (const v of omg.veier) for (let i = 0; i < v.linje.length - 1; i++) { const [x0, y0] = v.linje[i]; const [x1, y1] = v.linje[i + 1]; const dx = x1 - x0; const dy = y1 - y0; const t = Math.max(0, Math.min(1, ((x - x0) * dx + (y - y0) * dy) / (dx * dx + dy * dy || 1))); const d = Math.hypot(x - x0 - t * dx, y - y0 - t * dy); if (d < bd) { bd = d; best = v; } } return best ? `🛤️ ${best.navn}${best.kilde ? ` (${best.kilde})` : ''}` : ''; } return h === 'vann' ? '💧 Vann/bekk' : h === 'bygg' ? '🏠 Ved bygning' : ''; };
   function oppdaterHud(x, y) {
     const s = finnFlate(x, y); const ekstra = NAER(x, y); const bid = `${s?.b?.id || s?.id || '-'}|${ekstra}|${framtid?.scenario || ''}`;
@@ -266,12 +298,16 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
         // X = neste værtype, Y = neste tid på døgnet
         const x = !!gp.buttons[4]?.pressed; const yk = !!gp.buttons[5]?.pressed;
         if (x && !knappX) nesteVaer(); if (yk && !knappY) nesteTid(); knappX = x; knappY = yk;
+        // Trykk på venstre stikke = vis eller skjul kartet
+        const vs = !!gp.buttons[3]?.pressed; if (vs && !knappVS) { vrKart = !vrKart; kartTid = 0; } knappVS = vs;
       }
       if (kilde.handedness === 'right') {
         if (Math.abs(ax) > 0.7 && !snudd) { dolly.rotation.y -= Math.sign(ax) * (Math.PI / 6); snudd = true; } if (Math.abs(ax) < 0.3) snudd = false;
         // A = neste framtidsskog, B = tilbake til i dag
         const a = !!gp.buttons[4]?.pressed; const bk = !!gp.buttons[5]?.pressed;
         if (a && !knappA) nesteFramtid(); if (bk && !knappB && framtid) settFramtid('naa'); knappA = a; knappB = bk;
+        // Trykk på høyre stikke = zoom i kartet
+        const hs = !!gp.buttons[3]?.pressed; if (hs && !knappHS) { zoom = (zoom + 1) % ZOOM.length; kartTid = 0; } knappHS = hs;
       }
     }
   }
@@ -295,6 +331,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     if (iBygning(omg, dolly.position.x, -dolly.position.z)) { dolly.position.x = forrige[0]; dolly.position.z = forrige[1]; } // ikke gjennom vegger
     const x = dolly.position.x; const y = -dolly.position.z; dolly.position.y = hoyde(x, y);
     if (t - hudTid > 250) { hudTid = t; oppdaterHud(x, y); treLag.oppdater(dolly.position.x, dolly.position.z, { avstand: renderer.xr.isPresenting ? 45 : 60 }); bunnLag.oppdater(x, y, { radius: renderer.xr.isPresenting ? 25 : 35 }); }
+    if (t - kartTid > 100) { kartTid = t; tegnKart(x, y); }
     camera.getWorldPosition(kameraPos); vaerLag.oppdater(dt, [kameraPos.x, kameraPos.y, kameraPos.z]);
     renderer.render(scene, camera);
   });
@@ -363,7 +400,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     treLag.dispose(); bunnLag.dispose(); omgLag.dispose(); tavleTekstur.dispose(); vaerLag.dispose(); scene.traverse((o) => { o.material?.dispose?.(); }); bakke.dispose(); renderer.dispose(); rot.remove();
   }
   rot.querySelector('[data-s3="lukk"]').onclick = lukk;
-  const api = { lukk, framtid: (sc) => settFramtid(sc), vaer: (valg, tid) => settVaer(valg, tid), vaerData: () => ({ valg: vaerValg, tid: tidValg, scene: vaerLag.aktiv(), partikler: vaerLag.antallPartikler(), lyd: vaerLag.harLyd() }), gaaTil: (x2, y2, retning = yaw) => { dolly.position.set(x2, hoyde(x2, y2), -y2); yaw = retning; }, omg: () => omg, antall: skog.traer.length, planter: () => bunnLag.perType(), omgivelser: () => ({ ...omgLag.antall, ar5: omg.ar5.length, status: omg.status }), radius: R, posisjon: () => ({ x: dolly.position.x, y: -dolly.position.z }), hud: () => hud.textContent };
+  const api = { lukk, framtid: (sc) => settFramtid(sc), vaer: (valg, tid) => settVaer(valg, tid), vaerData: () => ({ valg: vaerValg, tid: tidValg, scene: vaerLag.aktiv(), partikler: vaerLag.antallPartikler(), lyd: vaerLag.harLyd() }), gaaTil: (x2, y2, retning = yaw) => { dolly.position.set(x2, hoyde(x2, y2), -y2); yaw = retning; }, omg: () => omg, antall: skog.traer.length, planter: () => bunnLag.perType(), omgivelser: () => ({ ...omgLag.antall, ar5: omg.ar5.length, status: omg.status }), radius: R, posisjon: () => ({ x: dolly.position.x, y: -dolly.position.z }), hud: () => hud.textContent, kart: () => kartInfo.textContent };
   rot.skog3d = api; // for feilsøking og tester
   return api;
 }
