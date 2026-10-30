@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.43.1** (2026-10-30) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.44.0** (2026-10-30) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -602,6 +602,57 @@ telles bare én gang, og bare endringen siden forrige import trekkes fra volumet
 
 Neste steg i standarden er versjon 4.0, der kartet sendes som GeoJSON inne i ogi, og den løpende meldingen hpd
 (HarvestedDeltaProduction). Produksjonsfiler i 4.0 kan allerede leses. Kilde: [Skogforsk – StanForD 2010](https://www.skogforsk.se/english/projects/stanford/).
+
+## Hogstmaskindata mot SR16 (Data › 🌲 Hogstmaskindata mot SR16)
+
+Last opp en HPR-fil (StanForD 2010) fra hogstmaskinen for hele planen, uavhengig av oppdrag. Du kan dra fila inn eller
+velge den, og den kan være løs, i ZIP, som `.hprz` eller som `.env`. Du kan også slippe den i den vanlige importsonen.
+SkogIQ henter SR16 fra NIBIO for området der stammene står, og viser hvor mange stammer maskinen hogde sammenlignet
+med treantallet i SR16.
+
+**Slik regnes det:**
+
+1. **Stammene.** Hver stamme har posisjon fra kranspissen ved felling og brysthøydediameter (DBH) målt av maskinen.
+2. **Hogd areal.** Arealet er 10 × 10 m-ruter med stammer. Små hull mellom stammene fylles inn.
+3. **SR16-flatene.** Flatene hentes med treantall over 5, 8, 10 og 16 cm (trær per ha). I tillegg hentes volum,
+   middeldiameter, høyde, treslagsandeler, målingsår og NIBIOs egen hogstregistrering.
+4. **Forventet stammetall.** Hver rute får treantallet i SR16-flaten der den ligger, ganget med ruteareal.
+5. **Sammenligning med samme grense.** Hogde stammer telles med samme diametergrense som SR16. Standard er
+   10 cm, fordi hogstmaskinen sjelden tar trær under 8–10 cm. Grensen kan endres til 5, 8 eller 16 cm.
+6. **Avvik.** Avviket vises som «hogd av SR16»:
+   * 80–120 %: godt samsvar
+   * over 120 %: SR16 har for få trær
+   * 50–80 %: SR16 har for mange trær, eller trær ble stående
+   * under 50 %: tynning eller lukket hogst
+7. **SR16 oppdatert etter hogsten.** Har NIBIO allerede registrert hogsten i en SR16-flate, viser SR16 skogen etter
+   hogst. Det arealet holdes utenfor og vises som ikke sammenlignbart. Det samme gjelder når fila mangler hogstdato.
+   For bestandene vises også planens treantall (fra taksten eller SR16 da planen ble laget) på samme areal.
+
+**Hva du får:**
+
+* **Nøkkeltall:**
+  * stammer hogd
+  * stammer over grensen
+  * hva SR16 anslo
+  * hogd i % av SR16
+  * hogd areal
+  * m³fub mot SR16-volum
+* **En vurdering i klartekst og varsler om:**
+  * stammer utenfor planen
+  * areal utenfor SR16-skog
+  * SR16 målt lenge før hogsten
+* **Fordelinger:** treslag hogd mot SR16, middelstamme og middeldiameter, og diameterfordeling med SR16s
+  middeldiameter markert.
+* **Tabeller:**
+  * per bestand: SR16 og planens treantall
+  * per SR16-flate: målingsår, NIBIOs hogstregistrering, trær/ha og avvik
+* **Kartlag:** hogd areal farget etter avvik, SR16-omriss og stammene.
+* **Eksport:** CSV per bestand og per SR16-flate.
+
+Analysene lagres i planen (de 10 siste). «Prøv med simulert hogst» lager en HPR-fil for det største hogstmodne
+bestandet. Treantallet er den mest usikre verdien i SR16, ofte ±30–40 % per flate. Kilder:
+[SR16 produktark](https://dokument.geonorge.no/produktark/sr16/20230508/sr16-produktark-20230508.pdf) og
+[NIBIOs validering av SR16](https://www.nibio.no/tema/skog/kart-over-skogressurser/skogressurskart-sr16/_/attachment/inline/b1351797-d448-4a67-b099-961efaa6bf80:ee86cfca94ca89db5c17610fd52b04b1fc6290f1/Notat-Validering-av-SR16-med-kontrollm%C3%A5linger-i-Asker-Alver-og-ElverumV%C3%A5ler.pdf).
 
 ## Satellittbilder – se endringer siden taksten (Sentinel-2)
 
