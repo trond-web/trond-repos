@@ -1,6 +1,7 @@
 # trond-repos
 
 - [`skogbruksplan/`](skogbruksplan/) – SkogIQ.ai: forvaltning av skogbruksplandata: kart, bestand, tiltaksplan, framskriving og feltregistrering
+- [`nannestad-naering/`](nannestad-naering/) – Næringsmuligheter Nannestad: kart over muligheter for næringsutvikling på en eiendom (arealtyper, kommuneplan, flystøy, grunnforhold), rangerte bærekraftige tiltak med økonomikalkyle, og alle utbyggingsområder i kommuneplanen
 - [`sefrak-eiendom/`](sefrak-eiendom/) – SEFRAK-oppslag: slå opp en eiendom og se SEFRAK-info, vernestatus, planbestemmelser og hva som gjelder for vedlikehold og oppussing
 - [`tretetthet-flyfoto/`](tretetthet-flyfoto/) – estimat av tretetthet fra flyfoto
 - [`fox-classic-2026/`](fox-classic-2026/) – påmeldingsløsning for Fox Classic 2026
