@@ -125,7 +125,9 @@ async function hentAr5Kml(grense, { hent = fetch, klipp, logg = () => {}, boksTr
   const ub = [Math.min(...h.map((p) => p[0])) - 50, Math.min(...h.map((p) => p[1])) - 50, Math.max(...h.map((p) => p[0])) + 50, Math.max(...h.map((p) => p[1])) + 50];
   const treff = boksTreff || ((bb) => overlapp(bb, [x0, y0, x1, y1]));
   const ruter = [];
-  const kmlUrl = (b) => `${NIBIO}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=Arealtype&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&WIDTH=2000&HEIGHT=${Math.max(200, Math.round((2000 * (b[3] - b[1])) / (b[2] - b[0])))}&FORMAT=kml`;
+  // Lengste side 2000 px – NIBIO avviser større bilder (lange, smale eiendommer).
+  const kmlStorrelse = (b) => { const dx = b[2] - b[0]; const dy = b[3] - b[1]; return dx >= dy ? `WIDTH=2000&HEIGHT=${Math.max(200, Math.round((2000 * dy) / dx))}` : `WIDTH=${Math.max(200, Math.round((2000 * dx) / dy))}&HEIGHT=2000`; };
+  const kmlUrl = (b) => `${NIBIO}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=Arealtype&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&${kmlStorrelse(b)}&FORMAT=kml`;
   let feil = 0; const vanskelige = [];
   // Ca. 6 samtidige kall: for store eiendommer (hundrevis av ruter) er det mange ganger raskere enn ett og ett.
   const ko = begrens(6); const hentT = (url, ms, o) => ko(() => hentTekst(hent, url, ms, o));

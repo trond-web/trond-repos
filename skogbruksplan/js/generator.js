@@ -240,10 +240,14 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   const hjorner = [[minx, miny], [minx, maxy], [maxx, miny], [maxx, maxy]].map(([x, y]) => geoTilUtm(x, y, 33));
   const ux = hjorner.map((h) => h[0]); const uy = hjorner.map((h) => h[1]);
   const ub = [Math.min(...ux), Math.min(...uy), Math.max(...ux), Math.max(...uy)];
-  const bredde = 2000;
+  // Lengste side 2000 px: NIBIOs WMS avviser større bilder («Image size out of range»), og lange, smale eiendommer
+  // ga før over 5000 px i høyden – da kom det ingen flater fra plan, SR16 eller MiS.
+  const KML_PX = 2000;
   const kmlUrl = (tjeneste, lag, b = ub) => {
-    const h = Math.max(200, Math.round((bredde * (b[3] - b[1])) / (b[2] - b[0])));
-    return `${NIBIO}/${tjeneste}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${lag}&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&WIDTH=${bredde}&HEIGHT=${h}&FORMAT=kml`;
+    const dx = b[2] - b[0]; const dy = b[3] - b[1];
+    const w = dx >= dy ? KML_PX : Math.max(200, Math.round((KML_PX * dx) / dy));
+    const h = dx >= dy ? Math.max(200, Math.round((KML_PX * dy) / dx)) : KML_PX;
+    return `${NIBIO}/${tjeneste}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${lag}&STYLES=&SRS=EPSG:25833&BBOX=${b.map((v) => v.toFixed(1)).join(',')}&WIDTH=${w}&HEIGHT=${h}&FORMAT=kml`;
   };
   // Avgrensningsbokser per teig gir rask utsortering før den dyre geometrisjekken.
   const teigBokser = teiger.map((t) => T.bbox(t.geometry));
@@ -280,8 +284,12 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
   // Henter alle flater i et område, med oppdeling når svaret er kuttet ved KML_MAKS. Ruter utenfor eiendommen hoppes over.
   const kmlKo = begrens(6);
   const hentKml = async (tjeneste, lag, b = ub, dybde = 0, ruter = []) => {
-    const flater = parseKml(await kmlKo(() => hentTekst(hent, kmlUrl(tjeneste, lag, b))));
-    if (flater.length < KML_MAKS || dybde >= 5) { ruter.push(b); return flater; }
+    const tekst = await kmlKo(() => hentTekst(hent, kmlUrl(tjeneste, lag, b)));
+    // Feilsvar fra WMS-en (ServiceException) må ikke tolkes som «ingen flater»: del ruten, eller gi en tydelig feil.
+    const unntak = /<ServiceException\b/.test(tekst) ? (tekst.match(/<ServiceException(?:\s[^>]*)?>\s*([\s\S]*?)\s*<\/ServiceException>/) || [])[1] || 'ukjent feil' : null;
+    if (unntak && dybde >= 3) throw new Error(`NIBIO (${tjeneste}) svarte med feil: ${unntak.slice(0, 160)}`);
+    const flater = unntak ? [] : parseKml(tekst);
+    if (!unntak && (flater.length < KML_MAKS || dybde >= 5)) { ruter.push(b); return flater; }
     const mx = (b[0] + b[2]) / 2; const my = (b[1] + b[3]) / 2;
     const deler = [[b[0], b[1], mx, my], [mx, b[1], b[2], my], [b[0], my, mx, b[3]], [mx, my, b[2], b[3]]].filter((d) => {
       const h = [[d[0], d[1]], [d[0], d[3]], [d[2], d[1]], [d[2], d[3]]].map(([x, y]) => utmTilGeo(x, y, 33));
