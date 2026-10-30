@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.45.0** (2026-10-30) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.46.0** (2026-10-30) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -230,6 +230,23 @@ En egen mobilversjon der kartet fyller skjermen og bare det du trenger i skogen 
 ## Virtuell skog – gå rundt i skogen, også med VR-briller (beta, fullversjonen)
 
 Åpne et bestand og trykk **🥽 Gå inn i skogen**. Du står da i bestandet og kan gå rundt i skogen rundt deg, inn i nabobestandene. Dataene ligger i `js/skog3d-data.js` og visningen i `js/skog3d.js`. Visningen bruker Three.js 0.160 og WebXR.
+
+**Minikart (`js/skog3d-kart.js`)** viser hvor du står og hvilken vei du ser og går. Det ligger nede til høyre i
+nettleseren og som en liten flate nede til venstre i synsfeltet i VR-brillene. Kartet viser:
+- planens bestand, med bestandet du står i uthevet i oransje og bestandsnummer
+- veier, traktorveier, stier, bekker og vann
+- en blå pil og en blå synskjegle for blikkretningen
+- en grønn strek for retningen du går, regnet ut fra de siste ca. 6 m
+- et blått spor som viser hvor du har gått
+- nordpil og målestokk
+
+Under kartet står retningen i tekst, for eksempel «Ser Ø 90° · går NØ 45°».
+
+**Styring av kartet:**
+- **+ / −:** zoom (40, 80, 160 eller 320 m radius).
+- **🧭:** bytter mellom nord opp og blikket opp.
+- **Klikk på kartet:** gjør det mindre eller større.
+- **I VR:** trykk på venstre stikke viser eller skjuler kartet, og trykk på høyre stikke zoomer.
 
 **Trærne bygges av dataene i planen:**
 - **Treslag og blanding:** grandominert skog er 85 % gran, 10 % lauv og 5 % furu. Furu og lauv har tilsvarende blandinger.

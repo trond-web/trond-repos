@@ -39,6 +39,7 @@ import * as KRAV from '../js/krav.js';
 import * as TB from '../js/tilbud.js';
 import * as SF from '../js/stanford.js';
 import * as HS from '../js/hpr-sr16.js';
+import * as MK from '../js/skog3d-kart.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
@@ -2500,6 +2501,30 @@ test('Tynning med HPR mot SR16: grunnflate før/etter, kvotient, diameterklasser
   const stille = Array.from({ length: 40 }, (_, i) => ({ basePos: g(100 + (i % 2) * 1.5, 100 + (i % 3)), pos: g(105, 100) }));
   assert.equal(HS.stikkveier(stille).lengde, 0);
   assert.equal(HS.grunnflateGrense(11), 24); assert.equal(HS.grunnflateGrense(17), 28);
+});
+
+test('Virtuell skog: minikart med posisjon, blikkretning, gangretning, spor og bestand', () => {
+  // Kompass og retning (x = øst, y = nord)
+  assert.equal(MK.retningGrader(0, 1), 0); assert.equal(MK.retningGrader(1, 0), 90); assert.equal(MK.retningGrader(0, -1), 180); assert.equal(MK.retningGrader(-1, 0), 270);
+  assert.equal(MK.kompassTekst(44), 'NØ 44°'); assert.equal(MK.kompassTekst(359.6), 'N 0°'); assert.equal(MK.kompassTekst(225), 'SV 225°');
+  assert.equal(MK.malestokk(80), 50); assert.equal(MK.malestokk(40), 20);
+  // Projeksjon: nord opp – punkt 10 m nord havner rett over midten; blikket opp – det du ser mot havner over midten.
+  const P = MK.projeksjon({ x: 0, y: 0, radius: 50, storrelse: 200 });
+  assert.deepEqual(P([0, 10]).map(Math.round), [100, 80]); assert.deepEqual(P([10, 0]).map(Math.round), [120, 100]);
+  const Q = MK.projeksjon({ x: 0, y: 0, radius: 50, storrelse: 200, retning: 90, nordOpp: false });
+  assert.deepEqual(Q([10, 0]).map(Math.round), [100, 80]); // øst er opp når du ser mot øst
+  // Spor og gangretning: står stille → ingen retning; går nordøstover → ca. 45°.
+  const sp = MK.lagSpor();
+  for (let i = 0; i < 5; i++) sp.legg(0.2 * (i % 2), 0.1 * (i % 2)); assert.equal(sp.bevegelse(0.2, 0.1), null); assert.equal(sp.punkter.length, 1);
+  for (let i = 1; i <= 10; i++) sp.legg(i, i); assert.ok(Math.abs(sp.bevegelse(10, 10) - 45) < 1);
+  // Tegning på et falskt lerret: synlige bestand og veier, uthevet bestand og målestokk.
+  const kall = []; const ctx = new Proxy({}, { get: (_, k) => (k in ctx2 ? ctx2[k] : (...a) => kall.push([k, ...a])), set: (_, k, v) => { ctx2[k] = v; kall.push(['=' + String(k), v]); return true; } }); const ctx2 = {};
+  const rekt = (x0, x1, y0, y1) => [[[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]]];
+  const mk = MK.lagMinikart({ bestand: [{ id: 'a', nr: '12', mp: rekt(-40, 0, -40, 40) }, { id: 'b', nr: '13', mp: rekt(0, 40, -40, 40) }, { id: 'c', nr: '99', mp: rekt(900, 950, 900, 950) }], veier: [{ linje: [[-50, 5], [50, 5]], flate: 'sti' }], bekker: [{ linje: [[0, -50], [0, 50]] }] });
+  const syn = mk.tegn(ctx, { x: -10, y: 0, retning: 30, bevegelse: 30, spor: sp.punkter, herBid: 'a', radius: 80, storrelse: 384 });
+  assert.deepEqual(syn.bestand, ['12', '13']); assert.equal(syn.veier, 1);
+  assert.ok(kall.some((k) => k[0] === 'fillText' && k[1] === '12') && kall.some((k) => k[0] === 'fillText' && k[1] === '50 m') && kall.some((k) => k[0] === 'fillText' && k[1] === 'N'));
+  assert.ok(kall.some((k) => k[0] === '=strokeStyle' && k[1] === '#c25e10'), 'bestandet du står i er uthevet');
 });
 
 await Promise.all(venter);
