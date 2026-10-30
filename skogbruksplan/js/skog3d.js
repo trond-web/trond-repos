@@ -20,6 +20,7 @@ import { hkTekst } from './tetthet.js';
 import { middelhoyde, ungskogData, erUngskog } from './ungskog.js';
 import { etikettPunkt } from './proj.js';
 import { lagMinikart, lagSpor, retningGrader, kompassTekst } from './skog3d-kart.js';
+import { helning as helningGrid, klasseFor as bratthetKlasse, tekst as bratthetTekst, KLASSER as BRATT_KLASSER } from './bratthet.js';
 
 const THREE_URL = 'https://unpkg.com/three@0.160.0/build/three.module.js';
 const OYEHOYDE = 1.7;
@@ -56,6 +57,11 @@ const STIL = `
 .skog3d .s3-kartinfo b { color: #9fd0ff; } .skog3d .s3-kartinfo i { color: #8ee08e; font-style: normal; }
 .skog3d .s3-kartknapper { display: flex; gap: 4px; } .skog3d .s3-kartknapper button { border: 0; border-radius: 8px; width: 30px; height: 26px; font: 700 14px/1 system-ui; background: #fbfcfa; color: #10241c; box-shadow: 0 2px 8px rgba(0,0,0,.2); cursor: pointer; }
 .skog3d .s3-kart.liten canvas { width: 120px; height: 120px; } .skog3d .s3-kart.liten { width: 120px; }
+.skog3d .s3-brattleg { position: absolute; left: 14px; bottom: 14px; max-width: 300px; background: rgba(251,252,250,.92); border-radius: 12px; padding: 8px 12px; font: 12px/1.35 system-ui, sans-serif; color: #10241c; box-shadow: 0 4px 14px rgba(0,0,0,.18); display: grid; gap: 2px; pointer-events: none; }
+.skog3d .s3-brattleg i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; } .skog3d .s3-brattleg small { color: #43544b; margin-top: 2px; }
+.skog3d .s3-knapper button[aria-pressed="true"] { background: #10241c; color: #fff; }
+@media (pointer: coarse) { .skog3d .s3-brattleg { bottom: 200px; } }
+@media (max-width: 760px) { .skog3d .s3-brattleg { top: auto; bottom: 230px; max-width: 220px; font-size: 11px; } }
 @media (max-width: 760px) { .skog3d .s3-kart { bottom: 64px; width: 128px; } .skog3d .s3-kart canvas { width: 128px; height: 128px; } .skog3d .s3-kartinfo { font-size: 11px; } }
 `;
 
@@ -63,7 +69,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   if (!document.getElementById('skog3d-stil')) { const st = document.createElement('style'); st.id = 'skog3d-stil'; st.textContent = STIL; document.head.appendChild(st); }
   const rot = document.createElement('div'); rot.className = 'skog3d';
   rot.innerHTML = `<div class="s3-laster">Bygger skogen …</div><div class="s3-hud" id="s3hud"></div>
-    <div class="s3-knapper"><button type="button" class="vr" data-s3="vr" hidden>🥽 VR</button><button type="button" data-s3="vaer" aria-expanded="false">🌦 Vær</button><button type="button" data-s3="lukk">Lukk ✕</button></div>
+    <div class="s3-knapper"><button type="button" class="vr" data-s3="vr" hidden>🥽 VR</button><button type="button" data-s3="bratt" aria-pressed="false" hidden title="Vis bratte områder som ikke kan drives med vanlige skogsmaskiner">⛰ Bratthet</button><button type="button" data-s3="vaer" aria-expanded="false">🌦 Vær</button><button type="button" data-s3="lukk">Lukk ✕</button></div>
     <div class="s3-vaer" hidden>
       <b>Vær i skogen</b>
       <div class="rad" data-gruppe="vaer">${Object.entries(VAER_VALG).map(([k, v]) => `<button type="button" data-vaer="${k}" aria-pressed="${k === 'av'}">${v.ikon} ${v.navn}</button>`).join('')}</div>
@@ -94,6 +100,15 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     hentOmgivelser(forste.senter, R, { S }).catch(() => ({ veier: [], bekker: [], innsjoer: [], bygg: [], ar5: [], grense: [], status: {} })),
   ]);
   if (z.length === n * n && z.filter(Number.isFinite).length > z.length * 0.8) hoyde = lagTerreng(z, R, n);
+  // Bratthet (bratthet.js): helning i høydenettet (ca. 12 m mellom punktene) – vises på bakken, i minikartet og i HUD.
+  const bratt = z.length === n * n && z.filter(Number.isFinite).length > z.length * 0.8 ? { x0: -R, y0: -R, d: (2 * R) / (n - 1), nx: n, ny: n, pst: helningGrid(z, n, n, (2 * R) / (n - 1)) } : null;
+  const helningHer = (x, y) => {
+    if (!bratt) return null; const fx = (x - bratt.x0) / bratt.d; const fy = (y - bratt.y0) / bratt.d; const i = Math.floor(fx); const j = Math.floor(fy);
+    if (i < 0 || j < 0 || i >= n - 1 || j >= n - 1) return null; const u = fx - i; const v = fy - j; const p = (a, b2) => bratt.pst[b2 * n + a] ?? 0;
+    return p(i, j) * (1 - u) * (1 - v) + p(i + 1, j) * u * (1 - v) + p(i, j + 1) * (1 - u) * v + p(i + 1, j + 1) * u * v;
+  };
+  const brattFarge = (pst) => { const k = bratthetKlasse(pst); return k?.farge || null; };
+  const harBratt = !!bratt && bratt.pst.some((v) => v >= 33);
   omg.radius = R;
   vis('Bygger skogen …');
   const hinder = lagHinder(omg);
@@ -124,7 +139,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   // Bakke med høydedata og litt fargevariasjon
   const vegCache = new Map(); const vegFor = (s) => { if (s.profil) return s.profil; if (!vegCache.has(s.b.id)) vegCache.set(s.b.id, vegProfil(s.b, { inn })); return vegCache.get(s.b.id); };
   const seg = Math.min(150, Math.max(80, Math.round(R / 1.8))); const bakke = new THREE.PlaneGeometry(2 * R, 2 * R, seg, seg); bakke.rotateX(-Math.PI / 2);
-  const pos = bakke.attributes.position; const farger = new Float32Array(pos.count * 3);
+  const pos = bakke.attributes.position; const farger = new Float32Array(pos.count * 3); const brattFarger = new Float32Array(pos.count * 3);
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i); const y = -pos.getZ(i); pos.setY(i, hoyde(x, y));
     const v = 0.85 + ((Math.sin(x * 0.37) * Math.cos(y * 0.29) + 1) / 2) * 0.25;
@@ -134,8 +149,12 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
     if (hinder(x, y) === 'vann') [r, g, bl] = [0.25, 0.22, 0.16];
     if (iSkog?.hk === 1) [r, g, bl] = [r * 0.6 + 0.55 * 0.4, g * 0.6 + 0.52 * 0.4, bl * 0.6 + 0.3 * 0.4];
     farger.set([r * v, g * v, bl * v], i * 3);
+    // Bratte områder farges etter drivbarhet (gult = krevende, oransje = spesialdrift, rødt = vinsj/taubane, lilla = bare taubane)
+    const fb = brattFarge(helningHer(x, y));
+    if (fb) { const c = new THREE.Color(fb); brattFarger.set([r * v * 0.35 + c.r * 0.65, g * v * 0.35 + c.g * 0.65, bl * v * 0.35 + c.b * 0.65], i * 3); } else brattFarger.set([r * v, g * v, bl * v], i * 3);
   }
-  bakke.setAttribute('color', new THREE.BufferAttribute(farger, 3)); bakke.computeVertexNormals();
+  let visBratt = harBratt;
+  bakke.setAttribute('color', new THREE.BufferAttribute(visBratt ? brattFarger : farger, 3)); bakke.computeVertexNormals();
   scene.add(new THREE.Mesh(bakke, new THREE.MeshLambertMaterial({ vertexColors: true })));
 
   // Veier, stier, bekker, vann, bygninger og eiendomsgrense (skog3d-objekter.js)
@@ -173,7 +192,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   lerret.addEventListener('touchmove', (e) => { for (const t of e.changedTouches) { if (stikke?.id === t.identifier) { stikke.dx = Math.max(-1, Math.min(1, (t.clientX - stikke.x0) / 50)); stikke.dy = Math.max(-1, Math.min(1, (t.clientY - stikke.y0) / 50)); } if (se?.id === t.identifier) { yaw -= (t.clientX - se.x) * 0.005; pitch = Math.max(-1.3, Math.min(1.3, pitch - (t.clientY - se.y) * 0.005)); se.x = t.clientX; se.y = t.clientY; } } }, { passive: true });
   lerret.addEventListener('touchend', (e) => { for (const t of e.changedTouches) { if (stikke?.id === t.identifier) stikke = null; if (se?.id === t.identifier) se = null; } });
 
-  const hud = rot.querySelector('#s3hud'); let hudBid = null; let hudTid = 0; let herBid = null;
+  const hud = rot.querySelector('#s3hud'); let hudBid = null; let hudTid = 0; let herBid = null; let sistBratt = null;
 
   // ---------- framtidsskog for ungskog (HK II): hogstmoden med og uten ungskogpleie ----------
   const vInn = { ...STANDARD_VERDI, ...(S.verdi || {}) }; const IAAR = new Date().getFullYear();
@@ -245,7 +264,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
 
   // ---------- minikart (skog3d-kart.js) ----------
   // Planens bestand, veier, stier, bekker og vann. Pil = blikkretning, grønn strek = retningen du går, blått spor = der du har gått.
-  const minikart = lagMinikart({ bestand: planBestand.map((s) => ({ id: s.b.id, nr: String(s.b.nr ?? ''), mp: s.mp })), veier: omg.veier, bekker: omg.bekker, vann: omg.innsjoer });
+  const minikart = lagMinikart({ bestand: planBestand.map((s) => ({ id: s.b.id, nr: String(s.b.nr ?? ''), mp: s.mp })), veier: omg.veier, bekker: omg.bekker, vann: omg.innsjoer, bratthet: bratt, farge: (p) => (visBratt ? brattFarge(p) : null) });
   const spor = lagSpor(); const kartRot = rot.querySelector('.s3-kart'); const kartLerret = kartRot.querySelector('canvas'); const kartCtx = kartLerret.getContext('2d'); const kartInfo = kartRot.querySelector('.s3-kartinfo');
   const ZOOM = [40, 80, 160, 320]; let zoom = 1; let nordOpp = true; let kartTid = 0; let kartTekst = ''; let vrKart = true; let knappVS = false; let knappHS = false;
   const kartTekstur = new THREE.CanvasTexture(kartLerret);
@@ -268,7 +287,11 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
 
   const NAER = (x, y) => { const h = hinder(x, y); if (h === 'vei' || h === 'sti') { let best = null; let bd = 8; for (const v of omg.veier) for (let i = 0; i < v.linje.length - 1; i++) { const [x0, y0] = v.linje[i]; const [x1, y1] = v.linje[i + 1]; const dx = x1 - x0; const dy = y1 - y0; const t = Math.max(0, Math.min(1, ((x - x0) * dx + (y - y0) * dy) / (dx * dx + dy * dy || 1))); const d = Math.hypot(x - x0 - t * dx, y - y0 - t * dy); if (d < bd) { bd = d; best = v; } } return best ? `🛤️ ${best.navn}${best.kilde ? ` (${best.kilde})` : ''}` : ''; } return h === 'vann' ? '💧 Vann/bekk' : h === 'bygg' ? '🏠 Ved bygning' : ''; };
   function oppdaterHud(x, y) {
-    const s = finnFlate(x, y); const ekstra = NAER(x, y); const bid = `${s?.b?.id || s?.id || '-'}|${ekstra}|${framtid?.scenario || ''}`;
+    const s = finnFlate(x, y); const hp = helningHer(x, y); const bk = bratthetKlasse(hp);
+    const ekstra = [NAER(x, y), hp != null && (visBratt || hp >= 33) ? `⛰ ${bratthetTekst(hp)}` : ''].filter(Boolean).join('<br>');
+    const bid = `${s?.b?.id || s?.id || '-'}|${ekstra}|${framtid?.scenario || ''}`;
+    // I VR: tavle når du går inn i et område som ikke kan drives med vanlige maskiner
+    if (bk && bk.id !== sistBratt) { if (!bk.drivbar && renderer.xr.isPresenting) vrTavle([`⛰ ${bk.kort}: ${Math.round(hp)} % (${Math.round(Math.atan(hp / 100) * 57.3)}°)`, bk.navn.replace(/^[^–]*– /, '')], 5); sistBratt = bk.id; }
     const nyttBestand = (s?.b?.id || null) !== herBid; herBid = s?.b?.id || null; if (nyttBestand) visFramtidValg();
     if (bid === hudBid) return; hudBid = bid;
     const ek = ekstra ? `<small>${ekstra}</small>` : '';
@@ -370,6 +393,13 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   const VAER_REKKE = Object.keys(VAER_VALG); const TID_REKKE = Object.keys(TID_VALG);
   const nesteVaer = () => settVaer(VAER_REKKE[(VAER_REKKE.indexOf(vaerValg) + 1) % VAER_REKKE.length], tidValg);
   const nesteTid = () => settVaer(vaerValg === 'av' ? 'dagens' : vaerValg, TID_REKKE[(TID_REKKE.indexOf(tidValg) + 1) % TID_REKKE.length]);
+  // Bratthet av/på (bakke, minikart og HUD), med tegnforklaring
+  const brattKnapp = rot.querySelector('[data-s3="bratt"]'); const brattLeg = document.createElement('div'); brattLeg.className = 's3-brattleg';
+  brattLeg.innerHTML = `<b>⛰ Bratthet og drift</b>${BRATT_KLASSER.slice(1).map((k) => `<span><i style="background:${k.farge}"></i>${k.navn}</span>`).join('')}<small>Fra Kartverkets høydedata. Grenser: NIBIO (Skogsmaskiner i stroppen, 2024).</small>`;
+  rot.appendChild(brattLeg);
+  const settBratt = (paa) => { visBratt = paa; bakke.setAttribute('color', new THREE.BufferAttribute(paa ? brattFarger : farger, 3)); brattKnapp.setAttribute('aria-pressed', String(paa)); brattLeg.hidden = !paa; hudBid = null; kartTid = 0; };
+  if (bratt) { brattKnapp.hidden = false; settBratt(visBratt); }
+  brattKnapp.onclick = (e) => { e.stopPropagation(); settBratt(!visBratt); };
   rot.querySelector('[data-s3="vaer"]').onclick = (e) => { e.stopPropagation(); vaerPanel.hidden = !vaerPanel.hidden; e.currentTarget.setAttribute('aria-expanded', String(!vaerPanel.hidden)); };
   vaerPanel.addEventListener('click', (e) => {
     e.stopPropagation();

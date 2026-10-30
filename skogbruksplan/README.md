@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.46.0** (2026-10-30) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.47.0** (2026-10-30) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -241,6 +241,11 @@ nettleseren og som en liten flate nede til venstre i synsfeltet i VR-brillene. K
 - nordpil og målestokk
 
 Under kartet står retningen i tekst, for eksempel «Ser Ø 90° · går NØ 45°».
+
+**Bratthet i VR.** Helningen regnes fra terrengets høydenett, med ca. 12 m mellom punktene. Bakken farges etter klassene
+over (gult, oransje, rødt og lilla), og minikartet viser de samme fargene. Infoboksen viser helningen der du står, for
+eksempel «Helning 61 % (31°) – spesialdrift · bratt nok for snøskred». I VR-brillene kommer en tavle når du går inn i et
+område som ikke kan drives med vanlige maskiner. Knappen **⛰ Bratthet** slår fargene av og på, med tegnforklaring.
 
 **Styring av kartet:**
 - **+ / −:** zoom (40, 80, 160 eller 320 m radius).
@@ -987,6 +992,34 @@ Railway bygger med Railpack (Node ≥ 20) og starter `node server.js` på porten
 AI-nøkkelen legges inn av hver bruker i appen og lagres bare i nettleseren.
 
 Lokalt: `npm start` (port 8080) eller `PORT=3000 npm start`. Tester: `npm test`.
+
+## Bratthet og drivbarhet (kartlaget «⛰ Bratthet – drivbarhet» og den virtuelle skogen)
+
+Viser hvor terrenget er for bratt til at skogen kan drives med vanlige skogsmaskiner. Helningen regnes fra Kartverkets
+høydedata (DTM1, punkt-API) i et rutenett over eiendommen. Rutenettet har høyst ca. 3 000 punkter, med 10 m mellom
+punktene på små eiendommer og grovere på store. Høydene hentes med 50 punkter og 8 samtidige kall om gangen.
+
+| Helning | Klasse | Driftsmetode |
+|---|---|---|
+| under 33 % (18°) | vanlig drift | hjulgående hogstmaskin og lassbærer |
+| 33–50 % | bratt (gult) | krevende og dyrere for vanlige maskiner |
+| 50–75 % | spesialdrift (oransje) | **ikke drivbart med vanlige maskiner**: vinsjstøttet maskin, gravedrift med midlertidige driftsveier (opptil ca. 75 % / 37°) eller taubane |
+| 75–85 % | vinsj eller taubane (rødt) | bare vinsjstøttet maskin (opptil ca. 80–85 % / 38–40°) eller taubane |
+| over 85 % | bare taubane (lilla) | i praksis ikke drivverdig skog |
+
+Grensene kommer fra NIBIO-rapporten [Skogsmaskiner i stroppen (Belbo og Hoffmann 2024)](https://verdiskapingsfondet.no/wp-content/uploads/2024/06/Skogsmaskiner_i_stroppen_prosjektrapport.pdf):
+
+* Landsskogtakseringen regner terreng under 34 % som tilgjengelig for hjulmaskiner. Over 33 % blir drift med vanlige
+  skogsmaskiner «nokså utfordrende».
+* Hogstmaskin uten vinsj har en øvre grense rundt 38° (78 %), lassbærer rundt 35° (70 %).
+* Over 30° (58 %) kan snøskred løse ut. Det markeres med eget varsel.
+
+**I hovedkartet** slås kartlaget på i lagvelgeren. Første gang regnes brattheten ut, og resultatet lagres i planen.
+
+* Bratte områder vises som fargede ruter, med tegnforklaring.
+* Hvert bestand får andel areal per klasse, snitthelning og makshelning.
+* Bestandsdetaljen viser en fargestolpe og en vurdering, for eksempel «65 % av arealet er brattere enn 50 % – ikke drivbart
+  med vanlige skogsmaskiner».
 
 ## Driftsforhold og kjøreskader (Kommune → Sluttavvirkning)
 
