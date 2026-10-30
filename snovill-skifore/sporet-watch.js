@@ -8,8 +8,8 @@
 
   const DB_NAME = "snovill-watch";
   const STORE = "kv";
-  // Bare preparering nyere enn dette regnes som «nettopp kjørt»
-  const FRESH_MS = 6 * 3600000;
+  // Bare preparering nyere enn dette regnes som «nettopp kjørt» (samme vindu som status 30)
+  const FRESH_MS = 18 * 3600000;
 
   function openDb() {
     return new Promise((resolve, reject) => {
@@ -87,13 +87,15 @@
 
   /* ---------------- alle Sporet-områder (destinasjoner) i Norge ---------------- *
    * Kartlaget «Destinasjoner_prep» gir status for hvert område. Kode 20 = kjørt
-   * siste 6 timer, og et område går over til 20 straks første strekning er kjørt.
-   * Overgangen til 20 brukes derfor som «løypemaskinen har startet».
+   * siste 6 timer, 30 = 6–18 timer siden. Overgangen fra eldre status til 20 eller
+   * 30 brukes som «løypemaskinen har startet». 30 er med fordi GitHub kan la det gå
+   * mer enn 6 timer mellom kjøringene, og da ville en kort tur i 20 blitt borte.
    */
   const DEST_URL =
     "https://ags.sporet.no/arcgis/rest/services/Sporet_simple/MapServer/4/query" +
     "?where=is_active%3D1&outFields=id,name,prepsymbol,municipalname&outSR=4326&f=json";
   const ACTIVE = 20;
+  const RECENT = new Set([20, 30]);
   const PREP_LABELS = {
     20: "Kjøres nå / siste 6 t",
     30: "Kjørt for over 6 t siden",
@@ -162,13 +164,13 @@
    */
   async function detectStarts(prevActive, areas) {
     const dests = await fetchDestinations();
-    const activeNow = dests.filter((d) => d.prep === ACTIVE).map((d) => d.id);
+    const activeNow = dests.filter((d) => RECENT.has(d.prep)).map((d) => d.id);
     const prev = prevActive ? new Set(prevActive) : null;
     const notified = new Set();
     const perArea = [];
     for (const area of areas) {
       const near = nearby(dests, area.lat, area.lon, area.radiusKm);
-      const started = prev ? near.filter((d) => d.prep === ACTIVE && !prev.has(d.id) && !notified.has(d.id)) : [];
+      const started = prev ? near.filter((d) => RECENT.has(d.prep) && !prev.has(d.id) && !notified.has(d.id)) : [];
       started.forEach((d) => notified.add(d.id));
       for (const d of started.slice(0, 5)) d.routes = await firstRoutes(d);
       perArea.push({ area, near, started });
@@ -189,6 +191,13 @@
       const routes = d.routes?.length
         ? ` Første spor: ${d.routes.map((r) => r.name).join(", ")} (${ago(d.routes[0].prepped)}).`
         : "";
+      // Oppdaget først etter 6 timer: maskinen har vært der, men kjører trolig ikke nå
+      if (d.prep === 30) {
+        return {
+          title: `🚜 Løypemaskinen har vært på ${d.name}!`,
+          body: `Det er kjørt spor${where} for 6–18 timer siden.${routes} Gjør klar skiene, Snøvill! ⛷️`,
+        };
+      }
       return {
         title: `🚜 Løypemaskinen har startet på ${d.name}!`,
         body: `Det kjøres spor${where} nå.${routes} Gjør klar skiene, Snøvill! ⛷️`,
@@ -213,6 +222,7 @@
     startMessage,
     PREP_LABELS,
     ACTIVE,
+    RECENT,
     FRESH_MS,
   };
 })(typeof self !== "undefined" ? self : globalThis);

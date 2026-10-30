@@ -94,6 +94,7 @@ const state = {
   results: {},
   sources: {},
   days: [],
+  dests: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -391,6 +392,18 @@ async function fetchSporet(loc, force) {
       .map((rt) => ({ id: rt.id, name: rt.name, prepped: rt.preppedTime || null }))
       .sort((a, b) => (b.prepped ? Date.parse(b.prepped) : 0) - (a.prepped ? Date.parse(a.prepped) : 0));
   }, { force });
+}
+
+/* --------------- Sporet: områdestatus (Destinasjoner_prep) ---------------- *
+ * Løypene i et område kan mangle prepareringstid i løype-API-et selv om kartet
+ * viser at de er kjørt. Områdestatusen fanger dem, også litt utenfor stedet.
+ */
+const DEST_RADIUS_KM = 10;
+const DEST_LABELS = { 20: "kjøres nå / siste 6 t", 30: "kjørt for 6–18 t siden" };
+
+function recentDests(loc) {
+  if (!state.dests) return [];
+  return SporetWatch.nearby(state.dests, loc.lat, loc.lon, DEST_RADIUS_KM).filter((d) => SporetWatch.RECENT.has(d.prep));
 }
 
 /* ------------------------ data: webkamera -------------------------- *
@@ -857,13 +870,20 @@ function renderResorts() {
     const quip = seededPick(QUIPS[lvl.cls], loc.id + best.key + lvl.cls);
 
     const sporet = r.sporet;
+    const dests = recentDests(loc);
+    const destLine = (d) => `${d.prep === SporetWatch.ACTIVE ? "🟢" : "🚜"} ${escapeHtml(d.name)}: ${DEST_LABELS[d.prep]} · ${fmt1(d.km)} km`;
+    const routeFresh = sporet?.[0]?.prepped && Date.now() - Date.parse(sporet[0].prepped) < SporetWatch.FRESH_MS;
     let sporetHtml = `<span class="muted">Ingen data</span>`;
-    if (sporet?.length && !sporet[0].prepped) {
+    if (dests.length && !routeFresh) {
+      // Løypene her har ingen fersk tid, men et område i nærheten er kjørt
+      const [d, ...rest] = dests;
+      sporetHtml = `<strong>${d.prep === SporetWatch.ACTIVE ? "Siste 6 t" : "6–18 t siden"}</strong><br><small>${destLine(d)}${rest.map((x) => `<br>${destLine(x)}`).join("")}</small>`;
+    } else if (sporet?.length && !sporet[0].prepped) {
       sporetHtml = `<strong>Ikke kjørt ennå</strong><br><small>${sporet.length} løyper venter på sesongens første tur</small>`;
     } else if (sporet?.length) {
       const newest = new Date(sporet[0].prepped);
       const last24 = sporet.filter((s) => s.prepped && Date.now() - Date.parse(s.prepped) < 86400000).length;
-      sporetHtml = `<strong>${timeAgo(newest)}</strong><br><small>${escapeHtml(sporet[0].name)}${last24 ? ` · ${last24} løyper kjørt siste døgn` : ""}</small>`;
+      sporetHtml = `<strong>${timeAgo(newest)}</strong><br><small>${escapeHtml(sporet[0].name)}${last24 ? ` · ${last24} løyper kjørt siste døgn` : ""}${dests.map((x) => `<br>${destLine(x)}`).join("")}</small>`;
     } else if (sporet && !sporet.length) {
       sporetHtml = `<span class="muted">Ingen løyper funnet</span>`;
     }
@@ -1616,6 +1636,9 @@ async function loadAll(force = false) {
   const counts = { yr: 0, storm: 0, sporet: 0, netatmo: 0 };
   const errors = { yr: [], storm: [], sporet: [], netatmo: [] };
 
+  const destsPromise = SporetWatch.fetchDestinations()
+    .then((d) => (state.dests = d))
+    .catch((err) => console.warn("Sporet-områder ble ikke hentet:", err));
   state.nve = await fetchNve();
 
   state.camBust = Math.floor(Date.now() / 60000);
@@ -1676,7 +1699,7 @@ async function loadAll(force = false) {
     setSource("netatmo", counts.netatmo ? "ok" : "error", errors.netatmo.join("\n") || "OK");
   }
 
-  await webcamsPromise;
+  await Promise.all([webcamsPromise, destsPromise]);
   renderResorts();
   renderHero();
   renderChart();

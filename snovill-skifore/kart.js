@@ -104,7 +104,7 @@ async function sporetTrails(loc) {
   const b = boxAround(loc, MAP_RADIUS_KM);
   const [data, dests] = await Promise.all([
     fetchJson(`${SPORET_TRAILS}&geometry=${b.w},${b.s},${b.e},${b.n}`),
-    kart.dests || SporetWatch.fetchDestinations().catch(() => []),
+    kart.dests || state.dests || SporetWatch.fetchDestinations().catch(() => []),
   ]);
   if (data.error) throw new Error(data.error.message || "Sporet-kartet svarte med feil");
   kart.dests = dests;
