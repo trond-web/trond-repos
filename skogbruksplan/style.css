@@ -866,6 +866,7 @@ progress { accent-color: var(--accent); height: 8px; }
 /* Bratthet i bestandsdetaljen (bratthet.js) */
 .bratt-linje { display: grid; gap: 4px; margin: 8px 0 10px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); border-left: 4px solid #8a8a85; font-size: 13px; }
 .bratt-linje.bratt-lett { border-left-color: #0ca30c; } .bratt-linje.bratt-bratt { border-left-color: #f2c94c; } .bratt-linje.bratt-svart { border-left-color: #ef8a2c; } .bratt-linje.bratt-taubane { border-left-color: #7a1fa2; }
+.bratt-linje.fukt-torr { border-left-color: #87cefa; } .bratt-linje.fukt-fuktig { border-left-color: #00bfff; } .bratt-linje.fukt-vat { border-left-color: #1e90ff; } .bratt-linje.fukt-svart { border-left-color: #0000ff; }
 .bratt-stolpe { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: #cfe3c7; }
 /* Hogstmaskindata mot SR16 (Data) */
 .hs-tall div.hs-ok { border-color: #0ca30c; } .hs-tall div.hs-hoy { border-color: #d03b3b; } .hs-tall div.hs-lav { border-color: #2a78d6; } .hs-tall div.hs-uttak { border-color: #8a5a2b; }

@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.47.0** (2026-10-30) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.48.0** (2026-10-30) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -1020,6 +1020,43 @@ Grensene kommer fra NIBIO-rapporten [Skogsmaskiner i stroppen (Belbo og Hoffmann
 * Hvert bestand får andel areal per klasse, snitthelning og makshelning.
 * Bestandsdetaljen viser en fargestolpe og en vurdering, for eksempel «65 % av arealet er brattere enn 50 % – ikke drivbart
   med vanlige skogsmaskiner».
+
+## Markfuktighet – våt mark (kartlaget «💧 Markfuktighet» og den virtuelle skogen)
+
+NIBIOs markfuktighetskart (DTW, «depth-to-water») er laget fra laserdata og viser hvor dypt det er til grunnvannet.
+Der grunnvannet står høyt, er marka bløt og tåler lite kjøring. Da blir det sporskader, erosjon og avrenning.
+Kartet er statisk: det viser hvor marka *vanligvis* er våt, ikke hvor vått det er i dag. Nedbør, tele og snø finnes i
+driftsforhold.
+
+| Dybde til grunnvann | Klasse | Drift |
+|---|---|---|
+| åpent vann | Vann | ikke kjør, bruk bru eller klopp |
+| 0–0,25 m | Svært vått | kjør bare på tele eller snø |
+| 0,25–0,5 m | Vått | kjør i tørre perioder eller vinter, og armer sporene med greiner |
+| 0,5–0,75 m | Fuktig | vanligvis kjørbart, men unngå etter mye nedbør |
+| 0,75–1 m | Lite fuktig | god bæreevne |
+| over 1 m | Tørt | ikke farget |
+
+**Hovedkartet:**
+
+* Kartlaget ligger over bestandsfargene. Bekkedrag og sig vises tydelig.
+* Når laget slås på første gang, regnes andelen per klasse for hvert bestand fra kartruter på 2 × 2 km (4 m piksler).
+  Hver rute hentes inntil tre ganger.
+* Bestandsdetaljen viser en fargestolpe og en vurdering, for eksempel «18 % av arealet har grunnvann nærmere enn 25 cm –
+  svært bløtt. Drives på tele eller snø».
+
+**VR:**
+
+* Kartet hentes for området (2 m piksler, 5 m-ruter, der den våteste pikselen i hver rute teller).
+* Bakken farges blå der marka er våt, og minikartet viser det samme.
+* Infoboksen viser dybden til grunnvann der du står.
+* I VR-brillene kommer en tavle i svært våte partier.
+* Knappen **💧 Fukt** slår fargene av og på, med tegnforklaring. Er bratthet også slått på, vises brattheten øverst.
+
+Kilder:
+
+* [NIBIO – markfuktighetskart (metadata, Geonorge)](https://geonorge.no/geonetworktest/srv/api/records/15b78acd-b9dd-4f9b-9d95-7aec91e63f0e)
+* [Skogkurs – Sporløs kjøring](https://www.landbruksdirektoratet.no/nb/filarkiv/rapporter/prosjektresultater/skogbruk/7.1%20Sluttrapport%20Sporl%C3%B8s%20kj%C3%B8ring,%20SKOGKURS%20(Trygve%20%C3%98verg%C3%A5rd).pdf)
 
 ## Driftsforhold og kjøreskader (Kommune → Sluttavvirkning)
 
