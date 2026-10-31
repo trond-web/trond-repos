@@ -43,6 +43,8 @@ import * as MK from '../js/skog3d-kart.js';
 import * as BR from '../js/bratthet.js';
 import * as MF from '../js/markfukt.js';
 import * as AP from '../js/arealplan.js';
+import * as SKY from '../js/sky.js';
+import { lagSkyLager, skyApi } from '../sky-lager.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
@@ -2796,6 +2798,114 @@ test('Arealplan: henting med feil i enkelt-lag og punktoppslag', async () => {
   ]);
   assert.equal(p.formal.length, 1); assert.equal(p.formal[0].felt, 'L'); assert.equal(p.hensyn[0].navn, 'Høyspenningsanlegg');
   assert.equal(p.planer[0].type, 'Detaljregulering'); assert.equal(p.planer[0].lenke, null, 'bare http(s)-lenker');
+});
+
+test('Skylagring på serveren: versjoner, konflikt, historikk, papirkurv, kvote og filer på disk', async () => {
+  const { mkdtempSync, existsSync } = await import('node:fs'); const { tmpdir } = await import('node:os'); const path = await import('node:path');
+  let t = 1000; const naa = () => t;
+  for (const mappe of [null, mkdtempSync(path.join(tmpdir(), 'skogiq-sky-'))]) {
+    const L = lagSkyLager({ mappe, naa, kvote: 2000, historikk: 3 });
+    assert.equal(L.permanent, !!mappe);
+    const a = L.lagre('kari@x.no', 'plan1', { plan: 'QUJD', navn: 'Skogen', meta: { areal: 12.345, antall: 3, kommune: 'Ås' } });
+    assert.equal(a.versjon, 1); assert.deepEqual(a.meta, { areal: 12.3, antall: 3, kommune: 'Ås', gnrbnr: '' });
+    assert.equal(L.lagre('kari@x.no', 'plan1', { plan: 'QUJE' }).status, 409, 'ny plan med samme id uten grunnversjon');
+    const k = L.lagre('kari@x.no', 'plan1', { plan: 'QUJE', grunnVersjon: 0 }); assert.equal(k.status, 409); assert.equal(k.gjeldende.versjon, 1);
+    t = 2000; assert.equal(L.lagre('kari@x.no', 'plan1', { plan: 'QUJF', grunnVersjon: 1 }).versjon, 2);
+    for (let v = 2; v < 6; v++) { t += 1000; L.lagre('kari@x.no', 'plan1', { plan: `QUJ${v}`, grunnVersjon: v }); }
+    assert.deepEqual(L.versjoner('kari@x.no', 'plan1').map((x) => x.versjon), [6, 5, 4, 3], 'gjeldende + 3 i historikken');
+    assert.equal(L.hent('kari@x.no', 'plan1', { versjon: 4 }).plan, 'QUJ3'); assert.equal(L.hent('kari@x.no', 'plan1').plan, 'QUJ5');
+    assert.equal(L.hent('kari@x.no', 'plan1', { versjon: 1 }), null, 'for gammel versjon');
+    // Brukerne er skilt fra hverandre
+    assert.equal(L.hent('ola@x.no', 'plan1'), null); assert.deepEqual(L.liste('ola@x.no'), []);
+    // Ugyldig
+    assert.equal(L.lagre('kari@x.no', '../x', { plan: 'QUJD' }).status, 400);
+    assert.equal(L.lagre('kari@x.no', 'plan2', { plan: '<script>' }).status, 400);
+    assert.equal(L.lagre('kari@x.no', 'plan2', { plan: 'A'.repeat(2500) }).status, 507, 'kvote');
+    // Papirkurv
+    assert.ok(L.slett('kari@x.no', 'plan1')); assert.equal(L.liste('kari@x.no').length, 0); assert.equal(L.liste('kari@x.no', { slettede: true }).length, 1);
+    assert.equal(L.info('kari@x.no', 'plan1').slettet, t);
+    assert.equal(L.lagre('kari@x.no', 'plan1', { plan: 'QUJD', grunnVersjon: 6 }).status, 410, 'en annen enhet kan ikke vekke en slettet plan');
+    const g = L.gjenopprett('kari@x.no', 'plan1'); assert.equal(g.versjon, 7); assert.equal(L.liste('kari@x.no').length, 1);
+    L.slett('kari@x.no', 'plan1'); t += 31 * 864e5; assert.equal(L.liste('kari@x.no', { slettede: true }).length, 0, 'tømt etter 30 dager');
+    assert.equal(L.bruk('kari@x.no').antall, 0);
+    L.lagre('kari@x.no', 'plan3', { plan: 'QUJD' }); L.slettBruker('kari@x.no'); assert.deepEqual(L.liste('kari@x.no'), []);
+    if (mappe) assert.ok(existsSync(mappe));
+  }
+});
+
+test('Skylagring: synkronisering mellom to enheter – opplasting, nye planer, fletting, sletting og profil (HTTP)', async () => {
+  const http = await import('node:http');
+  const L = lagSkyLager({});
+  const profiler = {};
+  const srv = http.createServer((req, res) => {
+    const sti = new URL(req.url, 'http://x').pathname;
+    if (!skyApi(L, { bruker: (r) => (r.headers.authorization === 'Bearer kari' ? 'kari@x.no' : null), profil: { hent: (u) => profiler[u] || { navn: u }, lagre: (u, d) => ({ ok: true, profil: (profiler[u] = { ...d }) }) } }, req, res, sti)) { res.writeHead(404); res.end(); }
+  });
+  await new Promise((ok) => srv.listen(0, ok)); const api = `http://127.0.0.1:${srv.address().port}`;
+  try {
+    const klient = (navn, token = 'kari') => SKY.lagSkyKlient({ api, token: () => token, enhet: navn });
+    const enhet = () => { const m = new Map(); return { m, liste: async () => [...m.values()].map((p) => ({ id: p.planId, navn: p.eiendom?.navn, eier: p.eier || null })), hent: async (id) => (m.has(id) ? structuredClone(m.get(id)) : null), lagre: async (p) => { m.set(p.planId, structuredClone(p)); }, slett: async (id) => { m.delete(id); } }; };
+    const plan = (id, navn) => ({ planId: id, versjon: 1, eiendom: { navn }, bestand: [{ id: 'b1', nr: '1', areal: 10, tiltak: [] }], registreringer: [], endret: '2026-10-01T10:00:00Z' });
+    const pc = enhet(); const mob = enhet(); const kPc = klient('PC'); const kMob = klient('mobil');
+    await assert.rejects(klient('x', 'feil').liste(), (e) => e.status === 401);
+    // 1. PC har to planer lokalt (før skylagring): begge lastes opp og får eier.
+    await pc.lagre(plan('planA', 'Nordskogen')); await pc.lagre(plan('planB', 'Sørskogen'));
+    let r = await SKY.synkAlle(kPc, pc, { eier: 'kari@x.no' });
+    assert.equal(r.sendt, 2); assert.equal(r.bruk.antall, 2);
+    assert.equal(pc.m.get('planA').eier, 'kari@x.no'); assert.equal(pc.m.get('planA').sky.versjon, 1);
+    assert.equal((await SKY.synkAlle(kPc, pc, { eier: 'kari@x.no' })).lik, 2, 'ingenting nytt');
+    // 2. Ny mobil: planene hentes ned.
+    r = await SKY.synkAlle(kMob, mob, { eier: 'kari@x.no' });
+    assert.equal(r.nye, 2); assert.equal(mob.m.get('planB').eiendom.navn, 'Sørskogen'); assert.ok(!SKY.endretLokalt(mob.m.get('planB')));
+    // 3. Begge endrer samme plan uten nett: mobilen legger til en registrering, PC-en et tiltak.
+    const m = mob.m.get('planA'); m.registreringer.push({ id: 'r1', tekst: 'Barkbille', dato: '2026-10-02' }); m.endret = '2026-10-02T10:00:00Z'; await mob.lagre(m);
+    const p = pc.m.get('planA'); p.bestand[0].tiltak.push({ id: 't1', type: 'tynning', aar: 2027 }); p.endret = '2026-10-03T10:00:00Z'; await pc.lagre(p);
+    assert.equal((await SKY.synkAlle(kMob, mob, { eier: 'kari@x.no' })).sendt, 1);
+    r = await SKY.synkAlle(kPc, pc, { eier: 'kari@x.no' }); assert.equal(r.flettet, 1);
+    assert.deepEqual(pc.m.get('planA').registreringer.map((x) => x.id), ['r1']); assert.deepEqual(pc.m.get('planA').bestand[0].tiltak.map((x) => x.id), ['t1']);
+    r = await SKY.synkAlle(kMob, mob, { eier: 'kari@x.no' }); assert.equal(r.hentet, 1);
+    assert.deepEqual(mob.m.get('planA').bestand[0].tiltak.map((x) => x.id), ['t1'], 'mobilen får tiltaket fra PC-en');
+    // 4. Den åpne planen håndteres av appen (paaAktiv).
+    const mp = mob.m.get('planB'); mp.registreringer.push({ id: 'r2' }); mp.endret = '2026-10-04T00:00:00Z'; await mob.lagre(mp);
+    await SKY.synkAlle(kMob, mob, { eier: 'kari@x.no' });
+    const sett = []; await SKY.synkAlle(kPc, pc, { eier: 'kari@x.no', aktivId: 'planB', paaAktiv: (x) => sett.push(x.status) });
+    assert.deepEqual(sett, ['hentet']); assert.equal(pc.m.get('planB').registreringer.length, 0, 'appen bestemmer for den åpne planen');
+    // 5. Slettet på PC-en → fjernes på mobilen; ligger i papirkurven.
+    await kPc.slett('planB'); pc.m.delete('planB');
+    r = await SKY.synkAlle(kMob, mob, { eier: 'kari@x.no' }); assert.equal(r.slettet, 1); assert.ok(!mob.m.has('planB'));
+    assert.deepEqual((await kPc.liste({ slettede: true })).planer.map((x) => x.id), ['planB']);
+    // 6. Gjenopprett og tidligere versjoner
+    await kPc.gjenopprett('planB'); assert.equal((await SKY.synkAlle(kMob, mob, { eier: 'kari@x.no' })).nye, 1);
+    const v = (await kPc.versjoner('planA')).versjoner; assert.ok(v.length >= 3); assert.equal(v[0].enhet, 'PC', 'siste versjon er den flettede fra PC-en'); assert.equal(v[1].enhet, 'mobil');
+    const gml = await kPc.last('planA', { versjon: 1 }); assert.equal(gml.plan.registreringer.length, 0);
+    // 7. Planer til en annen bruker på samme enhet røres ikke.
+    await pc.lagre({ ...plan('planX', 'Olas skog'), eier: 'ola@x.no' });
+    r = await SKY.synkAlle(kPc, pc, { eier: 'kari@x.no' }); assert.equal(L.info('kari@x.no', 'planX'), null);
+    // 8. Profil
+    assert.deepEqual((await kPc.lagreProfil({ navn: 'Kari', rolle: 'skogeier' })).profil, { navn: 'Kari', rolle: 'skogeier' });
+    const pr = await kPc.profil(); assert.equal(pr.profil.rolle, 'skogeier'); assert.equal(pr.sky.antall, 2);
+    assert.match(SKY.synkTekst({ nye: 2, sendt: 1 }), /2 planer hentet fra skyen, 1 lagret i skyen/);
+  } finally { srv.close(); }
+});
+
+test('Profil på serveren: felt, validering og navn', async () => {
+  const { lagInnlogging } = await import('../auth.js');
+  const inn = lagInnlogging({ registrering: true });
+  const r = inn.registrer('1.1.1.1', { bruker: 'per@gard.no', passord: 'langtpassord1', navn: 'Per' }); assert.ok(r.ok);
+  assert.deepEqual(inn.hentProfil('per@gard.no'), { navn: 'Per', epost: 'per@gard.no' });
+  assert.equal(inn.lagreProfil('per@gard.no', { navn: '' }).status, 400);
+  assert.equal(inn.lagreProfil('per@gard.no', { navn: 'Per', rolle: 'konge' }).status, 400);
+  assert.equal(inn.lagreProfil('per@gard.no', { navn: 'Per', postnr: '12' }).status, 400);
+  assert.equal(inn.lagreProfil('per@gard.no', { navn: 'Per', orgnr: '12345' }).status, 400);
+  const ok = inn.lagreProfil('per@gard.no', { navn: 'Per Hansen', rolle: 'bonde', telefon: '+47 900 00 000', orgnr: '123 456 789', postnr: '2050', kommune: 'Ullensaker', om: 'x'.repeat(900), ukjent: 'bort' });
+  assert.ok(ok.ok); assert.equal(ok.profil.navn, 'Per Hansen'); assert.equal(ok.profil.om.length, 600); assert.equal(ok.profil.ukjent, undefined);
+  assert.equal(inn.meg('per@gard.no').navn, 'Per Hansen'); assert.equal(inn.meg('per@gard.no').profil.kommune, 'Ullensaker');
+  const sett = []; const inn2 = lagInnlogging({ registrering: true, bruker: 'admin', passord: 'adminpassord9', ekstraBruker: (u) => ({ sky: { antall: u.length } }), vedSlett: (u) => sett.push(u) });
+  inn2.registrer('1.1.1.2', { bruker: 'ola@x.no', passord: 'langtpassord2' });
+  assert.equal(inn2.oversikt().brukere.find((b) => b.bruker === 'ola@x.no').sky.antall, 8);
+  inn2.endreBruker('admin', 'ola@x.no', 'slett'); assert.deepEqual(sett, ['ola@x.no'], 'skydata slettes med brukeren');
+  // AI-konteksten tar med profilen
+  assert.match(lagKontekst({ ...lagDemo(), innstillinger: STANDARD_INNSTILLINGER }, { profil: { rolle: 'bonde', om: 'Melkeproduksjon og 400 daa skog' } }), /Brukeren: rolle bonde.*Melkeproduksjon/);
 });
 
 await Promise.all(venter);

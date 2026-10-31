@@ -1,5 +1,8 @@
-// Lokal lagring i IndexedDB (data forlater aldri enheten med mindre brukeren eksporterer).
+// Lokal lagring i IndexedDB. Planene til innloggede brukere lagres i tillegg i skyen (sky.js); den lokale kopien
+// gjør at appen virker uten nett.
 // «hoved» er planen som er åpen nå. Hver plan lagres også under «plan:<id>», og «planliste» holder oversikten.
+import { planHash } from './plan-synk.js';
+
 const DB = 'skogbruksplan';
 const STORE = 'tilstand';
 
@@ -60,6 +63,9 @@ export async function lagrePlan(plan) {
     endret: new Date().toISOString(),
     laget: plan.metadata?.laget || null,
     synk: !!plan.synk?.id,
+    eier: plan.eier || null,
+    // Skylagring (sky.js): «lagret» = siste versjon er i skyen, «endret» = har endringer som ikke er sendt ennå.
+    sky: plan.sky ? (planHash(plan) === plan.sky.hash ? 'lagret' : 'endret') : null,
   });
   await skriv('planliste', liste);
 }

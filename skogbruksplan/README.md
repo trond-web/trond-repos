@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.50.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.52.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -957,6 +957,61 @@ Skifteplanen henger sammen med traktoren: data går ut til skjermen, og utført 
 4. I appen: Skifteplan › Maskin › «Koble til John Deere». Har appen ikke tilgang til organisasjonen ennå, sendes du til Deeres side for å gi tilgang og deretter tilbake.
 
 Klienthemmeligheten og tokenene ligger bare på serveren. Nettleseren har en tilfeldig nøkkel som peker til tilkoblingen. Token fornyes automatisk med refresh token. Tilbake-adressen må være appens egen, så serveren kan ikke brukes til å videresende brukere til andre sider.
+
+## Min profil og skylagring – planene lagres på serveren
+
+Hver bruker har en **profil**, og **planene lagres på SkogIQ-serveren**. Brukeren er da ikke avhengig av data på én
+enhet. Logg inn på en ny PC, et nettbrett eller en mobil, så kommer planene automatisk.
+
+### Min profil
+
+Profilen åpnes med avatar-knappen nederst i menyen eller lenken «👤 Min profil». Den lagres med brukeren på serveren
+(`/api/konto/profil`, `auth.js`).
+
+- **Felt:** navn, telefon, rolle (skogeier, bonde, rådgiver, entreprenør), gård/foretak, organisasjonsnummer, adresse,
+  postnummer/sted, kommune, skogeierandelslag og «om gården og skogen».
+- **Kontroll av feltene:** telefon, 9-sifret organisasjonsnummer og 4-sifret postnummer sjekkes. Feltene har
+  makslengder.
+- **Bruk av profilen:**
+  - Kommunen foreslås når brukeren lager en ny plan.
+  - «Spør AI» får rollen og teksten om gården.
+  - Administrator ser rolle, foretak, kommune og telefon i brukerlisten.
+- **Konto:** e-post og passord endres i samme dialog. Det krever nåværende passord.
+
+### Skylagring (`sky-lager.js` på serveren, `js/sky.js` i appen)
+
+- **Lagring:**
+  - Én mappe per bruker (sha256 av brukernavnet) under `SKY_MAPPE`. Standard er mappen `sky` ved siden av
+    `BRUKER_FIL`, altså `/data/sky` på Railway-volumet.
+  - Én JSON-fil per plan (gzip + base64), skrevet via midlertidig fil.
+  - De **10 siste versjonene** av hver plan tas vare på.
+  - Slettede planer ligger i **papirkurven i 30 dager**.
+  - Hver bruker har 300 MB og maks 1000 planer.
+- **Synkronisering:** enheten har fortsatt en lokal kopi (IndexedDB), så appen virker uten nett.
+  - Planen som er åpen, sendes 5 sekunder etter hver endring og sjekkes hvert minutt.
+  - Alle planene synkroniseres ved innlogging, når vinduet får fokus, når nettet kommer tilbake og hvert femte minutt.
+  - **Første gang** lastes alle planene på enheten opp. Planer som bare finnes i skyen, lastes ned.
+  - Er en plan endret på to enheter (409), slås endringene sammen med samme fletting som PC↔mobil. Registreringer,
+    tiltak, sporlogger og oppdrag fra begge sider beholdes.
+  - En plan som er slettet på én enhet, fjernes på de andre. Den kan ikke vekkes til live av en enhet som ikke har fått
+    med seg slettingen (410). Den kan bare gjenopprettes fra papirkurven.
+- **Planer:**
+  - Statuskortet viser «☁ Planene er lagret i skyen», sist synkronisert, antall planer og plassen som er brukt.
+  - Hver plan er merket «☁ lagret» eller «☁ lagrer …».
+  - Knappene er «⇅ Synkroniser nå», «🗑 Papirkurv» (gjenopprett eller slett for godt) og «🕘 Versjoner» per plan.
+    Gjenopprettes en eldre versjon, lagres den som den nyeste, så ingenting går tapt.
+- **SkogIQ Felt** bruker den samme skylagringen. Med innlogging kommer planene automatisk, uten QR-kode. QR-koden kan
+  fortsatt brukes til å dele en plan med en annen person.
+- **Flere brukere på samme enhet:** planene merkes med eier, og hver bruker ser bare sine egne.
+- **API (krever innlogging):**
+  - `GET /api/sky/planer[?slettede=1]`
+  - `GET|PUT|DELETE /api/sky/planer/:id`
+  - `GET /api/sky/planer/:id/info`
+  - `GET /api/sky/planer/:id/versjoner`
+  - `POST /api/sky/planer/:id/gjenopprett`
+  - `GET|PUT /api/konto/profil`
+- **Administrator:** antall planer og plass i skyen vises per bruker. Sletter administrator en bruker, slettes også
+  brukerens planer i skyen.
 
 ## Innlogging, registrering og admin
 

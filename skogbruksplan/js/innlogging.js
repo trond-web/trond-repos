@@ -54,7 +54,8 @@ let meg = null; let brukFetch = null; let sistAktivitet = 0; let sistSendt = 0;
 // Fyller [data-bruker-info] (f.eks. i Om-boksen): «Innlogget som …», Admin-lenke og «Bytt passord».
 export function visBruker() {
   if (typeof document === 'undefined' || !meg?.bruker) return;
-  for (const el of document.querySelectorAll('[data-bruker-info]')) el.innerHTML = `Innlogget som <b>${String(meg.navn || meg.bruker).replace(/[<>&"]/g, '')}</b>${meg.admin ? ' · <a href="admin.html">Admin</a>' : ''}${meg.registrering ? ' · <a href="#" data-bytt-passord>Min konto</a>' : ''} · `;
+  for (const el of document.querySelectorAll('[data-profil-knapp]')) { el.hidden = !meg.registrering; el.title = `Min profil – ${String(meg.navn || meg.bruker)}`; const s = el.querySelector('span'); if (s) s.textContent = String(meg.navn || meg.bruker || '?').trim().charAt(0).toUpperCase(); }
+  for (const el of document.querySelectorAll('[data-bruker-info]')) el.innerHTML = `Innlogget som <b>${String(meg.navn || meg.bruker).replace(/[<>&"]/g, '')}</b>${meg.admin ? ' · <a href="admin.html">Admin</a>' : ''}${meg.registrering ? ' · <a href="#" data-bytt-passord>👤 Min profil</a>' : ''} · `;
 }
 export const innloggetBruker = () => meg;
 const sendBruk = (type, detalj = '') => { if (!brukFetch || !meg?.bruker) return; brukFetch(`${API}/api/bruk`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(gyldigToken() ? { Authorization: `Bearer ${gyldigToken()}` } : {}) }, credentials: 'same-origin', body: JSON.stringify({ type, detalj }), keepalive: true }).catch(() => {}); };
@@ -68,29 +69,65 @@ function startBruk(f) {
   for (const h of ['pointerdown', 'keydown', 'wheel', 'touchstart']) window.addEventListener(h, merk, { passive: true });
   merk();
   setInterval(() => { const t = Date.now(); if (document.visibilityState === 'visible' && t - sistAktivitet < 120000 && t - sistSendt >= 59000) { sistSendt = t; sendBruk('aktiv'); } }, 15000);
-  document.addEventListener('click', (e) => { if (e.target.closest?.('[data-bytt-passord]')) { e.preventDefault(); byttPassord(); } });
+  document.addEventListener('click', (e) => { if (e.target.closest?.('[data-bytt-passord]')) { e.preventDefault(); minProfil(); } });
 }
-// Min konto: e-post (for «glemt passord») og nytt passord i en liten dialog. Krever nåværende passord.
-function byttPassord() {
-  const d = document.createElement('dialog'); d.style.cssText = 'border:0;border-radius:16px;padding:20px;max-width:340px;width:calc(100% - 32px);font:15px/1.4 system-ui,sans-serif';
-  const felt = 'padding:9px;border-radius:8px;border:1px solid #bbb'; const rens = (v) => String(v || '').replace(/"/g, '');
-  d.innerHTML = `<form method="dialog" style="display:grid;gap:10px"><b style="font-size:17px">Min konto</b><span style="font-size:13px;color:#555">${rens(meg?.navn)} · ${rens(meg?.bruker)}</span>
-    <input type="text" name="u" autocomplete="username" value="${rens(meg?.bruker)}" hidden>
-    <label style="display:grid;gap:4px">E-post <small style="color:#555">(for «Glemt passord»)</small><input type="email" name="e" autocomplete="email" value="${rens(meg?.epost)}" style="${felt}"></label>
-    <label style="display:grid;gap:4px">Nytt passord <small style="color:#555">(la stå tomt for å beholde)</small><input type="password" name="n" autocomplete="new-password" minlength="8" style="${felt}"></label>
-    <label style="display:grid;gap:4px">Nåværende passord <small style="color:#555">(kreves for å lagre)</small><input type="password" name="g" autocomplete="current-password" required style="${felt}"></label>
+// Min profil: navn, kontaktinformasjon, rolle og gård/foretak (lagres på serveren, /api/konto/profil), og kontoen:
+// e-post (for «glemt passord») og nytt passord, som krever nåværende passord. Viser også bruken av skylagringen.
+export const ROLLER = { skogeier: 'Skogeier', bonde: 'Bonde / gårdbruker', radgiver: 'Rådgiver / skogbruksleder', entreprenor: 'Entreprenør', annet: 'Annet' };
+const rens = (v) => String(v ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+const autHode = () => (gyldigToken() ? { Authorization: `Bearer ${gyldigToken()}` } : {});
+export async function minProfil() {
+  const f0 = brukFetch || window.fetch.bind(window);
+  let data = {};
+  try { const r = await f0(`${API}/api/konto/profil`, { headers: autHode(), credentials: 'same-origin', cache: 'no-store' }); data = r.ok ? await r.json() : {}; } catch { /* uten nett */ }
+  const p = data.profil || { navn: meg?.navn, epost: meg?.epost }; const sky = data.sky;
+  const d = document.createElement('dialog'); d.className = 'profil-dialog';
+  d.style.cssText = 'border:0;border-radius:18px;padding:0;max-width:560px;width:calc(100% - 24px);max-height:calc(100% - 24px);font:15px/1.4 system-ui,sans-serif;color:#10241c;background:#fbfcfa';
+  const felt = 'padding:9px;border-radius:8px;border:1px solid #bbb;font:inherit;width:100%;box-sizing:border-box';
+  const inp = (navn, etikett, type = 'text', ekstra = '') => `<label style="display:grid;gap:3px;font-size:13px">${etikett}<input type="${type}" name="${navn}" value="${rens(p[navn])}" style="${felt}" ${ekstra}></label>`;
+  const mbT = (b) => `${(b / 1048576).toLocaleString('nb-NO', { maximumFractionDigits: 1 })} MB`;
+  d.innerHTML = `<form method="dialog" style="display:grid;gap:12px;padding:20px">
+    <div style="display:flex;gap:12px;align-items:center"><span style="width:48px;height:48px;border-radius:50%;background:#1f6b4a;color:#fff;display:grid;place-items:center;font-weight:800;font-size:20px;flex:none">${rens(String(p.navn || meg?.bruker || '?').trim().charAt(0).toUpperCase())}</span><div><b style="font-size:18px">Min profil</b><div style="font-size:13px;color:#555">${rens(meg?.bruker)}${meg?.admin ? ' · administrator' : ''}</div></div></div>
+    <fieldset style="border:0;padding:0;margin:0;display:grid;gap:8px;grid-template-columns:1fr 1fr">
+      <legend style="font-weight:700;margin-bottom:6px">Om deg</legend>
+      <div style="grid-column:1/-1">${inp('navn', 'Navn', 'text', 'required autocomplete="name"')}</div>
+      ${inp('telefon', 'Telefon', 'tel', 'autocomplete="tel"')}
+      <label style="display:grid;gap:3px;font-size:13px">Rolle<select name="rolle" style="${felt}"><option value="">Velg …</option>${Object.entries(ROLLER).map(([k, v]) => `<option value="${k}" ${p.rolle === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+      ${inp('foretak', 'Gård / foretak', 'text', 'autocomplete="organization"')}${inp('orgnr', 'Organisasjonsnummer', 'text', 'inputmode="numeric"')}
+      <div style="grid-column:1/-1">${inp('adresse', 'Adresse', 'text', 'autocomplete="street-address"')}</div>
+      ${inp('postnr', 'Postnummer', 'text', 'inputmode="numeric" maxlength="4" autocomplete="postal-code"')}${inp('poststed', 'Poststed', 'text', 'autocomplete="address-level2"')}
+      ${inp('kommune', 'Kommune (forslag når du lager planer)')}${inp('andelslag', 'Skogeierandelslag')}
+      <label style="display:grid;gap:3px;font-size:13px;grid-column:1/-1">Om gården og skogen <small style="color:#555">(brukes av «Spør AI» og i rapporter)</small><textarea name="om" rows="3" maxlength="600" style="${felt}">${rens(p.om)}</textarea></label>
+    </fieldset>
+    ${sky ? `<div style="padding:10px 12px;border-radius:12px;background:#eef3ef;font-size:13px">☁ <b>Skylagring:</b> ${sky.antall} plan${sky.antall === 1 ? '' : 'er'} · ${mbT(sky.bytes)} av ${mbT(sky.kvote)}${sky.papirkurv ? ` · ${sky.papirkurv} i papirkurven` : ''}. Planene dine er lagret på SkogIQ-serveren og er tilgjengelige på alle enhetene du logger inn på.</div>` : ''}
+    <details style="border-top:1px solid #ddd;padding-top:10px"><summary style="font-weight:700;cursor:pointer">Konto: e-post og passord</summary>
+      <div style="display:grid;gap:8px;margin-top:8px">
+      <input type="text" name="u" autocomplete="username" value="${rens(meg?.bruker)}" hidden>
+      <label style="display:grid;gap:3px;font-size:13px">E-post <small style="color:#555">(for «Glemt passord»)</small><input type="email" name="e" autocomplete="email" value="${rens(meg?.epost ?? p.epost)}" style="${felt}"></label>
+      <label style="display:grid;gap:3px;font-size:13px">Nytt passord <small style="color:#555">(la stå tomt for å beholde)</small><input type="password" name="n" autocomplete="new-password" minlength="8" style="${felt}"></label>
+      <label style="display:grid;gap:3px;font-size:13px">Nåværende passord <small style="color:#555">(kreves bare for å endre e-post eller passord)</small><input type="password" name="g" autocomplete="current-password" style="${felt}"></label></div>
+    </details>
     <div data-f style="color:#b4302f;min-height:18px;font-size:13px"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end"><button value="avbryt" formnovalidate style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff">Avbryt</button><button value="ok" style="padding:9px 14px;border-radius:9px;border:0;background:#1f6b4a;color:#fff;font-weight:700">Lagre</button></div></form>`;
+    <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button value="ut" formnovalidate data-logg-ut style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff">Logg ut</button><span style="display:flex;gap:8px"><button value="avbryt" formnovalidate style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff">Avbryt</button><button value="ok" style="padding:9px 14px;border-radius:9px;border:0;background:#1f6b4a;color:#fff;font-weight:700">Lagre</button></span></div></form>`;
   document.body.appendChild(d); d.showModal();
   d.querySelector('form').addEventListener('submit', async (e) => {
     if (e.submitter?.value !== 'ok') { d.close(); d.remove(); return; }
-    e.preventDefault(); const f = e.target;
-    const r = await brukFetch(`${API}/api/passord`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(gyldigToken() ? { Authorization: `Bearer ${gyldigToken()}` } : {}) }, credentials: 'same-origin', body: JSON.stringify({ gammelt: f.g.value, nytt: f.n.value || undefined, epost: f.e.value.trim() }) }).catch(() => null);
-    const j = r ? await r.json().catch(() => ({})) : { feil: 'Ingen kontakt med serveren' };
-    if (!r?.ok) { d.querySelector('[data-f]').textContent = j.feil || 'Klarte ikke å bytte passord'; return; }
-    if (j.token) ls.set(LS_OKT, j.token); meg = { ...meg, epost: j.epost ?? f.e.value.trim() };
-    if (f.n.value) try { if (window.PasswordCredential) await navigator.credentials.store(new PasswordCredential({ id: meg.bruker, password: f.n.value })); } catch { /* ikke støttet */ }
-    d.close(); d.remove(); alert(f.n.value ? 'Kontoen er lagret, og passordet er byttet.' : 'Kontoen er lagret.');
+    e.preventDefault(); const f = e.target; const vis = (t) => { d.querySelector('[data-f]').textContent = t; };
+    const profil = Object.fromEntries(['navn', 'telefon', 'rolle', 'foretak', 'orgnr', 'adresse', 'postnr', 'poststed', 'kommune', 'andelslag', 'om'].map((k) => [k, f[k].value.trim()]));
+    const post = (sti, metode, kropp) => f0(`${API}${sti}`, { method: metode, headers: { 'Content-Type': 'application/json', ...autHode() }, credentials: 'same-origin', body: JSON.stringify(kropp) }).then(async (r) => ({ ok: r.ok, j: await r.json().catch(() => ({})) }), () => ({ ok: false, j: { feil: 'Ingen kontakt med serveren' } }));
+    const pr = await post('/api/konto/profil', 'PUT', { profil });
+    if (!pr.ok) { vis(pr.j.feil || 'Klarte ikke å lagre profilen'); return; }
+    meg = { ...meg, navn: pr.j.profil?.navn || profil.navn, profil: pr.j.profil };
+    const nyEpost = f.e.value.trim(); const endreKonto = f.n.value || nyEpost !== (meg?.epost || '');
+    if (endreKonto) {
+      if (!f.g.value) { vis('Skriv nåværende passord for å endre e-post eller passord.'); f.querySelector('details').open = true; f.g.focus(); return; }
+      const r = await post('/api/passord', 'POST', { gammelt: f.g.value, nytt: f.n.value || undefined, epost: nyEpost });
+      if (!r.ok) { vis(r.j.feil || 'Klarte ikke å endre kontoen'); return; }
+      if (r.j.token) ls.set(LS_OKT, r.j.token); meg = { ...meg, epost: r.j.epost ?? nyEpost };
+      if (f.n.value) try { if (window.PasswordCredential) await navigator.credentials.store(new PasswordCredential({ id: meg.bruker, password: f.n.value })); } catch { /* ikke støttet */ }
+    }
+    visBruker(); window.dispatchEvent(new CustomEvent('skogiq-profil', { detail: meg }));
+    d.close(); d.remove(); alert(f.n.value ? 'Profilen er lagret, og passordet er byttet.' : 'Profilen er lagret.');
   });
 }
 
