@@ -1066,6 +1066,47 @@ Grensene kommer fra NIBIO-rapporten [Skogsmaskiner i stroppen (Belbo og Hoffmann
 * Bestandsdetaljen viser en fargestolpe og en vurdering, for eksempel «65 % av arealet er brattere enn 50 % – ikke drivbart
   med vanlige skogsmaskiner».
 
+## Kommunale planer og reguleringer – muligheter og begrensninger
+
+Kortet **Kommunale planer** i Oversikt viser hva kommuneplanen, kommunedelplanene og reguleringsplanene sier om
+eiendommen, og hva det betyr for skogeieren (`js/arealplan.js`, kodetabell i `js/arealplan-koder.js`).
+
+- **Kilde:** DiBKs nasjonale arealplankart (`nap.ft.dibk.no`, WMS). Det er en kopi av kommunenes planregistre som
+  oppdateres jevnlig. Tjenesten har CORS, så den hentes rett fra nettleseren.
+- **Henting:** én UTFGrid per tema over eiendommen, med ruter på ca. 10 m (grovere for store eiendommer, maks 2048 px).
+  Hver rute har egenskapene til flaten som ligger der. Dette gir arealformål, hensynssoner og planområder uten å laste ned
+  tunge geometrier. Ni lag (kommuneplan, kommunedelplan og regulering × formål, hensyn og planområde) hentes parallelt
+  på om lag ett sekund. Lag som feiler, hoppes over.
+- **Analyse:**
+  - Rutene innenfor eiendomsgrensen telles. Gjeldende formål er reguleringsplan foran kommunedelplan foran
+    kommuneplan.
+  - Hensynssonene telles fra alle plannivåer.
+  - Resultatet gir areal og andel per formål, hensynssone og plan, både for eiendommen og for hvert bestand.
+  - Det lagres i planen som `S.arealplan`.
+- **Muligheter og begrensninger:** arealformålene er samlet i grupper:
+  - LNFR
+  - LNFR spredt
+  - bolig
+  - fritid
+  - annen bebyggelse
+  - råstoff
+  - samferdsel
+  - grønnstruktur
+  - vern
+  - sjø og vassdrag
+  - forsvar
+  - fare
+
+  Gruppene og hver hensynssone (H110–H910) har tekst om hva de betyr for drift, utbygging og verdier. Eksempler: skred
+  (H310), flom (H320), høyspent (H370), friluftsliv (H530), landskap (H550), naturmiljø (H560), kulturmiljø (H570) og
+  båndlegging (H720/H730). Soner som kan stoppe hogst eller veibygging, eller kreve tillatelse, vises først.
+- **Kartet:**
+  - Kartlagene «🏘 Kommuneplan – arealformål og hensynssoner» og «📐 Reguleringsplaner» ligger over bestandsfargene.
+  - Klikk i kartet gir formål, felt, hensynssoner og lenke til planen i kommunens planinnsyn.
+- **Bestand:** bestandsdetaljen har en linje med planformål og hensynssoner. Ved alvorlige soner vises et råd.
+- Navn og farger på over 370 arealformålskoder (pbl 2008 og eldre pbl 1985) er hentet fra DiBKs tegnforklaring.
+- Planbestemmelsene er juridisk bindende og vises ikke i appen. Kortet lenker derfor til kommunens planinnsyn.
+
 ## Markfuktighet – våt mark (kartlaget «💧 Markfuktighet» og den virtuelle skogen)
 
 NIBIOs markfuktighetskart (DTW, «depth-to-water») er laget fra laserdata og viser hvor dypt det er til grunnvannet.

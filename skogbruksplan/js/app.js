@@ -61,6 +61,7 @@ let kartUtvalg = null; // velg-modus: trykk på bestand i kartet og tegnede flat
 const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
 import { stabletSoyle, linje, fmt } from './charts.js';
 import { lagPlanSynk, merkSlettet, lenkeMedKode, API as SYNK_API } from './plan-synk.js';
+import { KART as PLAN_KART, GRUPPER as PLAN_GRUPPER, hent as hentArealplan, analyser as analyserArealplan, vurdering as planVurdering, bestandTekst as planBestandTekst, punktUrl as planPunktUrl, tolkPunkt as tolkPlanPunkt, formalInfo } from './arealplan.js';
 import { lagSatellittVisning, bestandStripeHtml, SATELLITT_AAR, SISTE_SATELLITTAAR } from './satellitt.js';
 
 const IAAR = new Date().getFullYear();
@@ -119,7 +120,7 @@ function filnavn(ending) {
 
 // ---------------------------------------------------------------- kart
 let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks. veier)
-let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
+let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let kpLag = null; let rpLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
 let etikettLag; let flyfotoAktiv = false; let lagKontroll = null; let andreVisning = null;
@@ -152,6 +153,9 @@ function initKart() {
   bratthetLag = L.featureGroup();
   // Markfuktighet og bratthet over bestandsfargene (egen pane, klikk går gjennom til bestandene)
   kart.createPane('analysePane'); kart.getPane('analysePane').style.zIndex = 430; kart.getPane('analysePane').style.pointerEvents = 'none';
+  // Kommuneplan og reguleringsplaner (DiBK, nasjonalt arealplankart). Klikk i kartet viser formål og hensynssoner.
+  const planWms = (k, navn) => L.tileLayer.wms(PLAN_KART[k].url, { layers: PLAN_KART[k].lag, format: 'image/png', transparent: true, opacity: 0.55, pane: 'analysePane', maxZoom: 20, attribution: `${navn} © kommunene / DiBK` });
+  kpLag = planWms('kp', 'Kommuneplan'); rpLag = planWms('rp', 'Reguleringsplaner');
   fuktLag = L.tileLayer.wms(FUKT_WMS, { layers: FUKT_LAG, format: 'image/png', transparent: true, opacity: 0.75, pane: 'analysePane', attribution: 'Markfuktighet © NIBIO' });
   graa.addTo(kart);
   markslagLag = L.featureGroup().addTo(kart);
@@ -166,7 +170,7 @@ function initKart() {
   document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
 
   kart.on('click', (e) => {
@@ -174,10 +178,11 @@ function initKart() {
     if (deling) { leggTilDelepunkt(e.latlng); return; }
     if (tegning) { leggTilTegnepunkt(e.latlng); return; }
     settValgtPunkt(e.latlng);
+    if (kart.hasLayer(kpLag) || kart.hasLayer(rpLag)) visPlanPunkt(e.latlng);
   });
   kart.on('zoomend', () => { oppdaterEtiketter(); visMisMerker(); });
   kart.on('overlayadd overlayremove', () => { oppdaterEtiketter(); visMisMerker(); tegnLegend(); });
-  kart.on('overlayadd', (e) => { if (e.layer === bratthetLag) visBratthet(); if (e.layer === fuktLag) beregnFukt(); });
+  kart.on('overlayadd', (e) => { if (e.layer === bratthetLag) visBratthet(); if (e.layer === fuktLag) beregnFukt(); if ((e.layer === kpLag || e.layer === rpLag) && !S.arealplan) hentPlaner({ stille: true }); });
   // På flyfoto tegnes bestandene som i skogbruksplankart: gule grenser og hvit tekst.
   kart.on('baselayerchange', (e) => {
     flyfotoAktiv = e.layer === flyfoto || e.layer === satellitt.lag;
@@ -268,6 +273,10 @@ function tegnLegend() {
   }
   const vr = S.veier || {};
   if (fuktLag && kart.hasLayer(fuktLag)) html += `<b style="display:block;margin-top:6px">💧 Markfuktighet (dybde til grunnvann)</b>${FUKT_KLASSER.map((k) => rad(k.farge, k.leg)).join('')}<div class="hint" style="font-size:11px">Over 1 m: tørt (ikke farget). Våt mark gir sporskader.</div>`;
+  if ((kpLag && kart.hasLayer(kpLag)) || (rpLag && kart.hasLayer(rpLag))) {
+    const vis = (S.arealplan?.formal || []).slice(0, 6);
+    html += `<b style="display:block;margin-top:6px">🏘 Arealplaner</b>${vis.length ? vis.map((f) => rad(f.farge, `${f.navn}${f.plan === 'rp' ? ' (reg.)' : ''}`)).join('') : ['lnfr', 'spredt', 'bolig', 'fritid', 'gronn', 'samferdsel'].map((g) => rad(PLAN_GRUPPER[g].farge, PLAN_GRUPPER[g].navn)).join('')}<div class="hint" style="font-size:11px">Skravur = hensynssone. Klikk i kartet for formål og planer.</div>`;
+  }
   if (kart.hasLayer(bratthetLag)) html += `<b style="display:block;margin-top:6px">⛰ Bratthet (helning)</b>${BRATT_KLASSER.slice(1).map((k) => rad(k.farge, k.navn)).join('')}<div class="hint" style="font-size:11px">Over 50 %: ikke drivbart med vanlige skogsmaskiner.</div>`;
   const harBil = (vr.veier || []).some((v) => (VEIKLASSER[v.klasse] || VEIKLASSER[0]).bilvei); const harTrak = (vr.veier || []).some((v) => !(VEIKLASSER[v.klasse] || VEIKLASSER[0]).bilvei);
   if (harBil || harTrak || vr.stier?.length) {
@@ -383,7 +392,7 @@ function tegnBestandKart(zoom = false) {
   for (const b of S.bestand) {
     if (!b.geometri) continue;
     const lag = L.geoJSON(b.geometri, { style: () => stilFor(b) });
-    lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (deling) { leggTilDelepunkt(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } if (valgModus && kartVelg(b)) return; identifiser(e.latlng, b); });
+    lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (deling) { leggTilDelepunkt(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } if (valgModus && kartVelg(b)) return; identifiser(e.latlng, b); if ((kart.hasLayer(kpLag) || kart.hasLayer(rpLag)) && !document.querySelector('.treff-popup')) visPlanPunkt(e.latlng); });
     lag.addTo(bestandLag);
     lagPerBestand.set(b.id, lag);
     const pt = etikettPunkt(b.geometri);
@@ -663,6 +672,7 @@ async function trekkUtMarkslag() {
 function tegnOversikt() {
   tegnInnsikt();
   tegnArealfordeling();
+  tegnArealplan();
   const s = sammendrag(S.bestand, inn());
   const kpi = (verdi, etikett, under = '') => `<div class="kpi"><div class="verdi">${verdi}</div><div class="etikett">${etikett}</div>${under ? `<div class="under">${under}</div>` : ''}</div>`;
   const planlagt = alleTiltak().filter((t) => t.status !== 'utfort');
@@ -787,6 +797,7 @@ function visDetalj() {
       ${(() => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? `<div><b>${fmt(a.meter)} m</b><span>til nærmeste bilvei${a.meter > veiVisning.maks() ? ' – lang terrengtransport' : ''}</span></div>` : ''; })()}
     </div>
     ${b.markfukt ? (() => { const v = fuktVurdering(b.markfukt); return `<div class="bratt-linje fukt-${v.niva}"><div class="bratt-stolpe">${FUKT_KLASSER.map((k) => (b.markfukt.andeler[k.id] ? `<span style="flex:${b.markfukt.andeler[k.id]};background:${k.farge}" title="${esc(k.leg)}: ${Math.round(b.markfukt.andeler[k.id] * 100)} %"></span>` : '')).join('')}${b.markfukt.andeler.torr ? `<span style="flex:${b.markfukt.andeler.torr};background:#e6e1c8" title="Tørt: ${Math.round(b.markfukt.andeler.torr * 100)} %"></span>` : ''}</div><span>💧 ${esc(v.tekst)}</span></div>`; })() : ''}
+    ${S.arealplan?.bestand?.[b.id] ? (() => { const t = planBestandTekst(S.arealplan.bestand[b.id]); return t?.tekst ? `<div class="bratt-linje plan-${t.alvor}"><div class="bratt-stolpe">${S.arealplan.bestand[b.id].formal.map((f) => `<span style="flex:${f.andel};background:${formalInfo(f.kode).farge}" title="${esc(formalInfo(f.kode).navn)}: ${Math.round(f.andel * 100)} %"></span>`).join('')}</div><span>🏘 ${esc(t.tekst)}${t.raad ? `<br><small>${esc(t.raad)}</small>` : ''}</span></div>` : ''; })() : ''}
     ${b.bratthet ? (() => { const v = brattVurdering(b.bratthet); return `<div class="bratt-linje bratt-${v.niva}"><div class="bratt-stolpe">${BRATT_KLASSER.map((k) => (b.bratthet.andel[k.id] ? `<span style="flex:${b.bratthet.andel[k.id]};background:${k.farge || '#cfe3c7'}" title="${esc(k.navn)}: ${Math.round(b.bratthet.andel[k.id] * 100)} %"></span>` : '')).join('')}</div><span>⛰ ${esc(v.tekst)}</span></div>`; })() : ''}
     <form class="skjema tre-kol" id="detaljSkjema">
       <label>Bestandsnr <input name="nr" value="${esc(b.nr)}"></label>
@@ -1143,6 +1154,79 @@ function settUtfort(b, t, ferdig) {
   }
   if (ferdig && t.type === 'lukkethogst' && b.volumDaa && confirm(`Redusere volumet i bestand ${b.nr} med uttaket (${Math.round(hogstAndel('lukkethogst', inn(), t) * 100)} %)?`)) b.volumDaa = runde(b.volumDaa * (1 - hogstAndel('lukkethogst', inn(), t)), 1);
   if (ferdig && t.type === 'planting' && confirm(`Sette bestand ${b.nr} til hogstklasse II (ungskog) med alder 1?`)) { b.hogstklasse = 2; b.alder = 1; }
+}
+
+// ---------------------------------------------------------------- kommunale planer
+// Kommuneplan, kommunedelplaner og reguleringsplaner over eiendommen (DiBK, arealplan.js): arealformål, hensynssoner,
+// muligheter og begrensninger. Hentes automatisk én gang per plan og lagres i planen (S.arealplan).
+let planHenter = false; let planForsokFor = null;
+const eiendomGeom = () => S.eiendom?.grense || (S.bestand.some((b) => b.geometri) ? { type: 'MultiPolygon', coordinates: S.bestand.filter((b) => b.geometri).flatMap((b) => (b.geometri.type === 'Polygon' ? [b.geometri.coordinates] : b.geometri.coordinates)) } : null);
+async function hentPlaner({ stille = false } = {}) {
+  const geom = eiendomGeom(); planForsokFor = S;
+  if (planHenter || !geom) { if (!geom && !stille) melding('Eiendommen har ingen kartgeometri ennå.'); return; }
+  planHenter = true; const plan = S; tegnArealplan();
+  try {
+    const res = await hentArealplan(geom, { framdrift: (t) => { if (!stille) melding(t); } });
+    if (plan !== S) return;
+    S.arealplan = analyserArealplan(res, geom, { punktIGeometri, bestand: S.bestand });
+    endret({ kart: false }); if (valgtId) visDetalj();
+    const v = planVurdering(S.arealplan);
+    melding(`Kommunale planer hentet: ${v.tittel}.`, 5000);
+  } catch (e) { if (!stille) melding(e.message || 'Klarte ikke å hente planene.', 6000); planFeil = e.message || 'Klarte ikke å hente planene.'; }
+  finally { planHenter = false; tegnArealplan(); tegnLegend(); }
+}
+let planFeil = null;
+function tegnArealplan() {
+  const el = $('#arealplan'); if (!el) return;
+  const a = S.arealplan; const geom = eiendomGeom();
+  if (!a) {
+    if (geom && !planHenter && planForsokFor !== S) { planFeil = null; queueMicrotask(() => hentPlaner({ stille: true })); }
+    el.innerHTML = !geom ? '<p class="hint">Når eiendommen har kartgeometri, hentes kommuneplanen og reguleringsplanene automatisk.</p>'
+      : planHenter || planForsokFor !== S ? '<p class="hint">Henter kommuneplan og reguleringsplaner for eiendommen …</p>'
+        : `<p class="hint">${esc(planFeil || 'Planene er ikke hentet.')}</p><button type="button" class="knapp liten" data-arealplan-hent>Hent planer</button>`;
+    return;
+  }
+  const v = planVurdering(a);
+  const liste = (items, kl) => items.map((m) => `<li class="${kl}${m.alvor >= 2 ? ' viktig' : ''}"><b>${esc(m.om)}</b>${m.tekster.map((t) => `<span>${esc(t)}</span>`).join('')}</li>`).join('');
+  const stolpe = (v.grupper || []).map((g) => `<span style="flex:${g.andel};background:${g.farge}" title="${esc(g.navn)}: ${Math.round(g.andel * 100)} %"></span>`).join('');
+  const formal = a.formal.slice(0, 8);
+  el.innerHTML = `
+    <div class="plan-topp plan-${v.niva}"><b>${esc(v.tittel)}</b></div>
+    ${stolpe ? `<div class="plan-stolpe">${stolpe}</div>` : ''}
+    ${formal.length ? `<table class="plan-formal"><tbody>${formal.map((f) => `<tr><td><i style="background:${f.farge}"></i>${esc(f.navn)}${f.felt?.length ? ` <span class="hint">${esc(f.felt.slice(0, 3).join(', '))}</span>` : ''}</td><td class="hint">${f.plan === 'rp' ? 'Regulering' : f.plan === 'kdp' ? 'Kommunedelplan' : 'Kommuneplan'}</td><td class="tall">${fmt(f.daa)} daa</td><td class="tall">${Math.round(f.andel * 100) || '<1'} %</td></tr>`).join('')}</tbody></table>${a.formal.length > 8 ? `<p class="hint">+ ${a.formal.length - 8} mindre formål (${fmt(a.formal.slice(8).reduce((x, f) => x + f.daa, 0))} daa)</p>` : ''}` : ''}
+    <div class="plan-kol">
+      ${v.muligheter.length ? `<div><h4>✅ Muligheter</h4><ul class="plan-liste">${liste(v.muligheter, 'mulig')}</ul></div>` : ''}
+      ${v.begrensninger.length ? `<div><h4>⚠️ Begrensninger og hensyn</h4><ul class="plan-liste">${liste(v.begrensninger, 'begr')}</ul></div>` : ''}
+    </div>
+    ${a.planer.length ? `<details class="plan-planer"><summary>Gjeldende planer (${a.planer.length})</summary><ul>${a.planer.slice(0, 40).map((p) => `<li>${p.lenke ? `<a href="${esc(p.lenke)}" target="_blank" rel="noopener">${esc(p.navn)}</a>` : esc(p.navn)} <span class="hint">${esc(p.type)}${p.planId ? ` · ${esc(p.planId)}` : ''}${p.ikraft ? ` · vedtatt ${esc(p.ikraft)}` : ''} · ${Math.round(p.andel * 100) || '<1'} % av eiendommen</span></li>`).join('')}</ul></details>` : ''}
+    <ul class="plan-merknad">${v.merknader.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>
+    <div class="plan-knapper"><button type="button" class="knapp liten primar" data-arealplan-kart>Vis planene i kartet</button><button type="button" class="knapp liten" data-arealplan-hent>Oppdater</button><span class="hint">Kilde: kommunenes planregistre via DiBK (nasjonalt arealplankart), hentet ${esc(a.hentet)}. Ruter på ca. ${a.celleM} m.</span></div>`;
+}
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-arealplan-hent]')) { e.preventDefault(); delete S.arealplan; planFeil = null; hentPlaner(); }
+  if (e.target.closest('[data-arealplan-kart]')) {
+    e.preventDefault(); if (!kart.hasLayer(kpLag)) kpLag.addTo(kart); if (S.arealplan?.dekning?.rp > 0 && !kart.hasLayer(rpLag)) rpLag.addTo(kart);
+    tegnLegend(); zoomTilAlle(); melding('Planene vises i kartet. Klikk i kartet for arealformål, hensynssoner og planlenke.', 5000);
+  }
+});
+// Klikk i kartet med plankart på: formål, hensynssoner og planer i punktet.
+let planPunktNr = 0;
+async function visPlanPunkt(ll) {
+  const nr = ++planPunktNr;
+  const lag = [[PLAN_KART.kp.url, 'arealformal_kp,arealformal_kdp,hensynssone-bestemmelsesomrade_kp,hensynssone-bestemmelsesomrade_kdp,kpomrade,kdpomrade'], [PLAN_KART.rp.url, 'arealformal_vn2,hensynssoner_vn2,rpomrade_vn2']];
+  const popup = L.popup({ maxWidth: 340 }).setLatLng(ll).setContent('<span class="hint">Henter planinformasjon …</span>').openOn(kart);
+  try {
+    const svar = await Promise.all(lag.map(async ([u, l]) => { try { const r = await fetch(planPunktUrl(u, l, ll.lat, ll.lng)); return r.ok ? (await r.json()).features || [] : []; } catch { return []; } }));
+    if (nr !== planPunktNr) return;
+    const p = tolkPlanPunkt(svar.flat());
+    const formal = [...p.formal.filter((f) => f.plan === 'rp'), ...p.formal.filter((f) => f.plan !== 'rp')];
+    const html = formal.length || p.hensyn.length || p.planer.length ? `
+      ${formal.map((f, i) => `<div style="display:flex;gap:6px;align-items:center${i && f.plan !== 'rp' && formal[0].plan === 'rp' ? ';opacity:.6' : ''}"><i style="width:12px;height:12px;border-radius:3px;background:${f.farge};flex:none"></i><span><b>${esc(f.navn)}</b>${f.felt ? ` (${esc(f.felt)})` : ''} <span class="hint">${f.plan === 'rp' ? 'reguleringsplan' : 'kommuneplan'}</span></span></div>`).join('')}
+      ${p.hensyn.map((h) => `<div style="margin-top:4px">${h.ikon} <b>${esc(h.navn)}</b>${h.sonenavn ? ` <span class="hint">${esc(h.sonenavn)}</span>` : ''}${h.beskrivelse && h.beskrivelse !== h.navn ? ` – ${esc(h.beskrivelse)}` : ''}<br><small>${esc(h.tekst)}</small></div>`).join('')}
+      ${p.planer.map((x) => `<div style="margin-top:4px">📄 ${x.lenke ? `<a href="${esc(x.lenke)}" target="_blank" rel="noopener">${esc(x.navn)}</a>` : esc(x.navn)} <span class="hint">${esc(x.type)}${x.ikraft ? ` · ${esc(x.ikraft)}` : ''}</span></div>`).join('')}`
+      : '<span class="hint">Ingen digitale planer i dette punktet.</span>';
+    popup.setContent(`<div style="font-size:13px;display:grid;gap:2px">${html}</div>`);
+  } catch { popup.setContent('<span class="hint">Klarte ikke å hente planinformasjon.</span>'); }
 }
 
 // ---------------------------------------------------------------- bratthet
@@ -2049,7 +2133,7 @@ function kobleHendelser() {
   kommuneVisning = initKommune({ kart, melding, innstillinger: inn, lastKommuner, finnKommune, lagPlanFor });
   $('#genKommune').addEventListener('focus', lastKommuner, { once: true });
   $('#planListe').addEventListener('change', async (e) => {
-    const rad = e.target.closest('.plan-rad'); if (!rad || !e.target.matches('[data-plan-kart]')) return;
+    const rad = e.target.closest('.plan-rad'); if (!rad || !e.target.matches('[data-arealplan-kart]')) return;
     andreVisning.settSynlig(rad.dataset.plan, e.target.checked);
     if (e.target.checked) await andreVisning.zoomAlle(S.bestand.length ? bboxFor() : null);
     tegnPlanListe();

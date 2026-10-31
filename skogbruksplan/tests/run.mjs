@@ -42,6 +42,7 @@ import * as HS from '../js/hpr-sr16.js';
 import * as MK from '../js/skog3d-kart.js';
 import * as BR from '../js/bratthet.js';
 import * as MF from '../js/markfukt.js';
+import * as AP from '../js/arealplan.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
 import { flisUrler } from '../js/offline-kart.js';
@@ -2716,6 +2717,85 @@ test('Velkomst: hilsen med navn, humor etter været, vær og driftsråd, og moti
   const v = VK.lagVelkomst({ navn: 'Trond Harald Sand', bruker: 'trond', S, v: frost, sted: 'Demoskogen', dato: d });
   assert.equal(v.tittel, 'God morgen, Trond!'); assert.ok(v.humor && v.vaer && v.raad && v.tiltak.tekst);
   assert.equal(VK.lagVelkomst({ navn: 'x' }).vaer, '');
+});
+
+test('Arealplan: koder, grupper og hensynssoner', () => {
+  assert.equal(AP.gruppeFor('5100'), 'lnfr'); assert.equal(AP.gruppeFor('5112'), 'lnfr'); assert.equal(AP.gruppeFor('5220'), 'spredt');
+  assert.equal(AP.gruppeFor('1110'), 'bolig'); assert.equal(AP.gruppeFor('1120'), 'fritid'); assert.equal(AP.gruppeFor('1201'), 'rastoff');
+  assert.equal(AP.gruppeFor('2011'), 'samferdsel'); assert.equal(AP.gruppeFor('3040'), 'gronn'); assert.equal(AP.gruppeFor('5300'), 'vern');
+  assert.equal(AP.gruppeFor('6001'), 'vann'); assert.equal(AP.gruppeFor('210'), 'lnfr'); assert.equal(AP.gruppeFor('150'), 'fritid'); assert.equal(AP.gruppeFor('650'), 'vern'); assert.equal(AP.gruppeFor(''), 'annet');
+  assert.equal(AP.formalInfo('1120').navn, 'Fritidsbebyggelse'); assert.equal(AP.formalInfo('5112').navn, 'Skogbruk');
+  assert.equal(AP.kortFormalNavn(AP.formalInfo('5100').navn), 'LNFR – landbruk, natur og friluftsliv');
+  assert.match(AP.formalInfo('9999').navn, /9999/);
+  assert.equal(AP.hensynKode({ fare: '310', hensynSonenavn: 'H310_5' }), 310);
+  assert.equal(AP.hensynKode({ hensynSonenavn: 'H 320' }), 320);
+  assert.equal(AP.hensynKode({ angittHensyn: '560' }), 560);
+  assert.equal(AP.hensynKode({ reguleringsformål: '646' }), 110);
+  assert.equal(AP.hensynKode({ reguleringsformål: '520' }), 390);
+  assert.equal(AP.hensynKode({}), null);
+  assert.equal(AP.hensynInfo(720).alvor, 2); assert.equal(AP.hensynInfo(311).navn, 'Ras- og skredfare'); assert.match(AP.hensynInfo(null).navn, /Bestemmelse/);
+  // UTFGrid-tegn: hopper over " og \
+  assert.equal(AP.utfIndeks(' '), 0); assert.equal(AP.utfIndeks('!'), 1); assert.equal(AP.utfIndeks('#'), 2); assert.equal(AP.utfIndeks(']'), 59);
+  const r = AP.rutenettFor({ type: 'Polygon', coordinates: [[[10, 60], [10.02, 60], [10.02, 60.01], [10, 60.01], [10, 60]]] }, { margin: 0 });
+  assert.equal(r.w % 4, 0); assert.ok(Math.abs(r.celleM.x - 10) < 1 && Math.abs(r.celleM.y - 10) < 1, JSON.stringify(r.celleM));
+  const stor = AP.rutenettFor({ type: 'Polygon', coordinates: [[[10, 60], [10.5, 60], [10.5, 60.2], [10, 60]]] });
+  assert.ok(stor.w <= 2048 && stor.h <= 2048);
+  assert.match(AP.utfgridUrl(AP.KP_WMS, 'arealformal_kp', r), /request=GetMap.*layers=arealformal_kp.*format=application%2Fjson%3Btype%3Dutfgrid/);
+  assert.match(AP.punktUrl(AP.RP_WMS, 'rpomrade_vn2', 60, 10), /GetFeatureInfo.*info_format=application\/json/);
+});
+
+test('Arealplan: analyse av rutenett, prioritet regulering > kommuneplan, bestand og vurdering', () => {
+  const enc = (i) => { let c = i + 32; if (c >= 34) c++; if (c >= 92) c++; return String.fromCharCode(c); };
+  const grid = (rader) => ({ grid: rader.map((r) => r.map(enc).join('')), keys: ['', 'a', 'b', 'c'], data: {} });
+  // 4 × 4 ruter à 10 × 10 m (0,1 daa). Eiendommen dekker hele boksen.
+  const res = { rutenett: { bbox: [10, 60, 10.004, 60.004], w: 16, h: 16, celleM: { x: 10, y: 10 } }, feil: [], lag: {} };
+  const kp = grid([[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 2, 2], [1, 1, 2, 2]]);
+  kp.data = { a: { arealformål: '5100', 'arealplanId.planidentifikasjon': 'KP1', områdenavn: 'L' }, b: { arealformål: '1120', 'arealplanId.planidentifikasjon': 'KP1' } };
+  const rp = grid([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]]);
+  rp.data = { a: { arealformål: '3040', feltbetegnelse: 'FRI1', 'arealplanId.planidentifikasjon': 'R1' } };
+  const hensyn = grid([[1, 1, 0, 0], [1, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]);
+  hensyn.data = { a: { objekttypenavn: 'KpFareSone', fare: '310', hensynSonenavn: 'H310_1', beskrivelse: 'Kvikkleire' } };
+  const omr = grid([[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]]);
+  omr.data = { a: { plannavn: 'Kommuneplanens arealdel 2024', plantype: '20', planstatus: '3', 'arealplanId.planidentifikasjon': 'KP1', link: 'https://example.no/plan', ikrafttredelsesdato: '2024-12-11Z' } };
+  res.lag = { 'kp-formal': kp, 'kp-hensyn': hensyn, 'kp-omrade': omr, 'rp-formal': rp, 'rp-hensyn': null, 'rp-omrade': null };
+  const eiendom = { type: 'Polygon', coordinates: [[[10, 60], [10.004, 60], [10.004, 60.004], [10, 60.004], [10, 60]]] };
+  const bestand = [{ id: 'b1', geometri: { type: 'Polygon', coordinates: [[[10, 60.002], [10.002, 60.002], [10.002, 60.004], [10, 60.004], [10, 60.002]]] } }];
+  const a = AP.analyser(res, eiendom, { punktIGeometri, bestand, hentet: '2026-10-31' });
+  assert.equal(a.daa, 1.6);
+  const f = Object.fromEntries(a.formal.map((x) => [`${x.plan}|${x.kode}`, x]));
+  assert.equal(f['kp|5100'].andel, 0.75); assert.equal(f['kp|1120'].andel, 0.188); assert.equal(f['rp|3040'].andel, 0.063, 'regulering går foran kommuneplanen');
+  assert.deepEqual(f['rp|3040'].felt, ['FRI1']);
+  assert.equal(a.dekning.kp, 1); assert.equal(a.dekning.rp, 0.063);
+  assert.equal(a.hensyn[0].kode, 310); assert.equal(a.hensyn[0].andel, 0.25); assert.equal(a.hensyn[0].beskrivelse, 'Kvikkleire');
+  assert.equal(a.planer[0].type, 'Kommuneplanens arealdel'); assert.equal(a.planer[0].status, 'Endelig vedtatt'); assert.equal(a.planer[0].ikraft, '2024-12-11'); assert.equal(a.planer[0].lenke, 'https://example.no/plan');
+  // Bestandet ligger i øvre venstre kvadrant: LNFR og skredfare overalt.
+  assert.deepEqual(a.bestand.b1, { formal: [{ kode: '5100', andel: 1 }], hensyn: [{ kode: 310, andel: 1 }] });
+  const bt = AP.bestandTekst(a.bestand.b1); assert.equal(bt.alvor, 2); assert.match(bt.tekst, /LNFR.*Ras- og skredfare/); assert.match(bt.raad, /skredvurdering/);
+  const v = AP.vurdering(a);
+  assert.match(v.tittel, /^75 % landbruk.*skogbruk er hovedformålet.*1 hensynssone/); assert.equal(v.niva, 'begrenset');
+  assert.ok(v.muligheter.some((m) => m.gruppe === 'fritid' && /hytter/.test(m.tekster[0])));
+  assert.equal(v.begrensninger[0].alvor, 2);
+  assert.ok(v.begrensninger.some((m) => m.hensyn === 310 && /Kvikkleire/.test(m.om)));
+  assert.ok(v.merknader.some((m) => /regulert/.test(m)));
+  // Ingen planer
+  const tom = AP.vurdering({ formal: [], planer: [], hensyn: [], dekning: { kp: 0, kdp: 0, rp: 0 } });
+  assert.equal(tom.niva, 'ukjent'); assert.match(tom.merknader[0], /planinnsyn/);
+});
+
+test('Arealplan: henting med feil i enkelt-lag og punktoppslag', async () => {
+  const geom = { type: 'Polygon', coordinates: [[[10, 60], [10.002, 60], [10.002, 60.002], [10, 60.002], [10, 60]]] };
+  const kall = [];
+  const res = await AP.hent(geom, { hentJson: async (u) => { kall.push(u); if (/hensynssoner_vn2/.test(u)) throw new Error('nede'); return { grid: [], keys: [''], data: {} }; } });
+  assert.equal(kall.length, AP.LAG.length); assert.equal(res.feil.length, 1); assert.equal(res.lag['rp-hensyn'], null);
+  await assert.rejects(AP.hent(geom, { hentJson: async () => { throw new Error('x'); } }), /kontakt med plantjenesten/);
+  const p = AP.tolkPunkt([
+    { id: 1, properties: { objekttypenavn: 'KpArealformålOmråde', arealformål: '5100', områdenavn: 'L', 'identifikasjon.lokalId': 'x1' } },
+    { id: 2, properties: { objekttypenavn: 'KpArealformålOmråde', arealformål: '5100', 'identifikasjon.lokalId': 'x1' } },
+    { id: 3, properties: { objekttypenavn: 'RpFareSone', fare: '370', hensynSonenavn: 'H370' } },
+    { id: 4, properties: { objekttypenavn: 'RpOmråde', plannavn: 'Detaljplan Ås', plantype: '35', link: 'javascript:alert(1)' } },
+  ]);
+  assert.equal(p.formal.length, 1); assert.equal(p.formal[0].felt, 'L'); assert.equal(p.hensyn[0].navn, 'Høyspenningsanlegg');
+  assert.equal(p.planer[0].type, 'Detaljregulering'); assert.equal(p.planer[0].lenke, null, 'bare http(s)-lenker');
 });
 
 await Promise.all(venter);
