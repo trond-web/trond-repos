@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.48.0** (2026-10-30) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.49.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -958,20 +958,47 @@ Skifteplanen henger sammen med traktoren: data går ut til skjermen, og utført 
 
 Klienthemmeligheten og tokenene ligger bare på serveren. Nettleseren har en tilfeldig nøkkel som peker til tilkoblingen. Token fornyes automatisk med refresh token. Tilbake-adressen må være appens egen, så serveren kan ikke brukes til å videresende brukere til andre sider.
 
-## Innlogging
+## Innlogging, registrering og admin
 
-SkogIQ.ai krever brukernavn og passord. Logikken på serveren ligger i `auth.js`, i appen i `js/innlogging.js`, og innloggingssiden er `logginn.html`.
+Hver bruker registrerer seg med navn, valgfri e-post, brukernavn og passord, og må logge inn for å bruke løsningen.
+Innloggingssiden har fanene «Logg inn» og «Registrer deg». Feltene er merket slik at nettleseren tilbyr å huske
+brukernavn og passord. Økten varer i 30 dager.
 
-- **Brukernavn og passord** settes som miljøvariabler på serveren: `APP_BRUKER` og `APP_PASSORD`, valgfritt `APP_HEMMELIGHET` for signering. De ligger aldri i koden, som er offentlig. Uten `APP_BRUKER` og `APP_PASSORD` er innloggingen slått av.
-- **Railway:** Serveren slipper ikke gjennom noen side, fil eller API-kall uten gyldig økt. Sider sendes til innloggingen, alt annet får 401.
-  - Økten er signert (HMAC), ligger i en HttpOnly-informasjonskapsel (SameSite=Lax, Secure) og varer i 30 dager.
-  - Nytt passord gjør alle gamle økter ugyldige.
-  - Etter 10 feil passord fra samme IP-adresse sperres innloggingen i 15 minutter.
-- **GitHub Pages:** Pages har ingen server. Innloggingssiden sjekker brukernavn og passord mot Railway, og økten lagres som token i nettleseren. Tokenet sendes med alle kall til serveren.
-  - Planoverføring, NVE-data, John Deere og droneoverføring virker bare når man er innlogget.
-  - Filene på Pages er offentlige, akkurat som koden i repoet. Innloggingen på Pages beskytter dermed tjenestene på serveren, ikke selve filene.
-- **Uten nett:** En enhet som har vært innlogget før slipper inn, fordi planene ligger lokalt. Serverkall krever innlogging når nettet er tilbake.
-- **Logg ut:** nederst i Planer-fanen i fullversjonen, og under Mer i SkogIQ Felt.
+* **Passord** lagres bare som scrypt-hash med eget salt per bruker, aldri i klartekst.
+* **Krav:** brukernavnet er 3–32 tegn, passordet minst 8 tegn og kan ikke inneholde brukernavnet.
+* **Beskyttelse mot misbruk:** høyst 10 feil passord per IP på 15 minutter, og høyst 5 registreringer per IP i timen.
+* **Passordbytte:** «Bytt passord» ligger i Om-boksen. Nytt passord gjør gamle økter ugyldige.
+* **Bruksstatistikk** telles per bruker og dag:
+  * sidevisninger
+  * kall til serveren
+  * aktive minutter, bare når brukeren klikker, taster eller ruller og siden er synlig
+  * hvilke moduler (faner) som åpnes
+
+  Planene ligger fortsatt på brukerens egen enhet og sendes ikke til serveren.
+* **Adminsiden (`admin.html`)** er bare tilgjengelig for administratorer, og lenken vises i Om-boksen. Den viser:
+  * registrerte brukere og aktive brukere i dag, siste 7 og siste 30 dager
+  * sidevisninger og aktiv tid
+  * aktive brukere per dag i et diagram
+  * mest brukte moduler
+  * en tabell over brukerne med registreringsdato, sist aktiv, innlogginger, aktive dager, aktiv tid, sider og mest
+    brukte moduler
+
+  Administratoren kan sperre og åpne brukere, gi og fjerne admin, og slette brukere. En sperret bruker logges ut
+  med en gang.
+
+**Oppsett på Railway (miljøvariabler, aldri i koden):**
+
+| Variabel | Betydning |
+|---|---|
+| `APP_REGISTRERING=1` | slår på registrering og innlogging |
+| `BRUKER_FIL=/data/brukere.json` | lagrer brukere og statistikk på et Railway-volum montert på `/data`. Uten volum forsvinner de ved neste utrulling, og adminsiden varsler om det. |
+| `APP_BRUKER` + `APP_PASSORD` | oppretter administratoren første gang serveren starter. Bytt passordet i appen etterpå. |
+| `APP_ADMIN` | flere administratornavn, kommaseparert. Navnene er reservert og kan ikke registreres av andre. |
+| `APP_REGISTRERINGSKODE` | valgfri kode som må oppgis for å registrere seg |
+| `APP_HEMMELIGHET` | valgfri nøkkel for øktene. Uten den lages en tilfeldig nøkkel som lagres i `BRUKER_FIL`. |
+
+Uten `APP_REGISTRERING` og uten `APP_BRUKER`/`APP_PASSORD` er innloggingen av. På GitHub Pages logger appen inn mot
+Railway-serveren med token.
 
 ## Publisering på Railway
 

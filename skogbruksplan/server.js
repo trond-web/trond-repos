@@ -72,7 +72,12 @@ const planRelay = lagPlanRelay({ fil: process.env.PLAN_FIL || null });
 // Tilbudsforespørsler til utførere (tilbud-relay.js). Mottakerne svarer via lenke uten innlogging.
 const tilbudRelay = lagTilbudRelay({ fil: process.env.TILBUD_FIL || null });
 // Innlogging (auth.js): brukernavn og passord settes som miljøvariabler på serveren, aldri i koden.
-const innlogging = lagInnlogging({ bruker: process.env.APP_BRUKER || '', passord: process.env.APP_PASSORD || '', hemmelighet: process.env.APP_HEMMELIGHET || '' });
+// Med APP_REGISTRERING=1 registrerer brukerne seg selv; brukere og bruksstatistikk lagres i BRUKER_FIL (Railway-volum).
+const innlogging = lagInnlogging({
+  bruker: process.env.APP_BRUKER || '', passord: process.env.APP_PASSORD || '', hemmelighet: process.env.APP_HEMMELIGHET || '',
+  registrering: process.env.APP_REGISTRERING === '1', fil: process.env.BRUKER_FIL || null, admin: process.env.APP_ADMIN || '', kode: process.env.APP_REGISTRERINGSKODE || '',
+});
+if (innlogging.registrering && !innlogging.permanent) console.warn('BRUKER_FIL er ikke satt – registrerte brukere forsvinner når serveren startes på nytt.');
 // John Deere Operations Center (se jd-relay.js). Uten JD_CLIENT_ID/JD_CLIENT_SECRET svarer /api/jd/status at det ikke er satt opp.
 const jdRelay = lagJdRelay({ klientId: process.env.JD_CLIENT_ID || '', hemmelighet: process.env.JD_CLIENT_SECRET || '', tilbakeUrl: process.env.JD_REDIRECT || '', api: process.env.JD_API || JD_SANDKASSE, fil: process.env.JD_FIL || null });
 
@@ -125,4 +130,4 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => console.log(`SkogIQ.ai kjører på port ${PORT}`));
-for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => server.close(() => process.exit(0)));
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { try { innlogging.lager?.flush(); } catch { /* ignorer */ } server.close(() => process.exit(0)); });

@@ -2598,5 +2598,85 @@ test('Markfuktighet: NIBIO-fargene til rutenett, klasse i punkt, andel per besta
   assert.ok(syn.fukt > 150); assert.ok(kall.some((k) => k[0] === '=fillStyle' && k[1] === '#0000ff'));
 });
 
+test('Registrering: brukere med hashet passord, innlogging, passordbytte, sperring, bruksstatistikk og admin', async () => {
+  const { lagInnlogging, innloggingApi, krevInnlogging, hashPassord, lagBrukerlager } = await import('../auth.js');
+  const { mkdtempSync, readFileSync: les, rmSync } = await import('node:fs'); const { tmpdir } = await import('node:os'); const { join } = await import('node:path');
+  let tid = Date.UTC(2026, 9, 31, 10); const mappe = mkdtempSync(join(tmpdir(), 'skogiq-')); const fil = join(mappe, 'brukere.json');
+  const inn = lagInnlogging({ registrering: true, fil, admin: 'trond,sjef', bruker: 'trond', passord: 'skog-og-mark', naa: () => tid });
+  assert.ok(inn.aktiv && inn.registrering && inn.permanent);
+  // Passord lagres bare som hash med salt
+  const h1 = hashPassord('abc12345'); const h2 = hashPassord('abc12345'); assert.notEqual(h1.hash, h2.hash); assert.equal(hashPassord('abc12345', h1.salt).hash, h1.hash);
+  // Registrering: krav til brukernavn og passord
+  assert.equal(inn.registrer('1', { bruker: 'AB', passord: 'langtpassord' }).status, 400);
+  assert.equal(inn.registrer('1', { bruker: 'kari', passord: 'kort' }).status, 400);
+  assert.equal(inn.registrer('1', { bruker: 'kari', passord: 'kari2026!!' }).status, 400, 'passord med brukernavnet');
+  assert.equal(inn.registrer('1', { bruker: 'kari', passord: 'skogen-2026', epost: 'ikke-epost' }).status, 400);
+  assert.ok(inn.registrer('1', { bruker: 'Kari', passord: 'skogen-2026', navn: 'Kari Skog', epost: 'kari@example.no' }).ok);
+  assert.equal(inn.registrer('2', { bruker: 'kari', passord: 'annet-passord' }).status, 409, 'opptatt');
+  assert.equal(inn.registrer('1', { bruker: 'sjef', passord: 'noe-passord-1' }).status, 403, 'administratornavn er reservert');
+  assert.equal(inn.registrer('1', { bruker: 'trond', passord: 'noe-passord-1' }).status, 409, 'administratoren er opprettet av serveren');
+  const kari = inn.lager.hent('kari'); assert.equal(kari.visning, 'Kari Skog'); assert.ok(kari.hash && kari.salt && !JSON.stringify(kari).includes('skogen-2026'));
+  // Innlogging og økt
+  assert.ok(inn.sjekk('1', 'KARI', 'skogen-2026').ok); assert.ok(!inn.sjekk('1', 'kari', 'feil').ok); assert.ok(!inn.sjekk('1', 'ukjent', 'skogen-2026').ok);
+  const t = inn.lagToken('kari'); assert.equal(inn.lesToken(t).u, 'kari');
+  // Admin: APP_ADMIN og APP_BRUKER (opprettes som admin første gang)
+  assert.ok(inn.erAdmin('trond') && !inn.erAdmin('kari'));
+  assert.ok(inn.sjekk('1', 'trond', 'skog-og-mark').ok);
+  // Passordbytte gjør gamle økter ugyldige
+  assert.equal(inn.byttPassord('kari', 'feil', 'nytt-passord1').status, 401);
+  assert.ok(inn.byttPassord('kari', 'skogen-2026', 'nytt-passord1').ok); assert.equal(inn.lesToken(t), null); assert.ok(inn.sjekk('1', 'kari', 'nytt-passord1').ok);
+  // Bruk: sider, kall, aktive minutter og moduler
+  inn.bruk('kari', 'side'); inn.bruk('kari', 'aktiv'); inn.bruk('kari', 'aktiv'); inn.bruk('kari', 'fane', 'tiltak'); inn.bruk('kari', 'fane', 'tiltak'); inn.bruk('kari', 'fane', 'veier'); inn.bruk('ukjent', 'side');
+  tid += 86400000; inn.bruk('kari', 'side'); inn.bruk('trond', 'aktiv');
+  const o = inn.oversikt({ antallDager: 7 });
+  assert.equal(o.totalt, 2); assert.equal(o.aktiveIdag, 2); assert.equal(o.aktive7, 2);
+  const ko = o.brukere.find((b) => b.bruker === 'kari'); assert.equal(ko.aktiveDager, 2); assert.equal(ko.sider, 2); assert.equal(ko.minutter, 2); assert.deepEqual(ko.faner, { tiltak: 2, veier: 1 });
+  assert.equal(o.faner.tiltak, 2); assert.equal(o.dager.length, 7); assert.equal(o.dager.at(-2).aktive, 1);
+  assert.ok(!JSON.stringify(o).includes('"hash"') && !JSON.stringify(o).includes('salt'), 'ingen hash i oversikten');
+  // Sperring stopper innlogging og økter; admin kan ikke sperre seg selv
+  const t2 = inn.lagToken('kari');
+  assert.equal(inn.endreBruker('trond', 'trond', 'sperr').status, 400);
+  assert.ok(inn.endreBruker('trond', 'kari', 'sperr').ok); assert.equal(inn.lesToken(t2), null); assert.ok(inn.sjekk('5', 'kari', 'nytt-passord1').blokkert);
+  assert.ok(inn.endreBruker('trond', 'kari', 'aapne').ok); assert.ok(inn.sjekk('5', 'kari', 'nytt-passord1').ok);
+  assert.ok(inn.endreBruker('trond', 'kari', 'admin').ok); assert.ok(inn.erAdmin('kari')); assert.ok(inn.endreBruker('trond', 'kari', 'fjern-admin').ok);
+  assert.equal(inn.endreBruker('kari', 'trond', 'fjern-admin').status, 400, 'APP_ADMIN kan ikke fjernes i appen');
+  // Lagret i fil og lest inn igjen (serveren startes på nytt): samme brukere og økter er fortsatt gyldige
+  inn.lager.flush(); const lagret = JSON.parse(les(fil, 'utf8')); assert.ok(lagret.brukere.kari && lagret.bruk && lagret.hemmelighet);
+  const inn2 = lagInnlogging({ registrering: true, fil, admin: 'trond,sjef', naa: () => tid }); assert.ok(inn2.sjekk('1', 'kari', 'nytt-passord1').ok); const t3 = inn.lagToken('trond'); assert.equal(inn2.lesToken(t3).u, 'trond');
+  // For mange registreringer fra samme IP
+  for (let i = 0; i < 5; i++) inn.registrer('7.7.7.7', { bruker: `spam${i}`, passord: 'passord-123' });
+  assert.equal(inn.registrer('7.7.7.7', { bruker: 'spam9', passord: 'passord-123' }).status, 429);
+  // Registreringskode
+  const medKode = lagInnlogging({ registrering: true, kode: 'SKOG2026', naa: () => tid }); assert.ok(medKode.kodeKreves && !medKode.permanent);
+  assert.equal(medKode.registrer('1', { bruker: 'ola', passord: 'passord-123' }).status, 403); assert.ok(medKode.registrer('1', { bruker: 'ola', passord: 'passord-123', kode: 'SKOG2026' }).ok);
+  // HTTP: registrering, meg, bruk og admin
+  const res = () => { const r = { status: 0, hoder: {}, kropp: '', writeHead(st, hd = {}) { r.status = st; r.hoder = hd; }, end(b = '') { r.kropp = String(b); r.ferdig?.(); } }; return r; };
+  const req = (metode, url, { hoder = {}, kropp = null } = {}) => { const h = {}; return { method: metode, url, headers: hoder, socket: { remoteAddress: '3.3.3.3' }, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(kropp)); f(); }, 0); }, destroy() {} }; };
+  const api = (q) => new Promise((ok) => { const r = res(); r.ferdig = () => ok(r); if (!innloggingApi(inn, q, r, new URL(q.url, 'http://x').pathname)) ok(null); });
+  const ny = await api(req('POST', '/api/registrer', { kropp: JSON.stringify({ bruker: 'per', passord: 'granskog-77', navn: 'Per' }) })); assert.equal(ny.status, 201);
+  const { token, admin } = JSON.parse(ny.kropp); assert.ok(token); assert.equal(admin, false); assert.match(ny.hoder['Set-Cookie'], /HttpOnly/);
+  const meg = JSON.parse((await api(req('GET', '/api/meg', { hoder: { authorization: `Bearer ${token}` } }))).kropp); assert.equal(meg.navn, 'Per'); assert.equal(meg.registrering, true);
+  assert.equal(JSON.parse((await api(req('GET', '/api/meg'))).kropp).registrering, true);
+  assert.equal((await api(req('POST', '/api/bruk', { hoder: { authorization: `Bearer ${token}` }, kropp: JSON.stringify({ type: 'fane', detalj: 'karbon' }) }))).status, 200);
+  assert.equal(inn.oversikt().brukere.find((b) => b.bruker === 'per').faner.karbon, 1);
+  assert.equal((await api(req('GET', '/api/admin/oversikt', { hoder: { authorization: `Bearer ${token}` } }))).status, 403, 'vanlig bruker');
+  const adminToken = inn.lagToken('trond');
+  const ov = await api(req('GET', '/api/admin/oversikt?dager=14', { hoder: { authorization: `Bearer ${adminToken}` } })); assert.equal(ov.status, 200); assert.equal(JSON.parse(ov.kropp).dager.length, 14);
+  assert.equal((await api(req('POST', '/api/admin/bruker', { hoder: { authorization: `Bearer ${adminToken}` }, kropp: JSON.stringify({ bruker: 'per', handling: 'slett' }) }))).status, 200);
+  assert.equal(inn.lager.hent('per'), null);
+  assert.equal((await api(req('POST', '/api/logginn', { kropp: JSON.stringify({ bruker: 'kari', passord: 'nytt-passord1' }) }))).status, 200);
+  // Beskyttelse: registreringen er åpen, admin.html bare for admin, sider og kall telles
+  const sjekk = (q) => { const r = res(); return krevInnlogging(inn, q, r, new URL(q.url, 'http://x').pathname) ? r : null; };
+  assert.equal(sjekk(req('POST', '/api/registrer')), null);
+  const kariT = inn.lagToken('kari');
+  assert.equal(sjekk(req('GET', '/admin.html', { hoder: { accept: 'text/html', authorization: `Bearer ${kariT}` } })).hoder.Location, '/');
+  assert.equal(sjekk(req('GET', '/admin.html', { hoder: { accept: 'text/html', authorization: `Bearer ${adminToken}` } })), null);
+  const for_ = inn.oversikt().brukere.find((b) => b.bruker === 'kari').sider;
+  sjekk(req('GET', '/', { hoder: { accept: 'text/html', authorization: `Bearer ${kariT}` } })); sjekk(req('GET', '/js/app.js', { hoder: { authorization: `Bearer ${kariT}` } }));
+  assert.equal(inn.oversikt().brukere.find((b) => b.bruker === 'kari').sider, for_ + 1, 'bare sider telles som sidevisning');
+  rmSync(mappe, { recursive: true, force: true });
+  assert.ok(lagBrukerlager().permanent === false);
+});
+
 await Promise.all(venter);
 console.log(`\n${ok} tester bestått`);
