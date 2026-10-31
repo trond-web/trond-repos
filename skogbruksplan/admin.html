@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Admin – SkogIQ.ai</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root { --bg: #e9ede7; --surface: #fbfcfa; --surface-2: #eff3ee; --text: #10241c; --text-2: #43544b; --border: rgba(16,36,28,.14); --accent: #1f6b4a; --accent-2: #8fc7a8; --danger: #b4302f; --warn: #a05a00; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0e1a15; --surface: #15241d; --surface-2: #1b2d25; --text: #e6efe9; --text-2: #a9bcb1; --border: rgba(230,239,233,.16); --accent: #3f9b6e; --accent-2: #2b6b4c; --danger: #ff8a7a; --warn: #f2b66b; color-scheme: dark; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 'Schibsted Grotesk', system-ui, -apple-system, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 6px 0 14px; }
+  .logo { font-weight: 800; font-size: 20px; } .logo b { color: #c93a55; }
+  a { color: var(--accent); }
+  .kort { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+  h1 { font-size: 22px; margin: 0; } h2 { font-size: 16px; margin: 0 0 10px; }
+  .hint { color: var(--text-2); font-size: 13px; }
+  .tall { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .tall div { background: var(--surface-2); border-radius: 12px; padding: 10px 14px; display: grid; }
+  .tall b { font-size: 24px; font-variant-numeric: tabular-nums; } .tall span { font-size: 13px; color: var(--text-2); }
+  .varsel { padding: 10px 14px; border-radius: 12px; background: var(--surface-2); border-left: 4px solid var(--warn); margin-bottom: 14px; font-size: 14px; }
+  svg.graf { width: 100%; height: auto; display: block; }
+  .graf text { font: 10px system-ui, sans-serif; fill: var(--text-2); }
+  .tabell { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; white-space: nowrap; }
+  th { color: var(--text-2); font-weight: 600; font-size: 12.5px; } td.t, th.t { text-align: right; font-variant-numeric: tabular-nums; }
+  td.navn { white-space: normal; min-width: 160px; }
+  .pille { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11.5px; font-weight: 700; background: var(--surface-2); }
+  .pille.admin { background: color-mix(in srgb, var(--accent) 22%, transparent); } .pille.sperret { background: color-mix(in srgb, var(--danger) 22%, transparent); }
+  button, select { font: inherit; font-size: 13px; padding: 5px 9px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+  button.fare { color: var(--danger); }
+  .moduler { display: grid; gap: 6px; }
+  .moduler div { display: grid; grid-template-columns: 120px 1fr 50px; gap: 8px; align-items: center; font-size: 13px; }
+  .moduler i { display: block; height: 10px; border-radius: 99px; background: var(--accent); }
+  .feil { color: var(--danger); }
+</style>
+</head>
+<body>
+<main>
+  <header><span class="logo">Skog<b>IQ</b>.ai <span class="hint" style="font-weight:600">· Admin</span></span><span class="hint"><a href="./?full">Til appen</a> · <label>Periode <select id="dager"><option value="7">7 dager</option><option value="30" selected>30 dager</option><option value="90">90 dager</option><option value="365">1 år</option></select></label></span></header>
+  <div id="innhold"><div class="kort">Henter …</div></div>
+</main>
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>

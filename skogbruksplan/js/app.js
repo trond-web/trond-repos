@@ -1,4 +1,4 @@
-import './innlogging.js'; // først: økten følger med alle kall til serveren
+import { visBruker, registrerBruk } from './innlogging.js'; // først: økten følger med alle kall til serveren
 import { arealM2, punktIGeometri, bbox, fraWgs84, etikettPunkt } from './proj.js';
 import { lagSosi } from './sosi.js';
 import {
@@ -567,6 +567,7 @@ const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Ov
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 function visFane(navn) {
+  registrerBruk('fane', navn); // bruksstatistikk for administrator (innlogging.js)
   if (deling && navn !== 'bestand') stoppDeling();
   if (pefcVisning) { if (navn === 'pefc') setTimeout(() => pefcVisning.vis(), 0); else pefcVisning.skjul(); }
   if (skogbrandVisning) { if (navn === 'skogbrand') setTimeout(() => skogbrandVisning.vis(), 0); else skogbrandVisning.skjul(); }
@@ -1958,7 +1959,8 @@ function kobleHendelser() {
     dra = null;
   });
   // Versjon og utvikler
-  for (const el of $$('[data-om-app]')) el.innerHTML = `<b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span><br>Utviklet av ${UTVIKLER} · <a href="#" data-logg-ut>Logg ut</a>`;
+  for (const el of $$('[data-om-app]')) el.innerHTML = `<b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span><br>Utviklet av ${UTVIKLER}<br><span data-bruker-info></span><a href="#" data-logg-ut>Logg ut</a>`;
+  visBruker();
   $('#railVersjon').textContent = `v${VERSJON}`; $('#railVersjon').title = signatur();
   initKommando({ hentValg: kommandoValg });
   $('#genSkjema').addEventListener('submit', startGenerering);
