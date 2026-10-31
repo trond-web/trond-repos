@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { lagRelay, kontrollerApi } from './kontroller-relay.js';
 import { lagPlanRelay, planApi } from './plan-relay.js';
 import { lagJdRelay, jdApi, JD_SANDKASSE } from './jd-relay.js';
-import { lagInnlogging, innloggingApi, krevInnlogging, corsFor } from './auth.js';
+import { lagInnlogging, innloggingApi, krevInnlogging, corsFor, lagEpostSender } from './auth.js';
 import { lagTilbudRelay, tilbudApi } from './tilbud-relay.js';
 
 const ROT = path.dirname(fileURLToPath(import.meta.url));
@@ -76,6 +76,7 @@ const tilbudRelay = lagTilbudRelay({ fil: process.env.TILBUD_FIL || null });
 const innlogging = lagInnlogging({
   bruker: process.env.APP_BRUKER || '', passord: process.env.APP_PASSORD || '', hemmelighet: process.env.APP_HEMMELIGHET || '',
   registrering: process.env.APP_REGISTRERING === '1', fil: process.env.BRUKER_FIL || null, admin: process.env.APP_ADMIN || '', kode: process.env.APP_REGISTRERINGSKODE || '',
+  sendEpost: lagEpostSender({ nokkel: process.env.EPOST_NOKKEL || '', fra: process.env.EPOST_FRA || '' }),
 });
 if (innlogging.registrering && !innlogging.permanent) console.warn('BRUKER_FIL er ikke satt – registrerte brukere forsvinner når serveren startes på nytt.');
 // John Deere Operations Center (se jd-relay.js). Uten JD_CLIENT_ID/JD_CLIENT_SECRET svarer /api/jd/status at det ikke er satt opp.

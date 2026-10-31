@@ -37,6 +37,10 @@
   .moduler div { display: grid; grid-template-columns: 120px 1fr 50px; gap: 8px; align-items: center; font-size: 13px; }
   .moduler i { display: block; height: 10px; border-radius: 99px; background: var(--accent); }
   .feil { color: var(--danger); }
+  .pille.glemt { background: color-mix(in srgb, var(--warn) 25%, transparent); }
+  .lenkedialog { border: 0; border-radius: 16px; padding: 18px; width: min(520px, calc(100% - 32px)); background: var(--surface); color: var(--text); display: grid; gap: 10px; }
+  .lenkedialog input { font: 13px ui-monospace, monospace; padding: 9px; border-radius: 8px; border: 1px solid var(--border); width: 100%; background: var(--bg); color: var(--text); }
+  .lenkedialog .knapper { display: flex; flex-wrap: wrap; gap: 8px; } .lenkedialog .knapp { font-size: 13px; padding: 6px 10px; border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; }
 </style>
 </head>
 <body>

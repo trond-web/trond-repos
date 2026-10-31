@@ -1,4 +1,5 @@
-import { visBruker, registrerBruk } from './innlogging.js'; // først: økten følger med alle kall til serveren
+import { visBruker, registrerBruk, innloggetBruker } from './innlogging.js'; // først: økten følger med alle kall til serveren
+import { lagVelkomst } from './velkommen.js';
 import { arealM2, punktIGeometri, bbox, fraWgs84, etikettPunkt } from './proj.js';
 import { lagSosi } from './sosi.js';
 import {
@@ -2216,6 +2217,41 @@ async function start() {
   window.addEventListener('focus', () => synkAktiv());
   window.addEventListener('online', () => synkAktiv());
   setInterval(() => { if (document.visibilityState === 'visible') synkAktiv(); }, 60000);
+  // Velkomst etter innlogging (velkommen.js): én gang per dag per bruker.
+  if (innloggetBruker()) visVelkomst(innloggetBruker()); else window.addEventListener('skogiq-innlogget', (e) => visVelkomst(e.detail), { once: true });
+}
+
+// ---------------------------------------------------------------- velkomst
+async function visVelkomst(meg, { tving = false } = {}) {
+  if (!meg?.bruker || $('#velkomst')) return;
+  const nokkel = `skogiq-velkommen-${meg.bruker}`; const idag = new Date().toISOString().slice(0, 10);
+  try { if (!tving && localStorage.getItem(nokkel) === idag) return; localStorage.setItem(nokkel, idag); } catch { /* privat modus */ }
+  // Været ved eiendommen (midt i bestandene eller eiendomsgrensen)
+  let v = null;
+  const geom = [S.eiendom?.grense, ...S.bestand.map((b) => b.geometri)].filter(Boolean);
+  if (geom.length) {
+    try {
+      const bb = bbox(geom); const { hentVaer } = await import('./skog3d-vaer.js'); const { geoTilUtm } = await import('./proj.js');
+      v = await Promise.race([hentVaer(geoTilUtm((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2, 33), { nveBase: `${SYNK_API}/api/nve` }), new Promise((ok) => setTimeout(() => ok(null), 6000))]);
+    } catch { v = null; }
+  }
+  const sted = S.eiendom?.navn || S.eiendom?.kommune || '';
+  const w = lagVelkomst({ navn: meg.navn || meg.bruker, bruker: meg.bruker, S, v, sted });
+  const el = document.createElement('section'); el.id = 'velkomst'; el.className = 'velkomst'; el.setAttribute('role', 'status');
+  el.innerHTML = `<button type="button" class="velkomst-lukk" aria-label="Lukk">✕</button>
+    <h2>${esc(w.tittel)} 👋</h2>
+    <p class="velkomst-humor">${esc(w.humor)}</p>
+    ${w.vaer ? `<p class="velkomst-vaer">🌦 ${esc(w.vaer)}${w.raad ? ` <b>${esc(w.raad)}</b>` : ''}</p>` : ''}
+    <p class="velkomst-tiltak">🌲 ${esc(w.tiltak.tekst)}</p>
+    <div class="knapperad"><button type="button" class="knapp liten primar" data-velkomst="${w.tiltak.handling}">${w.tiltak.handling === 'planer' ? 'Lag skogbruksplan' : 'Se tiltakene'}</button><button type="button" class="knapp liten" data-velkomst="lukk">Til kartet</button></div>`;
+  document.body.appendChild(el);
+  const lukk = () => { el.classList.add('borte'); setTimeout(() => el.remove(), 250); };
+  el.addEventListener('click', (e) => {
+    const h = e.target.closest('[data-velkomst]')?.dataset.velkomst;
+    if (e.target.closest('.velkomst-lukk') || h === 'lukk') lukk();
+    else if (h) { lukk(); visFane(h === 'planer' ? 'planer' : 'tiltak'); if (erMobil()) settArk('halv'); }
+  });
+  setTimeout(() => { if (document.body.contains(el)) lukk(); }, 45000);
 }
 
 start();

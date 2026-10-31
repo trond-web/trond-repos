@@ -57,9 +57,9 @@ function vis(d) {
     <div class="kort"><h2>Brukere (${d.brukere.length})</h2><div class="tabell"><table>
       <thead><tr><th>Bruker</th><th>Registrert</th><th>Sist aktiv</th><th class="t">Innlogginger</th><th class="t">Aktive dager</th><th class="t">Aktiv tid</th><th class="t">Sider</th><th>Mest brukt</th><th></th></tr></thead>
       <tbody>${d.brukere.map((b) => { const mest = Object.entries(b.faner || {}).sort((x, y) => y[1] - x[1]).slice(0, 3).map(([f]) => FANER[f] || f).join(', '); return `<tr>
-        <td class="navn"><b>${esc(b.navn)}</b> ${b.admin ? '<span class="pille admin">admin</span>' : ''}${b.sperret ? ' <span class="pille sperret">sperret</span>' : ''}<br><span class="hint">${esc(b.bruker)}${b.epost ? ` · <a href="mailto:${esc(b.epost)}">${esc(b.epost)}</a>` : ''}</span></td>
+        <td class="navn"><b>${esc(b.navn)}</b> ${b.admin ? '<span class="pille admin">admin</span>' : ''}${b.sperret ? ' <span class="pille sperret">sperret</span>' : ''}${b.glemt ? ` <span class="pille glemt" title="Ba om nytt passord ${dato(b.glemt)}">🔑 ber om nytt passord</span>` : ''}<br><span class="hint">${esc(b.bruker)}${b.epost ? ` · <a href="mailto:${esc(b.epost)}">${esc(b.epost)}</a>` : ''}</span></td>
         <td>${dato(b.opprettet)}</td><td>${tid(b.sistAktiv)}</td><td class="t">${tall(b.innlogginger)}</td><td class="t">${tall(b.aktiveDager)}</td><td class="t">${timer(b.minutter)}</td><td class="t">${tall(b.sider)}</td><td class="hint">${esc(mest) || '–'}</td>
-        <td><select data-bruker="${esc(b.bruker)}" aria-label="Handling for ${esc(b.bruker)}"><option value="">Handling …</option>${b.sperret ? '<option value="aapne">Åpne</option>' : '<option value="sperr">Sperr</option>'}${b.rolle === 'admin' ? '<option value="fjern-admin">Fjern admin</option>' : '<option value="admin">Gjør til admin</option>'}<option value="slett">Slett bruker</option></select></td></tr>`; }).join('')}</tbody></table></div>
+        <td><select data-bruker="${esc(b.bruker)}" aria-label="Handling for ${esc(b.bruker)}"><option value="">Handling …</option><option value="lenke">${b.glemt ? '🔑 ' : ''}Lag lenke for nytt passord</option>${b.sperret ? '<option value="aapne">Åpne</option>' : '<option value="sperr">Sperr</option>'}${b.rolle === 'admin' ? '<option value="fjern-admin">Fjern admin</option>' : '<option value="admin">Gjør til admin</option>'}<option value="slett">Slett bruker</option></select></td></tr>`; }).join('')}</tbody></table></div>
       <p class="hint">Bruken telles per bruker og dag: sidevisninger, aktiv tid (minutter med klikk eller tastetrykk) og hvilke moduler som åpnes. Planene til brukerne ligger på deres egne enheter og vises ikke her.</p></div>`;
 }
 
@@ -67,11 +67,28 @@ async function last() { try { const d = await hent(); if (d) vis(d); } catch (e)
 $('#dager').addEventListener('change', last);
 document.addEventListener('change', async (e) => {
   const s = e.target.closest('[data-bruker]'); if (!s || !s.value) return;
+  if (s.value === 'lenke') { s.value = ''; return lagLenke(s.dataset.bruker); }
   const tekst = { sperr: 'Sperre', aapne: 'Åpne', admin: 'Gjøre til administrator', 'fjern-admin': 'Fjerne admin for', slett: 'Slette' }[s.value];
   if (!confirm(`${tekst} ${s.dataset.bruker}?${s.value === 'slett' ? ' Brukeren og bruksstatistikken slettes.' : ''}`)) { s.value = ''; return; }
   const r = await fetch(`${API}/api/admin/bruker`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...hode() }, credentials: 'same-origin', body: JSON.stringify({ bruker: s.dataset.bruker, handling: s.value }) });
   const j = await r.json().catch(() => ({})); if (!r.ok) alert(j.feil || 'Klarte ikke å endre brukeren');
   last();
 });
+// Lenke for nytt passord (gyldig 24 timer): kopier eller send på e-post til brukeren.
+async function lagLenke(bruker) {
+  const r = await fetch(`${API}/api/admin/bruker`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...hode() }, credentials: 'same-origin', body: JSON.stringify({ bruker, handling: 'lenke' }) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) { alert(j.feil || 'Klarte ikke å lage lenke'); return; }
+  const emne = 'Nytt passord til SkogIQ.ai';
+  const tekst = `Hei ${j.navn || ''}!\n\nHer er lenken for å velge nytt passord til SkogIQ.ai. Den gjelder i 24 timer:\n\n${j.lenke}\n\nHilsen Trond`;
+  const d = document.createElement('dialog'); d.className = 'lenkedialog';
+  d.innerHTML = `<b>Lenke for nytt passord</b><p class="hint">Gjelder i 24 timer for ${esc(j.navn)} (${esc(bruker)}). Send den til brukeren – den som har lenken, kan velge nytt passord.</p>
+    <input readonly value="${esc(j.lenke)}" aria-label="Lenke">
+    <div class="knapper"><button type="button" data-kopier>Kopier lenken</button>${j.epost ? `<a class="knapp" href="mailto:${encodeURIComponent(j.epost)}?subject=${encodeURIComponent(emne)}&body=${encodeURIComponent(tekst)}">Send e-post til ${esc(j.epost)}</a>` : ''}<button type="button" data-lukk>Lukk</button></div>`;
+  document.body.appendChild(d); d.showModal(); d.querySelector('input').select();
+  d.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-kopier]')) { try { await navigator.clipboard.writeText(j.lenke); e.target.textContent = 'Kopiert ✓'; } catch { d.querySelector('input').select(); document.execCommand?.('copy'); e.target.textContent = 'Kopiert ✓'; } }
+    if (e.target.closest('[data-lukk]')) { d.close(); d.remove(); last(); }
+  });
+}
 last();
 setInterval(last, 60000);

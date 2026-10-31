@@ -39,7 +39,7 @@ if (typeof window !== 'undefined' && !window.__skogiqInnlogging && !/logginn\.ht
       const r = await opprinnelig(`${API}/api/meg`, { headers: t ? { Authorization: `Bearer ${t}` } : {}, credentials: 'same-origin', cache: 'no-store' });
       if (r.status === 401) { ls.del(LS_OKT); tilInnlogging(); return; }
       const d = await r.json().catch(() => ({})); if (d.bruker) ls.set(LS_SETT, '1');
-      if (d.aktiv && d.bruker) { meg = d; visBruker(); startBruk(opprinnelig); }
+      if (d.aktiv && d.bruker) { meg = d; visBruker(); startBruk(opprinnelig); window.dispatchEvent(new CustomEvent('skogiq-innlogget', { detail: d })); }
     } catch {
       // Uten nett: slipp inn en enhet som har vært innlogget før.
       if (erPages && !ls.get(LS_SETT)) { tilInnlogging(); return; }
@@ -54,7 +54,7 @@ let meg = null; let brukFetch = null; let sistAktivitet = 0; let sistSendt = 0;
 // Fyller [data-bruker-info] (f.eks. i Om-boksen): «Innlogget som …», Admin-lenke og «Bytt passord».
 export function visBruker() {
   if (typeof document === 'undefined' || !meg?.bruker) return;
-  for (const el of document.querySelectorAll('[data-bruker-info]')) el.innerHTML = `Innlogget som <b>${String(meg.navn || meg.bruker).replace(/[<>&"]/g, '')}</b>${meg.admin ? ' · <a href="admin.html">Admin</a>' : ''}${meg.registrering ? ' · <a href="#" data-bytt-passord>Bytt passord</a>' : ''} · `;
+  for (const el of document.querySelectorAll('[data-bruker-info]')) el.innerHTML = `Innlogget som <b>${String(meg.navn || meg.bruker).replace(/[<>&"]/g, '')}</b>${meg.admin ? ' · <a href="admin.html">Admin</a>' : ''}${meg.registrering ? ' · <a href="#" data-bytt-passord>Min konto</a>' : ''} · `;
 }
 export const innloggetBruker = () => meg;
 const sendBruk = (type, detalj = '') => { if (!brukFetch || !meg?.bruker) return; brukFetch(`${API}/api/bruk`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(gyldigToken() ? { Authorization: `Bearer ${gyldigToken()}` } : {}) }, credentials: 'same-origin', body: JSON.stringify({ type, detalj }), keepalive: true }).catch(() => {}); };
@@ -70,25 +70,27 @@ function startBruk(f) {
   setInterval(() => { const t = Date.now(); if (document.visibilityState === 'visible' && t - sistAktivitet < 120000 && t - sistSendt >= 59000) { sistSendt = t; sendBruk('aktiv'); } }, 15000);
   document.addEventListener('click', (e) => { if (e.target.closest?.('[data-bytt-passord]')) { e.preventDefault(); byttPassord(); } });
 }
-// Bytt passord i en liten dialog.
+// Min konto: e-post (for «glemt passord») og nytt passord i en liten dialog. Krever nåværende passord.
 function byttPassord() {
   const d = document.createElement('dialog'); d.style.cssText = 'border:0;border-radius:16px;padding:20px;max-width:340px;width:calc(100% - 32px);font:15px/1.4 system-ui,sans-serif';
-  d.innerHTML = `<form method="dialog" style="display:grid;gap:10px"><b style="font-size:17px">Bytt passord</b>
-    <input type="text" name="u" autocomplete="username" value="${String(meg?.bruker || '').replace(/"/g, '')}" hidden>
-    <label style="display:grid;gap:4px">Nåværende passord<input type="password" name="g" autocomplete="current-password" required style="padding:9px;border-radius:8px;border:1px solid #bbb"></label>
-    <label style="display:grid;gap:4px">Nytt passord (minst 8 tegn)<input type="password" name="n" autocomplete="new-password" minlength="8" required style="padding:9px;border-radius:8px;border:1px solid #bbb"></label>
+  const felt = 'padding:9px;border-radius:8px;border:1px solid #bbb'; const rens = (v) => String(v || '').replace(/"/g, '');
+  d.innerHTML = `<form method="dialog" style="display:grid;gap:10px"><b style="font-size:17px">Min konto</b><span style="font-size:13px;color:#555">${rens(meg?.navn)} · ${rens(meg?.bruker)}</span>
+    <input type="text" name="u" autocomplete="username" value="${rens(meg?.bruker)}" hidden>
+    <label style="display:grid;gap:4px">E-post <small style="color:#555">(for «Glemt passord»)</small><input type="email" name="e" autocomplete="email" value="${rens(meg?.epost)}" style="${felt}"></label>
+    <label style="display:grid;gap:4px">Nytt passord <small style="color:#555">(la stå tomt for å beholde)</small><input type="password" name="n" autocomplete="new-password" minlength="8" style="${felt}"></label>
+    <label style="display:grid;gap:4px">Nåværende passord <small style="color:#555">(kreves for å lagre)</small><input type="password" name="g" autocomplete="current-password" required style="${felt}"></label>
     <div data-f style="color:#b4302f;min-height:18px;font-size:13px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end"><button value="avbryt" formnovalidate style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff">Avbryt</button><button value="ok" style="padding:9px 14px;border-radius:9px;border:0;background:#1f6b4a;color:#fff;font-weight:700">Lagre</button></div></form>`;
   document.body.appendChild(d); d.showModal();
   d.querySelector('form').addEventListener('submit', async (e) => {
     if (e.submitter?.value !== 'ok') { d.close(); d.remove(); return; }
     e.preventDefault(); const f = e.target;
-    const r = await brukFetch(`${API}/api/passord`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(gyldigToken() ? { Authorization: `Bearer ${gyldigToken()}` } : {}) }, credentials: 'same-origin', body: JSON.stringify({ gammelt: f.g.value, nytt: f.n.value }) }).catch(() => null);
+    const r = await brukFetch(`${API}/api/passord`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(gyldigToken() ? { Authorization: `Bearer ${gyldigToken()}` } : {}) }, credentials: 'same-origin', body: JSON.stringify({ gammelt: f.g.value, nytt: f.n.value || undefined, epost: f.e.value.trim() }) }).catch(() => null);
     const j = r ? await r.json().catch(() => ({})) : { feil: 'Ingen kontakt med serveren' };
     if (!r?.ok) { d.querySelector('[data-f]').textContent = j.feil || 'Klarte ikke å bytte passord'; return; }
-    if (j.token) ls.set(LS_OKT, j.token);
-    try { if (window.PasswordCredential) await navigator.credentials.store(new PasswordCredential({ id: meg.bruker, password: f.n.value })); } catch { /* ikke støttet */ }
-    d.close(); d.remove(); alert('Passordet er byttet.');
+    if (j.token) ls.set(LS_OKT, j.token); meg = { ...meg, epost: j.epost ?? f.e.value.trim() };
+    if (f.n.value) try { if (window.PasswordCredential) await navigator.credentials.store(new PasswordCredential({ id: meg.bruker, password: f.n.value })); } catch { /* ikke støttet */ }
+    d.close(); d.remove(); alert(f.n.value ? 'Kontoen er lagret, og passordet er byttet.' : 'Kontoen er lagret.');
   });
 }
 
