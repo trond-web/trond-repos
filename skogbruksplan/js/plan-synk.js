@@ -11,7 +11,7 @@ const tilB64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000)
 const fraB64 = (b) => { const s = atob(b); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
 async function strom(u8, Strom) { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new Strom('gzip'))).arrayBuffer()); }
 export async function pakk(plan) {
-  const { synk, ...uten } = plan; // synk-feltet er lokalt for hver enhet
+  const { synk, sky, ...uten } = plan; // synk- og sky-feltene er lokale for hver enhet
   const u8 = new TextEncoder().encode(JSON.stringify(uten));
   if (typeof CompressionStream === 'function') return { plan: tilB64(await strom(u8, CompressionStream)), gzip: true };
   return { plan: tilB64(u8), gzip: false };
@@ -60,7 +60,7 @@ export function merkSlettet(plan, type, id) { if (!id) return; plan.slettet = pl
 
 // Fingeravtrykk av innholdet (uten synk og tidsstempel): avgjør om planen er endret siden forrige synkronisering.
 export function planHash(plan) {
-  const { synk, endret, ...rest } = plan || {};
+  const { synk, sky, endret, ...rest } = plan || {};
   const t = JSON.stringify(rest); let h = 2166136261;
   for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); }
   return `${(h >>> 0).toString(16)}-${t.length}`;

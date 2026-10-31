@@ -1,7 +1,7 @@
 // SkogIQ Felt – mobilversjon med kartet i fokus: bestandsinfo, GPS, registreringer med bilde, tiltak som utføres i
 // felt og offline-kart. Bruker de samme planene (IndexedDB) som fullversjonen, og varsler den om endringer.
-import './innlogging.js'; // først: økten følger med alle kall til serveren
-import { hent, lagre, listPlaner, hentPlan, lagrePlan } from './store.js';
+import { innloggetBruker, gyldigToken } from './innlogging.js'; // først: økten følger med alle kall til serveren
+import { hent, lagre, listPlaner, hentPlan, lagrePlan, slettPlan } from './store.js';
 import { TRESLAG, HK_ROMERTALL, HK_NAVN, TILTAKSTYPER, STANDARD_INNSTILLINGER, startTilstand, nyId, rettFeilHogd } from './model.js';
 import { punktIGeometri, etikettPunkt, bbox } from './proj.js';
 import { hkFor } from './flere-eiendommer.js';
@@ -21,6 +21,7 @@ import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
 import { endringer as motorEndringer, oppdaterBestand as motorOppdater, merkKjort } from './tiltaksmotor.js';
 import { lagPlanSynk, merkSlettet, flettPlaner } from './plan-synk.js';
+import { lagSkyKlient, synkPlan as skySynkPlan, synkAlle as skySynkAlle, synkTekst as skyTekst } from './sky.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -60,6 +61,44 @@ async function lagrePlanen() {
   if (!h || h.planId === P.planId) await lagre(P);
   kanal?.postMessage({ type: 'plan-endret', planId: P.planId, fra: 'felt' });
   if (P.synk?.id) { clearTimeout(synkTimer); synkTimer = setTimeout(() => synkNaa(), 8000); } // send endringene til PC-en
+  if (sky.aktiv) { if (!P.eier) P.eier = innloggetBruker()?.bruker; clearTimeout(sky.timer); sky.timer = setTimeout(() => skyNaa(), 6000); } // skylagring
+}
+
+// ---------- skylagring: planene til brukeren ligger på serveren og synkroniseres med alle enhetene (sky.js) ----------
+const sky = { aktiv: false, synker: false, timer: null, sist: null, feil: null, bruk: null, sistAlle: 0 };
+const skyKlient = lagSkyKlient({ token: gyldigToken, enhet: 'mobil (Felt)' });
+const minePlaner = async () => { const u = innloggetBruker()?.bruker; return (await listPlaner()).filter((p) => !u || !p.eier || p.eier === u); };
+async function lagreFraSky(plan) { const g = await hentPlan(plan.planId); await lagrePlan(g?.synk ? { ...plan, synk: g.synk } : plan); }
+async function brukSky(snap, endret0, r) {
+  if (r.status === 'lik' || r.status === 'slettet') return;
+  if (P !== snap) { await lagreFraSky(r.plan); return; } // byttet plan underveis
+  if (P.endret !== endret0) { P.sky = r.status === 'sendt' ? { ...r.plan.sky, hash: null } : { ...r.plan.sky, versjon: -1, hash: null }; await lagrePlan(P); return; }
+  if (r.status === 'sendt') { P.eier = r.plan.eier || P.eier; P.sky = r.plan.sky; await lagrePlan(P); return; }
+  P = { ...r.plan, synk: P.synk }; P.registreringer = P.registreringer || []; await lagrePlan(P);
+  const h = await hent(); if (h?.planId === P.planId) await lagre(P);
+  $('#planNavn').textContent = P.eiendom?.navn || 'Plan'; valgtId = null; tegnPlan(false); gpsStripe(); spor?.tegnUtfort();
+  melding(r.status === 'hentet' ? '☁ Planen er oppdatert fra en annen enhet.' : '☁ Endringer fra en annen enhet er slått sammen med dine.', 4500);
+}
+async function skyNaa() {
+  if (!sky.aktiv || sky.synker || !navigator.onLine || !P?.planId) return;
+  sky.synker = true; const snap = P; const e0 = P.endret;
+  try { const r = await skySynkPlan(skyKlient, P.eier ? P : { ...P, eier: innloggetBruker()?.bruker }); await brukSky(snap, e0, r); sky.sist = new Date(); sky.feil = null; } catch (e) { sky.feil = e.message; } finally { sky.synker = false; }
+}
+async function skyAlle({ stille = true } = {}) {
+  if (!sky.aktiv || sky.synker || !navigator.onLine || (stille && Date.now() - sky.sistAlle < 30000)) return;
+  sky.synker = true; sky.sistAlle = Date.now(); const snap = P; const e0 = P?.endret;
+  try {
+    const r = await skySynkAlle(skyKlient, { liste: listPlaner, hent: hentPlan, lagre: lagreFraSky, slett: slettPlan }, { aktivId: P?.planId || null, eier: innloggetBruker()?.bruker, paaAktiv: (x) => brukSky(snap, e0, x) });
+    sky.sist = new Date(); sky.bruk = r.bruk; sky.feil = r.feil.length ? r.feil[0] : null;
+    const t = skyTekst(r); if (t && (!stille || r.nye || r.hentet || r.flettet)) melding(`☁ ${t}.`, 4500); else if (!stille) melding('☁ Alle planene er lagret i skyen.');
+    if (!P) { const l = await minePlaner(); if (l[0]) { sky.synker = false; await velgPlan(l[0].id); lukkArk(); } }
+  } catch (e) { sky.feil = e.message; if (!stille) melding(`☁ Synkronisering feilet: ${e.message}`, 6000); } finally { sky.synker = false; }
+}
+function startSky(meg) {
+  if (!meg?.bruker || sky.aktiv) return;
+  sky.aktiv = true;
+  if (P?.eier && P.eier !== meg.bruker) { P = null; valgtId = null; tegnPlan(false); $('#planNavn').textContent = 'Velg plan'; }
+  skyAlle({ stille: true });
 }
 
 // ---------- planer fra PC-en: hent med kode/QR, og synkroniser endringer begge veier (plan-synk.js) ----------
@@ -526,13 +565,15 @@ async function velgPlan(id, { zoom = true } = {}) {
   synkInfo = null; synkNaa(); // hent endringer fra PC-en
 }
 async function visPlaner() {
-  const liste = await listPlaner();
+  const liste = await minePlaner();
   aapneArk(`<h2>Mine skogbruksplaner</h2>
-    <div class="liste">${liste.map((p) => `<button type="button" class="rad ${p.id === P?.planId ? 'aktiv' : ''}" data-plan="${esc(p.id)}"><div><div class="tittel">${esc(p.navn)}</div><div class="under">${fmt(p.areal)} daa · ${p.antall} bestand${ls.get(LS.offline + p.id) ? ` · offline-kart ${esc(ls.get(LS.offline + p.id))}` : ''}</div></div><span>${p.id === P?.planId ? '✓' : '›'}</span></button>`).join('') || '<div class="tom">Ingen planer på mobilen ennå. Hent en fra PC-en under.</div>'}</div>
+    <div class="liste">${liste.map((p) => `<button type="button" class="rad ${p.id === P?.planId ? 'aktiv' : ''}" data-plan="${esc(p.id)}"><div><div class="tittel">${esc(p.navn)}</div><div class="under">${fmt(p.areal)} daa · ${p.antall} bestand${sky.aktiv ? (p.sky === 'lagret' ? ' · ☁ lagret' : ' · ☁ lagres …') : ''}${ls.get(LS.offline + p.id) ? ` · offline-kart ${esc(ls.get(LS.offline + p.id))}` : ''}</div></div><span>${p.id === P?.planId ? '✓' : '›'}</span></button>`).join('') || '<div class="tom">Ingen planer på mobilen ennå. Hent en fra PC-en under.</div>'}</div>
     ${P?.synk?.id ? `<h3>Synkronisert med PC-en</h3><p class="hint">${synkInfo ? `${synkInfo.feil ? '⚠ ' : '✓ '}${esc(synkInfo.tekst)}${synkInfo.tid ? ` (${klokke(synkInfo.tid)})` : ''}` : P.synk.sist ? `Sist synkronisert ${new Date(P.synk.sist).toLocaleString('nb-NO', { dateStyle: 'short', timeStyle: 'short' })}` : ''}. Endringer sendes automatisk når du har nett.</p>
     <div class="knapper"><button type="button" class="knapp" data-h="synk">⇅ Synkroniser nå</button></div>` : ''}
+    ${sky.aktiv ? `<h3>☁ Skylagring</h3><p class="hint">${sky.feil ? `⚠ ${esc(sky.feil)}` : 'Planene dine er lagret i skyen og hentes automatisk på alle enhetene du logger inn på.'}${sky.sist ? ` Sist synkronisert ${klokke(sky.sist.toISOString())}.` : ''}</p>
+    <div class="knapper"><button type="button" class="knapp" data-h="sky">☁ Synkroniser nå</button></div>` : ''}
     <h3>Hent plan fra PC-en</h3>
-    <p class="hint">Åpne planen i fullversjonen på PC-en og trykk <b>📱 Til mobil</b>. Skann QR-koden med kameraet, eller skriv koden her:</p>
+    <p class="hint">Med innlogging kommer planene dine automatisk. For å hente en plan fra en annen bruker: åpne planen i fullversjonen på PC-en og trykk <b>📱 Til mobil</b>. Skann QR-koden med kameraet, eller skriv koden her:</p>
     <div class="kodefelt"><input id="hentKode" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="F.eks. K7Q2MX" aria-label="Kode fra PC-en"><button type="button" class="knapp primar" data-h="hent-kode">Hent</button></div>
     <p class="hint">Ny plan fra gårds- og bruksnummer lager du i fullversjonen – også på mobilen.</p>
     <div class="knapper"><a class="knapp" href="./?full#planer">Lag ny plan i fullversjonen</a></div>`, { hoy: true });
@@ -645,6 +686,7 @@ function kobleHendelser() {
     const h = e.target.closest('[data-h]')?.dataset.h; if (!h) return;
     if (h === 'hent-kode') { hentFraPc($('#hentKode')?.value); return; }
     if (h === 'synk') { await synkNaa({ stille: false }); if (!$('#ark').hidden) visPlaner(); return; }
+    if (h === 'sky') { await skyAlle({ stille: false }); if (!$('#ark').hidden) visPlaner(); return; }
     if (h === 'reg-her') startReg(valgtId);
     if (h === 'ny-reg') startReg();
     if (h === 'avbryt-reg') { avbrytReg(); visRegListe(); }
@@ -725,11 +767,12 @@ async function start() {
     zoomTil: (ider) => { const lag = ider.map((id) => lagPerBestand.get(id)).filter(Boolean); if (lag.length) kart.fitBounds(L.featureGroup(lag).getBounds(), { maxZoom: 16, padding: [40, 40], paddingBottomRight: [40, window.innerHeight * 0.5] }); },
   });
   kobleHendelser(); nettStatus();
-  const liste = await listPlaner();
+  const liste = await minePlaner();
   const h = await hent().catch(() => null);
   const id = [ls.get(LS.plan), h?.planId, liste[0]?.id].find((x) => x && liste.some((p) => p.id === x));
-  window.addEventListener('online', () => synkNaa());
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') synkNaa(); });
+  window.addEventListener('online', () => { synkNaa(); skyAlle(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { synkNaa(); skyAlle(); } });
+  if (innloggetBruker()) startSky(innloggetBruker()); else window.addEventListener('skogiq-innlogget', (e) => startSky(e.detail), { once: true });
   const kodeILenke = new URLSearchParams(location.search).get('kode');
   if (kodeILenke) { history.replaceState(null, '', location.pathname); if (await hentFraPc(kodeILenke)) { await spor.gjenoppta(); return registrerSw(); } }
   if (id) { await velgPlan(id); await spor.gjenoppta(); } else visPlaner();

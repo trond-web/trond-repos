@@ -25,6 +25,9 @@ export const GYLDIG_EPOST = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
 const RESET_MS = 60 * 60 * 1000; const RESET_ADMIN_MS = 24 * 3600 * 1000;
 const sha = (s) => createHash('sha256').update(String(s)).digest('hex');
 export const MIN_PASSORD = 8;
+// Profilfelt og maks lengde. Rollen brukes til å tilpasse løsningen (skogeier, bonde, rådgiver, entreprenør).
+export const PROFILFELT = { telefon: 30, rolle: 20, foretak: 120, orgnr: 11, adresse: 120, postnr: 4, poststed: 60, kommune: 60, andelslag: 80, om: 600 };
+export const ROLLER = ['skogeier', 'bonde', 'radgiver', 'entreprenor', 'annet'];
 const dagNokkel = (t) => new Date(t).toISOString().slice(0, 10);
 const tekst = (v, n) => String(v ?? '').trim().slice(0, n);
 
@@ -63,7 +66,7 @@ export function lagBrukerlager({ fil = null, naa = () => Date.now() } = {}) {
 }
 
 // sendEpost({ til, emne, tekst }) → Promise: sender e-post (glemt passord). Uten den går forespørselen til administrator.
-export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', registrering = false, fil = null, admin = '', kode = '', dager = 30, naa = () => Date.now(), lager = null, sendEpost = null } = {}) {
+export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', registrering = false, fil = null, admin = '', kode = '', dager = 30, naa = () => Date.now(), lager = null, sendEpost = null, ekstraBruker = null, vedSlett = null } = {}) {
   const enkel = !!(bruker && passord);
   const aktiv = enkel || !!registrering;
   const store = registrering ? (lager || lagBrukerlager({ fil, naa })) : null;
@@ -78,7 +81,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
   const glemtIp = new Map(); // ip → [tidspunkter for «glemt passord»]
   const nyReset = (b, ms) => { const token = randomBytes(24).toString('base64url'); store.lagre({ ...b, reset: { hash: sha(token), exp: naa() + ms } }); return token; };
   const erAdmin = (u) => { const b = store?.hent(u); return !!(store ? b && (b.rolle === 'admin' || admins.has(b.navn)) : enkel && u === bruker); };
-  const offentlig = (b) => ({ bruker: b.navn, navn: b.visning || b.navn, epost: b.epost || '', admin: erAdmin(b.navn) });
+  const offentlig = (b) => ({ bruker: b.navn, navn: b.visning || b.navn, epost: b.epost || '', admin: erAdmin(b.navn), ...(b.profil ? { profil: b.profil } : {}) });
   const finn = (u) => store?.finn(u) || null;
   return {
     aktiv, registrering: !!store, permanent: store ? store.permanent : true, kodeKreves: !!(store && kode), epostAktiv: !!sendEpost, dager, lager: store,
@@ -164,6 +167,20 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
     // Administrator lager lenke for nytt passord (gyldig 24 timer) når e-post ikke er satt opp.
     adminLenke(u) { const b = store?.hent(u); if (!b) return { feil: 'Finner ikke brukeren', status: 404 }; return { ok: true, token: nyReset(b, RESET_ADMIN_MS), epost: b.epost || '', navn: b.visning || b.navn }; },
     bruk(u, type, detalj) { if (store?.hent(u)) store.bruk(store.hent(u).navn, type, tekst(detalj, 40)); },
+    // Profil: navn og kontaktinformasjon, rolle og gård/foretak. Lagres sammen med brukeren.
+    hentProfil(u) { const b = store?.hent(u); return b ? { navn: b.visning || b.navn, epost: b.epost || '', ...(b.profil || {}) } : null; },
+    lagreProfil(u, data = {}) {
+      const b = store?.hent(u); if (!b) return { feil: 'Profil krever at registrering er slått på', status: 400 };
+      const navn = tekst(data.navn, 80); if (!navn) return { feil: 'Skriv navnet ditt', status: 400 };
+      const p = {};
+      for (const [k, n] of Object.entries(PROFILFELT)) if (data[k] != null) p[k] = tekst(data[k], n);
+      if (p.rolle && !ROLLER.includes(p.rolle)) return { feil: 'Ukjent rolle', status: 400 };
+      if (p.telefon && !/^[+\d\s()-]{5,30}$/.test(p.telefon)) return { feil: 'Ugyldig telefonnummer', status: 400 };
+      if (p.orgnr && !/^\d{3}\s?\d{3}\s?\d{3}$/.test(p.orgnr)) return { feil: 'Organisasjonsnummer har 9 siffer', status: 400 };
+      if (p.postnr && !/^\d{4}$/.test(p.postnr)) return { feil: 'Postnummer har 4 siffer', status: 400 };
+      store.lagre({ ...b, visning: navn, profil: { ...(b.profil || {}), ...p, endret: naa() } });
+      return { ok: true, profil: this.hentProfil(u) };
+    },
     meg(u) { const b = store?.hent(u); return b ? offentlig(b) : u ? { bruker: u, navn: u, epost: '', admin: erAdmin(u) } : null; },
     // Oversikt for administratoren: brukerne med bruk, og bruk per dag og per modul de siste «dager» dagene.
     oversikt({ antallDager = 30 } = {}) {
@@ -179,7 +196,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       return {
         permanent: store.permanent, totalt: store.alle().length, aktiveIdag: (store.data.bruk[iDag] && Object.keys(store.data.bruk[iDag]).length) || 0, aktive7: aktiveSiden(7), aktive30: aktiveSiden(30),
         dager: dagRader, faner,
-        brukere: store.alle().map((b) => ({ ...offentlig(b), rolle: b.rolle, sperret: !!b.sperret, glemt: b.glemt || null, opprettet: b.opprettet, sistInnlogget: b.sistInnlogget || null, sistAktiv: b.sistAktiv || null, innlogginger: b.innlogginger || 0, ...(perBruker[b.navn] ? { aktiveDager: perBruker[b.navn].dager, sider: perBruker[b.navn].s, kall: perBruker[b.navn].k, minutter: perBruker[b.navn].m, faner: perBruker[b.navn].f } : { aktiveDager: 0, sider: 0, kall: 0, minutter: 0, faner: {} }) })).sort((a, b) => (b.sistAktiv || 0) - (a.sistAktiv || 0)),
+        brukere: store.alle().map((b) => ({ ...offentlig(b), ...(ekstraBruker ? ekstraBruker(b.navn) : {}), profil: b.profil || null, rolle: b.rolle, sperret: !!b.sperret, glemt: b.glemt || null, opprettet: b.opprettet, sistInnlogget: b.sistInnlogget || null, sistAktiv: b.sistAktiv || null, innlogginger: b.innlogginger || 0, ...(perBruker[b.navn] ? { aktiveDager: perBruker[b.navn].dager, sider: perBruker[b.navn].s, kall: perBruker[b.navn].k, minutter: perBruker[b.navn].m, faner: perBruker[b.navn].f } : { aktiveDager: 0, sider: 0, kall: 0, minutter: 0, faner: {} }) })).sort((a, b) => (b.sistAktiv || 0) - (a.sistAktiv || 0)),
       };
     },
     endreBruker(adminU, u, handling) {
@@ -189,7 +206,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       else if (handling === 'aapne') store.lagre({ ...b, sperret: false });
       else if (handling === 'admin') store.lagre({ ...b, rolle: 'admin' });
       else if (handling === 'fjern-admin') { if (admins.has(b.navn)) return { feil: 'Brukeren er admin via APP_ADMIN på serveren', status: 400 }; store.lagre({ ...b, rolle: 'bruker' }); }
-      else if (handling === 'slett') store.slett(b.navn);
+      else if (handling === 'slett') { store.slett(b.navn); try { vedSlett?.(b.navn); } catch (e) { console.error('Sletting av brukerdata feilet:', e.message); } }
       else return { feil: 'Ukjent handling', status: 400 };
       return { ok: true };
     },
