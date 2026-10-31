@@ -1044,3 +1044,15 @@ progress { accent-color: var(--accent); height: 8px; }
 .mobil-kode { font: 800 30px/1.1 ui-monospace, 'SFMono-Regular', Menlo, monospace; letter-spacing: .14em; padding: 8px 12px; border-radius: 12px; background: var(--surface-2, rgba(0,0,0,.05)); display: inline-block; margin: 4px 0; user-select: all; }
 .synk-merke { font-size: 12px; color: var(--muted); margin-left: 6px; }
 @media (max-width: 560px) { .mobil-qr { grid-template-columns: 1fr; justify-items: center; } }
+
+/* Velkomst etter innlogging (velkommen.js) */
+.velkomst { position: fixed; z-index: 2000; top: 72px; left: 50%; transform: translateX(-50%); width: min(520px, calc(100% - 32px)); background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 18px; padding: 16px 18px 14px; box-shadow: 0 18px 48px rgba(0,0,0,.22); animation: velkomst-inn .3s ease-out; transition: opacity .25s, transform .25s; }
+.velkomst.borte { opacity: 0; transform: translate(-50%, -8px); }
+.velkomst h2 { margin: 0 0 6px; font-size: 20px; padding-right: 28px; }
+.velkomst p { margin: 0 0 8px; font-size: 14.5px; line-height: 1.45; }
+.velkomst-humor { font-style: italic; color: var(--text-2); }
+.velkomst-vaer b { font-weight: 600; }
+.velkomst .knapperad { margin: 6px 0 0; }
+.velkomst-lukk { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--text); cursor: pointer; font-size: 14px; }
+@keyframes velkomst-inn { from { opacity: 0; transform: translate(-50%, -10px); } }
+@media (max-width: 760px) { .velkomst { top: 64px; padding: 14px; } .velkomst h2 { font-size: 18px; } }

@@ -26,6 +26,8 @@
   button { width: 100%; font: 700 16px/1 inherit; font-family: inherit; padding: 12px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; cursor: pointer; margin-top: 4px; }
   button:hover { background: var(--accent-hover); } button:disabled { opacity: .6; cursor: progress; }
   .feil { color: var(--danger); font-size: 14px; min-height: 20px; margin: 10px 0 0; }
+  .ok { color: var(--accent); font-size: 14px; font-weight: 600; margin: 6px 0 0; }
+  .lenker { margin: 8px 0 0; text-align: center; font-size: 14px; } .lenker a { color: var(--accent); }
   footer { margin-top: 18px; font-size: 12px; color: var(--text-2); text-align: center; }
   [hidden] { display: none !important; }
 </style>
@@ -40,16 +42,34 @@
   <!-- Innlogging: autocomplete gjør at nettleseren kan huske brukernavn og passord -->
   <form id="inn" autocomplete="on">
     <p id="innTekst">Logg inn for å bruke skogbruksplanen.</p>
-    <label>Brukernavn <input name="bruker" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+    <label>E-post <input name="bruker" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
     <label>Passord <input name="passord" type="password" autocomplete="current-password" required></label>
     <button type="submit">Logg inn</button>
+    <div class="feil" role="alert"></div>
+    <p class="lenker" id="glemtLenke" hidden><a href="#glemt">Glemt passord?</a></p>
+  </form>
+  <!-- Glemt passord: lenke på e-post, eller forespørsel til administrator -->
+  <form id="glemt" hidden>
+    <p>Skriv e-postadressen du registrerte deg med, så får du en lenke for å velge nytt passord.</p>
+    <label>E-post <input name="epost" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+    <button type="submit">Send lenke</button>
+    <div class="feil" role="alert"></div>
+    <div class="ok" role="status"></div>
+    <p class="lenker"><a href="#" data-tilbake>← Tilbake til innlogging</a></p>
+  </form>
+  <!-- Nytt passord fra lenken -->
+  <form id="ny" hidden>
+    <p>Velg et nytt passord. Nettleseren kan huske det for deg.</p>
+    <input type="text" name="u" autocomplete="username" hidden>
+    <label>Nytt passord <small>minst 8 tegn</small><input name="passord" type="password" autocomplete="new-password" minlength="8" required></label>
+    <label>Gjenta passordet <input name="passord2" type="password" autocomplete="new-password" minlength="8" required></label>
+    <button type="submit">Lagre og logg inn</button>
     <div class="feil" role="alert"></div>
   </form>
   <form id="reg" autocomplete="on" hidden>
     <p>Lag en bruker for å ta i bruk SkogIQ.ai. Nettleseren kan huske brukernavn og passord for deg.</p>
     <label>Navn <input name="navn" autocomplete="name" maxlength="80" required></label>
-    <label>E-post <small>(valgfri – for å få hjelp med brukeren)</small><input name="epost" type="email" autocomplete="email" maxlength="120"></label>
-    <label>Brukernavn <small>3–32 tegn: a–z, tall, . - _</small><input name="bruker" autocomplete="username" autocapitalize="none" spellcheck="false" pattern="[a-zA-Z0-9][a-zA-Z0-9._-]{2,31}" required></label>
+    <label>E-post <small>brukes som brukernavn</small><input name="bruker" type="email" autocomplete="username email" autocapitalize="none" spellcheck="false" maxlength="120" required></label>
     <label>Passord <small>minst 8 tegn</small><input name="passord" type="password" autocomplete="new-password" minlength="8" required></label>
     <label>Gjenta passordet <input name="passord2" type="password" autocomplete="new-password" minlength="8" required></label>
     <label id="kodeFelt" hidden>Registreringskode <small>fra administrator</small><input name="kode" autocomplete="off"></label>
@@ -64,13 +84,19 @@
   // Bare adresser i appen selv (ingen videresending til andre nettsteder).
   // «?full» og «#…» gjelder appen i samme mappe (./), ikke innloggingssiden.
   const neste = (() => { const n = new URLSearchParams(location.search).get('neste') || ''; if (!/^(\/(?!\/)|(\.\/)?[\w.-]*([?#].*)?$)/.test(n) || /^[a-z]+:/i.test(n)) return './'; return /^[?#]/.test(n) ? `./${n}` : n || './'; })();
-  const inn = document.getElementById('inn'); const reg = document.getElementById('reg'); const faner = document.getElementById('faner');
-  const visFane = (f) => { inn.hidden = f !== 'inn'; reg.hidden = f !== 'reg'; for (const b of faner.querySelectorAll('button')) b.setAttribute('aria-selected', String(b.dataset.fane === f)); (f === 'inn' ? inn.bruker : reg.navn).focus(); };
+  const inn = document.getElementById('inn'); const reg = document.getElementById('reg'); const faner = document.getElementById('faner'); const glemt = document.getElementById('glemt'); const ny = document.getElementById('ny');
+  let registrering = false;
+  const visFane = (f) => { inn.hidden = f !== 'inn'; reg.hidden = f !== 'reg'; glemt.hidden = f !== 'glemt'; ny.hidden = f !== 'ny'; faner.hidden = !registrering || f === 'glemt' || f === 'ny'; for (const b of faner.querySelectorAll('button')) b.setAttribute('aria-selected', String(b.dataset.fane === f)); ({ inn: inn.bruker, reg: reg.navn, glemt: glemt.epost, ny: ny.passord })[f]?.focus(); };
+  let resetToken = (location.hash.match(/tilbakestill=([\w-]+)/) || [])[1] || null;
+  // Lenken kan åpnes i en fane som allerede viser innloggingen (bare #-delen endres)
+  window.addEventListener('hashchange', () => { const t = (location.hash.match(/tilbakestill=([\w-]+)/) || [])[1]; if (t) { resetToken = t; visFane('ny'); } });
+  document.addEventListener('click', (e) => { if (e.target.closest('a[href="#glemt"]')) { e.preventDefault(); glemt.epost.value = inn.bruker.value.includes('@') ? inn.bruker.value : ''; visFane('glemt'); } if (e.target.closest('[data-tilbake]')) { e.preventDefault(); visFane('inn'); } });
   faner.addEventListener('click', (e) => { const b = e.target.closest('[data-fane]'); if (b) visFane(b.dataset.fane); });
   inn.bruker.focus();
+  if (resetToken) visFane('ny');
   // Er registrering slått på? (og kreves kode?)
   fetch(`${API}/api/meg`, { credentials: 'same-origin', cache: 'no-store' }).then((r) => r.json()).then((d) => {
-    if (d.registrering) { faner.hidden = false; document.getElementById('innTekst').textContent = 'Logg inn, eller registrer deg hvis du er ny.'; if (location.hash === '#registrer') visFane('reg'); }
+    if (d.registrering) { registrering = true; faner.hidden = !!resetToken; document.getElementById('glemtLenke').hidden = false; document.getElementById('innTekst').textContent = 'Logg inn, eller registrer deg hvis du er ny.'; if (location.hash === '#registrer') visFane('reg'); }
     if (d.kodeKreves) document.getElementById('kodeFelt').hidden = false;
   }).catch(() => {});
   async function send(skjema, sti, kropp) {
@@ -81,7 +107,7 @@
       if (!r.ok) { feil.textContent = d.feil || `Serveren svarte ${r.status}`; return; }
       try { if (d.token) localStorage.setItem(LS_OKT, d.token); localStorage.setItem('skogiq-innlogget-for', '1'); } catch { /* privat modus */ }
       // Be nettleseren huske brukernavn og passord (der det støttes)
-      try { if (window.PasswordCredential) await navigator.credentials.store(new PasswordCredential({ id: kropp.bruker, password: kropp.passord, name: kropp.navn || kropp.bruker })); } catch { /* ikke støttet */ }
+      try { if (window.PasswordCredential) await navigator.credentials.store(new PasswordCredential({ id: d.bruker || kropp.bruker, password: kropp.passord, name: d.navn || kropp.navn || kropp.bruker })); } catch { /* ikke støttet */ }
       location.replace(neste || './');
     } catch { feil.textContent = 'Ingen kontakt med SkogIQ-serveren. Sjekk nettet.'; } finally { knapp.disabled = false; }
   }
@@ -89,7 +115,22 @@
   reg.addEventListener('submit', (e) => {
     e.preventDefault();
     if (reg.passord.value !== reg.passord2.value) { reg.querySelector('.feil').textContent = 'Passordene er ikke like'; return; }
-    send(reg, '/api/registrer', { navn: reg.navn.value.trim(), epost: reg.epost.value.trim(), bruker: reg.bruker.value.trim().toLowerCase(), passord: reg.passord.value, kode: reg.kode.value.trim() });
+    send(reg, '/api/registrer', { navn: reg.navn.value.trim(), bruker: reg.bruker.value.trim().toLowerCase(), passord: reg.passord.value, kode: reg.kode.value.trim() });
+  });
+  glemt.addEventListener('submit', async (e) => {
+    e.preventDefault(); const f = glemt.querySelector('.feil'); const ok = glemt.querySelector('.ok'); f.textContent = ''; ok.textContent = ''; const knapp = glemt.querySelector('button'); knapp.disabled = true;
+    try {
+      const r = await fetch(`${API}/api/glemt`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ epost: glemt.epost.value.trim() }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { f.textContent = d.feil || `Serveren svarte ${r.status}`; return; }
+      ok.textContent = d.epost ? 'Er e-postadressen registrert, får du en e-post med lenke om litt. Lenken gjelder i én time – sjekk også søppelpost.' : 'Forespørselen er sendt til administrator, som sender deg en lenke for å velge nytt passord.';
+    } catch { f.textContent = 'Ingen kontakt med SkogIQ-serveren. Sjekk nettet.'; } finally { knapp.disabled = false; }
+  });
+  ny.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (ny.passord.value !== ny.passord2.value) { ny.querySelector('.feil').textContent = 'Passordene er ikke like'; return; }
+    history.replaceState(null, '', location.pathname + location.search);
+    send(ny, '/api/tilbakestill', { token: resetToken, passord: ny.passord.value });
   });
 </script>
 </body>

@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.49.1** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.50.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -960,14 +960,31 @@ Klienthemmeligheten og tokenene ligger bare på serveren. Nettleseren har en til
 
 ## Innlogging, registrering og admin
 
-Hver bruker registrerer seg med navn, valgfri e-post, brukernavn og passord, og må logge inn for å bruke løsningen.
+Hver bruker registrerer seg med navn, **e-postadresse (brukes som brukernavn)** og passord, og må logge inn for å bruke
+løsningen. Eldre brukernavn (som administratoren fra `APP_BRUKER`) virker fortsatt, og e-post kan legges til under
+«Min konto».
 Innloggingssiden har fanene «Logg inn» og «Registrer deg». Feltene er merket slik at nettleseren tilbyr å huske
 brukernavn og passord. Økten varer i 30 dager.
 
 * **Passord** lagres bare som scrypt-hash med eget salt per bruker, aldri i klartekst.
-* **Krav:** brukernavnet er 3–32 tegn, passordet minst 8 tegn og kan ikke inneholde brukernavnet.
+* **Krav:** brukernavnet er en gyldig e-postadresse. Passordet er minst 8 tegn og kan ikke inneholde navnet foran @.
 * **Beskyttelse mot misbruk:** høyst 10 feil passord per IP på 15 minutter, og høyst 5 registreringer per IP i timen.
-* **Passordbytte:** «Bytt passord» ligger i Om-boksen. Nytt passord gjør gamle økter ugyldige.
+* **Min konto** (i Om-boksen): bytt passord og legg til eller endre e-post. Krever nåværende passord. Nytt passord gjør
+  gamle økter ugyldige.
+* **Glemt passord** (lenke under innloggingen):
+  * Brukeren skriver e-postadressen. Svaret er det samme uansett om adressen finnes, så ingen kan finne ut hvem som
+    er registrert. Høyst 5 forsøk per IP i timen.
+  * Med e-posttjeneste (`EPOST_NOKKEL` + `EPOST_FRA`, Resend) får brukeren en lenke på e-post som gjelder i én time.
+  * Uten e-posttjeneste går forespørselen til administrator. Den vises med 🔑 på adminsiden, der «Lag lenke for nytt
+    passord» gir en lenke som gjelder i 24 timer. Lenken kan kopieres eller sendes med «Send e-post».
+  * Lenken åpner «Velg nytt passord» på innloggingssiden, kan brukes én gang og logger brukeren inn.
+* **Velkomst** etter innlogging, én gang per dag (`js/velkommen.js`):
+  * hilsen med fornavnet («God morgen, Kari!»)
+  * en humoristisk skogslinje som passer til været
+  * dagens vær ved eiendommen fra MET, med driftsråd (frost, mye nedbør, sterk vind, mye snø)
+  * en motiverende tekst om tiltakene på eiendommen som er åpen: hva som står for tur i år, hva som har ventet, hvor
+    du bør begynne, og hva som er gjort
+  * knapp til Tiltak
 * **Bruksstatistikk** telles per bruker og dag:
   * sidevisninger
   * kall til serveren
@@ -996,6 +1013,7 @@ brukernavn og passord. Økten varer i 30 dager.
 | `APP_ADMIN` | flere administratornavn, kommaseparert. Navnene er reservert og kan ikke registreres av andre. |
 | `APP_REGISTRERINGSKODE` | valgfri kode som må oppgis for å registrere seg |
 | `APP_HEMMELIGHET` | valgfri nøkkel for øktene. Uten den lages en tilfeldig nøkkel som lagres i `BRUKER_FIL`. |
+| `EPOST_NOKKEL` + `EPOST_FRA` | valgfritt: API-nøkkel til Resend og avsender (f.eks. `SkogIQ <noreply@ditt-domene.no>`). Da sendes lenken for glemt passord på e-post. |
 
 Uten `APP_REGISTRERING` og uten `APP_BRUKER`/`APP_PASSORD` er innloggingen av. På GitHub Pages logger appen inn mot
 Railway-serveren med token.
