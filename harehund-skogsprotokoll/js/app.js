@@ -34,7 +34,7 @@ function nyProve(mal = {}) {
     hund: { navn: '', regnr: '', idnr: '', rase: '', gruppe: 'stover', kjonn: '', fodt: '', boghoyde: '', idKontrollert: false },
     eier: '', forer: '', forerTlf: '', peil: false, gps: false,
     hendelser: [], poeng: {}, mal: '', utfall: null, ikkeStartet: false, premielos: null, losValg: {},
-    tilleggsopplysninger: '', rr: '', signaturDommer: '', signaturForer: '',
+    tilleggsopplysninger: '', rr: '', signaturDommer: '',
     ...mal,
   };
 }
@@ -740,7 +740,6 @@ function protokollFane(p, r) {
       ${ep}</div>
     <div class="signaturer">
       <div><canvas data-signatur="signaturDommer" width="600" height="160"></canvas><div class="rad-mellom"><span>Dato og dommers underskrift</span><button class="knapp liten ikke-print" data-tom-signatur="signaturDommer">Tøm</button></div></div>
-      <div><canvas data-signatur="signaturForer" width="600" height="160"></canvas><div class="rad-mellom"><span>Gjennomgått med fører</span><button class="knapp liten ikke-print" data-tom-signatur="signaturForer">Tøm</button></div></div>
     </div>
     <h3 class="ny-side">Skogsprotokoll – logg</h3>
     <table class="tabell logg-tabell">

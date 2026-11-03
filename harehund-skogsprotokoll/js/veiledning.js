@@ -92,7 +92,7 @@ export function veiledningHtml() {
     ${del('8. Protokoll, signatur og deling', `
       <ul>
         <li>Fanen <strong>Protokoll</strong> viser ferdig utfylt jaktprøveprotokoll med Los 1–4, tilleggsregistreringer og skogsloggen.</li>
-        <li>Dommer og fører kan signere med fingeren i feltene nederst.</li>
+        <li>Dommeren signerer med fingeren i feltet nederst.</li>
         <li>«Skriv ut / lagre PDF» lager protokollen for utskrift eller som PDF.</li>
         <li>«Del sammendrag» sender en kort tekst med resultatet, for eksempel på SMS.</li>
         <li>Øverst ser du hvordan resultatet blir i DogWeb.</li>
