@@ -1,5 +1,5 @@
 // Service worker: hele appen fungerer uten nett i skogen.
-const APP = 'skogsprotokoll-v7';
+const APP = 'skogsprotokoll-v8';
 const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'js/app.js', 'js/regler.js', 'js/resultater.js'];
 
 self.addEventListener('install', (e) => {

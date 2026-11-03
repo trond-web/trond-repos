@@ -435,7 +435,7 @@ function losOversikt(p, r) {
         <td>${g.deler.map((l) => klokke(l.uttak)).join(' + ')}</td><td>${LOSDYR[g.losdyr]}</td><td>${g.hortMin}</td>
         <td>${g.luhLpp || ''}</td><td>${g.libTillegg || ''}</td><td><strong>${g.lospoeng}</strong>${g.fullTid ? ' (full tid)' : ''}</td></tr>`).join('')}</tbody>
     </table>
-    ${r.premielos ? `<p class="dempet">Uthevet los er premielos nå. Fører bestemmer losdyr – endre under Bedømming.</p>` : ''}
+    ${r.premielos ? `<p class="dempet">Uthevet los er ${r.premielos.erPremielos ? 'premielos' : 'beste los, men ennå ikke premielos'}: ${losMerke(r, r.premielos)}. Fører bestemmer losdyr – endre under Bedømming.</p>` : ''}
   </section>`;
 }
 
@@ -585,12 +585,13 @@ function poengFane(p, r) {
   return `
     <section class="kort sammendrag">${sammendrag(r)}</section>
     <section class="kort">
-      <h2>Premielos</h2>
+      <h2>${pl && pl.erPremielos ? 'Premielos' : 'Los til bedømming'}</h2>
       ${r.grupper.length ? `<div class="valg-liste">${r.grupper.map((g) => `
         <label class="los-valg ${g === pl ? 'valgt' : ''}">
           <input type="radio" name="premielos" value="${g.id}" ${g === pl ? 'checked' : ''} data-premielos>
           <span><strong>${LOSDYR[g.losdyr]}</strong> kl. ${g.deler.map((l) => klokke(l.uttak)).join(' + ')} – ${g.lospoeng} lospoeng
-          <span class="dempet">(hørt ${g.hortMin}${g.luhLpp ? `, LUH/LPP ${g.luhLpp}` : ''}${g.libTillegg ? ', LIB 20' : ''})</span></span>
+          <span class="dempet">(hørt ${g.hortMin}${g.luhLpp ? `, LUH/LPP ${g.luhLpp}` : ''}${g.libTillegg ? ', LIB 20' : ''})</span>
+          <br>${losMerke(r, g)}</span>
         </label>`).join('')}
         ${r.logg.loser.slice(1).map((l) => {
     const g = r.grupper.find((x) => x.deler.includes(l));
@@ -626,8 +627,18 @@ function poengFane(p, r) {
     <div class="knapperad"><a class="knapp primar" href="#/prove/${p.id}/protokoll">Se protokollen →</a></div>`;
 }
 
+// Viser om en los holder til premielos (minst lospoeng til 3. premie for gruppe og losdyr).
+function losMerke(r, g) {
+  if (g.erPremielos) return '<span class="merke-premielos">Premielos</span>';
+  const hvem = r.gruppe === 'smahund' ? 'beagle/drever' : 'støver';
+  if (g.minLos == null) return `<span class="merke-ikke">Ikke premielos – ${hvem} kan ikke premieres på ${LOSDYR[g.losdyr].toLowerCase()}</span>`;
+  return `<span class="merke-ikke">Ikke premielos – ${hvem} på ${LOSDYR[g.losdyr].toLowerCase()} krever minst ${g.minLos} lospoeng (mangler ${g.minLos - g.lospoeng})</span>`;
+}
+
 function sammendrag(r) {
-  const mangler = r.mangler.find((m) => m.los + m.ep + m.pp > 0 && r.premiegrad !== m.grad && (r.premiegrad === 0 || m.grad < r.premiegrad));
+  // Vis neste premiegrad: 3. premie når hunden ikke er premiert ennå, ellers graden over den den har.
+  const mal = r.premiegrad ? r.premiegrad - 1 : 3;
+  const mangler = r.mangler.find((m) => m.grad === mal && m.los + m.ep + m.pp > 0);
   return `<div class="tall">
       <div><span>Egenskapspoeng</span><strong>${r.egenskapspoeng}</strong><small>av 80</small></div>
       <div><span>Lospoeng</span><strong>${r.lospoeng}</strong><small>av ${r.premielos?.maks || 120}</small></div>
@@ -901,7 +912,7 @@ function delTekst(p, r) {
     `Skogsprotokoll ${p.type}${p.type === 'EP' ? ` dag ${p.dag}` : ''} ${datoNo(p.dato)}`,
     `${p.hund.navn} (${p.hund.rase}, ${p.hund.regnr}) – dommer ${p.dommer}`,
     `Slipp ${klokke(r.logg.slipp)}, avsluttet ${klokke(r.logg.slutt)}, løs ${fmtTid(r.logg.losTid)}`,
-    pl ? `Premielos: ${LOSDYR[pl.losdyr]}, uttak ${klokke(pl.uttak)}, ${pl.lospoeng} lospoeng` : 'Ingen los',
+    pl ? `${pl.erPremielos ? 'Premielos' : 'Beste los (ikke premielos)'}: ${LOSDYR[pl.losdyr]}, uttak ${klokke(pl.uttak)}, ${pl.lospoeng} lospoeng` : 'Ingen los',
     `Egenskapspoeng ${r.egenskapspoeng} · Lospoeng ${r.lospoeng} · Premiepoeng ${r.premiepoeng} · Konkurransepoeng ${r.konkurransepoeng}`,
     `Innstilling: ${r.utfall || (r.premiegrad ? `${r.premiegrad}. premie` : '0 premie')}`,
     p.tilleggsopplysninger ? `\n${p.tilleggsopplysninger}` : '',
