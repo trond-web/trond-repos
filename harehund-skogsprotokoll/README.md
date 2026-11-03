@@ -26,6 +26,8 @@ Resultater settes opp som i DogWeb:
 - **Per hund** som fanen «Harehundprøve» i DogWeb: dato, sted, premie og arrangør, med detaljer i DogWebs koder
   (MA, LD, LT, JL, SK, FO, MF, MT, AL, AT, MN, MH, KO, LY, Mål, Premie). EP vises som én linje med premie per dag.
 
+Brukerveiledningen ligger i appen under «Veiledning» (`js/veiledning.js`) og kan leses uten innlogging.
+
 Dommerkollegiet fastsetter alltid endelig premiering.
 
 ## Kjøre lokalt
@@ -35,4 +37,4 @@ python3 -m http.server -d harehund-skogsprotokoll 8000
 node harehund-skogsprotokoll/tests/run.mjs
 ```
 
-Utviklet av Trond Harald Sand.
+Laget av Trond Harald Sand.
