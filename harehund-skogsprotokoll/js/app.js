@@ -3,6 +3,7 @@ import {
   LOSDYR, LOVLIGE_LOSDYR, RASER, MOMENTER, TILLEGG, SKALA, UTFALL, KOBLINGSGRUNNER, HENDELSER, MIN,
   beregn, beregnEP, gruppeForRase, alderMnd, klokke, fmtTid, forslagTilleggsopplysninger, sorterHendelser, kravTabell,
 } from './regler.js';
+import { veiledningHtml, UTVIKLER } from './veiledning.js';
 import { DOGWEB_KODER, dogwebResultat, resultaterPerHund, premielister, premielisteCsv } from './resultater.js';
 
 const NOKKEL = 'harehund-skogsprotokoll-v1';
@@ -75,6 +76,7 @@ function visInnlogging(feil = '') {
       ${feil ? `<p class="varsel feil">${esc(feil)}</p>` : ''}
       <div class="knapperad"><button class="knapp primar">Logg inn</button></div>
       <p class="dempet liten">Du forblir innlogget på denne enheten til du logger ut, også uten nett.</p>
+      <p class="liten"><a href="#/veiledning">Les brukerveiledningen</a></p>
     </form>`;
   app.querySelector('[name="bruker"]').focus();
 }
@@ -96,14 +98,24 @@ app.addEventListener('submit', async (ev) => {
 
 // ---------- Ruting ----------
 function rute() {
-  if (!erInnlogget()) { stoppTikk(); return visInnlogging(); }
   const [, side, id, fane] = location.hash.split('/');
+  // Veiledningen kan leses uten innlogging.
+  if (side === 'veiledning') { stoppTikk(); return visVeiledning(); }
+  if (!erInnlogget()) { stoppTikk(); return visInnlogging(); }
   stoppTikk();
   if (side === 'prove' && finn(id)) return visProve(finn(id), fane || 'skog');
   if (side === 'resultater') return visResultater(id || 'premieliste');
   return visListe();
 }
 window.addEventListener('hashchange', rute);
+
+function visVeiledning() {
+  document.getElementById('topp-status').textContent = 'Veiledning';
+  delete app.dataset.prove;
+  delete app.dataset.fane;
+  app.innerHTML = `${veiledningHtml()}<div class="knapperad"><a class="knapp primar" href="#/">← Tilbake</a></div>`;
+  window.scrollTo(0, 0);
+}
 
 // ---------- Oversikt ----------
 function visListe() {
@@ -128,7 +140,7 @@ function visListe() {
     ${prover.length ? `<section class="liste">${prover.map(listeKort).join('')}</section>`
     : '<p class="tom">Ingen prøver ennå. Trykk «Ny prøve» når du har fått hund og terreng.</p>'}
     <p class="fot">Bygger på «Regler for jaktprøver for hunder tilsluttet NHKF», gjeldende fra 01.07.2025. Dommerkollegiet fastsetter endelig premiering.
-    Utviklet av Trond Harald Sand.</p>
+    Ny i appen? Les <a href="#/veiledning">brukerveiledningen</a>.</p>
     <p><button class="knapp liten" data-handling="logg-ut">Logg ut</button></p>`;
 }
 
@@ -191,7 +203,8 @@ function premielisteHtml() {
       ${l.ep.length ? `<h3>Eliteprøve – samlet</h3><table class="pl ep-tabell"><thead><tr><th>Kat.</th><th>Hund</th><th>Premiepoeng dag 1 + 2</th><th>EP-premie</th></tr></thead>
         <tbody>${l.ep.map((e) => `<tr><td>${esc(e.kat)}</td><td>${esc(e.navn)} <span class="dempet">${esc(e.regnr)}</span></td><td>${e.premiepoeng}</td><td><strong>${e.premie ? `${e.premie}. EP` : '0'}</strong></td></tr>`).join('')}</tbody></table>` : ''}
       ${l.uferdige ? `<p class="dempet ikke-print">${l.uferdige} prøve(r) i denne lista er ikke avsluttet og er ikke tatt med.</p>` : ''}
-      <footer>Korrekt premieliste bekreftes. Dato: ______________ Prøveleder: ______________________</footer>
+      <footer>Korrekt premieliste bekreftes. Dato: ______________ Prøveleder: ______________________
+        <div class="dempet liten">Laget med Skogsprotokoll harehund – laget av ${UTVIKLER}</div></footer>
       <div class="knapperad ikke-print"><button class="knapp liten" data-handling="csv" data-liste="${i}">Last ned som CSV (Excel)</button></div>
     </article>`).join('')}`;
 }
@@ -734,7 +747,7 @@ function protokollFane(p, r) {
       <thead><tr><th>Kl.</th><th>Hendelse</th><th>Merknad</th></tr></thead>
       <tbody>${sorterHendelser(p.hendelser).map((e) => `<tr><td>${klokke(e.t)}</td><td>${esc(hendelseTekst(e))}</td><td>${esc(e.tekst || '')}${e.pos ? ` <span class="dempet">${e.pos.lat.toFixed(5)}, ${e.pos.lon.toFixed(5)}</span>` : ''}</td></tr>`).join('')}</tbody>
     </table>
-    <p class="dempet liten">Laget med Skogsprotokoll harehund etter NHKFs jaktprøveregler (01.07.2025). Dommerkollegiet fastsetter endelig premiering.</p>
+    <p class="dempet liten">Laget med Skogsprotokoll harehund etter NHKFs jaktprøveregler (01.07.2025). Dommerkollegiet fastsetter endelig premiering. Appen er laget av ${UTVIKLER}.</p>
   </article>`;
 }
 

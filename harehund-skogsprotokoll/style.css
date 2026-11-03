@@ -58,7 +58,19 @@ h3 { font-size: 1rem; margin: 1rem 0 .4rem; }
 }
 .merke { display: flex; align-items: center; gap: .5rem; color: inherit; text-decoration: none; font-weight: 600; }
 .merke small { font-weight: 400; opacity: .75; }
-.topp-status { font-size: .85rem; opacity: .85; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topp-status { font-size: .85rem; opacity: .85; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; min-width: 0; }
+.topp-hjelp { color: #f1ede1; font-size: .85rem; font-weight: 600; text-decoration: none; border: 1px solid rgb(241 237 225 / .45); border-radius: 999px; padding: .2rem .65rem; flex: 0 0 auto; }
+.laget-av-bunn { text-align: center; color: var(--dempet); font-size: .8rem; padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
+.veiledning h1 { margin-bottom: .6rem; }
+.veiledning-del { border-top: 1px solid var(--linje); }
+.veiledning-del summary { cursor: pointer; font-weight: 700; padding: .75rem 0; list-style-position: inside; }
+.veiledning-del > div { padding-bottom: .6rem; }
+.veiledning-del li { margin: .3rem 0; }
+.veiledning .tabell td, .veiledning .tabell th { vertical-align: top; }
+.ordliste { display: grid; grid-template-columns: max-content 1fr; gap: .3rem 1rem; margin: 0; }
+.ordliste dt { font-weight: 700; }
+.ordliste dd { margin: 0; }
+.laget-av { margin-top: 1rem; padding-top: .8rem; border-top: 1px solid var(--linje); text-align: center; }
 
 main { max-width: 860px; margin: 0 auto; padding: 12px 16px 48px; }
 .kort { background: var(--flate); border: 1px solid var(--linje); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
@@ -271,7 +283,7 @@ textarea { resize: vertical; }
 @media print {
   @page { size: A4; margin: 12mm; }
   body { background: #fff; }
-  .topp, .faner, .ikke-print, .verktoy, .varsel { display: none !important; }
+  .topp, .faner, .ikke-print, .verktoy, .varsel, .laget-av-bunn { display: none !important; }
   main { padding: 0; max-width: none; }
   .protokoll { border: 0; padding: 0; font-size: 9.5pt; }
   .protokoll .to-kol { grid-template-columns: 1.1fr 1fr; }

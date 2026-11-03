@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Skogsprotokoll harehund",
   "short_name": "Skogsprotokoll",
-  "description": "Skogsprotokoll og jaktprøveprotokoll for harehundprøver (NHKF). Fungerer uten nett. Utviklet av Trond Harald Sand.",
+  "description": "Skogsprotokoll og jaktprøveprotokoll for harehundprøver (NHKF). Fungerer uten nett. Laget av Trond Harald Sand.",
   "lang": "no",
   "start_url": "./",
   "scope": "./",
