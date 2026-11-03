@@ -75,6 +75,13 @@ export function maksLospoeng(gruppe, losdyr) {
   return losdyr === 'hare' ? 120 : 90;
 }
 
+// En los er premielos først når lospoengene holder til 3. premie: støver 60 på hare og 40 på rev,
+// beagle/drever 40. Kortere loser bedømmes, men kan ikke gi premie.
+export function minstePremielos(gruppe, losdyr) {
+  const tab = kravTabell(gruppe, losdyr);
+  return tab ? tab[tab.length - 1].los : null;
+}
+
 export function premiegradFor(gruppe, losdyr, lospoeng, egenskapspoeng) {
   const tab = kravTabell(gruppe, losdyr);
   if (!tab) return 0;
@@ -371,6 +378,8 @@ export function losgrupper(prove, logg) {
     g.lospoengRaa = g.hortMin + g.luhLpp + g.slhMin + g.libTillegg;
     g.lospoeng = g.losdyr === 'ukjent' ? 0 : Math.min(g.maks, g.lospoengRaa);
     g.fullTid = g.losdyr !== 'ukjent' && g.lospoengRaa >= g.maks;
+    g.minLos = minstePremielos(gruppe, g.losdyr);
+    g.erPremielos = g.minLos != null && g.lospoeng >= g.minLos;
     g.sekvenser = d.flatMap((x) => x.sekvenser);
     const tap = d.flatMap((x) => x.tap);
     g.sett = g.deler.flatMap((l) => l.sett);

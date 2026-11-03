@@ -194,6 +194,8 @@ textarea { resize: vertical; }
 .valg-liste { display: grid; gap: 6px; }
 .los-valg { display: flex; gap: .6rem; align-items: flex-start; padding: .55rem .6rem; border: 1px solid var(--linje); border-radius: 10px; cursor: pointer; }
 .los-valg.valgt { border-color: var(--gronn); background: var(--gronn-lys); }
+.merke-premielos { display: inline-block; margin-top: .25rem; padding: .05rem .5rem; border-radius: 999px; background: var(--gronn); color: #fff; font-size: .8rem; font-weight: 600; }
+.merke-ikke { display: inline-block; margin-top: .25rem; color: var(--tap); font-size: .85rem; font-weight: 600; }
 .los-valg input { width: 20px; height: 20px; min-height: 0; margin-top: .15rem; }
 
 /* Dialog */

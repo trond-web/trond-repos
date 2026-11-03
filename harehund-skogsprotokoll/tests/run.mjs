@@ -223,4 +223,15 @@ test('resultater som i DogWeb: koder, premieliste med vektede poeng og rangering
   assert.equal(perHund.find((x) => x.hund.navn === 'Reipi').linjer[0].premie, '3. premie');
 });
 
+test('premielos krever lospoeng til 3. premie: støver hare 60, rev 40, småhund 40', () => {
+  const los = (gruppe, losdyr, min) => beregn(prove([h(0, 'slipp'), h(10, 'uttak', { losdyr }), h(11 + min, 'slutt'), h(400, 'avslutt')], { hund: { gruppe } })).premielos;
+  assert.equal(los('stover', 'hare', 46).lospoeng, 46);
+  assert.equal(los('stover', 'hare', 46).erPremielos, false);
+  assert.equal(los('stover', 'hare', 46).minLos, 60);
+  assert.equal(los('stover', 'hare', 60).erPremielos, true);
+  assert.equal(los('stover', 'rev', 46).erPremielos, true);
+  assert.equal(los('smahund', 'hare', 46).erPremielos, true);
+  assert.equal(los('smahund', 'hare', 39).erPremielos, false);
+});
+
 console.log(`\n${ok} tester OK`);
