@@ -99,6 +99,7 @@ app.addEventListener('submit', async (ev) => {
 // ---------- Ruting ----------
 function rute() {
   const [, side, id, fane] = location.hash.split('/');
+  ventendeTegning = null;
   // Veiledningen kan leses uten innlogging.
   if (side === 'veiledning') { stoppTikk(); return visVeiledning(); }
   if (!erInnlogget()) { stoppTikk(); return visInnlogging(); }
@@ -862,6 +863,21 @@ app.addEventListener('click', (ev) => {
   }
 });
 
+// iPhone sender «change» for hvert hjul som snurres i dato- og klokkeslettvelgeren. Tegnes siden på nytt da,
+// lukkes velgeren midt i valget. Verdien lagres derfor med en gang, men siden tegnes først når velgeren lukkes.
+const erHjulvelger = (el) => el.type === 'date' || el.type === 'time';
+let ventendeTegning = null;
+function tegnNarVelgerLukkes(p) {
+  lagre();
+  ventendeTegning = p;
+}
+app.addEventListener('focusout', (ev) => {
+  if (!ventendeTegning || !erHjulvelger(ev.target)) return;
+  const p = ventendeTegning;
+  ventendeTegning = null;
+  if (p === finn(app.dataset.prove)) oppdater(p);
+});
+
 app.addEventListener('change', (ev) => {
   const el = ev.target;
   const p = finn(app.dataset.prove);
@@ -870,7 +886,7 @@ app.addEventListener('change', (ev) => {
   if (el.dataset.tid) {
     const t = tidPaaDato(p, el.value);
     const e = p.hendelser.find((x) => x.id === el.dataset.tid);
-    if (e && t != null) { e.t = t; oppdater(p); }
+    if (e && t != null) { e.t = t; tegnNarVelgerLukkes(p); }
     return;
   }
   if (el.dataset.premielos != null) { p.premielos = el.value; return oppdater(p); }
@@ -883,7 +899,9 @@ app.addEventListener('change', (ev) => {
     const [a, b] = el.name.split('.');
     if (b) p[a][b] = verdi; else p[a] = a === 'dag' ? Number(verdi) : verdi;
     if (el.name === 'hund.rase' && el.value) p.hund.gruppe = gruppeForRase(el.value);
-    oppdater(p, ['hund.rase', 'hund.gruppe', 'type', 'hund.fodt', 'temp', 'dato'].includes(el.name));
+    const tegn = ['hund.rase', 'hund.gruppe', 'type', 'hund.fodt', 'temp', 'dato'].includes(el.name);
+    if (tegn && erHjulvelger(el)) tegnNarVelgerLukkes(p);
+    else oppdater(p, tegn);
   }
 });
 
