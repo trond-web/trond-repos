@@ -162,6 +162,8 @@ textarea { resize: vertical; }
 .logg { list-style: none; margin: 0; padding: 0; }
 .logg li { display: grid; grid-template-columns: 9.6rem 1fr auto; gap: .6rem; align-items: center; padding: .4rem 0; border-top: 1px solid var(--linje); }
 .logg li input[type="time"] { padding: .3rem .4rem; min-height: 40px; font-variant-numeric: tabular-nums; }
+.logg .endre { background: none; border: 0; padding: .2rem 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; }
+.logg .endre-merke { color: var(--dempet); font-weight: 400; font-size: .9em; }
 .logg .ikon { border: 0; background: none; color: var(--dempet); font-size: 1.1rem; min-width: 40px; min-height: 40px; cursor: pointer; }
 .logg li.h-uttak .logg-tekst, .logg li.h-gjentak .logg-tekst, .logg li.h-inn .logg-tekst { color: var(--los); font-weight: 600; }
 .logg li.h-tap .logg-tekst, .logg li.h-slutt .logg-tekst { color: var(--tap); font-weight: 600; }

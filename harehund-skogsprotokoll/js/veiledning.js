@@ -64,6 +64,7 @@ export function veiledningHtml() {
       <ul>
         <li>Alle klokkeslett i <strong>Skogslogg</strong> kan rettes, også sekundene. Trykk på tiden og endre den.</li>
         <li>Trykk «+ Legg til i ettertid» for å føre inn hendelser fra papir eller hukommelse.</li>
+        <li>Trykk på teksten til en hendelse merket ✎ for å endre den: losdyr på et uttak, grunn for kobling, avstand ved «Losdyr sett», art ved klovdyrjag, LUH eller peil, og notattekst.</li>
         <li>Trykk ✕ for å slette en hendelse som ble feil.</li>
         <li>Lospoeng, tap og tilleggsregistreringer regnes om med en gang.</li>
       </ul>`)}

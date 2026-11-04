@@ -449,7 +449,7 @@ function losOversikt(p, r) {
         <td>${g.deler.map((l) => klokke(l.uttak)).join(' + ')}</td><td>${LOSDYR[g.losdyr]}</td><td>${g.hortMin}</td>
         <td>${g.luhLpp || ''}</td><td>${g.libTillegg || ''}</td><td><strong>${g.lospoeng}</strong>${g.fullTid ? ' (full tid)' : ''}</td></tr>`).join('')}</tbody>
     </table>
-    ${r.premielos ? `<p class="dempet">Uthevet los er ${r.premielos.erPremielos ? 'premielos' : 'beste los, men ennå ikke premielos'}: ${losMerke(r, r.premielos)}. Fører bestemmer losdyr – endre under Bedømming.</p>` : ''}
+    ${r.premielos ? `<p class="dempet">Uthevet los er ${r.premielos.erPremielos ? 'premielos' : 'beste los, men ennå ikke premielos'}: ${losMerke(r, r.premielos)}. Trykk på «Uttak» i skogsloggen for å endre losdyr. Velg premielos under Bedømming.</p>` : ''}
   </section>`;
 }
 
@@ -464,14 +464,44 @@ function hendelseTekst(e) {
   return t;
 }
 
+const AVSTANDER = [['tett på', 'Tett på hunden'], ['middels', 'Middels'], ['langt foran', 'Langt foran']];
+const KLOVDYR = [['radyr', 'Rådyr'], ['hjort', 'Hjort'], ['elg', 'Elg'], ['rein', 'Rein'], ['villsvin', 'Villsvin'], ['bufe', 'Bufe (sau, geit, storfe)']];
+
+// Hva som kan endres på en registrert hendelse: losdyr på uttak, grunn for kobling osv.
+function endringFor(p, e) {
+  if (e.type === 'uttak') {
+    const lovlige = [...LOVLIGE_LOSDYR[p.hund.gruppe || 'stover'], 'ukjent'];
+    if (e.losdyr && !lovlige.includes(e.losdyr)) lovlige.unshift(e.losdyr);
+    return { tittel: 'Endre losdyr', felt: 'losdyr', valg: lovlige.map((l) => [l, LOSDYR[l]]), merknad: 'Lospoeng gis bare når losdyrets art er konstatert.' };
+  }
+  if (e.type === 'kobling') return { tittel: 'Endre grunn for kobling', felt: 'grunn', valg: Object.entries(KOBLINGSGRUNNER) };
+  if (e.type === 'settLosdyr') return { tittel: 'Endre avstand til hunden', felt: 'avstand', valg: AVSTANDER };
+  if (e.type === 'klovStart') return { tittel: 'Endre art for klovdyrjag', felt: 'art', valg: KLOVDYR };
+  if (e.type === 'utav') return { tittel: 'Ute av hørehold eller kun på peil?', felt: 'modus', valg: [['LUH', 'Ute av hørehold (LUH)'], ['LPP', 'Los kun på peil (LPP)']] };
+  if (e.type === 'notat') return { tittel: 'Endre notat', tekst: true };
+  return null;
+}
+
+function endreHendelse(p, e) {
+  const endring = endringFor(p, e);
+  if (!endring) return;
+  if (endring.tekst) {
+    return visArk(`<h2>${endring.tittel}</h2><textarea name="tekst" rows="4" class="fullbredde">${esc(e.tekst || '')}</textarea>
+      <div class="valg"><button class="hk primar" data-valg="lagre">Lagre</button></div>`, (v, f) => { e.tekst = f.tekst.value.trim(); oppdater(p); });
+  }
+  visArk(`<h2>${endring.tittel}</h2><p class="dempet">Kl. ${klokkeSek(e.t)}. ${endring.merknad || ''}</p>
+    <div class="valg">${endring.valg.map(([k, tx]) => `<button class="hk ${e[endring.felt] === k ? 'primar' : ''}" data-valg="${esc(k)}">${esc(tx)}</button>`).join('')}</div>`,
+  (v) => { e[endring.felt] = v; vibrer(); oppdater(p); });
+}
+
 function loggListe(p) {
   const h = sorterHendelser(p.hendelser).reverse();
   if (!h.length) return '<p class="dempet">Ingen hendelser ennå. Trykk «Slipp» når hunden slippes.</p>';
   return `<ol class="logg">${h.map((e) => `
     <li class="h-${e.type}">
       <input type="time" step="1" value="${klokkeSek(e.t)}" data-tid="${e.id}" aria-label="Klokkeslett">
-      <div class="logg-tekst"><div>${esc(hendelseTekst(e))}</div>${e.tekst ? `<div class="dempet">${esc(e.tekst)}</div>` : ''}
-        ${e.pos ? `<div class="dempet liten">${e.pos.lat.toFixed(5)}, ${e.pos.lon.toFixed(5)}</div>` : ''}</div>
+      ${endringFor(p, e) ? `<button type="button" class="logg-tekst endre" data-endre="${e.id}" aria-label="Endre ${esc(hendelseTekst(e))}">` : '<div class="logg-tekst">'}<div>${esc(hendelseTekst(e))}${endringFor(p, e) ? ' <span class="endre-merke" aria-hidden="true">✎</span>' : ''}</div>${e.tekst ? `<div class="dempet">${esc(e.tekst)}</div>` : ''}
+        ${e.pos ? `<div class="dempet liten">${e.pos.lat.toFixed(5)}, ${e.pos.lon.toFixed(5)}</div>` : ''}${endringFor(p, e) ? '</button>' : '</div>'}
       <button class="ikon" data-slett="${e.id}" aria-label="Slett hendelse">✕</button>
     </li>`).join('')}</ol>`;
 }
@@ -534,10 +564,10 @@ function velgFor(p, type, ekstraFelles = {}, t = undefined) {
       <p class="dempet">Ved LIB, samjag, fare eller forulykket losdyr slås en ny los på samme art sammen med denne.</p>`, (v) => reg({ grunn: v }));
   }
   if (type === 'settLosdyr') {
-    return visArk('<h2>Losdyr sett – avstand til hunden</h2><div class="valg"><button class="hk" data-valg="tett på">Tett på hunden</button><button class="hk" data-valg="middels">Middels</button><button class="hk" data-valg="langt foran">Langt foran</button></div><p class="dempet">Nyansering 5 krever at losdyret er sett minst 2 ganger med ulik avstand.</p>', (v) => reg({ avstand: v }));
+    return visArk(`<h2>Losdyr sett – avstand til hunden</h2><div class="valg">${AVSTANDER.map(([k, tx]) => `<button class="hk" data-valg="${k}">${tx}</button>`).join('')}</div><p class="dempet">Nyansering 5 krever at losdyret er sett minst 2 ganger med ulik avstand.</p>`, (v) => reg({ avstand: v }));
   }
   if (type === 'klovStart') {
-    return visArk('<h2>Klovdyrjag – art</h2><div class="valg">' + [['radyr', 'Rådyr'], ['hjort', 'Hjort'], ['elg', 'Elg'], ['rein', 'Rein'], ['villsvin', 'Villsvin'], ['bufe', 'Bufe (sau, geit, storfe)']].map(([k, tx]) => `<button class="hk" data-valg="${k}">${tx}</button>`).join('') + '</div>', (v) => reg({ art: v }));
+    return visArk('<h2>Klovdyrjag – art</h2><div class="valg">' + KLOVDYR.map(([k, tx]) => `<button class="hk" data-valg="${k}">${tx}</button>`).join('') + '</div>', (v) => reg({ art: v }));
   }
   if (type === 'innkalling') {
     return visArk(`<h2>Innkalling</h2>
@@ -806,6 +836,11 @@ app.addEventListener('click', (ev) => {
     const type = b.dataset.hendelse;
     if (type === 'utav') return registrer(p, 'utav', { modus: b.dataset.modus });
     return velgFor(p, type);
+  }
+  if (b.dataset.endre) {
+    const e = p.hendelser.find((x) => x.id === b.dataset.endre);
+    if (e) endreHendelse(p, e);
+    return;
   }
   if (b.dataset.slett) {
     if (!confirm('Slette denne hendelsen?')) return;
