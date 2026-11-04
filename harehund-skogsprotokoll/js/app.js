@@ -628,7 +628,7 @@ function poengFane(p, r) {
     <section class="kort">
       <h2>Avslutning uten premiering</h2>
       <div class="skala bred">${[['', 'Ingen'], ...Object.keys(UTFALL).map((k) => [k, k])].map(([k, t]) => `<button class="${(p.utfall || '') === k ? 'valgt' : ''}" data-utfall="${k}" title="${esc(UTFALL[k] || '')}">${t}</button>`).join('')}</div>
-      <p class="dempet">${p.utfall ? esc(UTFALL[p.utfall]) + '. Grunnen skal stå i tilleggsopplysninger.' : 'G: graverende feil · T: trukket · U: uforsvarlig vær/føre · A: alvorlig, akutt skade. G må tildeles i skogen.'}</p>
+      <p class="dempet">${p.utfall ? esc(UTFALL[p.utfall]) + '. Alle rubrikker føres med 0 i protokoll, premieliste og Arra – karakterene du har satt, tas vare på hvis du fjerner ' + p.utfall + '. Grunnen skal stå i tilleggsopplysninger.' : 'G: graverende feil · T: trukket · U: uforsvarlig vær/føre · A: alvorlig, akutt skade. G må tildeles i skogen.'}</p>
       ${p.type === 'EP' && p.dag === 2 ? `<label class="felt hake"><input type="checkbox" data-ikke-startet ${p.ikkeStartet ? 'checked' : ''}> Ikke startet dag 2 (IS)</label>` : ''}
     </section>
     <section class="kort">
@@ -667,8 +667,10 @@ function protokollFane(p, r) {
   const h = p.hund;
   const pl = r.premielos;
   const loser = pl ? [pl, ...r.grupper.filter((g) => g !== pl)].slice(0, 4) : r.grupper.slice(0, 4);
-  const ps = (id) => (r.aktive.ids.includes(id) ? (p.poeng[id] ?? '') : '');
-  const sum = (m) => (Number.isInteger(p.poeng[m.id]) && r.aktive.ids.includes(m.id) ? p.poeng[m.id] * m.vekt : '');
+  // Ved G/T/U/A/IS står det 0 i alle rubrikkene, slik det skal føres i Arra.
+  const null0 = !!r.utfall || !!p.ikkeStartet;
+  const ps = (id) => (null0 ? 0 : r.aktive.ids.includes(id) ? (p.poeng[id] ?? '') : '');
+  const sum = (m) => (null0 ? 0 : Number.isInteger(p.poeng[m.id]) && r.aktive.ids.includes(m.id) ? p.poeng[m.id] * m.vekt : '');
   const reg = pl?.reg || {};
   const ep = p.type === 'EP' ? epResultat(p) : '';
   return `

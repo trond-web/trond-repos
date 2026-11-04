@@ -14,6 +14,11 @@ const forkort = (tekst, n) => (tekst ? String(tekst).slice(0, n) : '');
 const losdyrKort = (r) => (r.premielos ? forkort(LOSDYR[r.premielos.losdyr], 2) : '');
 const vekt = Object.fromEntries([...MOMENTER, ...TILLEGG].map((m) => [m.id, m.vekt]));
 
+// G, T, U, A og IS gir verken los-, egenskaps- eller tilleggspoeng (kap. 15.5).
+export function nullstilt(p, r = beregn(p)) {
+  return !!r.utfall || !!p.ikkeStartet;
+}
+
 export function ferdig(p, r = beregn(p)) {
   return r.logg.avsluttet || !!p.utfall || !!p.ikkeStartet;
 }
@@ -24,10 +29,16 @@ export function dogwebResultat(p, r = beregn(p)) {
   const felter = [];
   if (p.mark) felter.push(['MA', forkort(p.mark, 2)]);
   if (losdyrKort(r)) felter.push(['LD', losdyrKort(r)]);
-  if (r.lospoeng) felter.push(['LT', r.lospoeng]);
-  for (const [kode, id] of DOGWEB_KODER) if (karakter(id)) felter.push([kode, karakter(id)]);
+  // Ved G, T, U, A eller IS føres 0 i alle rubrikkene til Arra, også der dommeren hadde satt poeng.
+  if (nullstilt(p, r)) {
+    felter.push(['LT', 0], ...DOGWEB_KODER.map(([kode]) => [kode, 0]));
+  } else {
+    if (r.lospoeng) felter.push(['LT', r.lospoeng]);
+    for (const [kode, id] of DOGWEB_KODER) if (karakter(id)) felter.push([kode, karakter(id)]);
+  }
   if (p.mal) felter.push(['Mål', forkort(p.mal, 1)]);
   felter.push(['Premie', r.premiegrad]);
+  if (nullstilt(p, r)) felter.push(['Utfall', r.utfall || 'IS']);
   return {
     dato: p.dato,
     sted: p.terreng || '',
@@ -69,7 +80,10 @@ export function resultaterPerHund(prover) {
 
 // Premieliste-rad med vektede poeng, som i Arra/DogWeb-premielisten.
 export function premielisteRad(p, r = beregn(p)) {
-  const sum = (id) => (r.aktive.ids.includes(id) && Number.isInteger(p.poeng?.[id]) && !r.utfall ? p.poeng[id] * vekt[id] : '');
+  const sum = (id) => {
+    if (nullstilt(p, r)) return 0;
+    return r.aktive.ids.includes(id) && Number.isInteger(p.poeng?.[id]) ? p.poeng[id] * vekt[id] : '';
+  };
   const utfall = r.utfall || (p.ikkeStartet ? 'IS' : '');
   return {
     id: p.id,
