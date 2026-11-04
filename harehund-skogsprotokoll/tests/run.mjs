@@ -234,4 +234,19 @@ test('premielos krever lospoeng til 3. premie: støver hare 60, rev 40, småhund
   assert.equal(los('smahund', 'hare', 39).erPremielos, false);
 });
 
+test('T etter satte egenskaper gir 0 i alle rubrikker til Arra', () => {
+  const poeng = { jaktlyst: 4, samarbeid: 2, malbrukFot: 5, lydighet: 4 };
+  const p = prove([h(0, 'slipp'), h(20, 'fot'), h(63, 'avslutt')], { id: 'lepus', mark: 'Barmark', mal: 'E', poeng, utfall: 'T', hund: { navn: 'Lepus', rase: 'Gotlandsstøver', gruppe: 'stover' } });
+  const d = dogwebResultat(p);
+  const verdier = Object.fromEntries(d.felter);
+  for (const k of ['LT', 'JL', 'SK', 'FO', 'MF', 'MT', 'AL', 'AT', 'MN', 'MH', 'KO', 'LY']) assert.equal(verdier[k], 0, k);
+  assert.equal(verdier.Premie, 0);
+  assert.equal(verdier.Utfall, 'T');
+  const [liste] = premielister([p]);
+  const r = liste.rader[0];
+  assert.ok(Object.values(r.poeng).every((v) => v === 0));
+  assert.deepEqual([r.egenskapspoeng, r.lospoeng, r.premiepoeng, r.konkurransepoeng, r.trukket], [0, 0, 0, 0, 'T']);
+  assert.equal(p.poeng.jaktlyst, 4, 'karakterene beholdes i lagringen');
+});
+
 console.log(`\n${ok} tester OK`);
