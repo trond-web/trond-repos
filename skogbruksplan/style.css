@@ -1103,3 +1103,7 @@ progress { accent-color: var(--accent); height: 8px; }
 .nabo-lav .leaflet-tooltip.nabo-etikett { display: none; }
 .nabo-pop { font-size: 13px; line-height: 1.45; }
 .nabo-status { display: inline-block; margin: 4px 0 2px; padding: 1px 9px; border-radius: 99px; font-weight: 700; font-size: 12px; color: #fff; background: var(--farge); }
+
+.punkt-info { font-size: 13px; display: grid; gap: 2px; } .punkt-info hr { border: 0; border-top: 1px solid var(--border); margin: 6px 0; } .punkt-tittel { display: block; margin-bottom: 2px; }
+
+.kom-natur { margin: 3px 0; font-size: 12.5px; } .kom-natur-merke { color: #2e9e6a; font-weight: 600; }
