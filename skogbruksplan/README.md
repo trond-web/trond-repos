@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.55.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.56.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -1128,9 +1128,19 @@ Viser registrerte naturverdier fra Miljødirektoratet (`js/naturdata.js`). Utval
 - **Arter av nasjonal forvaltningsinteresse** som er rødlistet (CR, EN, VU, NT) eller prioriterte, eller som har hi-,
   spill- eller yngleområde.
 
+- **I alle kart:**
+  - Hovedkartet i alle faner, inkludert Kommune, PEFC, Veier og Skogbrand. Lagene er på som standard, som
+    nøkkelbiotopene, og valget huskes.
+  - SkogIQ Felt på mobilen. Lagene og nøkkelbiotopene (MiS) vises der også. De kan slås av under Mer → Kartlag, og
+    bestandskortet viser naturverdiene i bestandet.
+  - Kartene i rapportene og i oppdragene, med tegnforklaring.
+  - Minikartet i den virtuelle skogen (VR).
+  - AR i felt viste dem fra før.
+- **Kartbildene** hentes fra ArcGIS `export` med samme utvalg som ellers (`layerDefs`). Store funksjonsområder for
+  vanlige arter, som trekkveier og beite for elg, og dekningskartet for NiN, legger seg derfor ikke over hele kartet.
+  Rødlistestatus som «NTº» (med tegn bak koden) tolkes nå riktig, også i PEFC-kontrollen.
 - **Kartet:**
-  - To nye kartlag. NiN-naturtyper er farget etter lokalitetskvalitet, og funksjonsområder for arter vises som eget
-    lag.
+  - NiN-naturtyper er farget etter lokalitetskvalitet, og funksjonsområder for arter vises som eget lag.
   - Klikk i kartet gir naturtype, kvalitet, truethet, kartleggingsår og lenke til faktaark. For arter vises funksjon,
     rødlistestatus og om arten er prioritert.
   - Når planlagene også er på, kommer alt i én popup.

@@ -10,6 +10,7 @@ import { signatur } from './versjon.js';
 import { tetthet } from './tetthet.js';
 import { middelhoyde } from './ungskog.js';
 import { MIS, misMonster, misFigurer } from './miljokart.js';
+import { FARGE as NATUR_FARGE } from './naturdata.js';
 
 export const RAPPORTER = {
   hovedtall: { navn: 'Hovedtall', beskrivelse: 'Areal, volum, tilvekst og verdi fordelt på hogstklasse, treslag og bonitet, med kart og avvirkningsmuligheter.' },
@@ -37,7 +38,7 @@ function hode(S, tittel, iAar) {
 const fot = (tekst) => `<footer class="r-fot">${tekst} Volum, tilvekst og verdier er beregnet med SkogIQ.ai sine modeller og innstilte priser, og er estimater. Laget med ${signatur()}.</footer>`;
 
 // Kart over bestandene som SVG (skarpt på papir). farge(b) gir fyllfarge.
-export function svgKart(S, farge, { bredde = 720, hoyde = 460, etiketter = true, ekstra = [], markslag = true, mis = true } = {}) {
+export function svgKart(S, farge, { bredde = 720, hoyde = 460, etiketter = true, ekstra = [], markslag = true, mis = true, natur = true } = {}) {
   const med = S.bestand.filter((b) => b.geometri && /Polygon/.test(b.geometri.type));
   const grense = S.eiendom?.grense;
   const ringer = (g) => (g.type === 'Polygon' ? g.coordinates : g.coordinates.flat());
@@ -71,6 +72,20 @@ export function svgKart(S, farge, { bredde = 720, hoyde = 460, etiketter = true,
     let ly = hoyde - 8 - (harMis && harMiljo ? 16 : 0);
     if (harMis) { ut += `<rect x="12" y="${ly - 9}" width="14" height="10" fill="url(#rkmis-skravur)" stroke="${MIS.farge}" stroke-width="1.5"/><text x="31" y="${ly}" font-size="10" fill="#333">Nøkkelbiotop (MiS)</text>`; ly += 16; }
     if (harMiljo) ut += `<rect x="12" y="${ly - 9}" width="14" height="10" fill="none" stroke="${MIS.farge}" stroke-width="1.5" stroke-dasharray="4 2"/><text x="31" y="${ly}" font-size="10" fill="#333">Miljøfigur</text>`;
+  }
+  // NiN-naturtyper og artsområder fra PEFC-datagrunnlaget (som i kartene i appen). Objekter som også er i «ekstra»,
+  // tegnes bare én gang.
+  const iEkstra = new Set(ekstra.map((o) => o.geometri));
+  const nat = natur ? (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade'].includes(o.type) && o.geometri && /Polygon/.test(o.geometri.type) && !iEkstra.has(o.geometri)) : [];
+  for (const o of nat) {
+    const f = o.type === 'naturtype' ? NATUR_FARGE.nin : NATUR_FARGE.art;
+    ut += `<path d="${sti(o.geometri)}" fill="${f}" fill-opacity="0.16" stroke="${f}" stroke-width="1.4"${o.type === 'artsomrade' ? ' stroke-dasharray="4 2"' : ''} fill-rule="evenodd"/>`;
+  }
+  if (nat.length) {
+    const harN = nat.some((o) => o.type === 'naturtype'); const harA = nat.some((o) => o.type === 'artsomrade');
+    let ly = 18;
+    if (harN) { ut += `<rect x="${bredde - 150}" y="${ly - 9}" width="14" height="10" fill="${NATUR_FARGE.nin}" fill-opacity="0.25" stroke="${NATUR_FARGE.nin}" stroke-width="1.4"/><text x="${bredde - 131}" y="${ly}" font-size="10" fill="#333">Naturtype (NiN)</text>`; ly += 16; }
+    if (harA) ut += `<rect x="${bredde - 150}" y="${ly - 9}" width="14" height="10" fill="${NATUR_FARGE.art}" fill-opacity="0.2" stroke="${NATUR_FARGE.art}" stroke-width="1.4" stroke-dasharray="4 2"/><text x="${bredde - 131}" y="${ly}" font-size="10" fill="#333">Artsområde</text>`;
   }
   // Ekstra objekter (f.eks. miljøobjekter): flater, linjer og punkter i egen farge.
   for (const o of ekstra) {

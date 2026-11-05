@@ -2990,6 +2990,12 @@ test('Naturdata: NiN-naturtyper og arter – tolkning, utvalg, punktoppslag, hen
   const a = NATUR.tolkArt({ norskNavn: 'Hønsehauk', funksjon: 8, roedlisteStatus: 'NT', prioritertArt: 0, faktaark: 'https://faktaark.naturbase.no?id=1' });
   assert.equal(NATUR.tekst(a), 'Hønsehauk – yngleområde (NT, nær truet)'); assert.ok(NATUR.viktigArt(a));
   assert.ok(!NATUR.viktigArt(NATUR.tolkArt({ norskNavn: 'Elg', funksjon: 1 })), 'beiteområde for elg tas ikke med');
+  const tl = NATUR.tolkArt({ norskNavn: 'Trelerke', funksjon: 9, roedlisteStatus: 'NTº' });
+  assert.equal(tl.rodliste, 'NT', 'tegn bak koden fjernes'); assert.ok(NATUR.viktigArt(tl));
+  const eu = new URL(NATUR.eksportUrl('art', [1, 2, 3, 4], 512));
+  assert.match(eu.pathname, /artfunksjon\/MapServer\/export$/); assert.equal(eu.searchParams.get('size'), '512,512');
+  assert.match(JSON.parse(eu.searchParams.get('layerDefs'))[0], /roedlisteStatus LIKE 'NT%'.*funksjon IN \(3,7,8\)/);
+  assert.equal(new URL(NATUR.eksportUrl('nin', [1, 2, 3, 4])).searchParams.get('layers'), 'show:2,3,4,5,6,7', 'uten dekningskartet');
   assert.match(NATUR.punktUrl('nin', 10.5, 59.8), /naturtyper_nin\/MapServer\/0\/query\?geometry=10.5%2C59.8.*distance=15/);
   assert.match(NATUR.punktUrl('art', 10.5, 59.8), /artfunksjon/);
   assert.equal(NATUR.tolkPunkt('art', { features: [{ attributes: { norskNavn: 'Tiur', funksjon: 7 } }] })[0].funksjonTekst, 'spill-/parringsområde');

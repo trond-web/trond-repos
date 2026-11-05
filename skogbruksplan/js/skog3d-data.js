@@ -134,7 +134,7 @@ export function ungskogpleieVisning(b, scenario, { inn = STANDARD_INNSTILLINGER,
 }
 
 // Polygon(er) i lokale meter rundt senteret (x øst, y nord).
-const lokal = (geom, [cx, cy]) => (geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates).map((p) => p.map((r) => r.map((q) => { const [x, y] = tilUtmPunkt(q); return [x - cx, y - cy]; })));
+export const lokal = (geom, [cx, cy]) => (geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates).map((p) => p.map((r) => r.map((q) => { const [x, y] = tilUtmPunkt(q); return [x - cx, y - cy]; })));
 function iRing(x, y, r) { let inne = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [xi, yi] = r[i]; const [xj, yj] = r[j]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inne = !inne; } return inne; }
 export const iPolygon = (x, y, mp) => mp.some((p) => iRing(x, y, p[0]) && !p.slice(1).some((h) => iRing(x, y, h)));
 const bbox = (mp) => { const xs = mp.flat(2).map((q) => q[0]); const ys = mp.flat(2).map((q) => q[1]); return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]; };

@@ -21,6 +21,9 @@ import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
 import { endringer as motorEndringer, oppdaterBestand as motorOppdater, merkKjort } from './tiltaksmotor.js';
 import { lagPlanSynk, merkSlettet, flettPlaner } from './plan-synk.js';
+import * as NATUR from './naturdata.js';
+import { overlapper } from './pefc.js';
+import { misFigurer, misKartlag } from './miljokart.js';
 import { lagSkyKlient, synkPlan as skySynkPlan, synkAlle as skySynkAlle, synkTekst as skyTekst } from './sky.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -29,12 +32,12 @@ const fmt = (v, d = 0) => (v == null || Number.isNaN(v) ? '–' : Number(v).toLo
 const IAAR = new Date().getFullYear();
 const HK_FARGER = ['#fcfdfe', '#f8f6a9', '#d9f6c7', '#9bd47f', '#ef9a7c'];
 const KATEGORIER = ['Observasjon', 'Skade (vind/snø/råte)', 'Barkbille', 'Viltskade', 'Miljøverdi', 'Grense/merke', 'Vei/grøft', 'Kontroll etter tiltak'];
-const LS = { plan: 'skogiq-felt-plan', lag: 'skogiq-felt-lag', start: 'skogiq-start-felt', offline: 'skogiq-offline-' };
+const LS = { plan: 'skogiq-felt-plan', lag: 'skogiq-felt-lag', start: 'skogiq-start-felt', offline: 'skogiq-offline-', natur: 'skogiq-felt-natur' };
 const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* privat modus */ } } };
 const kanal = 'BroadcastChannel' in window ? new BroadcastChannel('skogiq') : null;
 
 let P = null; // planen som er åpen
-let kart; let grunnlag = {}; let lagNavn = ls.get(LS.lag) || 'graa';
+let kart; let naturLag = null; let misLag = null; let grunnlag = {}; let lagNavn = ls.get(LS.lag) || 'graa';
 const lagPerBestand = new Map(); let bestandLag; let grenseLag; let regLag; let etikettLag;
 let valgtId = null; let visning = 'kart';
 let gps = { watch: null, pos: null, folg: false, markor: null, sirkel: null };
@@ -151,6 +154,14 @@ function initKart() {
   };
   (grunnlag[lagNavn] || grunnlag.graa).addTo(kart);
   bestandLag = L.featureGroup().addTo(kart);
+  // Naturverdier som i fullversjonen: NiN-naturtyper og arter (Miljødirektoratet, WMS) og nøkkelbiotoper (MiS) fra planen.
+  kart.createPane('naturPane'); kart.getPane('naturPane').style.zIndex = 430; kart.getPane('naturPane').style.pointerEvents = 'none';
+  naturLag = L.layerGroup([
+    NATUR.lagKartlag(L, 'nin', { pane: 'naturPane', opacity: 0.6 }),
+    NATUR.lagKartlag(L, 'art', { pane: 'naturPane', opacity: 0.6 }),
+  ]);
+  misLag = L.featureGroup().addTo(kart);
+  if (ls.get(LS.natur) !== '0') naturLag.addTo(kart);
   regLag = L.featureGroup().addTo(kart);
   etikettLag = L.layerGroup().addTo(kart);
   const etiketter = () => document.body.classList.toggle('skjul-etiketter', kart.getZoom() < 14);
@@ -178,6 +189,8 @@ function tegnPlan(zoom = false) {
     if (pt) L.tooltip({ permanent: true, direction: 'center', className: 'nr-etikett', interactive: false }).setLatLng([pt[1], pt[0]]).setContent(esc(b.nr)).addTo(etikettLag);
   }
   tegnRegistreringer();
+  misLag.clearLayers();
+  const mis = misFigurer(P); if (mis.length) misKartlag(L, mis, { svg: false, pane: 'naturPane', tooltip: false }).flater.addTo(misLag);
   if (zoom) zoomPlan();
 }
 function oppdaterStiler() { for (const b of P?.bestand || []) lagPerBestand.get(b.id)?.setStyle(stil(b)); }
@@ -278,6 +291,7 @@ function visBestand(id, { zoom = false } = {}) {
       ${(() => { if (!erUngskog(b, inn()) || (!fraSr16(b) && b.ungskog?.treantallFor == null)) return `<div class="tall"><b>${fmt(b.treantall)}</b><span>trær/daa</span></div>`; const t = ungskogData(b, { inn: inn() }).treantallFor; return `<div class="tall"><b>${fmt(t.verdi)}</b><span>trær/daa${t.kilde === 'registrert' ? ' (målt)' : t.kilde === 'beregnet' ? ' (modell)' : ''}</span></div>`; })()}
       ${(() => { const mh = middelhoyde(b, { inn: inn() }); return `<div class="tall"><b>${fmt(mh.verdi, 1)}</b><span>m høyde${mh.kilde === 'registrert' ? ' (snitt bar/lauv)' : ''}</span></div>`; })()}
     </div>
+    ${naturHtml(b)}
     ${b.vegetasjon?.kode ? `<p class="hint">Vegetasjonstype ${esc(b.vegetasjon.kode)} ${esc(b.vegetasjon.navn || '')}</p>` : ''}
     ${b.merknad ? `<p class="hint">${esc(b.merknad)}</p>` : ''}
     ${ungskogSeksjon(b)}
@@ -287,6 +301,13 @@ function visBestand(id, { zoom = false } = {}) {
     ${utfortNylig(b).length ? `<h3>Utført siste år</h3><div class="liste">${utfortNylig(b).map((t) => tiltakRad(b, t)).join('')}</div>` : ''}
     ${regs.length ? `<h3>Registreringer (${regs.length})</h3><div class="liste">${regs.map(regRad).join('')}</div>` : ''}
     <div class="knapper"><button type="button" class="knapp primar" data-h="reg-her">+ Registrering i bestandet</button><button type="button" class="knapp" data-h="drone-bestand">✈ Droneoppdrag</button></div>`);
+}
+
+// Naturverdier i bestandet (fra planens PEFC-datagrunnlag): nøkkelbiotoper, NiN-naturtyper og artsområder.
+function naturHtml(b) {
+  const nv = (P?.pefc?.objekter || []).filter((o) => ['noekkelbiotop', 'naturtype', 'artsomrade'].includes(o.type) && o.geometri && b.geometri && overlapper(b.geometri, o.geometri));
+  if (!nv.length) return '';
+  return `<div class="natur-boks">${nv.slice(0, 5).map((o) => `<div>${o.type === 'artsomrade' ? '🦉' : o.type === 'noekkelbiotop' ? '🟣' : '🌿'} ${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : esc(o.navn)}</div>`).join('')}${nv.length > 5 ? `<div class="hint">+ ${nv.length - 5} til</div>` : ''}<div class="hint">Ta hensyn ved hogst og kjøring – skal vurderes før hogst (PEFC).</div></div>`;
 }
 
 // ---------- tiltak ----------
@@ -589,6 +610,9 @@ function visMer() {
     <p>${navigator.onLine ? 'Du er på nett.' : '<b>Du er uten nett.</b> Planer, registreringer og tiltak lagres på telefonen.'} Appen og planene virker uten dekning. Kartet virker offline der du har lastet det ned.</p>
     <p class="hint">${P ? (offline ? `Topografisk kart for ${esc(P.eiendom?.navn)} ble lastet ned ${esc(offline)}.` : `Kartet for ${esc(P.eiendom?.navn)} er ikke lastet ned.`) : 'Velg en plan først.'} Flyfoto krever nett.</p>
     <div class="framdrift" id="offlineFramdrift" hidden><span></span></div><p class="hint" id="offlineStatus"></p>
+    <h3>Kartlag</h3>
+    <label class="avkrysning"><input type="checkbox" data-natur-lag ${kart.hasLayer(naturLag) ? 'checked' : ''}> 🌿 Naturtyper (NiN) og 🦉 arter i kartet</label>
+    <p class="hint">Miljødirektoratet. Krever nett. Nøkkelbiotoper (MiS) fra planen vises alltid.</p>
     <div class="knapper"><button type="button" class="knapp primar" data-h="offline" ${P ? '' : 'disabled'}>${offline ? 'Oppdater offline-kart' : 'Last ned kart for offline'}</button></div>
     <h3>AR – grenser og miljø i terrenget <span class="beta">beta</span></h3>
     <p class="hint">Se bestandsgrenser, eiendomsgrense, stier, miljøinformasjon og kulturminner lagt over kamerabildet – eller i AR-briller (Meta Quest 3). Bruker GPS og kompass.</p>
@@ -657,6 +681,7 @@ function kobleHendelser() {
   document.querySelector('.bunn').addEventListener('click', (e) => { const b = e.target.closest('[data-vis]'); if (!b) return; if (regPagar) avbrytReg(); settVisning(b.dataset.vis); });
   kart.on('moveend', () => { if (regPagar) tegnRegSkjemaPos(); });
   const ark = $('#arkInnhold');
+  ark.addEventListener('change', (e) => { if (e.target.matches('[data-natur-lag]')) { if (e.target.checked) naturLag.addTo(kart); else naturLag.remove(); ls.set(LS.natur, e.target.checked ? '1' : '0'); } });
   ark.addEventListener('click', async (e) => {
     if (await oppdrag.klikk(e)) return;
     if (await drone.klikk(e)) return;

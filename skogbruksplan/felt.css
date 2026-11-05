@@ -236,3 +236,5 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .kodefelt { display: flex; gap: 8px; margin: 6px 0 4px; }
 .kodefelt input { flex: 1; min-width: 0; font: 700 22px/1.2 ui-monospace, 'SFMono-Regular', Menlo, monospace; letter-spacing: .18em; text-transform: uppercase; text-align: center; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); }
 .kodefelt input::placeholder { font: 500 16px/1.2 var(--font, system-ui), sans-serif; letter-spacing: .02em; text-transform: none; }
+
+.natur-boks { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: rgba(46,158,106,.1); border-left: 3px solid #2e9e6a; font-size: 14px; display: grid; gap: 3px; }

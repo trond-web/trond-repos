@@ -117,9 +117,10 @@ export async function hentMiljodata(grense, { hent = fetch, logg = () => {} } = 
   steg('art', 'Artsområder (rødlistede/prioriterte)', 'Miljødirektoratet', async (legg) => {
     for (const f of await arcgis(hent, 'artfunksjon/MapServer/0', bb)) {
       const p = f.properties;
-      const viktig = ['CR', 'EN', 'VU', 'NT'].includes(p.roedlisteStatus) || Number(p.prioritertArt) === 1 || [3, 7, 8].includes(Number(p.funksjon));
+      const rl = String(p.roedlisteStatus || '').replace(/[^A-Z]/g, ''); // f.eks. «NTº»
+      const viktig = ['CR', 'EN', 'VU', 'NT'].includes(rl) || Number(p.prioritertArt) === 1 || [3, 7, 8].includes(Number(p.funksjon));
       if (!viktig) continue; // f.eks. store beiteområder for elg tas ikke med
-      legg('artsomrade', `${p.norskNavn || 'Art'} – ${ARTSFUNKSJON[p.funksjon] || 'funksjonsområde'}${p.roedlisteStatus ? ` (${p.roedlisteStatus})` : ''}${Number(p.prioritertArt) === 1 ? ', prioritert art' : ''}`, f.geometry, { kildeId: `art-${p.artForekomstId}`, lenke: p.faktaark }, p.registreringsDato);
+      legg('artsomrade', `${p.norskNavn || 'Art'} – ${ARTSFUNKSJON[p.funksjon] || 'funksjonsområde'}${rl ? ` (${rl})` : ''}${Number(p.prioritertArt) === 1 ? ', prioritert art' : ''}`, f.geometry, { kildeId: `art-${p.artForekomstId}`, lenke: p.faktaark }, p.registreringsDato);
     }
   });
   steg('friluft', 'Friluftslivsområder', 'Miljødirektoratet', async (legg) => {
