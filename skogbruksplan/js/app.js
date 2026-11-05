@@ -64,6 +64,7 @@ import { lagPlanSynk, merkSlettet, lenkeMedKode, API as SYNK_API } from './plan-
 import { KART as PLAN_KART, GRUPPER as PLAN_GRUPPER, hent as hentArealplan, analyser as analyserArealplan, vurdering as planVurdering, bestandTekst as planBestandTekst, punktUrl as planPunktUrl, tolkPunkt as tolkPlanPunkt, formalInfo } from './arealplan.js';
 import * as NABO from './naboeiendommer.js';
 import * as NATUR from './naturdata.js';
+import * as KULTUR from './kulturminner.js';
 import { lagSkyKlient, synkPlan as skySynkPlan, synkAlle as skySynkAlle, synkTekst as skyTekst, mb as skyMb, merkSky } from './sky.js';
 import { lagSatellittVisning, bestandStripeHtml, SATELLITT_AAR, SISTE_SATELLITTAAR } from './satellitt.js';
 
@@ -129,7 +130,7 @@ function filnavn(ending) {
 
 // ---------------------------------------------------------------- kart
 let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks. veier)
-let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let kpLag = null; let rpLag = null; let eiendomGrenseLag = null; let naboLag = null; let ninLag = null; let artLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
+let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let kpLag = null; let rpLag = null; let eiendomGrenseLag = null; let naboLag = null; let ninLag = null; let artLag = null; let kulturLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
 let etikettLag; let flyfotoAktiv = false; let lagKontroll = null; let andreVisning = null;
@@ -170,6 +171,8 @@ function initKart() {
   // NiN-naturtyper og arter av nasjonal forvaltningsinteresse (Miljødirektoratet). Klikk i kartet viser detaljer.
   ninLag = NATUR.lagKartlag(L, 'nin', { pane: 'analysePane' });
   artLag = NATUR.lagKartlag(L, 'art', { pane: 'analysePane' });
+  // Kulturminner (Riksantikvaren): lokaliteter, sikringssoner og ikoner. Klikk viser navn, vernestatus og lenker.
+  kulturLag = L.tileLayer.wms(KULTUR.KART.url, { layers: KULTUR.KART.lag, format: 'image/png', transparent: true, opacity: 0.85, pane: 'analysePane', maxZoom: 20, attribution: 'Kulturminner © Riksantikvaren' });
   eiendomGrenseLag = L.tileLayer.wms('https://wms.geonorge.no/skwms1/wms.matrikkel', { layers: 'eiendomsgrense,eiendoms_id', format: 'image/png', transparent: true, opacity: 0.85, minZoom: 13, maxZoom: 20, pane: 'analysePane', attribution: 'Eiendomsgrenser © Kartverket' });
   fuktLag = L.tileLayer.wms(FUKT_WMS, { layers: FUKT_LAG, format: 'image/png', transparent: true, opacity: 0.75, pane: 'analysePane', attribution: 'Markfuktighet © NIBIO' });
   graa.addTo(kart);
@@ -185,12 +188,15 @@ function initKart() {
   document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, '🌿 Naturtyper (NiN, Miljødirektoratet)': ninLag, '🦉 Arter av nasjonal forvaltningsinteresse': artLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, '🌿 Naturtyper (NiN, Miljødirektoratet)': ninLag, '🦉 Arter av nasjonal forvaltningsinteresse': artLag, '🏛 Kulturminner (Riksantikvaren)': kulturLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
   // NiN-naturtyper og arter vises som standard i kartet i alle faner (som nøkkelbiotopene). Valget huskes.
   const NATUR_LS = 'skogiq-natur-lag';
   const lesNatur = () => { try { return localStorage.getItem(NATUR_LS); } catch { return null; } };
   if (lesNatur() !== '0') { ninLag.addTo(kart); artLag.addTo(kart); }
+  const KULTUR_LS = 'skogiq-kultur-lag'; let kv = null; try { kv = localStorage.getItem(KULTUR_LS); } catch { /* privat modus */ }
+  if (kv !== '0') kulturLag.addTo(kart);
+  kart.on('overlayadd overlayremove', (e) => { if (e.layer === kulturLag) { try { localStorage.setItem(KULTUR_LS, kart.hasLayer(kulturLag) ? '1' : '0'); } catch { /* privat modus */ } } });
   kart.on('overlayadd overlayremove', (e) => { if (e.layer === ninLag || e.layer === artLag) { try { localStorage.setItem(NATUR_LS, kart.hasLayer(ninLag) || kart.hasLayer(artLag) ? '1' : '0'); } catch { /* privat modus */ } } });
 
   kart.on('click', (e) => {
@@ -293,7 +299,7 @@ function tegnLegend() {
   }
   const vr = S.veier || {};
   if (fuktLag && kart.hasLayer(fuktLag)) html += `<b style="display:block;margin-top:6px">💧 Markfuktighet (dybde til grunnvann)</b>${FUKT_KLASSER.map((k) => rad(k.farge, k.leg)).join('')}<div class="hint" style="font-size:11px">Over 1 m: tørt (ikke farget). Våt mark gir sporskader.</div>`;
-  if ((ninLag && kart.hasLayer(ninLag)) || (artLag && kart.hasLayer(artLag))) html += `<b style="display:block;margin-top:6px">Naturverdier</b>${kart.hasLayer(ninLag) ? rad(NATUR.FARGE.nin, 'Naturtyper (NiN) – mørkere = høyere kvalitet') : ''}${kart.hasLayer(artLag) ? rad(NATUR.FARGE.art, 'Arter – funksjonsområder') : ''}<div class="hint" style="font-size:11px">Klikk i kartet for naturtype, art og faktaark.</div>`;
+  if ((ninLag && kart.hasLayer(ninLag)) || (artLag && kart.hasLayer(artLag)) || (kulturLag && kart.hasLayer(kulturLag))) html += `<b style="display:block;margin-top:6px">Natur og kulturminner</b>${kart.hasLayer(ninLag) ? rad(NATUR.FARGE.nin, 'Naturtyper (NiN) – mørkere = høyere kvalitet') : ''}${kart.hasLayer(artLag) ? rad(NATUR.FARGE.art, 'Arter – funksjonsområder') : ''}${kart.hasLayer(kulturLag) ? rad(KULTUR.FARGE, 'Kulturminner (Riksantikvaren)') : ''}<div class="hint" style="font-size:11px">Klikk i kartet for naturtype, art og faktaark.</div>`;
   if (naboLag && kart.hasLayer(naboLag)) {
     const o = naboData?.oppsummert;
     html += `<b style="display:block;margin-top:6px">🏡 Naboeiendommer</b>${Object.entries(NABO.STATUS).map(([k, st]) => rad(`${st.farge}${st.fyll ? '' : ';background:transparent;border:2px solid ' + st.farge}`, `${st.navn}${o ? ` (${o[k].antall})` : ''}`)).join('')}<div class="hint" style="font-size:11px">${naboStatus ? esc(naboStatus) : 'Klikk på en eiendom – mangler den plan, kan du lage den.'}</div>`;
@@ -822,7 +828,7 @@ function visDetalj() {
       ${(() => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? `<div><b>${fmt(a.meter)} m</b><span>til nærmeste bilvei${a.meter > veiVisning.maks() ? ' – lang terrengtransport' : ''}</span></div>` : ''; })()}
     </div>
     ${b.markfukt ? (() => { const v = fuktVurdering(b.markfukt); return `<div class="bratt-linje fukt-${v.niva}"><div class="bratt-stolpe">${FUKT_KLASSER.map((k) => (b.markfukt.andeler[k.id] ? `<span style="flex:${b.markfukt.andeler[k.id]};background:${k.farge}" title="${esc(k.leg)}: ${Math.round(b.markfukt.andeler[k.id] * 100)} %"></span>` : '')).join('')}${b.markfukt.andeler.torr ? `<span style="flex:${b.markfukt.andeler.torr};background:#e6e1c8" title="Tørt: ${Math.round(b.markfukt.andeler.torr * 100)} %"></span>` : ''}</div><span>💧 ${esc(v.tekst)}</span></div>`; })() : ''}
-    ${(() => { const nv = (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade'].includes(o.type) && o.geometri && b.geometri && overlapper(b.geometri, o.geometri)); return nv.length ? `<div class="bratt-linje plan-2"><span>${nv.slice(0, 4).map((o) => `${o.type === 'artsomrade' ? '🦉' : '🌿'} ${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : esc(o.navn)}`).join('<br>')}${nv.length > 4 ? `<br><small>+ ${nv.length - 4} til</small>` : ''}<br><small>Registrert naturtype eller art – vurderes av skogbiologisk kompetanse før hogst (PEFC krav 22).</small></span></div>` : ''; })()}
+    ${(() => { const nv = (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade', 'kulturminne'].includes(o.type) && o.geometri && b.geometri && overlapper(b.geometri, o.geometri)); return nv.length ? `<div class="bratt-linje plan-2"><span>${nv.slice(0, 4).map((o) => `${o.type === 'artsomrade' ? '🦉' : o.type === 'kulturminne' ? '🏛' : '🌿'} ${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : esc(o.navn)}`).join('<br>')}${nv.length > 4 ? `<br><small>+ ${nv.length - 4} til</small>` : ''}<br><small>${nv.some((o) => o.type === 'kulturminne') ? 'Kulturminne: ikke kjør over eller skad det, og hold sikringssonen fri (PEFC krav 30). ' : ''}${nv.some((o) => o.type !== 'kulturminne') ? 'Naturtype eller art – vurderes av skogbiologisk kompetanse før hogst (PEFC krav 22).' : ''}</small></span></div>` : ''; })()}
     ${S.arealplan?.bestand?.[b.id] ? (() => { const t = planBestandTekst(S.arealplan.bestand[b.id]); return t?.tekst ? `<div class="bratt-linje plan-${t.alvor}"><div class="bratt-stolpe">${S.arealplan.bestand[b.id].formal.map((f) => `<span style="flex:${f.andel};background:${formalInfo(f.kode).farge}" title="${esc(formalInfo(f.kode).navn)}: ${Math.round(f.andel * 100)} %"></span>`).join('')}</div><span>🏘 ${esc(t.tekst)}${t.raad ? `<br><small>${esc(t.raad)}</small>` : ''}</span></div>` : ''; })() : ''}
     ${b.bratthet ? (() => { const v = brattVurdering(b.bratthet); return `<div class="bratt-linje bratt-${v.niva}"><div class="bratt-stolpe">${BRATT_KLASSER.map((k) => (b.bratthet.andel[k.id] ? `<span style="flex:${b.bratthet.andel[k.id]};background:${k.farge || '#cfe3c7'}" title="${esc(k.navn)}: ${Math.round(b.bratthet.andel[k.id] * 100)} %"></span>` : '')).join('')}</div><span>⛰ ${esc(v.tekst)}</span></div>`; })() : ''}
     <form class="skjema tre-kol" id="detaljSkjema">
@@ -1335,7 +1341,15 @@ async function naturPunktHtml(ll, type, { stille = false } = {}) {
   } catch { return stille ? '' : '<span class="hint">Klarte ikke å hente data fra Miljødirektoratet.</span>'; }
 }
 // Klikk i kartet med plan-, naturtype- eller artslag på: én popup med det som finnes i punktet.
-const punktLagAktive = () => (kpLag && (kart.hasLayer(kpLag) || kart.hasLayer(rpLag))) || (ninLag && kart.hasLayer(ninLag)) || (artLag && kart.hasLayer(artLag));
+const punktLagAktive = () => (kpLag && (kart.hasLayer(kpLag) || kart.hasLayer(rpLag))) || (ninLag && kart.hasLayer(ninLag)) || (artLag && kart.hasLayer(artLag)) || (kulturLag && kart.hasLayer(kulturLag));
+// Kulturminner i punktet (Riksantikvaren, GetFeatureInfo).
+async function kulturPunktHtml(ll, { stille = false } = {}) {
+  try {
+    const r = await fetch(KULTUR.punktUrl(ll.lat, ll.lng)); const liste = r.ok ? KULTUR.tolkPunkt(await r.text()) : [];
+    if (!liste.length) return stille ? '' : '<b class="punkt-tittel">🏛 Kulturminner</b><span class="hint">Ingen registrert i dette punktet.</span>';
+    return `<b class="punkt-tittel">🏛 Kulturminner</b>${liste.slice(0, 5).map((k) => `<div style="margin-top:3px">${k.lenke ? `<a href="${esc(k.lenke)}" target="_blank" rel="noopener">${esc(k.navn)}</a>` : `<b>${esc(k.navn)}</b>`}<br><small>${esc([k.kategori, k.art, k.vern].filter(Boolean).join(' · '))}${k.sikringssone ? ' · sikringssone' : ''}</small></div>`).join('')}<div class="hint" style="margin-top:3px">${liste.some(KULTUR.erFredet) ? 'Fredet: inngrep er forbudt, også i sikringssonen (minst 5 m). Ikke kjør over eller felle trær inn i kulturminnet.' : 'Ta hensyn ved hogst og kjøring (PEFC krav 30).'}</div>`;
+  } catch { return stille ? '' : '<span class="hint">Klarte ikke å hente kulturminner.</span>'; }
+}
 async function visPunktInfo(ll) {
   const nr = ++planPunktNr;
   // Planlagene gir alltid popup; naturlagene (på som standard) bare når det finnes noe i punktet.
@@ -1345,6 +1359,7 @@ async function visPunktInfo(ll) {
     plan ? planPunktHtml(ll) : '',
     kart.hasLayer(ninLag) ? naturPunktHtml(ll, 'nin', { stille: !plan }) : '',
     kart.hasLayer(artLag) ? naturPunktHtml(ll, 'art', { stille: !plan }) : '',
+    kart.hasLayer(kulturLag) ? kulturPunktHtml(ll, { stille: !plan }) : '',
   ]);
   if (nr !== planPunktNr) return;
   const html = deler.filter(Boolean).join('<hr>');

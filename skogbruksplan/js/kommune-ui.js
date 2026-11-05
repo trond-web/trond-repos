@@ -6,6 +6,7 @@ import { fmt } from './charts.js';
 import { misMonster, misKartlag, misLegendStil, merkerVedZoom } from './miljokart.js';
 import { arealM2, punktIGeometri } from './proj.js';
 import * as NATUR from './naturdata.js';
+import * as KULTUR from './kulturminner.js';
 import { hentVeinett, avstanderTilVei, avstandTekst, LANG_TERRENGTRANSPORT, VEI_KILDE } from './kommune-vei.js';
 import {
   analyserFlater, hentMarkVaer, hentMetNedbor, celleFor, risikoNaa, besteDag, prioriter, forholdOppsummert,
@@ -46,7 +47,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
   let data = null; let resultat = null; let kategori = 'hogst';
   let sorterDrift = true; let valgtDag = idagIso(); let driftArbeider = ''; let antallDrift = 150; let visDtw = false; let dtwLag = null; let bareDrivbar = false;
   let kriterier = { ...STANDARD_KRITERIER };
-  let utenNatur = false; let naturStatus = ''; let naturHenter = false;
+  let utenNatur = false; let utenKultur = false; let naturStatus = ''; let naturHenter = false;
   let sortering = 'poeng'; let veiStatus = ''; let veiHenter = false; let eiendomGen = 0;
   // Eiendomsgrenser med gårds- og bruksnummer (Kartverket matrikkel, vises fra ca. 1:40 000).
   const eiendomLag = L.tileLayer.wms('https://wms.geonorge.no/skwms1/wms.matrikkel', { layers: 'eiendomsgrense,eiendoms_id', format: 'image/png', transparent: true, opacity: 0.85, minZoom: 13, maxZoom: 20, attribution: 'Eiendomsgrenser © Kartverket' });
@@ -69,7 +70,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     if (!aktiv || !resultat) return;
     const k = KATEGORIER[kategori];
     const drift = kategori === 'hogst' && harDrift();
-    $('#kartLegend').innerHTML = `<div class="legend-innhold"><b>${drift ? `Kjøreskaderisiko ${ukedag(valgtDag)}` : k.navn}</b>${drift ? `${NAA.map((n) => `<div><i style="background:${n.farge}"></i>${n.navn}</div>`).join('')}<div><i style="background:${k.farge};opacity:.45"></i>Ikke analysert</div>` : `<div><i style="background:${k.farge}"></i>Forslag (${fmt(resultat[kategori].length)} flater)</div>`}<div><i style="${misLegendStil}"></i>Nøkkelbiotop (MiS)</div><div><i style="background:transparent;border:2px dashed #d03b3b"></i>Verneområde</div><div><i style="background:transparent;border:2px solid #1b1c19"></i>Kommunegrense</div>${data?.natur ? `<div><i style="background:${NATUR.FARGE.nin}33;border:1.5px solid ${NATUR.FARGE.nin}"></i>Naturtype (NiN)</div><div><i style="background:${NATUR.FARGE.art}22;border:1.5px dashed ${NATUR.FARGE.art}"></i>Art – funksjonsområde</div>` : ''}${$('#komEiendom')?.checked ? `<div><i style="background:transparent;border:1.5px solid #e8432f"></i>Eiendomsgrense, gnr/bnr ${kart.getZoom() < 13 ? '(zoom inn)' : ''}</div>` : ''}${visDtw ? `<b style="display:block;margin-top:6px">Markfuktighet (DTW)</b>${DTW_KLASSER.map((d) => `<div><i style="background:rgb(${d.rgb.join(',')})"></i>${d.id === 'vann' ? 'Vann' : `Grunnvann ${d.navn}`}</div>`).join('')}` : ''}</div>`;
+    $('#kartLegend').innerHTML = `<div class="legend-innhold"><b>${drift ? `Kjøreskaderisiko ${ukedag(valgtDag)}` : k.navn}</b>${drift ? `${NAA.map((n) => `<div><i style="background:${n.farge}"></i>${n.navn}</div>`).join('')}<div><i style="background:${k.farge};opacity:.45"></i>Ikke analysert</div>` : `<div><i style="background:${k.farge}"></i>Forslag (${fmt(resultat[kategori].length)} flater)</div>`}<div><i style="${misLegendStil}"></i>Nøkkelbiotop (MiS)</div><div><i style="background:transparent;border:2px dashed #d03b3b"></i>Verneområde</div><div><i style="background:transparent;border:2px solid #1b1c19"></i>Kommunegrense</div>${data?.natur ? `<div><i style="background:${NATUR.FARGE.nin}33;border:1.5px solid ${NATUR.FARGE.nin}"></i>Naturtype (NiN)</div><div><i style="background:${NATUR.FARGE.art}22;border:1.5px dashed ${NATUR.FARGE.art}"></i>Art – funksjonsområde</div>` : ''}${data?.kultur ? `<div><i style="background:${KULTUR.FARGE}44;border:1.5px solid ${KULTUR.FARGE}"></i>Kulturminne (sikringssone)</div>` : ''}${$('#komEiendom')?.checked ? `<div><i style="background:transparent;border:1.5px solid #e8432f"></i>Eiendomsgrense, gnr/bnr ${kart.getZoom() < 13 ? '(zoom inn)' : ''}</div>` : ''}${visDtw ? `<b style="display:block;margin-top:6px">Markfuktighet (DTW)</b>${DTW_KLASSER.map((d) => `<div><i style="background:rgb(${d.rgb.join(',')})"></i>${d.id === 'vann' ? 'Vann' : `Grunnvann ${d.navn}`}</div>`).join('')}` : ''}</div>`;
   }
 
   // ---------- driftsforhold ----------
@@ -90,6 +91,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     const maksVei = Number(kriterier.maksAvstandVei) || 0;
     if (maksVei > 0 && data.vei) liste = liste.filter((f) => f.veiAvstand != null && f.veiAvstand <= maksVei);
     if (utenNatur && data.natur) liste = liste.filter((f) => !data.naturFlater?.[f.id]);
+    if (utenKultur && data.kultur) liste = liste.filter((f) => !data.kulturFlater?.[f.id]);
     if (sortering === 'areal') liste = liste.slice().sort((a, b) => b.areal - a.areal);
     else if (sortering === 'vei') liste = liste.slice().sort((a, b) => (a.veiAvstand ?? 1e9) - (b.veiAvstand ?? 1e9) || b.areal - a.areal);
     else if (sortering === 'rotnetto') liste = liste.slice().sort((a, b) => (b.rotnetto || 0) - (a.rotnetto || 0));
@@ -112,6 +114,14 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
   }
   // NiN-naturtyper og arter som overlapper flaten (naturdata.js).
   function naturLinjer(f) {
+    return naturLinjerNin(f) + kulturLinjer(f);
+  }
+  function kulturLinjer(f) {
+    if (!data?.kultur) return '';
+    const t = data.kulturFlater?.[f.id]; if (!t?.length) return '<span class="hint">🏛 Ingen fredede kulturminner registrert</span><br>';
+    return `<div class="kom-natur">${t.slice(0, 4).map((k) => `🏛 ${k.lenke ? `<a href="${esc(k.lenke)}" target="_blank" rel="noopener">${esc(k.navn)}</a>` : esc(k.navn)}`).join('<br>')}${t.length > 4 ? `<br><span class="hint">+ ${t.length - 4} til</span>` : ''}<br><span class="hint">Fredet kulturminne med sikringssone – ikke kjør over, og merk av før drift (PEFC krav 30).</span></div>`;
+  }
+  function naturLinjerNin(f) {
     if (!data?.natur) return naturHenter ? '<span class="hint">🌿 Naturtyper og arter sjekkes …</span><br>' : '';
     const t = data.naturFlater?.[f.id]; if (!t?.length) return '<span class="hint">🌿 Ingen registrerte NiN-naturtyper eller arter</span><br>';
     return `<div class="kom-natur">${t.slice(0, 4).map((o) => `${o.type === 'nin' ? '🌿' : '🦉'} ${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(NATUR.tekst(o))}</a>` : esc(NATUR.tekst(o))}`).join('<br>')}${t.length > 4 ? `<br><span class="hint">+ ${t.length - 4} til</span>` : ''}<br><span class="hint">Vurderes av skogbiologisk kompetanse før hogst (PEFC krav 22).</span></div>`;
@@ -127,6 +137,12 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
       const merket = NATUR.merkFlater(d.flater, n);
       d.naturFlater = Object.fromEntries(merket); d.naturGeo = n;
       d.natur = { hentet: new Date().toISOString(), nin: n.nin.length, art: n.art.length, flater: merket.size };
+      // Fredede kulturminner (sikringssoner, Riksantikvaren) for kommunen.
+      naturStatus = 'Henter kulturminner fra Riksantikvaren …'; visNaturStatus();
+      try {
+        const km = await KULTUR.hentForBoks(bb); const mk = KULTUR.merkFlater(d.flater, km);
+        d.kulturFlater = Object.fromEntries(mk); d.kulturGeo = km; d.kultur = { hentet: new Date().toISOString(), antall: km.length, flater: mk.size };
+      } catch (e) { d.kultur = null; naturStatus = ''; melding(`Kulturminner kunne ikke hentes: ${e.message}`, 5000); }
       if (data === d) { naturStatus = ''; lagre(); oppdater(); }
     } catch (e) { naturStatus = `Klarte ikke å hente naturtyper og arter: ${e.message}`; } finally { naturHenter = false; visNaturStatus(); }
   }
@@ -134,7 +150,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     const el = $('#komNatur'); if (!el) return;
     const n = data?.natur;
     el.innerHTML = naturStatus ? `🌿 ${esc(naturStatus)}${/Klarte/.test(naturStatus) ? ' <button type="button" class="knapp liten" data-kom-natur-ny>Prøv igjen</button>' : ''}`
-      : n ? `🌿 ${fmt(n.nin)} NiN-naturtyper og 🦉 ${fmt(n.art)} artsområder (Miljødirektoratet, ${new Date(n.hentet).toLocaleDateString('nb-NO')}) – ${fmt(n.flater)} skogflater berører dem og er merket. <button type="button" class="knapp liten" data-kom-natur-ny>Oppdater</button>` : '';
+      : n ? `🌿 ${fmt(n.nin)} NiN-naturtyper og 🦉 ${fmt(n.art)} artsområder (Miljødirektoratet, ${new Date(n.hentet).toLocaleDateString('nb-NO')}) – ${fmt(n.flater)} skogflater berører dem og er merket.${data.kultur ? ` 🏛 ${fmt(data.kultur.antall)} fredede kulturminner (Riksantikvaren) – ${fmt(data.kultur.flater)} skogflater berører dem.` : ''} <button type="button" class="knapp liten" data-kom-natur-ny>Oppdater</button>` : '';
   }
   function veiLinje(f) {
     if (f.veiAvstand === undefined) return data?.vei ? '' : `<span class="hint">🛣 Avstand til vei beregnes …</span><br>`;
@@ -219,6 +235,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
       flateLag.set(f.id, l);
     }
     for (const [type, liste] of Object.entries(data.naturGeo || {})) for (const o of liste) L.geoJSON(o.geometri, { style: { color: NATUR.FARGE[type], weight: 1.2, fillColor: NATUR.FARGE[type], fillOpacity: 0.12, dashArray: type === 'art' ? '3 3' : null }, interactive: false, renderer }).addTo(vernLag);
+    for (const k of data.kulturGeo || []) L.geoJSON(k.geometri, { style: { color: KULTUR.FARGE, weight: 1.5, fillColor: KULTUR.FARGE, fillOpacity: 0.25 }, interactive: false, renderer }).addTo(vernLag);
     for (const v of data.vern) if (v.geometri) L.geoJSON(v.geometri, { style: { color: '#d03b3b', weight: 1.5, dashArray: '5 4', fill: false }, interactive: false, renderer }).addTo(vernLag);
     // Nøkkelbiotoper: felles MiS-stil med skravur (SVG) og «MiS»-merke når man zoomer inn.
     stoppMisMerker?.();
@@ -248,7 +265,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     const vis = liste.slice(0, 150);
     $('#komListe').innerHTML = vis.length ? vis.map((f, i) => `<button type="button" class="kom-rad" data-flate="${esc(f.id)}">
       <span class="nr">${i + 1}</span>
-      <span><b>${desimal(f.areal)} daa · ${TRESLAG[f.treslag] || ''} ${f.bonitet ?? ''}</b> · ${f.alder !== null ? Math.round(f.alder) : '–'} år · ${desimal(f.volumDaa)} m³/daa${f.rotnetto ? ` · ca. ${fmt(f.rotnetto / 1000)} k kr` : ''}${f.veiAvstand !== undefined ? ` · 🛣 ${esc(avstandTekst(f.veiAvstand))}` : ''}${data.naturFlater?.[f.id] ? ` · <span class="kom-natur-merke" title="${esc(data.naturFlater[f.id].map((o) => NATUR.tekst(o)).join('; '))}">${data.naturFlater[f.id].some((o) => o.type === 'nin') ? '🌿' : ''}${data.naturFlater[f.id].some((o) => o.type === 'art') ? '🦉' : ''} naturverdi</span>` : ''}<small class="kom-gnr" data-gnr>${gnrTekst(f) ? `Gnr/bnr ${esc(gnrTekst(f))}` : ''}</small>${f.metode ? ` · ${esc(f.metode)}` : ''}<br><span class="hint">${esc(f.grunn)}</span>${kategori === 'hogst' && f.drift ? `<br><span class="kom-risiko" style="--farge:${f.drift.naa?.nivaa.farge || '#999'}">${esc(f.drift.naa?.nivaa.navn || 'Ukjent')}${f.drift.naa ? ` · ${f.drift.naa.risiko}` : ''}</span> <span class="hint">${esc(SESONG[f.drift.statisk.sesong].navn)} · ${esc(f.drift.statisk.grunner.slice(0, 2).join(' · '))}${f.drift.beste && f.drift.beste.dato !== valgtDag && f.drift.naa?.risiko >= 30 ? ` · bedre ${ukedag(f.drift.beste.dato)}` : ''}</span>` : ''}</span>
+      <span><b>${desimal(f.areal)} daa · ${TRESLAG[f.treslag] || ''} ${f.bonitet ?? ''}</b> · ${f.alder !== null ? Math.round(f.alder) : '–'} år · ${desimal(f.volumDaa)} m³/daa${f.rotnetto ? ` · ca. ${fmt(f.rotnetto / 1000)} k kr` : ''}${f.veiAvstand !== undefined ? ` · 🛣 ${esc(avstandTekst(f.veiAvstand))}` : ''}${data.naturFlater?.[f.id] ? ` · <span class="kom-natur-merke" title="${esc(data.naturFlater[f.id].map((o) => NATUR.tekst(o)).join('; '))}">${data.naturFlater[f.id].some((o) => o.type === 'nin') ? '🌿' : ''}${data.naturFlater[f.id].some((o) => o.type === 'art') ? '🦉' : ''} naturverdi</span>` : ''}${data.kulturFlater?.[f.id] ? ` · <span class="kom-kultur-merke" title="${esc(data.kulturFlater[f.id].map((k) => k.navn).join('; '))}">🏛 kulturminne</span>` : ''}<small class="kom-gnr" data-gnr>${gnrTekst(f) ? `Gnr/bnr ${esc(gnrTekst(f))}` : ''}</small>${f.metode ? ` · ${esc(f.metode)}` : ''}<br><span class="hint">${esc(f.grunn)}</span>${kategori === 'hogst' && f.drift ? `<br><span class="kom-risiko" style="--farge:${f.drift.naa?.nivaa.farge || '#999'}">${esc(f.drift.naa?.nivaa.navn || 'Ukjent')}${f.drift.naa ? ` · ${f.drift.naa.risiko}` : ''}</span> <span class="hint">${esc(SESONG[f.drift.statisk.sesong].navn)} · ${esc(f.drift.statisk.grunner.slice(0, 2).join(' · '))}${f.drift.beste && f.drift.beste.dato !== valgtDag && f.drift.naa?.risiko >= 30 ? ` · bedre ${ukedag(f.drift.beste.dato)}` : ''}</span>` : ''}</span>
     </button>`).join('') + (liste.length > vis.length ? `<p class="hint">Viser de ${vis.length} største av ${fmt(liste.length)}. Alle vises i kartet og i eksporten.</p>` : '')
       : '<div class="tom">Ingen flater oppfyller kriteriene.</div>';
     fyllEiendommer(vis);
@@ -354,7 +371,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     oppdater();
     if (!d.vei) beregnVei();
     naturStatus = ''; visNaturStatus();
-    if (!d.natur) beregnNatur();
+    if (!d.natur || d.kultur === undefined) beregnNatur({ tving: !!d.natur });
     if (aktiv) kart.fitBounds(L.geoJSON(d.kommune.geometri).getBounds(), { padding: [10, 10] });
   }
 
@@ -396,7 +413,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
       KATEGORI: KATEGORIER[kategori].navn, METODE: f.metode || null, AREAL_DAA: +f.areal.toFixed(1), TRESLAG: f.treslag, SKOGTYPE: f.dominerende,
       BONITET: f.bonitet, ALDER: f.alder !== null ? Math.round(f.alder) : null, VOLUM_DAA: f.volumDaa !== null ? +f.volumDaa.toFixed(1) : null,
       MIDDELHOYDE: f.hoyde !== null ? +f.hoyde.toFixed(1) : null, TREANTALL_DAA: f.treantall !== null ? Math.round(f.treantall) : null,
-      ROTNETTO_KR: f.rotnetto ? Math.round(f.rotnetto) : null, AVSTAND_BILVEI_M: f.veiAvstand ?? null, NATURTYPER_NIN: (data.naturFlater?.[f.id] || []).filter((o) => o.type === 'nin').map((o) => NATUR.tekst(o)).join('; ') || null, ARTER: (data.naturFlater?.[f.id] || []).filter((o) => o.type === 'art').map((o) => NATUR.tekst(o)).join('; ') || null, GNR_BNR: gnrTekst(f) || null, KOMMUNENR: data.kommune?.nr || null, BEGRUNNELSE: f.grunn, SR16_MAALEAAR: f.maaleaar, SR16_ID: f.id,
+      ROTNETTO_KR: f.rotnetto ? Math.round(f.rotnetto) : null, AVSTAND_BILVEI_M: f.veiAvstand ?? null, NATURTYPER_NIN: (data.naturFlater?.[f.id] || []).filter((o) => o.type === 'nin').map((o) => NATUR.tekst(o)).join('; ') || null, ARTER: (data.naturFlater?.[f.id] || []).filter((o) => o.type === 'art').map((o) => NATUR.tekst(o)).join('; ') || null, KULTURMINNER: (data.kulturFlater?.[f.id] || []).map((k) => k.navn).join('; ') || null, GNR_BNR: gnrTekst(f) || null, KOMMUNENR: data.kommune?.nr || null, BEGRUNNELSE: f.grunn, SR16_MAALEAAR: f.maaleaar, SR16_ID: f.id,
       ...(kategori === 'hogst' && f.drift ? {
         PRIORITET: f.prioritet ?? null, KJORESKADERISIKO: f.drift.naa?.risiko ?? null, DRIFTSFORHOLD: f.drift.naa?.nivaa.navn ?? null, DATO: valgtDag,
         GRUNNRISIKO: f.drift.statisk.poeng, DRIFTSSESONG: SESONG[f.drift.statisk.sesong].navn, VAT_ANDEL_PST: f.drift.dtw ? Math.round(vatAndel(f.drift.dtw) * 100) : null,
@@ -430,6 +447,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
   $('#komKriterier').addEventListener('change', (e) => { const k = e.target.dataset.k; if (!k) return; kriterier[k] = Number(e.target.value); if (k === 'maksAvstandVei') settVeiValg(); oppdater(); });
   const settVeiValg = () => { const s = $('#komVeiMaks'); const v = String(kriterier.maksAvstandVei || 0); if (![...s.options].some((o) => o.value === v)) s.add(new Option(`Inntil ${v} m fra vei`, v)); s.value = v; };
   $('#komVeiMaks').addEventListener('change', (e) => { kriterier.maksAvstandVei = Number(e.target.value); $('#krit-maksAvstandVei').value = kriterier.maksAvstandVei; if (kriterier.maksAvstandVei && !data?.vei) melding('Avstand til vei beregnes – listen filtreres når den er klar.'); oppdater(); });
+  $('#komUtenKultur').addEventListener('change', (e) => { utenKultur = e.target.checked; if (utenKultur && !data?.kultur) melding('Kulturminner hentes – listen filtreres når de er klare.'); tegnListe(); tegnKart(); });
   $('#komUtenNatur').addEventListener('change', (e) => { utenNatur = e.target.checked; if (utenNatur && !data?.natur) melding('Naturtyper og arter hentes – listen filtreres når de er klare.'); tegnListe(); tegnKart(); });
   $('#komSorter').addEventListener('change', (e) => { sortering = e.target.value; tegnListe(); tegnKart(); });
   $('#komEiendom').addEventListener('change', (e) => { if (e.target.checked && aktiv) eiendomLag.addTo(kart); else eiendomLag.remove(); tegnLegend(); });

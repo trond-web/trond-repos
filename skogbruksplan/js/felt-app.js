@@ -22,6 +22,7 @@ import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
 import { endringer as motorEndringer, oppdaterBestand as motorOppdater, merkKjort } from './tiltaksmotor.js';
 import { lagPlanSynk, merkSlettet, flettPlaner } from './plan-synk.js';
 import * as NATUR from './naturdata.js';
+import * as KULTUR from './kulturminner.js';
 import { overlapper } from './pefc.js';
 import { misFigurer, misKartlag } from './miljokart.js';
 import { lagSkyKlient, synkPlan as skySynkPlan, synkAlle as skySynkAlle, synkTekst as skyTekst } from './sky.js';
@@ -159,6 +160,7 @@ function initKart() {
   naturLag = L.layerGroup([
     NATUR.lagKartlag(L, 'nin', { pane: 'naturPane', opacity: 0.6 }),
     NATUR.lagKartlag(L, 'art', { pane: 'naturPane', opacity: 0.6 }),
+    L.tileLayer.wms(KULTUR.KART.url, { layers: KULTUR.KART.lag, format: 'image/png', transparent: true, opacity: 0.85, pane: 'naturPane', maxZoom: 20, attribution: 'Kulturminner © Riksantikvaren' }),
   ]);
   misLag = L.featureGroup().addTo(kart);
   if (ls.get(LS.natur) !== '0') naturLag.addTo(kart);
@@ -305,9 +307,9 @@ function visBestand(id, { zoom = false } = {}) {
 
 // Naturverdier i bestandet (fra planens PEFC-datagrunnlag): nøkkelbiotoper, NiN-naturtyper og artsområder.
 function naturHtml(b) {
-  const nv = (P?.pefc?.objekter || []).filter((o) => ['noekkelbiotop', 'naturtype', 'artsomrade'].includes(o.type) && o.geometri && b.geometri && overlapper(b.geometri, o.geometri));
+  const nv = (P?.pefc?.objekter || []).filter((o) => ['noekkelbiotop', 'naturtype', 'artsomrade', 'kulturminne'].includes(o.type) && o.geometri && b.geometri && overlapper(b.geometri, o.geometri));
   if (!nv.length) return '';
-  return `<div class="natur-boks">${nv.slice(0, 5).map((o) => `<div>${o.type === 'artsomrade' ? '🦉' : o.type === 'noekkelbiotop' ? '🟣' : '🌿'} ${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : esc(o.navn)}</div>`).join('')}${nv.length > 5 ? `<div class="hint">+ ${nv.length - 5} til</div>` : ''}<div class="hint">Ta hensyn ved hogst og kjøring – skal vurderes før hogst (PEFC).</div></div>`;
+  return `<div class="natur-boks">${nv.slice(0, 5).map((o) => `<div>${o.type === 'artsomrade' ? '🦉' : o.type === 'noekkelbiotop' ? '🟣' : o.type === 'kulturminne' ? '🏛' : '🌿'} ${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : esc(o.navn)}</div>`).join('')}${nv.length > 5 ? `<div class="hint">+ ${nv.length - 5} til</div>` : ''}<div class="hint">Ta hensyn ved hogst og kjøring – skal vurderes før hogst (PEFC).${nv.some((o) => o.type === 'kulturminne') ? ' Kulturminner: ikke kjør over dem, og hold sikringssonen fri.' : ''}</div></div>`;
 }
 
 // ---------- tiltak ----------
@@ -611,8 +613,8 @@ function visMer() {
     <p class="hint">${P ? (offline ? `Topografisk kart for ${esc(P.eiendom?.navn)} ble lastet ned ${esc(offline)}.` : `Kartet for ${esc(P.eiendom?.navn)} er ikke lastet ned.`) : 'Velg en plan først.'} Flyfoto krever nett.</p>
     <div class="framdrift" id="offlineFramdrift" hidden><span></span></div><p class="hint" id="offlineStatus"></p>
     <h3>Kartlag</h3>
-    <label class="avkrysning"><input type="checkbox" data-natur-lag ${kart.hasLayer(naturLag) ? 'checked' : ''}> 🌿 Naturtyper (NiN) og 🦉 arter i kartet</label>
-    <p class="hint">Miljødirektoratet. Krever nett. Nøkkelbiotoper (MiS) fra planen vises alltid.</p>
+    <label class="avkrysning"><input type="checkbox" data-natur-lag ${kart.hasLayer(naturLag) ? 'checked' : ''}> 🌿 Naturtyper (NiN), 🦉 arter og 🏛 kulturminner i kartet</label>
+    <p class="hint">Miljødirektoratet og Riksantikvaren. Krever nett. Nøkkelbiotoper (MiS) fra planen vises alltid.</p>
     <div class="knapper"><button type="button" class="knapp primar" data-h="offline" ${P ? '' : 'disabled'}>${offline ? 'Oppdater offline-kart' : 'Last ned kart for offline'}</button></div>
     <h3>AR – grenser og miljø i terrenget <span class="beta">beta</span></h3>
     <p class="hint">Se bestandsgrenser, eiendomsgrense, stier, miljøinformasjon og kulturminner lagt over kamerabildet – eller i AR-briller (Meta Quest 3). Bruker GPS og kompass.</p>

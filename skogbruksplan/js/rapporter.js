@@ -11,6 +11,7 @@ import { tetthet } from './tetthet.js';
 import { middelhoyde } from './ungskog.js';
 import { MIS, misMonster, misFigurer } from './miljokart.js';
 import { FARGE as NATUR_FARGE } from './naturdata.js';
+import { FARGE as KULTUR_FARGE } from './kulturminner.js';
 
 export const RAPPORTER = {
   hovedtall: { navn: 'Hovedtall', beskrivelse: 'Areal, volum, tilvekst og verdi fordelt på hogstklasse, treslag og bonitet, med kart og avvirkningsmuligheter.' },
@@ -76,16 +77,18 @@ export function svgKart(S, farge, { bredde = 720, hoyde = 460, etiketter = true,
   // NiN-naturtyper og artsområder fra PEFC-datagrunnlaget (som i kartene i appen). Objekter som også er i «ekstra»,
   // tegnes bare én gang.
   const iEkstra = new Set(ekstra.map((o) => o.geometri));
-  const nat = natur ? (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade'].includes(o.type) && o.geometri && /Polygon/.test(o.geometri.type) && !iEkstra.has(o.geometri)) : [];
+  const nat = natur ? (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade', 'kulturminne'].includes(o.type) && o.geometri && /Polygon/.test(o.geometri.type) && !iEkstra.has(o.geometri)) : [];
   for (const o of nat) {
-    const f = o.type === 'naturtype' ? NATUR_FARGE.nin : NATUR_FARGE.art;
+    const f = o.type === 'naturtype' ? NATUR_FARGE.nin : o.type === 'kulturminne' ? KULTUR_FARGE : NATUR_FARGE.art;
     ut += `<path d="${sti(o.geometri)}" fill="${f}" fill-opacity="0.16" stroke="${f}" stroke-width="1.4"${o.type === 'artsomrade' ? ' stroke-dasharray="4 2"' : ''} fill-rule="evenodd"/>`;
   }
   if (nat.length) {
-    const harN = nat.some((o) => o.type === 'naturtype'); const harA = nat.some((o) => o.type === 'artsomrade');
+    const harN = nat.some((o) => o.type === 'naturtype'); const harA = nat.some((o) => o.type === 'artsomrade'); const harK = nat.some((o) => o.type === 'kulturminne');
     let ly = 18;
     if (harN) { ut += `<rect x="${bredde - 150}" y="${ly - 9}" width="14" height="10" fill="${NATUR_FARGE.nin}" fill-opacity="0.25" stroke="${NATUR_FARGE.nin}" stroke-width="1.4"/><text x="${bredde - 131}" y="${ly}" font-size="10" fill="#333">Naturtype (NiN)</text>`; ly += 16; }
     if (harA) ut += `<rect x="${bredde - 150}" y="${ly - 9}" width="14" height="10" fill="${NATUR_FARGE.art}" fill-opacity="0.2" stroke="${NATUR_FARGE.art}" stroke-width="1.4" stroke-dasharray="4 2"/><text x="${bredde - 131}" y="${ly}" font-size="10" fill="#333">Artsområde</text>`;
+    if (harA) ly += 16;
+    if (harK) ut += `<rect x="${bredde - 150}" y="${ly - 9}" width="14" height="10" fill="${KULTUR_FARGE}" fill-opacity="0.25" stroke="${KULTUR_FARGE}" stroke-width="1.4"/><text x="${bredde - 131}" y="${ly}" font-size="10" fill="#333">Kulturminne (sikringssone)</text>`;
   }
   // Ekstra objekter (f.eks. miljøobjekter): flater, linjer og punkter i egen farge.
   for (const o of ekstra) {
