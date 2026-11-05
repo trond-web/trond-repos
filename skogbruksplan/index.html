@@ -157,6 +157,7 @@
       <div id="komResultat" hidden>
         <p id="komInfo" class="kom-info"></p>
         <p id="komVei" class="hint kom-vei"></p>
+        <p id="komNatur" class="hint kom-vei"></p>
         <div class="kom-kategorier" role="tablist">
           <button type="button" role="tab" data-kategori="hogst"><span class="navn">Sluttavvirkning</span><span class="tall"></span><span class="under"></span></button>
           <button type="button" role="tab" data-kategori="lukket"><span class="navn">Lukket hogst</span><span class="tall"></span><span class="under"></span></button>
@@ -170,6 +171,7 @@
             <select id="komVeiMaks" aria-label="Avstand til bilvei" title="Avstand fra flaten til nærmeste bilvei (NVDB)"><option value="0">Alle avstander til vei</option><option value="100">Inntil 100 m fra vei</option><option value="250">Inntil 250 m fra vei</option><option value="500">Inntil 500 m fra vei</option><option value="1000">Inntil 1 km fra vei</option><option value="2000">Inntil 2 km fra vei</option></select>
             <select id="komSorter" aria-label="Sorter"><option value="poeng">Sorter: anbefalt</option><option value="areal">Sorter: størst areal</option><option value="vei">Sorter: nærmest vei</option><option value="rotnetto">Sorter: høyest rotnetto</option></select>
             <label class="avkrysning"><input type="checkbox" id="komEiendom" checked> Eiendomsgrenser og gnr/bnr i kartet</label>
+            <label class="avkrysning" title="Skjul flater som berører NiN-naturtyper eller arter av nasjonal forvaltningsinteresse"><input type="checkbox" id="komUtenNatur"> Skjul flater med naturtyper/arter</label>
             <button type="button" class="knapp" data-kom-eksport="geojson">Last ned GeoJSON</button>
             <button type="button" class="knapp" data-kom-eksport="csv">Last ned CSV</button>
           </div>

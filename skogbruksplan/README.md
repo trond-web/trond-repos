@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.54.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.55.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -1120,6 +1120,30 @@ Grensene kommer fra NIBIO-rapporten [Skogsmaskiner i stroppen (Belbo og Hoffmann
 * Hvert bestand får andel areal per klasse, snitthelning og makshelning.
 * Bestandsdetaljen viser en fargestolpe og en vurdering, for eksempel «65 % av arealet er brattere enn 50 % – ikke drivbart
   med vanlige skogsmaskiner».
+
+## NiN-naturtyper og arter (kartlagene «🌿 Naturtyper (NiN)» og «🦉 Arter», bestand og kommuneanalysen)
+
+Viser registrerte naturverdier fra Miljødirektoratet (`js/naturdata.js`). Utvalget er det samme som i PEFC-modulen:
+- **NiN-naturtyper** med moderat kvalitet eller bedre, eller som er truet eller nær truet.
+- **Arter av nasjonal forvaltningsinteresse** som er rødlistet (CR, EN, VU, NT) eller prioriterte, eller som har hi-,
+  spill- eller yngleområde.
+
+- **Kartet:**
+  - To nye kartlag. NiN-naturtyper er farget etter lokalitetskvalitet, og funksjonsområder for arter vises som eget
+    lag.
+  - Klikk i kartet gir naturtype, kvalitet, truethet, kartleggingsår og lenke til faktaark. For arter vises funksjon,
+    rødlistestatus og om arten er prioritert.
+  - Når planlagene også er på, kommer alt i én popup.
+- **Bestand:** naturtyper og artsområder fra PEFC-datagrunnlaget som overlapper bestandet, vises i bestandsdetaljen,
+  med påminnelse om skogbiologisk vurdering før hogst (PEFC krav 22).
+- **Kommuneanalyse:**
+  - Naturtyper og arter hentes for hele kommunen. For Nesodden er det ca. 1 800 naturtyper og 480 artsområder.
+  - Hver skogflate som berører en naturtype eller art, merkes med «🌿/🦉 naturverdi» i listen. Popupen viser hvilke
+    naturtyper og arter det gjelder, med lenke til faktaark.
+  - Polygonene tegnes i kartet.
+  - Med «Skjul flater med naturtyper/arter» kan de tas ut av forslagene.
+  - Eksporten har kolonnene `NATURTYPER_NIN` og `ARTER`.
+  - Data hentes én gang per analyse og lagres.
 
 ## Naboeiendommer – har eller mangler skogbruksplan (kartlaget «🏡 Naboeiendommer»)
 

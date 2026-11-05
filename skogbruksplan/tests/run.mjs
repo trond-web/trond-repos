@@ -46,6 +46,7 @@ import * as AP from '../js/arealplan.js';
 import * as SKY from '../js/sky.js';
 import * as KV from '../js/kommune-vei.js';
 import * as NABO from '../js/naboeiendommer.js';
+import * as NATUR from '../js/naturdata.js';
 import { lagSkyLager, skyApi } from '../sky-lager.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
@@ -2977,6 +2978,35 @@ test('Naboeiendommer: teiger per matrikkelenhet, NIBIO-dekning fra bilde, status
   const kall = []; const hent = async (u) => { kall.push(u); return { ok: true, json: async () => ({ features: teiger.slice(0, 3) }) }; };
   const t = await NABO.hentTeiger([{ utm: [600000, 6700000], radius: 800 }, { utm: [602000, 6700000], radius: 800 }], { hent, utmTilGeo });
   assert.equal(t.length, 3); assert.equal(kall.length, 2); assert.match(kall[0], /punkt\/omrader\?nord=.*radius=800.*maksTreff=500/);
+});
+
+test('Naturdata: NiN-naturtyper og arter – tolkning, utvalg, punktoppslag, henting med sider og merking av flater', async () => {
+  const n = NATUR.tolkNin({ Naturtype: 'Kalkfuruskog', Lokalitetskvalitet: 1, UK_Truet: 1, 'Områdenavn': 'Vierndroget Ø', 'Kartleggingsår': 2024, Faktaark: 'https://nin-faktaark.miljodirektoratet.no/naturtyper?id=X', NiNID: 'X' });
+  assert.equal(n.kvalitetTekst, 'svært høy kvalitet'); assert.ok(n.truet); assert.ok(NATUR.viktigNin(n));
+  assert.equal(NATUR.tekst(n), 'Kalkfuruskog (Vierndroget Ø) – svært høy kvalitet, truet naturtype');
+  assert.ok(!NATUR.viktigNin(NATUR.tolkNin({ Naturtype: 'x', Lokalitetskvalitet: 4 })), 'lav kvalitet tas ikke med');
+  assert.ok(NATUR.viktigNin(NATUR.tolkNin({ Naturtype: 'x', Lokalitetskvalitet: 5, 'UK_NærTruet': 1 })), 'nær truet tas med');
+  assert.equal(NATUR.tolkNin({ Faktaark: 'javascript:alert(1)' }).lenke, null);
+  const a = NATUR.tolkArt({ norskNavn: 'Hønsehauk', funksjon: 8, roedlisteStatus: 'NT', prioritertArt: 0, faktaark: 'https://faktaark.naturbase.no?id=1' });
+  assert.equal(NATUR.tekst(a), 'Hønsehauk – yngleområde (NT, nær truet)'); assert.ok(NATUR.viktigArt(a));
+  assert.ok(!NATUR.viktigArt(NATUR.tolkArt({ norskNavn: 'Elg', funksjon: 1 })), 'beiteområde for elg tas ikke med');
+  assert.match(NATUR.punktUrl('nin', 10.5, 59.8), /naturtyper_nin\/MapServer\/0\/query\?geometry=10.5%2C59.8.*distance=15/);
+  assert.match(NATUR.punktUrl('art', 10.5, 59.8), /artfunksjon/);
+  assert.equal(NATUR.tolkPunkt('art', { features: [{ attributes: { norskNavn: 'Tiur', funksjon: 7 } }] })[0].funksjonTekst, 'spill-/parringsområde');
+  // Henting med sider: NiN gir to sider (grensen nådd på første), arter én
+  const kv = (x, y, d) => ({ type: 'Polygon', coordinates: [[[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]]] });
+  const kall = [];
+  const hent = async (u) => { kall.push(u); const nin = /naturtyper_nin/.test(u); const off = Number(new URL(u).searchParams.get('resultOffset'));
+    const feats = nin ? (off === 0 ? [{ geometry: kv(10, 60, 0.01), properties: { Naturtype: 'Gammel granskog', Lokalitetskvalitet: 2, NiNID: 'a' } }, { geometry: kv(10.5, 60, 0.01), properties: { Naturtype: 'Lav', Lokalitetskvalitet: 5, NiNID: 'b' } }] : [{ geometry: kv(11, 60, 0.01), properties: { Naturtype: 'Rik sumpskog', Lokalitetskvalitet: 3, NiNID: 'c' } }])
+      : [{ geometry: kv(10.003, 60.003, 0.002), properties: { norskNavn: 'Hvitryggspett', funksjon: 9, roedlisteStatus: 'VU', artFunksjonId: 7 } }];
+    return { ok: true, json: async () => ({ features: feats, exceededTransferLimit: nin && off === 0 }) }; };
+  const d = await NATUR.hentForBoks([9.9, 59.9, 11.1, 60.1], { hent });
+  assert.equal(d.nin.length, 2, 'lav kvalitet filtrert bort'); assert.equal(d.art.length, 1); assert.equal(kall.length, 3);
+  assert.match(kall[0], /maxAllowableOffset=0.00005/);
+  const flater = [{ id: 'f1', geometri: kv(10.002, 60.002, 0.004) }, { id: 'f2', geometri: kv(10.8, 60, 0.01) }];
+  const m = NATUR.merkFlater(flater, d);
+  assert.deepEqual(m.get('f1').map((o) => o.navn), ['Gammel granskog', 'Hvitryggspett']); assert.equal(m.has('f2'), false);
+  assert.equal(m.get('f1')[0].geometri, undefined, 'uten geometri i resultatet');
 });
 
 await Promise.all(venter);
