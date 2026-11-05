@@ -5,6 +5,7 @@ import { lagreVerdi, hentVerdi } from './store.js';
 import { fmt } from './charts.js';
 import { misMonster, misKartlag, misLegendStil, merkerVedZoom } from './miljokart.js';
 import { arealM2, punktIGeometri } from './proj.js';
+import { hentVeinett, avstanderTilVei, avstandTekst, LANG_TERRENGTRANSPORT, VEI_KILDE } from './kommune-vei.js';
 import {
   analyserFlater, hentMarkVaer, hentMetNedbor, celleFor, risikoNaa, besteDag, prioriter, forholdOppsummert,
   SESONG, NAA, BAEREEVNE, DTW_KLASSER, KILDER as DRIFT_KILDER, vatAndel, naaNivaa,
@@ -25,6 +26,7 @@ const KRITERIE_FELT = [
   ['lukketMinAlderAndel', 'Lukket: minste andel av hogstalder', 0.05], ['lukketMaksBonitetFuru', 'Lukket: høyeste bonitet furu', 1],
   ['ungMinHoyde', 'Ungskog: laveste høyde (m)', 0.5], ['ungMaksHoyde', 'Ungskog: høyeste høyde (m)', 0.5],
   ['ungMinAndelLauv', 'Ungskog: minste andel lauv (%)', 5], ['ungMinTreantall', 'Ungskog: tett fra (trær/daa)', 10], ['ungMinBonitet', 'Ungskog: laveste bonitet', 1],
+  ['maksAvstandVei', 'Maks avstand til bilvei (m, 0 = alle)', 50],
 ];
 
 const idagIso = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Oslo' });
@@ -43,6 +45,9 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
   let data = null; let resultat = null; let kategori = 'hogst';
   let sorterDrift = true; let valgtDag = idagIso(); let driftArbeider = ''; let antallDrift = 150; let visDtw = false; let dtwLag = null; let bareDrivbar = false;
   let kriterier = { ...STANDARD_KRITERIER };
+  let sortering = 'poeng'; let veiStatus = ''; let veiHenter = false; let eiendomGen = 0;
+  // Eiendomsgrenser med gårds- og bruksnummer (Kartverket matrikkel, vises fra ca. 1:40 000).
+  const eiendomLag = L.tileLayer.wms('https://wms.geonorge.no/skwms1/wms.matrikkel', { layers: 'eiendomsgrense,eiendoms_id', format: 'image/png', transparent: true, opacity: 0.85, minZoom: 13, maxZoom: 20, attribution: 'Eiendomsgrenser © Kartverket' });
   const renderer = L.canvas({ padding: 0.3 });
   // Egen rute og SVG-renderer for nøkkelbiotopene (skravur krever SVG), over hogstflatene.
   kart.createPane('komMisPane'); kart.getPane('komMisPane').style.zIndex = 450; kart.getPane('komMisPane').style.pointerEvents = 'none';
@@ -62,7 +67,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     if (!aktiv || !resultat) return;
     const k = KATEGORIER[kategori];
     const drift = kategori === 'hogst' && harDrift();
-    $('#kartLegend').innerHTML = `<div class="legend-innhold"><b>${drift ? `Kjøreskaderisiko ${ukedag(valgtDag)}` : k.navn}</b>${drift ? `${NAA.map((n) => `<div><i style="background:${n.farge}"></i>${n.navn}</div>`).join('')}<div><i style="background:${k.farge};opacity:.45"></i>Ikke analysert</div>` : `<div><i style="background:${k.farge}"></i>Forslag (${fmt(resultat[kategori].length)} flater)</div>`}<div><i style="${misLegendStil}"></i>Nøkkelbiotop (MiS)</div><div><i style="background:transparent;border:2px dashed #d03b3b"></i>Verneområde</div><div><i style="background:transparent;border:2px solid #1b1c19"></i>Kommunegrense</div>${visDtw ? `<b style="display:block;margin-top:6px">Markfuktighet (DTW)</b>${DTW_KLASSER.map((d) => `<div><i style="background:rgb(${d.rgb.join(',')})"></i>${d.id === 'vann' ? 'Vann' : `Grunnvann ${d.navn}`}</div>`).join('')}` : ''}</div>`;
+    $('#kartLegend').innerHTML = `<div class="legend-innhold"><b>${drift ? `Kjøreskaderisiko ${ukedag(valgtDag)}` : k.navn}</b>${drift ? `${NAA.map((n) => `<div><i style="background:${n.farge}"></i>${n.navn}</div>`).join('')}<div><i style="background:${k.farge};opacity:.45"></i>Ikke analysert</div>` : `<div><i style="background:${k.farge}"></i>Forslag (${fmt(resultat[kategori].length)} flater)</div>`}<div><i style="${misLegendStil}"></i>Nøkkelbiotop (MiS)</div><div><i style="background:transparent;border:2px dashed #d03b3b"></i>Verneområde</div><div><i style="background:transparent;border:2px solid #1b1c19"></i>Kommunegrense</div>${$('#komEiendom')?.checked ? `<div><i style="background:transparent;border:1.5px solid #e8432f"></i>Eiendomsgrense, gnr/bnr ${kart.getZoom() < 13 ? '(zoom inn)' : ''}</div>` : ''}${visDtw ? `<b style="display:block;margin-top:6px">Markfuktighet (DTW)</b>${DTW_KLASSER.map((d) => `<div><i style="background:rgb(${d.rgb.join(',')})"></i>${d.id === 'vann' ? 'Vann' : `Grunnvann ${d.navn}`}</div>`).join('')}` : ''}</div>`;
   }
 
   // ---------- driftsforhold ----------
@@ -80,10 +85,15 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     if (!resultat) return [];
     const ts = $('#komTreslag').value;
     let liste = resultat[kategori].filter((f) => !ts || f.treslag === ts);
+    const maksVei = Number(kriterier.maksAvstandVei) || 0;
+    if (maksVei > 0 && data.vei) liste = liste.filter((f) => f.veiAvstand != null && f.veiAvstand <= maksVei);
+    if (sortering === 'areal') liste = liste.slice().sort((a, b) => b.areal - a.areal);
+    else if (sortering === 'vei') liste = liste.slice().sort((a, b) => (a.veiAvstand ?? 1e9) - (b.veiAvstand ?? 1e9) || b.areal - a.areal);
+    else if (sortering === 'rotnetto') liste = liste.slice().sort((a, b) => (b.rotnetto || 0) - (a.rotnetto || 0));
     if (kategori === 'hogst' && harDrift()) {
       oppdaterDrift(liste);
       if (bareDrivbar) liste = liste.filter((f) => f.drift?.naa && f.drift.naa.risiko < 50);
-      if (sorterDrift) { const med = prioriter(liste.filter((f) => f.drift)); liste = [...med, ...liste.filter((f) => !f.drift)]; }
+      if (sorterDrift && sortering === 'poeng') { const med = prioriter(liste.filter((f) => f.drift)); liste = [...med, ...liste.filter((f) => !f.drift)]; }
     }
     return liste;
   }
@@ -93,9 +103,67 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     return `<div class="kom-popup"><b>${k.navn}</b>${f.metode ? ` – ${esc(f.metode)}` : ''}<br>
       ${desimal(f.areal)} daa · ${TRESLAG[f.treslag] || ''} (${esc(f.dominerende || '')}) · bonitet ${f.bonitet ?? '–'}<br>
       Alder ${f.alder !== null ? Math.round(f.alder) : '–'} år · ${desimal(f.volumDaa)} m³/daa · høyde ${desimal(f.hoyde)} m · ${f.treantall ? Math.round(f.treantall) : '–'} trær/daa<br>
-      ${f.rotnetto ? `Rotnetto ca. ${fmt(f.rotnetto)} kr<br>` : ''}<span class="hint">${esc(f.grunn)}${f.maaleaar ? ` · SR16 målt ${f.maaleaar}` : ''}</span><br>
+      ${f.rotnetto ? `Rotnetto ca. ${fmt(f.rotnetto)} kr<br>` : ''}${veiLinje(f)}<span class="hint">${esc(f.grunn)}${f.maaleaar ? ` · SR16 målt ${f.maaleaar}` : ''}</span><br>
       ${kategori === 'hogst' && f.drift ? driftPopup(f) : ''}
-      <button type="button" class="knapp liten" data-finn-eiendom="${esc(f.id)}">Finn eiendom</button><div class="kom-eiendom" data-eiendom-for="${esc(f.id)}"></div></div>`;
+      <div class="kom-eiendom" data-eiendom-for="${esc(f.id)}">${eiendomHtml(f)}</div></div>`;
+  }
+  function veiLinje(f) {
+    if (f.veiAvstand === undefined) return data?.vei ? '' : `<span class="hint">🛣 Avstand til vei beregnes …</span><br>`;
+    return `🛣 Avstand til bilvei: <b>${esc(avstandTekst(f.veiAvstand))}</b>${f.veiAvstand == null || f.veiAvstand > LANG_TERRENGTRANSPORT ? ' – lang terrengtransport' : ''}<br>`;
+  }
+  // Gårds- og bruksnummer for flaten (oppslag i matrikkelen i midten av flaten, lagres med analysen).
+  const eiendomFor = (f) => data?.eiendom?.[f.id];
+  const gnrTekst = (f) => { const e = eiendomFor(f); return e?.length ? e.map((x) => x.tekst).join(', ') : ''; };
+  function eiendomHtml(f) {
+    const e = eiendomFor(f);
+    if (!e) return '<span class="hint">Slår opp gårds- og bruksnummer …</span>';
+    if (!e.length) return '<span class="hint">Fant ingen eiendom i midten av flaten.</span>';
+    return e.map((x) => `<div class="kom-eiendom-rad">Gnr/bnr <b>${esc(x.tekst)}</b>${data.kommune?.navn ? ` <span class="hint">${esc(data.kommune.navn)}</span>` : ''} <button type="button" class="knapp liten primar" data-lag-plan='${esc(JSON.stringify(x))}'>Lag skogbruksplan</button></div>`).join('');
+  }
+  const eiendomVenter = new Map();
+  async function slaaOppEiendom(f) {
+    if (eiendomFor(f)) return eiendomFor(f);
+    if (eiendomVenter.has(f.id)) return eiendomVenter.get(f.id);
+    const p = eiendomIPunkt(f.senter).then((e) => { data.eiendom = data.eiendom || {}; data.eiendom[f.id] = e; lagreSnart(); return e; }).finally(() => eiendomVenter.delete(f.id));
+    eiendomVenter.set(f.id, p); return p;
+  }
+  async function visEiendomIPopup(f) {
+    try { await slaaOppEiendom(f); } catch (err) { for (const b of document.querySelectorAll(`[data-eiendom-for="${CSS.escape(f.id)}"]`)) b.innerHTML = `<span class="hint">Oppslaget feilet: ${esc(err.message)}</span> <button type="button" class="knapp liten" data-finn-eiendom="${esc(f.id)}">Prøv igjen</button>`; return; }
+    for (const b of document.querySelectorAll(`[data-eiendom-for="${CSS.escape(f.id)}"]`)) b.innerHTML = eiendomHtml(f);
+    const r = document.querySelector(`#komListe [data-flate="${CSS.escape(f.id)}"] [data-gnr]`); if (r) r.textContent = gnrTekst(f) ? `Gnr/bnr ${gnrTekst(f)}` : '';
+  }
+  // Gnr/bnr for flatene i listen, fire om gangen. Avbrytes når listen tegnes på nytt.
+  async function fyllEiendommer(liste) {
+    const gen = ++eiendomGen; const mangler = liste.filter((f) => !eiendomFor(f));
+    let i = 0;
+    const arbeider = async () => {
+      while (i < mangler.length && gen === eiendomGen && aktiv) {
+        const f = mangler[i++];
+        try { await slaaOppEiendom(f); } catch { /* prøves igjen ved klikk */ }
+        const r = document.querySelector(`#komListe [data-flate="${CSS.escape(f.id)}"] [data-gnr]`); if (r) r.textContent = gnrTekst(f) ? `Gnr/bnr ${gnrTekst(f)}` : '';
+      }
+    };
+    await Promise.all([arbeider(), arbeider(), arbeider(), arbeider()]);
+  }
+  let lagreTimer = null; const lagreSnart = () => { clearTimeout(lagreTimer); lagreTimer = setTimeout(() => lagre(), 2000); };
+  // Avstand til bilvei for alle flatene (NVDB, hele kommunen). Gjøres én gang per analyse og lagres.
+  async function beregnVei({ tving = false } = {}) {
+    if (!data || veiHenter || (data.vei && !tving)) return;
+    veiHenter = true; const d = data; veiStatus = 'Henter veinett fra NVDB …'; visVeiStatus();
+    try {
+      const nett = await hentVeinett(d.kommune.nr, { framdrift: (p) => { veiStatus = p.tekst; visVeiStatus(); } });
+      veiStatus = 'Beregner avstand til vei for hver flate …'; visVeiStatus();
+      await new Promise((ok) => setTimeout(ok, 30));
+      const av = avstanderTilVei(d.flater, nett.linjer);
+      for (const f of d.flater) f.veiAvstand = av.has(f.id) ? av.get(f.id) : null;
+      d.vei = { hentet: nett.hentet, antall: nett.antall };
+      if (data === d) { veiStatus = ''; lagre(); oppdater(); }
+    } catch (e) { veiStatus = `Klarte ikke å hente veinettet: ${e.message}`; } finally { veiHenter = false; visVeiStatus(); }
+  }
+  function visVeiStatus() {
+    const el = $('#komVei'); if (!el) return;
+    el.innerHTML = veiStatus ? `🛣 ${esc(veiStatus)}${/Klarte/.test(veiStatus) ? ' <button type="button" class="knapp liten" data-kom-vei-ny>Prøv igjen</button>' : ''}`
+      : data?.vei ? `🛣 Avstand til bilvei er beregnet for alle flatene fra ${fmt(data.vei.antall)} veistrekninger i <a href="${VEI_KILDE.url}" target="_blank" rel="noopener">NVDB</a> (${new Date(data.vei.hentet).toLocaleDateString('nb-NO')}). <button type="button" class="knapp liten" data-kom-vei-ny>Oppdater</button>` : '';
   }
 
   function driftPopup(f) {
@@ -117,6 +185,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
       const fc = drift ? (f.drift?.naa?.nivaa.farge || farge) : farge;
       const l = L.geoJSON(f.geometri, { style: { color: fc, weight: drift && f.drift ? 1.5 : 1, fillColor: fc, fillOpacity: drift && !f.drift ? 0.25 : 0.6 }, renderer });
       l.bindPopup(() => popupHtml(f), { maxWidth: 300 });
+      l.on('popupopen', () => visEiendomIPopup(f));
       l.addTo(lag);
       flateLag.set(f.id, l);
     }
@@ -149,9 +218,10 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     const vis = liste.slice(0, 150);
     $('#komListe').innerHTML = vis.length ? vis.map((f, i) => `<button type="button" class="kom-rad" data-flate="${esc(f.id)}">
       <span class="nr">${i + 1}</span>
-      <span><b>${desimal(f.areal)} daa · ${TRESLAG[f.treslag] || ''} ${f.bonitet ?? ''}</b> · ${f.alder !== null ? Math.round(f.alder) : '–'} år · ${desimal(f.volumDaa)} m³/daa${f.rotnetto ? ` · ca. ${fmt(f.rotnetto / 1000)} k kr` : ''}${f.metode ? ` · ${esc(f.metode)}` : ''}<br><span class="hint">${esc(f.grunn)}</span>${kategori === 'hogst' && f.drift ? `<br><span class="kom-risiko" style="--farge:${f.drift.naa?.nivaa.farge || '#999'}">${esc(f.drift.naa?.nivaa.navn || 'Ukjent')}${f.drift.naa ? ` · ${f.drift.naa.risiko}` : ''}</span> <span class="hint">${esc(SESONG[f.drift.statisk.sesong].navn)} · ${esc(f.drift.statisk.grunner.slice(0, 2).join(' · '))}${f.drift.beste && f.drift.beste.dato !== valgtDag && f.drift.naa?.risiko >= 30 ? ` · bedre ${ukedag(f.drift.beste.dato)}` : ''}</span>` : ''}</span>
+      <span><b>${desimal(f.areal)} daa · ${TRESLAG[f.treslag] || ''} ${f.bonitet ?? ''}</b> · ${f.alder !== null ? Math.round(f.alder) : '–'} år · ${desimal(f.volumDaa)} m³/daa${f.rotnetto ? ` · ca. ${fmt(f.rotnetto / 1000)} k kr` : ''}${f.veiAvstand !== undefined ? ` · 🛣 ${esc(avstandTekst(f.veiAvstand))}` : ''}<small class="kom-gnr" data-gnr>${gnrTekst(f) ? `Gnr/bnr ${esc(gnrTekst(f))}` : ''}</small>${f.metode ? ` · ${esc(f.metode)}` : ''}<br><span class="hint">${esc(f.grunn)}</span>${kategori === 'hogst' && f.drift ? `<br><span class="kom-risiko" style="--farge:${f.drift.naa?.nivaa.farge || '#999'}">${esc(f.drift.naa?.nivaa.navn || 'Ukjent')}${f.drift.naa ? ` · ${f.drift.naa.risiko}` : ''}</span> <span class="hint">${esc(SESONG[f.drift.statisk.sesong].navn)} · ${esc(f.drift.statisk.grunner.slice(0, 2).join(' · '))}${f.drift.beste && f.drift.beste.dato !== valgtDag && f.drift.naa?.risiko >= 30 ? ` · bedre ${ukedag(f.drift.beste.dato)}` : ''}</span>` : ''}</span>
     </button>`).join('') + (liste.length > vis.length ? `<p class="hint">Viser de ${vis.length} største av ${fmt(liste.length)}. Alle vises i kartet og i eksporten.</p>` : '')
       : '<div class="tom">Ingen flater oppfyller kriteriene.</div>';
+    fyllEiendommer(vis);
   }
 
   function tegnDriftKort(liste) {
@@ -250,7 +320,9 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     $('#komInfo').innerHTML = `<b>${esc(d.kommune.navn)}</b>: ${fmt(d.flater.length)} skogflater fra SR16${median ? `, hovedsakelig målt ${median}` : ''}. ${d.vern.length} verneområder og ${d.mis.length} nøkkelbiotoper er holdt utenfor hogstforslagene. ${fraLager ? `Lagret analyse fra ${new Date(d.hentet).toLocaleDateString('nb-NO')}.` : ''}
       ${median && median < new Date().getFullYear() - 5 ? '<br><span class="advarsel">Skog kan være hogd etter at SR16 ble målt. Kontroller mot flyfoto før du går videre.</span>' : ''}`;
     $('#komResultat').hidden = false;
+    veiStatus = ''; visVeiStatus();
     oppdater();
+    if (!d.vei) beregnVei();
     if (aktiv) kart.fitBounds(L.geoJSON(d.kommune.geometri).getBounds(), { padding: [10, 10] });
   }
 
@@ -292,7 +364,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
       KATEGORI: KATEGORIER[kategori].navn, METODE: f.metode || null, AREAL_DAA: +f.areal.toFixed(1), TRESLAG: f.treslag, SKOGTYPE: f.dominerende,
       BONITET: f.bonitet, ALDER: f.alder !== null ? Math.round(f.alder) : null, VOLUM_DAA: f.volumDaa !== null ? +f.volumDaa.toFixed(1) : null,
       MIDDELHOYDE: f.hoyde !== null ? +f.hoyde.toFixed(1) : null, TREANTALL_DAA: f.treantall !== null ? Math.round(f.treantall) : null,
-      ROTNETTO_KR: f.rotnetto ? Math.round(f.rotnetto) : null, BEGRUNNELSE: f.grunn, SR16_MAALEAAR: f.maaleaar, SR16_ID: f.id,
+      ROTNETTO_KR: f.rotnetto ? Math.round(f.rotnetto) : null, AVSTAND_BILVEI_M: f.veiAvstand ?? null, GNR_BNR: gnrTekst(f) || null, KOMMUNENR: data.kommune?.nr || null, BEGRUNNELSE: f.grunn, SR16_MAALEAAR: f.maaleaar, SR16_ID: f.id,
       ...(kategori === 'hogst' && f.drift ? {
         PRIORITET: f.prioritet ?? null, KJORESKADERISIKO: f.drift.naa?.risiko ?? null, DRIFTSFORHOLD: f.drift.naa?.nivaa.navn ?? null, DATO: valgtDag,
         GRUNNRISIKO: f.drift.statisk.poeng, DRIFTSSESONG: SESONG[f.drift.statisk.sesong].navn, VAT_ANDEL_PST: f.drift.dtw ? Math.round(vatAndel(f.drift.dtw) * 100) : null,
@@ -316,29 +388,27 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
   }
 
-  async function finnEiendom(id, boks) {
-    const f = data.flater.find((x) => x.id === id);
-    boks.innerHTML = '<span class="hint">Slår opp i matrikkelen …</span>';
-    try {
-      const e = await eiendomIPunkt(f.senter);
-      boks.innerHTML = e.length ? e.map((x) => `<div class="kom-eiendom-rad">Gnr/bnr <b>${esc(x.tekst)}</b> <button type="button" class="knapp liten primar" data-lag-plan='${esc(JSON.stringify(x))}'>Lag skogbruksplan</button></div>`).join('')
-        : '<span class="hint">Fant ingen eiendom i punktet.</span>';
-    } catch (err) { boks.innerHTML = `<span class="hint">Oppslaget feilet: ${esc(err.message)}</span>`; }
-  }
+
 
   // Hendelser
   $('#komSkjema').addEventListener('submit', analyser);
   $('#komKommune').addEventListener('focus', lastKommuner, { once: true });
   panel.querySelectorAll('[data-kategori]').forEach((b) => b.addEventListener('click', () => { kategori = b.dataset.kategori; tegnListe(); tegnKart(); }));
   $('#komTreslag').addEventListener('change', () => { tegnListe(); tegnKart(); });
-  $('#komKriterier').addEventListener('change', (e) => { const k = e.target.dataset.k; if (!k) return; kriterier[k] = Number(e.target.value); oppdater(); });
-  $('#komNullstill').addEventListener('click', () => { kriterier = { ...STANDARD_KRITERIER }; KRITERIE_FELT.forEach(([k]) => { $(`#krit-${k}`).value = kriterier[k]; }); oppdater(); });
+  $('#komKriterier').addEventListener('change', (e) => { const k = e.target.dataset.k; if (!k) return; kriterier[k] = Number(e.target.value); if (k === 'maksAvstandVei') settVeiValg(); oppdater(); });
+  const settVeiValg = () => { const s = $('#komVeiMaks'); const v = String(kriterier.maksAvstandVei || 0); if (![...s.options].some((o) => o.value === v)) s.add(new Option(`Inntil ${v} m fra vei`, v)); s.value = v; };
+  $('#komVeiMaks').addEventListener('change', (e) => { kriterier.maksAvstandVei = Number(e.target.value); $('#krit-maksAvstandVei').value = kriterier.maksAvstandVei; if (kriterier.maksAvstandVei && !data?.vei) melding('Avstand til vei beregnes – listen filtreres når den er klar.'); oppdater(); });
+  $('#komSorter').addEventListener('change', (e) => { sortering = e.target.value; tegnListe(); tegnKart(); });
+  $('#komEiendom').addEventListener('change', (e) => { if (e.target.checked && aktiv) eiendomLag.addTo(kart); else eiendomLag.remove(); tegnLegend(); });
+  kart.on('zoomend', () => { if (aktiv && resultat) tegnLegend(); });
+  $('#komNullstill').addEventListener('click', () => { kriterier = { ...STANDARD_KRITERIER }; KRITERIE_FELT.forEach(([k]) => { $(`#krit-${k}`).value = kriterier[k]; }); settVeiValg(); oppdater(); });
   $('#komListe').addEventListener('click', (e) => {
     const rad = e.target.closest('[data-flate]'); if (!rad) return;
     const f = filtrert().find((x) => x.id === rad.dataset.flate); if (!f) return;
     const l = flateLag.get(f.id);
     if (l) kart.fitBounds(l.getBounds(), { maxZoom: 16, padding: [40, 40], animate: false });
     L.popup({ maxWidth: 300 }).setLatLng([f.senter[1], f.senter[0]]).setContent(popupHtml(f)).openOn(kart);
+    visEiendomIPopup(f);
   });
   $('#komDrift').addEventListener('click', (e) => {
     const t = e.target;
@@ -357,19 +427,20 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
   // Knappene ligger i Leaflet-popuper; lytt på dokumentet så Leaflets klikkhåndtering ikke stopper dem.
   document.addEventListener('click', (e) => {
     const fe = e.target.closest('[data-finn-eiendom]');
-    if (fe) { finnEiendom(fe.dataset.finnEiendom, fe.parentElement.querySelector('.kom-eiendom')); return; }
+    if (fe) { const f = data?.flater.find((x) => x.id === fe.dataset.finnEiendom); if (f) { delete data.eiendom?.[f.id]; visEiendomIPopup(f); } return; }
+    if (e.target.closest('[data-kom-vei-ny]')) { beregnVei({ tving: true }); return; }
     const lp = e.target.closest('[data-lag-plan]');
     if (lp) { kart.closePopup(); lagPlanFor(JSON.parse(lp.dataset.lagPlan)); }
   });
 
   return {
     vis() {
-      aktiv = true; lag.addTo(kart); vernLag.addTo(kart); if (visDtw && dtwLag) dtwLag.addTo(kart);
+      aktiv = true; lag.addTo(kart); vernLag.addTo(kart); if (visDtw && dtwLag) dtwLag.addTo(kart); if ($('#komEiendom')?.checked) eiendomLag.addTo(kart);
       if (misMerker) stoppMisMerker = merkerVedZoom(kart, misMerker, 13);
       lastKommuner();
       if (data) { tegnLegend(); kart.fitBounds(L.geoJSON(data.kommune.geometri).getBounds(), { padding: [10, 10] }); }
     },
-    skjul() { aktiv = false; lag.remove(); vernLag.remove(); dtwLag?.remove(); stoppMisMerker?.(); stoppMisMerker = null; },
+    skjul() { aktiv = false; eiendomGen++; lag.remove(); vernLag.remove(); dtwLag?.remove(); eiendomLag.remove(); stoppMisMerker?.(); stoppMisMerker = null; },
     oppdaterPriser() { if (data) oppdater(); },
   };
 }
