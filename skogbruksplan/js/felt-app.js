@@ -7,6 +7,7 @@ import { punktIGeometri, etikettPunkt, bbox } from './proj.js';
 import { hkFor } from './flere-eiendommer.js';
 import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import { VERSJON, UTVIKLER } from './versjon.js';
+import { html as endringsloggHtml } from './endringslogg.js';
 import { initSporlogg, lastPC } from './sporlogg-ui.js';
 import { mpTilUtm, mpTilGeo, fordelPaaBestand } from './sporlogg.js';
 import { startFlateRedigering } from './flate-redigering.js';
@@ -627,7 +628,8 @@ function visMer() {
     <h3>Innstillinger</h3>
     <label class="bryter"><span>Start alltid i mobilversjonen</span><input type="checkbox" id="startFelt" ${ls.get(LS.start) === '1' ? 'checked' : ''}></label>
     <div class="knapper"><a class="knapp" href="./?full">Åpne fullversjonen</a><button type="button" class="knapp" data-logg-ut>Logg ut</button></div>
-    <p class="hint">SkogIQ Felt ${esc(VERSJON)} · utviklet av ${esc(UTVIKLER)} · samme data som fullversjonen, lagret lokalt på enheten.</p>`, { hoy: true });
+    <p class="hint">SkogIQ Felt ${esc(VERSJON)} · utviklet av ${esc(UTVIKLER)} · samme data som fullversjonen, lagret lokalt på enheten.</p>
+    <div class="knapper"><button type="button" class="knapp" data-h="nytt">✨ Hva er nytt?</button></div>`, { hoy: true });
 }
 async function lastNedOffline() {
   const bb = planBb(); if (!bb || !('caches' in window)) { melding('Kan ikke laste ned kart her.'); return; }
@@ -719,6 +721,7 @@ function kobleHendelser() {
     if (h === 'avbryt-reg') { avbrytReg(); visRegListe(); }
     if (h === 'lagre-reg') lagreReg();
     if (h === 'offline') lastNedOffline();
+    if (h === 'nytt') { aapneArk(`<h2>✨ Hva er nytt</h2><p class="hint">SkogIQ Felt og fullversjonen har samme versjon (${esc(VERSJON)}). Nyeste først.</p>${endringsloggHtml({ antall: 20 })}`, { hoy: true }); return; }
     if (h === 'lagre-endring') lagreEndring();
     if (h === 'endre-flate') endreFlate();
     if (h === 'slett-tiltak') slettEndring();
