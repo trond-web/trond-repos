@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.52.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.53.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -1437,6 +1437,25 @@ SR16-dataene for Nannestad er stort sett fra 2015. Skog kan være hogd siden, s�
 
 SR16s treslagskode er 1 grandominert, 2 furudominert, 3 barblanding, 4 blanding og 5 lauvdominert. Der andelen per
 treslag finnes, brukes den.
+
+### Avstand til vei og gårds- og bruksnummer (`js/kommune-vei.js`)
+
+- **Avstand til bilvei:**
+  - Veinettet for hele kommunen hentes fra NVDB: alle vegkategorier, også private veier og skogsbilveier, men ikke
+    gang- og sykkelveier. For Nesodden er det ca. 4 500 veistrekninger på rundt 20 sekunder.
+  - Hver flate får korteste avstand fra kanten til nærmeste bilvei. Søket bruker et rutenett på 500 m. Traktorveier
+    teller ikke, som i terrengtransporten i Veier-fanen.
+  - Avstanden vises i listen og når du klikker på en flate. Over 1 km merkes som «lang terrengtransport».
+  - Avstanden kan brukes som filter («Inntil 100 m / 250 m / 500 m / 1 km / 2 km fra vei», også under Kriterier) og
+    til sortering («nærmest vei»). Den er med i eksporten (`AVSTAND_BILVEI_M`).
+  - Den beregnes én gang per analyse, lagres med den, og kan oppdateres.
+- **Gnr/bnr:**
+  - Gårds- og bruksnummer slås opp i matrikkelen (Kartverket) i midten av hver flate.
+  - Oppslaget skjer automatisk for flatene i listen (fire om gangen) og når du klikker på en flate, og resultatet
+    lagres. Det er med i eksporten (`GNR_BNR`).
+  - «Lag skogbruksplan» åpner planlagingen for eiendommen.
+- **Kartet:** eiendomsgrenser med gnr/bnr fra Kartverkets matrikkel-WMS vises når du zoomer inn (fra ca. 1:40 000).
+  Det kan slås av med «Eiendomsgrenser og gnr/bnr i kartet». Laget finnes også i lagvelgeren i hovedkartet.
 
 ## Plan fra åpne data med Python (`verktoy/lag_plan_fra_apne_data.py`)
 

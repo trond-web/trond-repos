@@ -28,6 +28,7 @@ export const STANDARD_KRITERIER = {
   ungMinTreantall: 100,        // trær per daa – SR16 ser dårlig småtrær, så tallet er lavere enn ved feltregistrering
   ungMinAndelLauv: 30,         // % lauv i ungskogen – lauvoppslag som konkurrerer med bartrærne
   ungMinBonitet: 11,           // på svært lav bonitet er ungskogpleie sjelden lønnsomt
+  maksAvstandVei: 0,           // m til nærmeste bilvei (NVDB) – 0 = ingen grense (kommune-vei.js)
 };
 
 // ---------- nett ----------

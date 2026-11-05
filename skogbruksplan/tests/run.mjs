@@ -24,7 +24,7 @@ import * as SP from '../js/skifteplan.js';
 import * as DF from '../js/driftsforhold.js';
 import { placemarkGeometri } from '../js/kml.js';
 import { misFigurer } from '../js/miljokart.js';
-import { parseKml as parseKmlKommune } from '../js/kommuneanalyse.js';
+import { parseKml as parseKmlKommune, STANDARD_KRITERIER as STANDARD_KRITERIER_KOMMUNE } from '../js/kommuneanalyse.js';
 import { VERSJON, UTVIKLER, signatur } from '../js/versjon.js';
 import { VEIKLASSER } from '../js/veier.js';
 const VEIKLASSER_TEST = (k) => VEIKLASSER[k].bilvei;
@@ -44,6 +44,7 @@ import * as BR from '../js/bratthet.js';
 import * as MF from '../js/markfukt.js';
 import * as AP from '../js/arealplan.js';
 import * as SKY from '../js/sky.js';
+import * as KV from '../js/kommune-vei.js';
 import { lagSkyLager, skyApi } from '../sky-lager.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
@@ -2906,6 +2907,35 @@ test('Profil på serveren: felt, validering og navn', async () => {
   inn2.endreBruker('admin', 'ola@x.no', 'slett'); assert.deepEqual(sett, ['ola@x.no'], 'skydata slettes med brukeren');
   // AI-konteksten tar med profilen
   assert.match(lagKontekst({ ...lagDemo(), innstillinger: STANDARD_INNSTILLINGER }, { profil: { rolle: 'bonde', om: 'Melkeproduksjon og 400 daa skog' } }), /Brukeren: rolle bonde.*Melkeproduksjon/);
+});
+
+test('Kommuneanalyse: avstand til bilvei fra NVDB (rutenett, kantpunkter, paging og filtrering av veityper)', async () => {
+  assert.deepEqual(KV.wktLinjer('LINESTRING Z (0 0 5, 100 0 6)'), [[[0, 0], [100, 0]]]);
+  assert.deepEqual(KV.wktLinjer('MULTILINESTRING ((0 0, 1 1), (2 2, 3 3))'), [[[0, 0], [1, 1]], [[2, 2], [3, 3]]]);
+  assert.deepEqual(KV.wktLinjer('POINT (1 2)'), []);
+  const vei = [[[600000, 6700000], [601000, 6700000]]];
+  const ix = KV.lagIndeks(vei, 500);
+  assert.equal(Math.round(KV.naermesteVei(ix, [[600500, 6700250]])), 250);
+  assert.equal(Math.round(KV.naermesteVei(ix, [[602000, 6700000]])), 1000, 'søker i ringer utover');
+  assert.equal(KV.naermesteVei(ix, [[620000, 6700000]]), null, 'over 10 km');
+  assert.equal(KV.naermesteVei(KV.lagIndeks([]), [[0, 0]]), null);
+  // Flate (lon/lat) 300 m nord for veien
+  const { utmTilGeo } = await import('../js/proj.js');
+  const ring = [[600400, 6700300], [600600, 6700300], [600600, 6700500], [600400, 6700500], [600400, 6700300]].map(([x, y]) => utmTilGeo(x, y, 33));
+  const av = KV.avstanderTilVei([{ id: 'f1', geometri: { type: 'Polygon', coordinates: [ring] } }], vei);
+  assert.equal(av.get('f1'), 300, 'korteste avstand fra kanten av flaten, avrundet til 10 m');
+  assert.equal(KV.avstandTekst(0), 'ved vei'); assert.equal(KV.avstandTekst(340), '340 m'); assert.equal(KV.avstandTekst(1500), '1,5 km'); assert.equal(KV.avstandTekst(null), 'over 10 km');
+  // NVDB: to sider, gang- og sykkelvei og konnektering tas ikke med
+  const kall = [];
+  const side = (objekter, neste) => ({ ok: true, json: async () => ({ objekter, metadata: { returnert: objekter.length, sidestørrelse: 2, ...(neste ? { neste: { href: neste } } : {}) } }) });
+  const hent = async (u) => { kall.push(u); return kall.length === 1
+    ? side([{ typeVeg_sosi: 'enkelBilveg', type: 'HOVED', geometri: { wkt: 'LINESTRING Z (0 0 1, 10 0 1)' } }, { typeVeg_sosi: 'gangOgSykkelveg', type: 'HOVED', geometri: { wkt: 'LINESTRING (0 5, 9 5)' } }], 'https://nvdbapiles.atlas.vegvesen.no/vegnett/veglenkesekvenser/segmentert?kommune=3314&start=x')
+    : side([{ typeVeg_sosi: 'kanalisertVeg', type: 'KONNEKTERING', geometri: { wkt: 'LINESTRING (0 0, 1 1)' } }]); };
+  const n = await KV.hentVeinett('3314', { hent });
+  assert.equal(n.antall, 1); assert.equal(kall.length, 2);
+  assert.match(kall[0], /kommune=3314&srid=5973/); assert.match(kall[1], /\/vegnett\/api\/v4\/veglenkesekvenser\/segmentert\?kommune=3314&start=x/, 'neste-lenken får api/v4');
+  // Kriteriet finnes med 0 = alle
+  assert.equal(STANDARD_KRITERIER_KOMMUNE.maksAvstandVei, 0);
 });
 
 await Promise.all(venter);
