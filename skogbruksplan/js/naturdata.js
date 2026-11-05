@@ -11,6 +11,31 @@ export const KART = {
   art: { url: `${MD}/services/artfunksjon/MapServer/WMSServer`, lag: 'art_funksjonsomrade' },
 };
 export const FARGE = { nin: '#2e9e6a', art: '#b5179e' };
+// Kartbilder fra ArcGIS «export» med samme utvalg som ellers (layerDefs), så store funksjonsområder for vanlige arter
+// (f.eks. trekkveier og beite for elg) ikke dekker hele kartet. NiN: høy/svært høy/moderat kvalitet, og lavere kvalitet
+// bare når naturtypen er truet eller nær truet. Dekningskartet (kartlagte områder) tas ikke med.
+const TRUET_NIN = 'UK_Truet=1 OR UK_NærTruet=1';
+const VIKTIG_ART = "roedlisteStatus LIKE 'CR%' OR roedlisteStatus LIKE 'EN%' OR roedlisteStatus LIKE 'VU%' OR roedlisteStatus LIKE 'NT%' OR prioritertArt=1 OR funksjon IN (3,7,8)";
+export const EKSPORT = {
+  nin: { tjeneste: 'naturtyper_nin', lag: 'show:2,3,4,5,6,7', defs: { 5: TRUET_NIN, 6: TRUET_NIN, 7: TRUET_NIN } },
+  art: { tjeneste: 'artfunksjon', lag: 'show:0', defs: { 0: VIKTIG_ART } },
+};
+export function eksportUrl(type, [x0, y0, x1, y1], px = 256) {
+  const e = EKSPORT[type];
+  const q = new URLSearchParams({ bbox: [x0, y0, x1, y1].map((v) => v.toFixed(2)).join(','), bboxSR: '3857', imageSR: '3857', size: `${px},${px}`, format: 'png32', transparent: 'true', layers: e.lag, layerDefs: JSON.stringify(e.defs), f: 'image' });
+  return `${MD}/rest/services/${e.tjeneste}/MapServer/export?${q}`;
+}
+// Leaflet-flislag for «export» (L sendes inn, så modulen er fri for DOM og kan testes).
+export function lagKartlag(L, type, valg = {}) {
+  const Lag = L.TileLayer.extend({
+    getTileUrl(c) {
+      const nwse = this._tileCoordsToNwSe(c); const a = L.CRS.EPSG3857.project(nwse[0]); const b = L.CRS.EPSG3857.project(nwse[1]);
+      const px = this.getTileSize().x * (L.Browser.retina ? 2 : 1);
+      return eksportUrl(type, [Math.min(a.x, b.x), Math.min(a.y, b.y), Math.max(a.x, b.x), Math.max(a.y, b.y)], px);
+    },
+  });
+  return new Lag('', { tileSize: 256, opacity: 0.65, maxZoom: 20, attribution: type === 'nin' ? 'Naturtyper (NiN) © Miljødirektoratet' : 'Arter © Miljødirektoratet', ...valg });
+}
 export const KVALITET = { 1: 'svært høy kvalitet', 2: 'høy kvalitet', 3: 'moderat kvalitet', 4: 'lav kvalitet', 5: 'svært lav kvalitet' };
 export const FUNKSJON = { 1: 'beiteområde', 2: 'trekkvei', 3: 'hiområde', 4: 'myteområde', 5: 'overnattingsområde', 6: 'rasteområde', 7: 'spill-/parringsområde', 8: 'yngleområde', 9: 'leveområde' };
 export const RODLISTE = { CR: 'kritisk truet', EN: 'sterkt truet', VU: 'sårbar', NT: 'nær truet', LC: 'livskraftig', DD: 'datamangel' };
@@ -30,7 +55,8 @@ export function tolkNin(p = {}) {
 }
 export const viktigNin = (n) => (n.kvalitet && n.kvalitet <= 3) || n.truet || n.naerTruet;
 export function tolkArt(p = {}) {
-  const rl = p.roedlisteStatus || null;
+  // Rødlistestatus kan ha et tegn bak koden, f.eks. «NTº».
+  const rl = p.roedlisteStatus ? String(p.roedlisteStatus).replace(/[^A-Z]/g, '') || null : null;
   return {
     type: 'art', id: `art-${p.artFunksjonId || p.artForekomstId || p.OBJECTID}`, navn: p.norskNavn || 'Art', latin: p.vitenskapeligNavn || null, funksjon: Number(p.funksjon) || null,
     funksjonTekst: FUNKSJON[Number(p.funksjon)] || 'funksjonsområde', rodliste: rl, rodlisteTekst: RODLISTE[rl] || null, prioritert: Number(p.prioritertArt) === 1, lenke: lenke(p.faktaark),

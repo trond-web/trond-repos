@@ -38,8 +38,9 @@ const boks = (punkter) => { let a = Infinity; let b = Infinity; let c = -Infinit
 // bestand: [{ id, nr, mp }] (planens bestand), veier: [{ linje, flate }], bekker: [{ linje }], vann: [{ mp }],
 // bratthet: { x0, y0, d, nx, ny, pst } – helning i et rutenett (lokale meter), vises som fargede ruter (bratthet.js).
 // fukt: { x0, y0, d, nx, ny, k } – markfuktighetsklasse per celle (markfukt.js), fuktFarge(klasse) → farge eller null.
-export function lagMinikart({ bestand = [], veier = [], bekker = [], vann = [], bratthet = null, farge = null, fukt = null, fuktFarge = null } = {}) {
+export function lagMinikart({ bestand = [], veier = [], bekker = [], vann = [], bratthet = null, farge = null, fukt = null, fuktFarge = null, natur = [] } = {}) {
   const B = bestand.map((s) => ({ ...s, bb: boks(s.mp.flat(2)), senter: senterAv(s.mp) }));
+  const N = natur.map((n) => ({ ...n, bb: boks(n.mp.flat(2)) }));
   const V = veier.map((v) => ({ ...v, bb: boks(v.linje) })); const K = bekker.map((v) => ({ ...v, bb: boks(v.linje) })); const W = vann.map((v) => ({ ...v, bb: boks(v.mp.flat(2)) }));
   // Tegner kartet. Gir hva som er synlig (brukes av testene).
   function tegn(ctx, { x, y, retning = 0, bevegelse = null, spor = [], herBid = null, radius = 80, storrelse = 256, nordOpp = true, vr = false }) {
@@ -80,6 +81,8 @@ export function lagMinikart({ bestand = [], veier = [], bekker = [], vann = [], 
       ctx.fillStyle = her ? 'rgba(243,156,74,0.38)' : 'rgba(31,107,74,0.10)'; ctx.fill('evenodd');
       ctx.lineWidth = her ? 3 : 1.4; ctx.strokeStyle = her ? '#c25e10' : 'rgba(110,92,0,0.85)'; ctx.stroke();
     }
+    // NiN-naturtyper (grønn) og artsområder (lilla, stiplet) over bestandene
+    for (const n of N) { if (!iBoks(n.bb, x, y, r2)) continue; synlig.natur = (synlig.natur || 0) + 1; poly(n.mp); const f = n.type === 'art' ? '181,23,158' : '46,158,106'; ctx.fillStyle = `rgba(${f},0.18)`; ctx.fill('evenodd'); ctx.setLineDash(n.type === 'art' ? [4, 3] : []); ctx.lineWidth = 1.6 * k; ctx.strokeStyle = `rgb(${f})`; ctx.stroke(); ctx.setLineDash([]); }
     for (const k of K) if (iBoks(k.bb, x, y, r2)) { lin(k.linje); ctx.strokeStyle = '#2a78d6'; ctx.lineWidth = 2; ctx.stroke(); }
     for (const v of V) {
       if (!iBoks(v.bb, x, y, r2)) continue; synlig.veier++;

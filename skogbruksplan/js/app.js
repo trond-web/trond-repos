@@ -168,8 +168,8 @@ function initKart() {
   // Eiendomsgrenser med gårds- og bruksnummer (Kartverket matrikkel, synlig fra ca. 1:40 000).
   naboLag = L.featureGroup();
   // NiN-naturtyper og arter av nasjonal forvaltningsinteresse (Miljødirektoratet). Klikk i kartet viser detaljer.
-  ninLag = L.tileLayer.wms(NATUR.KART.nin.url, { layers: NATUR.KART.nin.lag, format: 'image/png', transparent: true, opacity: 0.65, pane: 'analysePane', attribution: 'Naturtyper (NiN) © Miljødirektoratet' });
-  artLag = L.tileLayer.wms(NATUR.KART.art.url, { layers: NATUR.KART.art.lag, format: 'image/png', transparent: true, opacity: 0.65, pane: 'analysePane', attribution: 'Arter © Miljødirektoratet' });
+  ninLag = NATUR.lagKartlag(L, 'nin', { pane: 'analysePane' });
+  artLag = NATUR.lagKartlag(L, 'art', { pane: 'analysePane' });
   eiendomGrenseLag = L.tileLayer.wms('https://wms.geonorge.no/skwms1/wms.matrikkel', { layers: 'eiendomsgrense,eiendoms_id', format: 'image/png', transparent: true, opacity: 0.85, minZoom: 13, maxZoom: 20, pane: 'analysePane', attribution: 'Eiendomsgrenser © Kartverket' });
   fuktLag = L.tileLayer.wms(FUKT_WMS, { layers: FUKT_LAG, format: 'image/png', transparent: true, opacity: 0.75, pane: 'analysePane', attribution: 'Markfuktighet © NIBIO' });
   graa.addTo(kart);
@@ -187,6 +187,11 @@ function initKart() {
   regLag = L.featureGroup().addTo(kart);
   lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, '🌿 Naturtyper (NiN, Miljødirektoratet)': ninLag, '🦉 Arter av nasjonal forvaltningsinteresse': artLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
+  // NiN-naturtyper og arter vises som standard i kartet i alle faner (som nøkkelbiotopene). Valget huskes.
+  const NATUR_LS = 'skogiq-natur-lag';
+  const lesNatur = () => { try { return localStorage.getItem(NATUR_LS); } catch { return null; } };
+  if (lesNatur() !== '0') { ninLag.addTo(kart); artLag.addTo(kart); }
+  kart.on('overlayadd overlayremove', (e) => { if (e.layer === ninLag || e.layer === artLag) { try { localStorage.setItem(NATUR_LS, kart.hasLayer(ninLag) || kart.hasLayer(artLag) ? '1' : '0'); } catch { /* privat modus */ } } });
 
   kart.on('click', (e) => {
     if (kartKlikk) { kartKlikk(e.latlng); return; }
@@ -1321,26 +1326,32 @@ async function planPunktHtml(ll) {
   } catch { return '<span class="hint">Klarte ikke å hente planinformasjon.</span>'; }
 }
 // NiN-naturtyper og arter i punktet (naturdata.js).
-async function naturPunktHtml(ll, type) {
+async function naturPunktHtml(ll, type, { stille = false } = {}) {
   try {
     const r = await fetch(NATUR.punktUrl(type, ll.lng, ll.lat)); const liste = r.ok ? NATUR.tolkPunkt(type, await r.json()) : [];
     const tittel = type === 'nin' ? '🌿 Naturtyper (NiN)' : '🦉 Arter av nasjonal forvaltningsinteresse';
-    if (!liste.length) return `<b class="punkt-tittel">${tittel}</b><span class="hint">Ingen registrert i dette punktet.</span>`;
+    if (!liste.length) return stille ? '' : `<b class="punkt-tittel">${tittel}</b><span class="hint">Ingen registrert i dette punktet.</span>`;
     return `<b class="punkt-tittel">${tittel}</b>${liste.slice(0, 6).map((o) => `<div style="margin-top:3px">${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : `<b>${esc(o.navn)}</b>`}<br><small>${esc(o.type === 'nin' ? `${o.kvalitetTekst}${o.truet ? ' · truet naturtype' : o.naerTruet ? ' · nær truet' : ''}${o.aar ? ` · kartlagt ${o.aar}` : ''}${o.omrade ? ` · ${o.omrade}` : ''}` : `${o.funksjonTekst}${o.rodliste ? ` · ${o.rodliste}${o.rodlisteTekst ? ` (${o.rodlisteTekst})` : ''}` : ''}${o.prioritert ? ' · prioritert art' : ''}${o.latin ? ` · ${o.latin}` : ''}`)}</small></div>`).join('')}<div class="hint" style="margin-top:3px">Skal vurderes av skogbiologisk kompetanse før hogst (PEFC krav 22).</div>`;
-  } catch { return '<span class="hint">Klarte ikke å hente data fra Miljødirektoratet.</span>'; }
+  } catch { return stille ? '' : '<span class="hint">Klarte ikke å hente data fra Miljødirektoratet.</span>'; }
 }
 // Klikk i kartet med plan-, naturtype- eller artslag på: én popup med det som finnes i punktet.
 const punktLagAktive = () => (kpLag && (kart.hasLayer(kpLag) || kart.hasLayer(rpLag))) || (ninLag && kart.hasLayer(ninLag)) || (artLag && kart.hasLayer(artLag));
 async function visPunktInfo(ll) {
   const nr = ++planPunktNr;
-  const popup = L.popup({ maxWidth: 340 }).setLatLng(ll).setContent('<span class="hint">Henter informasjon …</span>').openOn(kart);
+  // Planlagene gir alltid popup; naturlagene (på som standard) bare når det finnes noe i punktet.
+  const plan = kart.hasLayer(kpLag) || kart.hasLayer(rpLag);
+  const popup = plan ? L.popup({ maxWidth: 340 }).setLatLng(ll).setContent('<span class="hint">Henter informasjon …</span>').openOn(kart) : null;
   const deler = await Promise.all([
-    kart.hasLayer(kpLag) || kart.hasLayer(rpLag) ? planPunktHtml(ll) : '',
-    kart.hasLayer(ninLag) ? naturPunktHtml(ll, 'nin') : '',
-    kart.hasLayer(artLag) ? naturPunktHtml(ll, 'art') : '',
+    plan ? planPunktHtml(ll) : '',
+    kart.hasLayer(ninLag) ? naturPunktHtml(ll, 'nin', { stille: !plan }) : '',
+    kart.hasLayer(artLag) ? naturPunktHtml(ll, 'art', { stille: !plan }) : '',
   ]);
   if (nr !== planPunktNr) return;
-  popup.setContent(`<div class="punkt-info">${deler.filter(Boolean).join('<hr>')}</div>`);
+  const html = deler.filter(Boolean).join('<hr>');
+  if (!html) return;
+  if (popup) popup.setContent(`<div class="punkt-info">${html}</div>`);
+  else if (!document.querySelector('.leaflet-popup')) L.popup({ maxWidth: 340 }).setLatLng(ll).setContent(`<div class="punkt-info">${html}</div>`).openOn(kart);
+  else { const p = document.querySelector('.leaflet-popup-content'); if (p) p.insertAdjacentHTML('beforeend', `<div class="punkt-info"><hr>${html}</div>`); }
 }
 
 // ---------------------------------------------------------------- bratthet
