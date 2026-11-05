@@ -25,7 +25,7 @@ import * as DF from '../js/driftsforhold.js';
 import { placemarkGeometri } from '../js/kml.js';
 import { misFigurer } from '../js/miljokart.js';
 import { parseKml as parseKmlKommune, STANDARD_KRITERIER as STANDARD_KRITERIER_KOMMUNE } from '../js/kommuneanalyse.js';
-import { VERSJON, UTVIKLER, signatur } from '../js/versjon.js';
+import { VERSJON, UTVIKLER, signatur, UTGITT as UTGITT_APP } from '../js/versjon.js';
 import { VEIKLASSER } from '../js/veier.js';
 const VEIKLASSER_TEST = (k) => VEIKLASSER[k].bilvei;
 import { readFileSync } from 'node:fs';
@@ -48,6 +48,7 @@ import * as KV from '../js/kommune-vei.js';
 import * as NABO from '../js/naboeiendommer.js';
 import * as NATUR from '../js/naturdata.js';
 import * as KULTUR from '../js/kulturminner.js';
+import * as LOGG from '../js/endringslogg.js';
 import { lagSkyLager, skyApi } from '../sky-lager.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
@@ -3037,6 +3038,17 @@ test('Kulturminner: klikk-info fra Riksantikvaren (GML), sikringssone, henting f
   assert.equal(km.length, 2); assert.equal(kall.length, 2); assert.match(km[0].navn, /Kulturminne 1: Gravhaug/);
   const m = KULTUR.merkFlater([{ id: 'f1', geometri: kv(10, 60, 0.005) }, { id: 'f2', geometri: kv(10.8, 60, 0.005) }], km);
   assert.deepEqual([...m.keys()], ['f1']); assert.equal(m.get('f1')[0].geometri, undefined);
+});
+
+test('Versjonslogg: følger versjonsnummeret, er sortert, «nytt siden sist» og CHANGELOG.md er oppdatert', () => {
+  assert.equal(LOGG.ENDRINGER[0].versjon, VERSJON, 'første oppføring er gjeldende versjon');
+  for (let i = 1; i < LOGG.ENDRINGER.length; i++) { const a = LOGG.ENDRINGER[i - 1]; const b = LOGG.ENDRINGER[i]; assert.ok(LOGG.nyere(a.versjon, b.versjon), `${a.versjon} før ${b.versjon}`); assert.ok(a.dato >= b.dato, `dato ${a.dato} ≥ ${b.dato}`); }
+  for (const e of LOGG.ENDRINGER) { assert.ok(LOGG.TYPE[e.type], e.versjon); assert.match(e.dato, /^\d{4}-\d{2}-\d{2}$/); assert.ok(e.tittel && e.tekst); }
+  assert.ok(LOGG.nyere('1.10.0', '1.9.0')); assert.ok(!LOGG.nyere('1.9.0', '1.10.0')); assert.ok(!LOGG.nyere('1.5.0', '1.5.0'));
+  assert.deepEqual(LOGG.sidenSist('1.56.0').map((e) => e.versjon).slice(-1), ['1.57.0']); assert.deepEqual(LOGG.sidenSist(null), []); assert.deepEqual(LOGG.sidenSist(VERSJON), []);
+  const h = LOGG.html({ nye: new Set([VERSJON]), antall: 2 }); assert.equal((h.match(/<li/g) || []).length, 2); assert.match(h, /ny-for-deg/); assert.match(h, /nytt siden sist/);
+  assert.equal(readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8'), LOGG.markdown(), 'CHANGELOG.md lages fra js/endringslogg.js');
+  assert.equal(UTGITT_APP, LOGG.ENDRINGER[0].dato, 'UTGITT i versjon.js følger loggen');
 });
 
 await Promise.all(venter);

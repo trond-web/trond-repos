@@ -238,3 +238,9 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .kodefelt input::placeholder { font: 500 16px/1.2 var(--font, system-ui), sans-serif; letter-spacing: .02em; text-transform: none; }
 
 .natur-boks { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: rgba(46,158,106,.1); border-left: 3px solid #2e9e6a; font-size: 14px; display: grid; gap: 3px; }
+
+.endringslogg { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.endringslogg li { padding: 10px 12px; border-radius: 12px; background: rgba(31,107,74,.07); border-left: 4px solid #1f6b4a; }
+.endringslogg p { margin: 4px 0 0; font-size: 14px; opacity: .85; }
+.el-topp { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; } .el-meta { font-size: 12px; opacity: .7; }
+.el-type { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; color: #fff; background: var(--farge); white-space: nowrap; }

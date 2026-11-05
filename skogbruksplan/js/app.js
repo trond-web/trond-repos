@@ -27,6 +27,7 @@ import { initSkogbrand } from './skogbrand-ui.js';
 import { initSkifteplan } from './skifteplan-ui.js';
 import { misMonster, misFigurer, misKartlag, misLegendStil, miljoLegendStil } from './miljokart.js';
 import { VERSJON, UTGITT, UTVIKLER, APPNAVN, signatur } from './versjon.js';
+import { ENDRINGER, html as endringsloggHtml, sidenSist, nyere } from './endringslogg.js';
 import { lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
 import { genererTiltak, oppsummer as motorOppsummer, PRINSIPPER, KILDER as MOTOR_KILDER, endringer as motorEndringer, merkKjort, tilTiltak, anvend as anvendMotor, oppdaterBestand as motorOppdaterBestand, MOTOR_VERSJON, signatur as motorSignatur } from './tiltaksmotor.js';
 import { RAPPORTER, lagRapport, lagRapportCsv } from './rapporter.js';
@@ -1188,6 +1189,35 @@ function settUtfort(b, t, ferdig) {
   if (ferdig && t.type === 'planting' && confirm(`Sette bestand ${b.nr} til hogstklasse II (ungskog) med alder 1?`)) { b.hogstklasse = 2; b.alder = 1; }
 }
 
+// ---------------------------------------------------------------- hva er nytt (endringslogg.js)
+// Versjonsloggen åpnes fra versjonsnummeret i menyen, «Hva er nytt?» i Om-boksen og kommandolinjen. Etter en
+// oppdatering vises en liten melding én gang med det som er nytt siden sist.
+const SETT_VERSJON = 'skogiq-sett-versjon';
+const lesSett = () => { try { return localStorage.getItem(SETT_VERSJON); } catch { return null; } };
+const merkSett = () => { try { localStorage.setItem(SETT_VERSJON, VERSJON); } catch { /* privat modus */ } };
+let nyeForDeg = new Set();
+function fjernNyttMelding() { const m = document.querySelector('.nytt-melding'); if (m) m.parentNode.removeChild(m); }
+function visEndringslogg() {
+  const d = $('#nyttDialog');
+  d.innerHTML = `<div class="nytt-topp"><h3>✨ Hva er nytt i ${APPNAVN}</h3><button type="button" class="knapp liten" data-m="lukk" aria-label="Lukk">Lukk</button></div>
+    <p class="hint">Du bruker versjon ${VERSJON}. Nyeste først.</p>${endringsloggHtml({ nye: nyeForDeg })}`;
+  d.onclick = (e) => { if (e.target.closest('[data-m="lukk"]') || e.target === d) d.close(); };
+  if (!d.open) d.showModal();
+  merkSett(); fjernNyttMelding();
+}
+function visNyttSidenSist() {
+  const sist = lesSett();
+  if (!sist) { merkSett(); return; } // første besøk: ingenting å melde
+  if (!nyere(VERSJON, sist)) return;
+  const nye = sidenSist(sist); if (!nye.length) { merkSett(); return; }
+  nyeForDeg = new Set(nye.map((e) => e.versjon));
+  const m = document.createElement('div'); m.className = 'nytt-melding'; m.setAttribute('role', 'status');
+  m.innerHTML = `<b>✨ Nytt i ${APPNAVN} ${VERSJON}</b><span>${esc(nye[0].tittel)}${nye.length > 1 ? ` og ${nye.length - 1} til` : ''}</span><div><button type="button" class="knapp liten primar" data-hva-nytt>Se hva som er nytt</button><button type="button" class="knapp liten" data-nytt-lukk>Senere</button></div>`;
+  document.body.appendChild(m);
+  m.querySelector('[data-nytt-lukk]').onclick = () => { merkSett(); fjernNyttMelding(); };
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-hva-nytt]')) { e.preventDefault(); visEndringslogg(); } });
+
 // ---------------------------------------------------------------- naboeiendommer
 // Eiendommene rundt (Kartverket) med status for skogbruksplan: plan i SkogIQ.ai, plan i NIBIOs register, eller mangler.
 // Mangler planen, kan den lages med ett klikk i kartet (naboeiendommer.js).
@@ -2255,6 +2285,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'PEFC-status og avvik', sok: 'pefc skogstandard krav avvik sertifisering', utfor: () => visFane('pefc') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
     ...Object.entries(RAPPORTER).map(([k, r]) => ({ gruppe: 'Rapporter', ikon: '▦', tittel: `Rapport: ${r.navn}`, under: r.beskrivelse, sok: 'rapport pdf utskrift skriv ut', utfor: () => visRapport(k) })),
+    { gruppe: 'Handlinger', ikon: '✨', tittel: 'Hva er nytt i SkogIQ.ai', under: `Versjonslogg – sist ${ENDRINGER[0].tittel}`, sok: 'hva er nytt versjonslogg endringer oppdatering nyheter changelog', utfor: () => visEndringslogg() },
     { gruppe: 'Handlinger', ikon: 'ℹ', tittel: `Om ${APPNAVN} – versjon ${VERSJON}`, under: `Utviklet av ${UTVIKLER}`, sok: 'om versjon utvikler laget av trond harald sand', utfor: () => { visFane('planer'); setTimeout(() => $('#fane-planer [data-om-app]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); } },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Ta sikkerhetskopi', sok: 'backup eksport lagre', utfor: () => eksporter('backup') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Bytt lyst/mørkt tema', sok: 'tema mørk lys dark', utfor: () => $('#temaBtn').click() },
@@ -2300,9 +2331,10 @@ function kobleHendelser() {
     dra = null;
   });
   // Versjon og utvikler
-  for (const el of $$('[data-om-app]')) el.innerHTML = `<b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span><br>Utviklet av ${UTVIKLER}<br><span data-bruker-info></span><a href="#" data-logg-ut>Logg ut</a>`;
+  for (const el of $$('[data-om-app]')) el.innerHTML = `<b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span> · <a href="#" data-hva-nytt>Hva er nytt?</a><br>Utviklet av ${UTVIKLER}<br><span data-bruker-info></span><a href="#" data-logg-ut>Logg ut</a>`;
   visBruker();
-  $('#railVersjon').textContent = `v${VERSJON}`; $('#railVersjon').title = signatur();
+  $('#railVersjon').textContent = `v${VERSJON}`; $('#railVersjon').title = `${signatur()} – klikk for å se hva som er nytt`;
+  visNyttSidenSist();
   initKommando({ hentValg: kommandoValg });
   $('#genSkjema').addEventListener('submit', startGenerering);
   veiVisning = initVeier({

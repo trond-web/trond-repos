@@ -1109,3 +1109,17 @@ progress { accent-color: var(--accent); height: 8px; }
 .kom-natur { margin: 3px 0; font-size: 12.5px; } .kom-natur-merke { color: #2e9e6a; font-weight: 600; }
 
 .kom-kultur-merke { color: #9a5b2b; font-weight: 600; }
+
+/* Hva er nytt (endringslogg.js) */
+button.rail-versjon { border: 0; background: none; cursor: pointer; border-radius: 6px; padding: 4px 2px 2px; font: 500 10px var(--font-mono); color: #8a9a91; }
+button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
+.nytt-dialog { max-width: 620px; width: calc(100% - 24px); max-height: calc(100% - 40px); }
+.nytt-topp { display: flex; justify-content: space-between; align-items: center; gap: 10px; } .nytt-topp h3 { margin: 0; }
+.endringslogg { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.endringslogg li { padding: 10px 12px; border-radius: 12px; background: var(--surface-2); border-left: 4px solid var(--border); }
+.endringslogg li.ny-for-deg { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface-2)); }
+.endringslogg p { margin: 4px 0 0; font-size: 13.5px; color: var(--text-2); }
+.el-topp { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; } .el-meta { font-size: 12px; color: var(--text-2); }
+.el-type { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; color: #fff; background: var(--farge); white-space: nowrap; }
+.nytt-melding { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 1200; display: grid; gap: 4px; max-width: min(460px, calc(100% - 24px)); padding: 12px 16px; border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 12px 40px rgba(0,0,0,.25); border-left: 5px solid var(--accent); font-size: 14px; }
+.nytt-melding div { display: flex; gap: 8px; margin-top: 4px; }
