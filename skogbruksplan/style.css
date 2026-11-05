@@ -1096,3 +1096,10 @@ progress { accent-color: var(--accent); height: 8px; }
 .kom-gnr:empty { display: none; }
 .kom-vei { margin: -4px 0 10px; }
 .kom-vei .knapp { margin-left: 6px; }
+
+/* Naboeiendommer (naboeiendommer.js) */
+.leaflet-tooltip.nabo-etikett { background: rgba(255,255,255,.82); border: 0; box-shadow: none; padding: 1px 5px; font: 700 11px/1.2 system-ui, sans-serif; color: #2b2b28; border-radius: 6px; }
+.leaflet-tooltip.nabo-etikett::before { display: none; }
+.nabo-lav .leaflet-tooltip.nabo-etikett { display: none; }
+.nabo-pop { font-size: 13px; line-height: 1.45; }
+.nabo-status { display: inline-block; margin: 4px 0 2px; padding: 1px 9px; border-radius: 99px; font-weight: 700; font-size: 12px; color: #fff; background: var(--farge); }

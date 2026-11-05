@@ -1,6 +1,6 @@
 import { visBruker, registrerBruk, innloggetBruker, gyldigToken } from './innlogging.js'; // først: økten følger med alle kall til serveren
 import { lagVelkomst } from './velkommen.js';
-import { arealM2, punktIGeometri, bbox, fraWgs84, etikettPunkt } from './proj.js';
+import { arealM2, punktIGeometri, bbox, fraWgs84, etikettPunkt, utmTilGeo } from './proj.js';
 import { lagSosi } from './sosi.js';
 import {
   TRESLAG, HOGSTKLASSER, HK_NAVN, HK_ROMERTALL, BONITETER, TILTAKSTYPER, STANDARD_INNSTILLINGER,
@@ -62,6 +62,7 @@ const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
 import { stabletSoyle, linje, fmt } from './charts.js';
 import { lagPlanSynk, merkSlettet, lenkeMedKode, API as SYNK_API } from './plan-synk.js';
 import { KART as PLAN_KART, GRUPPER as PLAN_GRUPPER, hent as hentArealplan, analyser as analyserArealplan, vurdering as planVurdering, bestandTekst as planBestandTekst, punktUrl as planPunktUrl, tolkPunkt as tolkPlanPunkt, formalInfo } from './arealplan.js';
+import * as NABO from './naboeiendommer.js';
 import { lagSkyKlient, synkPlan as skySynkPlan, synkAlle as skySynkAlle, synkTekst as skyTekst, mb as skyMb, merkSky } from './sky.js';
 import { lagSatellittVisning, bestandStripeHtml, SATELLITT_AAR, SISTE_SATELLITTAAR } from './satellitt.js';
 
@@ -127,7 +128,7 @@ function filnavn(ending) {
 
 // ---------------------------------------------------------------- kart
 let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks. veier)
-let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let kpLag = null; let rpLag = null; let eiendomGrenseLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
+let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let kpLag = null; let rpLag = null; let eiendomGrenseLag = null; let naboLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
 let etikettLag; let flyfotoAktiv = false; let lagKontroll = null; let andreVisning = null;
@@ -164,6 +165,7 @@ function initKart() {
   const planWms = (k, navn) => L.tileLayer.wms(PLAN_KART[k].url, { layers: PLAN_KART[k].lag, format: 'image/png', transparent: true, opacity: 0.55, pane: 'analysePane', maxZoom: 20, attribution: `${navn} © kommunene / DiBK` });
   kpLag = planWms('kp', 'Kommuneplan'); rpLag = planWms('rp', 'Reguleringsplaner');
   // Eiendomsgrenser med gårds- og bruksnummer (Kartverket matrikkel, synlig fra ca. 1:40 000).
+  naboLag = L.featureGroup();
   eiendomGrenseLag = L.tileLayer.wms('https://wms.geonorge.no/skwms1/wms.matrikkel', { layers: 'eiendomsgrense,eiendoms_id', format: 'image/png', transparent: true, opacity: 0.85, minZoom: 13, maxZoom: 20, pane: 'analysePane', attribution: 'Eiendomsgrenser © Kartverket' });
   fuktLag = L.tileLayer.wms(FUKT_WMS, { layers: FUKT_LAG, format: 'image/png', transparent: true, opacity: 0.75, pane: 'analysePane', attribution: 'Markfuktighet © NIBIO' });
   graa.addTo(kart);
@@ -179,7 +181,7 @@ function initKart() {
   document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
 
   kart.on('click', (e) => {
@@ -189,9 +191,9 @@ function initKart() {
     settValgtPunkt(e.latlng);
     if (kart.hasLayer(kpLag) || kart.hasLayer(rpLag)) visPlanPunkt(e.latlng);
   });
-  kart.on('zoomend', () => { oppdaterEtiketter(); visMisMerker(); });
+  kart.on('zoomend', () => { oppdaterEtiketter(); visMisMerker(); oppdaterNaboEtiketter(); });
   kart.on('overlayadd overlayremove', () => { oppdaterEtiketter(); visMisMerker(); tegnLegend(); });
-  kart.on('overlayadd', (e) => { if (e.layer === bratthetLag) visBratthet(); if (e.layer === fuktLag) beregnFukt(); if ((e.layer === kpLag || e.layer === rpLag) && !S.arealplan) hentPlaner({ stille: true }); });
+  kart.on('overlayadd', (e) => { if (e.layer === bratthetLag) visBratthet(); if (e.layer === fuktLag) beregnFukt(); if ((e.layer === kpLag || e.layer === rpLag) && !S.arealplan) hentPlaner({ stille: true }); if (e.layer === naboLag) visNaboer(); });
   // På flyfoto tegnes bestandene som i skogbruksplankart: gule grenser og hvit tekst.
   kart.on('baselayerchange', (e) => {
     flyfotoAktiv = e.layer === flyfoto || e.layer === satellitt.lag;
@@ -282,6 +284,10 @@ function tegnLegend() {
   }
   const vr = S.veier || {};
   if (fuktLag && kart.hasLayer(fuktLag)) html += `<b style="display:block;margin-top:6px">💧 Markfuktighet (dybde til grunnvann)</b>${FUKT_KLASSER.map((k) => rad(k.farge, k.leg)).join('')}<div class="hint" style="font-size:11px">Over 1 m: tørt (ikke farget). Våt mark gir sporskader.</div>`;
+  if (naboLag && kart.hasLayer(naboLag)) {
+    const o = naboData?.oppsummert;
+    html += `<b style="display:block;margin-top:6px">🏡 Naboeiendommer</b>${Object.entries(NABO.STATUS).map(([k, st]) => rad(`${st.farge}${st.fyll ? '' : ';background:transparent;border:2px solid ' + st.farge}`, `${st.navn}${o ? ` (${o[k].antall})` : ''}`)).join('')}<div class="hint" style="font-size:11px">${naboStatus ? esc(naboStatus) : 'Klikk på en eiendom – mangler den plan, kan du lage den.'}</div>`;
+  }
   if ((kpLag && kart.hasLayer(kpLag)) || (rpLag && kart.hasLayer(rpLag))) {
     const vis = (S.arealplan?.formal || []).slice(0, 6);
     html += `<b style="display:block;margin-top:6px">🏘 Arealplaner</b>${vis.length ? vis.map((f) => rad(f.farge, `${f.navn}${f.plan === 'rp' ? ' (reg.)' : ''}`)).join('') : ['lnfr', 'spredt', 'bolig', 'fritid', 'gronn', 'samferdsel'].map((g) => rad(PLAN_GRUPPER[g].farge, PLAN_GRUPPER[g].navn)).join('')}<div class="hint" style="font-size:11px">Skravur = hensynssone. Klikk i kartet for formål og planer.</div>`;
@@ -1165,6 +1171,80 @@ function settUtfort(b, t, ferdig) {
   if (ferdig && t.type === 'planting' && confirm(`Sette bestand ${b.nr} til hogstklasse II (ungskog) med alder 1?`)) { b.hogstklasse = 2; b.alder = 1; }
 }
 
+// ---------------------------------------------------------------- naboeiendommer
+// Eiendommene rundt (Kartverket) med status for skogbruksplan: plan i SkogIQ.ai, plan i NIBIOs register, eller mangler.
+// Mangler planen, kan den lages med ett klikk i kartet (naboeiendommer.js).
+let naboData = null; let naboStatus = ''; let naboHenter = false;
+async function visNaboer({ ny = false } = {}) {
+  if (!naboLag) return;
+  const geom = eiendomGeom();
+  if (!geom) { melding('Åpne en plan med eiendomsgrense først – da vises eiendommene rundt.'); return; }
+  if (naboData?.planId === S.planId && !ny) { tegnNaboer(); return; }
+  if (naboHenter) return; naboHenter = true; const plan = S;
+  const status = (t) => { naboStatus = t; tegnLegend(); };
+  try {
+    status('Henter eiendommene rundt fra Kartverket …');
+    const { omrader, bbox } = NABO.sokeomrader(geom);
+    const teiger = await NABO.hentTeiger(omrader, { utmTilGeo });
+    let eiendommer = NABO.grupper(teiger);
+    // Bildet med NIBIO-planer dekker søkeområdet (eiendommer som stikker langt utenfor, sjekkes bare innenfor).
+    status(`Sjekker skogbruksplaner (NIBIO) for ${eiendommer.length} eiendommer …`);
+    const bildeBbox = NABO.bildeomrade(eiendommer, bbox);
+    const { url, w, h } = NABO.planBildeUrl(bildeBbox);
+    let raster = null; try { raster = await fuktDekod(url); } catch { /* uten NIBIO: bare SkogIQ-status */ }
+    const dekning = new Map(); if (raster && raster.w === w) for (const e of eiendommer) { const d = NABO.planDekning(e, raster, bildeBbox); if (d) dekning.set(e.id, d); }
+    // Eiendommen som er åpen: midten av eiendomsflaten ligger innenfor planens grense.
+    const egen = new Set(eiendommer.filter((e) => { const c = etikettPunkt(e.geometri); return c && punktIGeometri(c, geom); }).map((e) => e.id));
+    const liste = await listPlaner(); const u = innloggetBruker()?.bruker;
+    const mine = NABO.planNokler(liste.filter((p) => !u || !p.eier || p.eier === u));
+    if (S.eiendom?.kommunenr && S.eiendom?.gnrbnr) for (const k of NABO.planNokler([{ id: S.planId, eiendom: S.eiendom }]).keys()) egen.add(k);
+    eiendommer = NABO.settStatus(eiendommer, { egen, mine, dekning });
+    if (plan !== S) return;
+    naboData = { planId: S.planId, eiendommer, oppsummert: NABO.oppsummer(eiendommer), raster: !!raster };
+    const o = naboData.oppsummert; naboStatus = raster ? '' : 'NIBIOs planregister svarte ikke – viser bare planer i SkogIQ.ai.';
+    tegnNaboer(); if (naboLag.getLayers().length) kart.fitBounds(naboLag.getBounds(), { padding: [30, 30], maxZoom: 15 });
+    melding(`${eiendommer.length} eiendommer rundt: ${o.mangler.antall} mangler skogbruksplan, ${o.nibio.antall} har plan hos NIBIO, ${o.skogiq.antall} har plan i SkogIQ.ai.`, 6000);
+  } catch (e) { status(`Klarte ikke å hente eiendommene: ${e.message}`); } finally { naboHenter = false; tegnLegend(); }
+}
+function tegnNaboer() {
+  naboLag.clearLayers(); if (!naboData) return;
+  for (const e of naboData.eiendommer) {
+    const st = NABO.STATUS[e.status];
+    const l = L.geoJSON(e.geometri, { pane: 'analysePane', interactive: e.status !== 'egen', style: { color: st.farge, weight: e.status === 'egen' ? 3 : 1.6, dashArray: e.status === 'mangler' ? '6 4' : null, fillColor: st.farge, fillOpacity: st.fyll } });
+    if (e.status !== 'egen') {
+      l.bindTooltip(`${e.tekst}`, { permanent: true, direction: 'center', className: 'nabo-etikett', interactive: false });
+      l.bindPopup(() => naboPopup(e), { maxWidth: 300 });
+      l.on('popupopen', () => naboTakst(e));
+    }
+    l.addTo(naboLag);
+  }
+  oppdaterNaboEtiketter(); tegnLegend();
+}
+function oppdaterNaboEtiketter() { kart.getContainer().classList.toggle('nabo-lav', kart.getZoom() < 15); }
+function naboPopup(e) {
+  const st = NABO.STATUS[e.status]; const d = e.dekning;
+  return `<div class="nabo-pop"><b>Gnr/bnr ${esc(e.tekst)}</b> <span class="hint">${fmt(e.daa)} daa${e.teiger > 1 ? ` · ${e.teiger} teiger` : ''}</span><br>
+    <span class="nabo-status" style="--farge:${st.farge}">${esc(st.navn)}</span>
+    ${e.status === 'nibio' ? `<div class="hint" data-nabo-takst="${esc(e.id)}">${d ? `${Math.round(d.andel * 100)} % dekket av skogbruksplan` : ''}${d?.punkt ? ' · henter takstår …' : ''}</div>` : ''}
+    ${e.status === 'mangler' ? '<div class="hint">Ingen skogbruksplan funnet hos NIBIO eller i SkogIQ.ai. Eiendommen kan også være uten skog.</div>' : ''}
+    ${e.status === 'liten' ? '<div class="hint">Liten eiendom – trolig ikke skogeiendom.</div>' : ''}
+    <div class="knapperad" style="margin:6px 0 0">${e.status === 'skogiq' ? `<button type="button" class="knapp liten primar" data-nabo-aapne="${esc(e.planId)}">Åpne planen</button>` : `<button type="button" class="knapp liten primar" data-nabo-lag='${esc(JSON.stringify({ kommunenr: e.kommunenr, gnr: e.gnr, bnr: e.bnr, fnr: e.fnr }))}'>${e.status === 'nibio' ? 'Lag plan i SkogIQ.ai' : 'Lag skogbruksplan'}</button>`}</div></div>`;
+}
+async function naboTakst(e) {
+  if (e.status !== 'nibio' || !e.dekning?.punkt || e.takst !== undefined) { if (e.takst) skrivTakst(e); return; }
+  try { const r = await fetch(NABO.planInfoUrl(e.dekning.punkt)); e.takst = r.ok ? NABO.tolkPlanInfo(await r.text()) : null; } catch { e.takst = null; }
+  skrivTakst(e);
+}
+function skrivTakst(e) {
+  const el = document.querySelector(`[data-nabo-takst="${CSS.escape(e.id)}"]`); if (!el) return;
+  el.textContent = `${Math.round((e.dekning?.andel || 0) * 100)} % dekket av skogbruksplan${e.takst?.aar ? ` · takst ${e.takst.aar}` : ''}${e.takst?.prosjekt ? ` (${e.takst.prosjekt})` : ''}`;
+}
+document.addEventListener('click', (ev) => {
+  const lag = ev.target.closest('[data-nabo-lag]');
+  if (lag) { const x = JSON.parse(lag.dataset.naboLag); if (!confirm(`Lage skogbruksplan for gnr/bnr ${NABO.matrikkelTekst(x)}? Planen som er åpen, lagres først.`)) return; kart.closePopup(); lagPlanFor(x); return; }
+  const aapne = ev.target.closest('[data-nabo-aapne]'); if (aapne) { kart.closePopup(); aapnePlan(aapne.dataset.naboAapne); }
+});
+
 // ---------------------------------------------------------------- kommunale planer
 // Kommuneplan, kommunedelplaner og reguleringsplaner over eiendommen (DiBK, arealplan.js): arealformål, hensynssoner,
 // muligheter og begrensninger. Hentes automatisk én gang per plan og lagres i planen (S.arealplan).
@@ -1946,6 +2026,7 @@ async function aapnePlan(id) {
   visFane('oversikt');
   andreVisning?.tegn(); tegnPlanListe();
   melding(`Åpnet ${S.eiendom.navn || 'planen'}.`);
+  if (naboLag && kart.hasLayer(naboLag)) visNaboer();
   synkAktiv(); // hent endringer fra mobilen
 }
 

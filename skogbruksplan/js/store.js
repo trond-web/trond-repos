@@ -64,6 +64,7 @@ export async function lagrePlan(plan) {
     laget: plan.metadata?.laget || null,
     synk: !!plan.synk?.id,
     eier: plan.eier || null,
+    kommunenr: plan.eiendom?.kommunenr || null, gnrbnr: plan.eiendom?.gnrbnr || null, // naboeiendommer (naboeiendommer.js)
     // Skylagring (sky.js): «lagret» = siste versjon er i skyen, «endret» = har endringer som ikke er sendt ennå.
     sky: plan.sky ? (planHash(plan) === plan.sky.hash ? 'lagret' : 'endret') : null,
   });
