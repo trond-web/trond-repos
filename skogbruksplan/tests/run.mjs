@@ -47,6 +47,7 @@ import * as SKY from '../js/sky.js';
 import * as KV from '../js/kommune-vei.js';
 import * as NABO from '../js/naboeiendommer.js';
 import * as NATUR from '../js/naturdata.js';
+import * as KULTUR from '../js/kulturminner.js';
 import { lagSkyLager, skyApi } from '../sky-lager.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
@@ -3013,6 +3014,29 @@ test('Naturdata: NiN-naturtyper og arter – tolkning, utvalg, punktoppslag, hen
   const m = NATUR.merkFlater(flater, d);
   assert.deepEqual(m.get('f1').map((o) => o.navn), ['Gammel granskog', 'Hvitryggspett']); assert.equal(m.has('f2'), false);
   assert.equal(m.get('f1')[0].geometri, undefined, 'uten geometri i resultatet');
+});
+
+test('Kulturminner: klikk-info fra Riksantikvaren (GML), sikringssone, henting for kommunen og merking av flater', async () => {
+  const gml = `<msGMLOutput><Lokaliteter_layer><gml:name>Lokaliteter</gml:name><Lokaliteter_feature><kulturminneid>118607</kulturminneid><kommune>Nannestad</kommune>
+    <linkaskeladden>https://askeladden.ra.no/askeladden/?kid=118607</linkaskeladden><linkkulturminnesok>https://kulturminnesok.no/ra/lokalitet/118607</linkkulturminnesok>
+    <lokalitetsart>Bosetning-aktivitetsområde</lokalitetsart><lokaliteteskategori>Arkeologisk minne</lokaliteteskategori><navn>Engelstad østre</navn><vernetype>Automatisk fredet</vernetype></Lokaliteter_feature>
+    <Lokaliteter_feature><kulturminneid>9</kulturminneid><navn>Gamle Rud</navn><vernetype>Listeført</vernetype><linkkulturminnesok>javascript:x</linkkulturminnesok></Lokaliteter_feature></Lokaliteter_layer>
+    <Sikringssoner_layer><gml:name>Sikringssoner</gml:name><Sikringssoner_feature><kulturminneid>118607</kulturminneid></Sikringssoner_feature></Sikringssoner_layer></msGMLOutput>`;
+  const l = KULTUR.tolkPunkt(gml);
+  assert.equal(l.length, 2);
+  assert.deepEqual({ navn: l[0].navn, sone: l[0].sikringssone, fredet: KULTUR.erFredet(l[0]), lenke: l[0].lenke }, { navn: 'Engelstad østre', sone: true, fredet: true, lenke: 'https://kulturminnesok.no/ra/lokalitet/118607' });
+  assert.equal(l[1].sikringssone, false); assert.equal(l[1].lenke, null); assert.equal(KULTUR.erFredet(l[1]), false);
+  assert.equal(KULTUR.tekst(l[0]), 'Engelstad østre – bosetning-aktivitetsområde (automatisk fredet)');
+  assert.deepEqual(KULTUR.tolkPunkt(''), []);
+  assert.match(KULTUR.punktUrl(60.18, 11.02), /kulturminner2\?.*GetFeatureInfo.*query_layers=Lokaliteter%2CSikringssoner.*vnd.ogc.gml/);
+  // Kommunen: sikringssoner fra api.ra.no med neste-lenke, merking av flater
+  const kv = (x, y, d) => ({ type: 'Polygon', coordinates: [[[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]]] });
+  const kall = [];
+  const hent = async (u) => { kall.push(u); const side2 = /offset=1/.test(u); return { ok: true, json: async () => ({ features: [{ geometry: side2 ? kv(10.5, 60, 0.001) : kv(10.002, 60.002, 0.0005), properties: { kulturminneId: side2 ? '2' : '1', informasjon: 'R01.1: Gravhaug. Godt synlig' } }], links: side2 ? [] : [{ rel: 'next', href: 'https://api.ra.no/x?offset=1' }] }) }; };
+  const km = await KULTUR.hentForBoks([10, 60, 11, 60.1], { hent });
+  assert.equal(km.length, 2); assert.equal(kall.length, 2); assert.match(km[0].navn, /Kulturminne 1: Gravhaug/);
+  const m = KULTUR.merkFlater([{ id: 'f1', geometri: kv(10, 60, 0.005) }, { id: 'f2', geometri: kv(10.8, 60, 0.005) }], km);
+  assert.deepEqual([...m.keys()], ['f1']); assert.equal(m.get('f1')[0].geometri, undefined);
 });
 
 await Promise.all(venter);

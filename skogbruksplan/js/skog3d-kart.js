@@ -82,7 +82,7 @@ export function lagMinikart({ bestand = [], veier = [], bekker = [], vann = [], 
       ctx.lineWidth = her ? 3 : 1.4; ctx.strokeStyle = her ? '#c25e10' : 'rgba(110,92,0,0.85)'; ctx.stroke();
     }
     // NiN-naturtyper (grønn) og artsområder (lilla, stiplet) over bestandene
-    for (const n of N) { if (!iBoks(n.bb, x, y, r2)) continue; synlig.natur = (synlig.natur || 0) + 1; poly(n.mp); const f = n.type === 'art' ? '181,23,158' : '46,158,106'; ctx.fillStyle = `rgba(${f},0.18)`; ctx.fill('evenodd'); ctx.setLineDash(n.type === 'art' ? [4, 3] : []); ctx.lineWidth = 1.6 * k; ctx.strokeStyle = `rgb(${f})`; ctx.stroke(); ctx.setLineDash([]); }
+    for (const n of N) { if (!iBoks(n.bb, x, y, r2)) continue; synlig.natur = (synlig.natur || 0) + 1; poly(n.mp); const f = n.type === 'art' ? '181,23,158' : n.type === 'kultur' ? '154,91,43' : '46,158,106'; ctx.fillStyle = `rgba(${f},0.18)`; ctx.fill('evenodd'); ctx.setLineDash(n.type === 'art' ? [4, 3] : []); ctx.lineWidth = 1.6 * k; ctx.strokeStyle = `rgb(${f})`; ctx.stroke(); ctx.setLineDash([]); }
     for (const k of K) if (iBoks(k.bb, x, y, r2)) { lin(k.linje); ctx.strokeStyle = '#2a78d6'; ctx.lineWidth = 2; ctx.stroke(); }
     for (const v of V) {
       if (!iBoks(v.bb, x, y, r2)) continue; synlig.veier++;

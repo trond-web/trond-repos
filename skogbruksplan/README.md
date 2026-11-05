@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.56.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.57.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -1120,6 +1120,29 @@ Grensene kommer fra NIBIO-rapporten [Skogsmaskiner i stroppen (Belbo og Hoffmann
 * Hvert bestand får andel areal per klasse, snitthelning og makshelning.
 * Bestandsdetaljen viser en fargestolpe og en vurdering, for eksempel «65 % av arealet er brattere enn 50 % – ikke drivbart
   med vanlige skogsmaskiner».
+
+## Kulturminner i alle kart (kartlaget «🏛 Kulturminner (Riksantikvaren)»)
+
+Kulturminner fra Riksantikvaren vises på samme måte som naturtypene (`js/kulturminner.js`):
+
+- **Kartet:**
+  - Kartlaget viser lokaliteter, sikringssoner og ikoner (WMS `kart.ra.no/wms/kulturminner2`). Fredede, listeførte og
+    uavklarte vises med Riksantikvarens farger.
+  - Laget er på som standard i alle faner, og valget huskes.
+  - Klikk i kartet gir navn, kategori, art og vernestatus (for eksempel «Automatisk fredet»), om det finnes en
+    sikringssone, og lenke til Kulturminnesøk.
+- **SkogIQ Felt:** kartlaget er med sammen med naturtyper og arter (Mer → Kartlag), og bestandskortet viser
+  kulturminner i bestandet.
+- **Bestand:** kulturminner fra PEFC-datagrunnlaget som ligger i bestandet, vises med råd om å holde sikringssonen
+  fri (PEFC krav 30).
+- **Rapporter, oppdrag og VR-minikartet:** sikringssonene tegnes i brunt, med tegnforklaring.
+- **AR i felt:** varslet om kulturminner fra før.
+- **Kommuneanalyse:**
+  - Fredede kulturminner (sikringssoner fra api.ra.no) hentes for hele kommunen. For Nannestad er det ca. 570.
+  - Hogstflatene som berører dem, merkes «🏛 kulturminne», og popupen viser hvilke.
+  - Sikringssonene tegnes i kartet.
+  - «Skjul flater med kulturminner» tar dem ut, og eksporten har kolonnen `KULTURMINNER`.
+  - Analyser som er lagret før denne versjonen, får kulturminnene første gang de åpnes.
 
 ## NiN-naturtyper og arter (kartlagene «🌿 Naturtyper (NiN)» og «🦉 Arter», bestand og kommuneanalysen)
 

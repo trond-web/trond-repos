@@ -275,7 +275,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
 
   // ---------- minikart (skog3d-kart.js) ----------
   // Planens bestand, veier, stier, bekker og vann. Pil = blikkretning, grønn strek = retningen du går, blått spor = der du har gått.
-  const naturMp = (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade'].includes(o.type) && o.geometri && /Polygon/.test(o.geometri.type)).map((o) => ({ type: o.type === 'artsomrade' ? 'art' : 'nin', navn: o.navn, mp: lokal(o.geometri, skog.senter) }));
+  const naturMp = (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade', 'kulturminne'].includes(o.type) && o.geometri && /Polygon/.test(o.geometri.type)).map((o) => ({ type: o.type === 'artsomrade' ? 'art' : o.type === 'kulturminne' ? 'kultur' : 'nin', navn: o.navn, mp: lokal(o.geometri, skog.senter) }));
   const minikart = lagMinikart({ natur: naturMp, bestand: planBestand.map((s) => ({ id: s.b.id, nr: String(s.b.nr ?? ''), mp: s.mp })), veier: omg.veier, bekker: omg.bekker, vann: omg.innsjoer, bratthet: bratt, farge: (p) => (visBratt ? brattFarge(p) : null), fukt, fuktFarge: (k) => (visFukt ? fuktFarge(k) : null) });
   const spor = lagSpor(); const kartRot = rot.querySelector('.s3-kart'); const kartLerret = kartRot.querySelector('canvas'); const kartCtx = kartLerret.getContext('2d'); const kartInfo = kartRot.querySelector('.s3-kartinfo');
   const ZOOM = [40, 80, 160, 320]; let zoom = 1; let nordOpp = true; let kartTid = 0; let kartTekst = ''; let vrKart = true; let knappVS = false; let knappHS = false;
