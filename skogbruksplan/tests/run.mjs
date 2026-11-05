@@ -45,6 +45,7 @@ import * as MF from '../js/markfukt.js';
 import * as AP from '../js/arealplan.js';
 import * as SKY from '../js/sky.js';
 import * as KV from '../js/kommune-vei.js';
+import * as NABO from '../js/naboeiendommer.js';
 import { lagSkyLager, skyApi } from '../sky-lager.js';
 import * as KB from '../js/karbon.js';
 import { planBoks, hkFor, EIENDOM_FARGER } from '../js/flere-eiendommer.js';
@@ -2936,6 +2937,46 @@ test('Kommuneanalyse: avstand til bilvei fra NVDB (rutenett, kantpunkter, paging
   assert.match(kall[0], /kommune=3314&srid=5973/); assert.match(kall[1], /\/vegnett\/api\/v4\/veglenkesekvenser\/segmentert\?kommune=3314&start=x/, 'neste-lenken får api/v4');
   // Kriteriet finnes med 0 = alle
   assert.equal(STANDARD_KRITERIER_KOMMUNE.maksAvstandVei, 0);
+});
+
+test('Naboeiendommer: teiger per matrikkelenhet, NIBIO-dekning fra bilde, status og planer i SkogIQ', async () => {
+  const { utmTilGeo } = await import('../js/proj.js');
+  const kv = (x0, y0, s) => [[x0, y0], [x0 + s, y0], [x0 + s, y0 + s], [x0, y0 + s], [x0, y0]].map(([x, y]) => utmTilGeo(x, y, 33));
+  const teig = (gnr, bnr, ring, fnr = 0, id) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: { kommunenummer: '3238', gardsnummer: gnr, bruksnummer: bnr, festenummer: fnr, lokalid: id } });
+  const teiger = [teig(29, 2, kv(600000, 6700000, 400), 0, 1), teig(29, 2, kv(601000, 6700000, 100), 0, 2), teig(30, 1, kv(600400, 6700000, 400), 0, 3), teig(31, 5, kv(600000, 6700400, 400), 0, 4), teig(32, 9, kv(600400, 6700400, 50), 0, 5)];
+  const e = NABO.grupper(teiger);
+  assert.equal(e.length, 4); const e292 = e.find((x) => x.tekst === '29/2');
+  assert.equal(e292.teiger, 2); assert.ok(Math.abs(e292.daa - 170) < 1, `${e292.daa} daa`); assert.equal(e292.id, '3238-29/2');
+  // Søkeområder og bildeområde
+  const { omrader, bbox } = NABO.sokeomrader({ type: 'Polygon', coordinates: [kv(600000, 6700000, 400)] });
+  assert.equal(omrader.length, 1); assert.ok(omrader[0].radius <= 3000 && omrader[0].radius > 900);
+  const bb = NABO.bildeomrade(e, bbox); assert.ok(bb[2] >= 601100 - 1, 'tar med teigen øst for søket');
+  assert.match(NABO.planBildeUrl(bb).url, /skogbruksplan\?.*LAYERS=hogstklasser.*SRS=EPSG:25833/);
+  // Kunstig bilde 100 × 100 px over 599500–601500: venstre halvdel dekket av plan
+  const w = 100; const hgt = 100; const data = new Uint8ClampedArray(w * hgt * 4);
+  for (let y = 0; y < hgt; y++) for (let x = 0; x < 50; x++) data[(y * w + x) * 4 + 3] = 255;
+  const rb = [599500, 6699500, 601500, 6701500];
+  const d30 = NABO.planDekning(e.find((x) => x.tekst === '30/1'), { w, h: hgt, data }, rb); // x 600400–600800: delvis til 600500
+  assert.ok(d30.andel > 0.15 && d30.andel < 0.35, `andel ${d30.andel}`); assert.ok(d30.punkt);
+  const d31 = NABO.planDekning(e.find((x) => x.tekst === '31/5'), { w, h: hgt, data }, rb); assert.equal(d31.andel, 1);
+  assert.equal(NABO.planDekning(e292, { w, h: hgt, data }, [0, 0, 10, 10]), null, 'utenfor bildet = ukjent');
+  // Status
+  const mine = NABO.planNokler([{ id: 'p1', kommunenr: '3238', gnrbnr: '31/5' }, { id: 'p2', eiendom: { kommunenr: '3238', gnrbnr: '40/1/2' } }]);
+  assert.deepEqual([...mine.keys()], ['3238-31/5', '3238-40/1/2']);
+  const dekning = new Map([['3238-30/1', d30], ['3238-31/5', d31]]);
+  const st = Object.fromEntries(NABO.settStatus(e, { egen: new Set(['3238-29/2']), mine, dekning }).map((x) => [x.tekst, x.status]));
+  assert.deepEqual(st, { '29/2': 'egen', '30/1': 'nibio', '31/5': 'skogiq', '32/9': 'liten' });
+  const st2 = NABO.settStatus([{ ...e.find((x) => x.tekst === '30/1') }], {})[0];
+  assert.equal(st2.status, 'mangler');
+  const o = NABO.oppsummer(NABO.settStatus(e, { egen: new Set(['3238-29/2']), mine, dekning })); assert.equal(o.nibio.antall, 1); assert.equal(o.liten.antall, 1);
+  // Takstår fra GetFeatureInfo
+  assert.deepEqual(NABO.tolkPlanInfo('<x><prosjekt>ØvreEike_2008</prosjekt><regaar_korr>2009</regaar_korr></x>'), { aar: 2009, prosjekt: 'ØvreEike_2008' });
+  assert.equal(NABO.tolkPlanInfo('<msGMLOutput></msGMLOutput>'), null);
+  assert.match(NABO.planInfoUrl([600000, 6700000]), /GetFeatureInfo.*BBOX=599950,6699950,600050,6700050/);
+  // Henting: dubletter (samme lokalid) fjernes, flere søk slås sammen
+  const kall = []; const hent = async (u) => { kall.push(u); return { ok: true, json: async () => ({ features: teiger.slice(0, 3) }) }; };
+  const t = await NABO.hentTeiger([{ utm: [600000, 6700000], radius: 800 }, { utm: [602000, 6700000], radius: 800 }], { hent, utmTilGeo });
+  assert.equal(t.length, 3); assert.equal(kall.length, 2); assert.match(kall[0], /punkt\/omrader\?nord=.*radius=800.*maksTreff=500/);
 });
 
 await Promise.all(venter);

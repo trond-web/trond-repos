@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.53.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.54.0** (2026-10-31) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -1120,6 +1120,28 @@ Grensene kommer fra NIBIO-rapporten [Skogsmaskiner i stroppen (Belbo og Hoffmann
 * Hvert bestand får andel areal per klasse, snitthelning og makshelning.
 * Bestandsdetaljen viser en fargestolpe og en vurdering, for eksempel «65 % av arealet er brattere enn 50 % – ikke drivbart
   med vanlige skogsmaskiner».
+
+## Naboeiendommer – har eller mangler skogbruksplan (kartlaget «🏡 Naboeiendommer»)
+
+Kartlaget viser eiendommene rundt eiendommen som er åpen, og om de har skogbruksplan (`js/naboeiendommer.js`).
+
+- **Eiendomsflatene:**
+  - Teigene hentes fra Kartverkets eiendom-API (`/eiendom/v1/punkt/omrader`), 500 m rundt eiendommen.
+  - Store eiendommer deles i flere søkesirkler (maks 3 km radius og 500 teiger per søk).
+  - Teigene slås sammen per matrikkelenhet (gnr/bnr/fnr). Gnr/bnr vises som etikett fra zoom 15.
+- **Status og farge:**
+  - **Eiendommen din** – rød kant.
+  - **Har plan i SkogIQ.ai** – grønn. Matches på kommune og gnr/bnr mot planene dine.
+  - **Har skogbruksplan (NIBIO)** – blå. Minst 10 % eller 10 daa av eiendommen er dekket av NIBIOs skogbruksplan
+    (`skogbruksplan/hogstklasser`). Dekningen leses piksel for piksel fra ett WMS-bilde (UTM33) over hele området.
+    Takståret slås opp ved klikk (GetFeatureInfo, `regaar_korr`).
+  - **Mangler skogbruksplan** – oransje, stiplet. Eiendommen kan også være uten skog.
+  - **Liten eiendom** – grå. Under 5 daa, regnes ikke som skogeiendom.
+- **Klikk:**
+  - En eiendom uten plan i SkogIQ.ai får knappen **«Lag skogbruksplan»**. Den lager planen fra gnr/bnr, og planen
+    som er åpen, lagres først.
+  - En eiendom med plan i SkogIQ.ai får **«Åpne planen»**.
+- Tegnforklaringen viser antall per status. Når en annen plan åpnes, hentes naboeiendommene for den.
 
 ## Kommunale planer og reguleringer – muligheter og begrensninger
 
