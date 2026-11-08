@@ -114,7 +114,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   const brattFarge = (pst) => { const k = bratthetKlasse(pst); return k?.farge || null; };
   const harBratt = !!bratt && bratt.pst.some((v) => v >= 33);
   const fuktFarge = (k) => (k && k !== 'd75' ? fuktKlasse(k)?.farge : null); // over 0,75 m vises ikke
-  const harFukt = !!fukt && fukt.k.some((k) => fuktFarge(k));
+  let harFukt = !!fukt && fukt.k.some((k) => fuktFarge(k));
   omg.radius = R;
   vis('Bygger skogen …');
   const hinder = lagHinder(omg);
@@ -127,6 +127,17 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   // Rekkefølge for oppslag: planens bestand → markslag uten skog → skog utenfor planen
   const flater = [...planBestand, ...mark, ...naboer];
   const finnFlate = lagOppslag(flater);
+  // Markfuktighet gjelder kjøring i skog: vis den bare i skog og på myr (planens bestand og skog utenfor planen).
+  // Flat, lavtliggende innmark, idrettsbaner, bebyggelse og veier ble ellers blå og kunne leses som vann.
+  if (fukt) {
+    const k = fukt.k.slice();
+    for (let j = 0; j < fukt.ny; j++) for (let i = 0; i < fukt.nx; i++) {
+      const x = fukt.x0 + i * fukt.d; const y = fukt.y0 + j * fukt.d; // samme rutesentrum som klasseI
+      const f = finnFlate(x, y); const h = hinder(x, y);
+      if (!f?.b || (h && h !== 'sti')) k[j * fukt.nx + i] = null;
+    }
+    fukt.k = k; harFukt = fukt.k.some((x) => fuktFarge(x));
+  }
 
   // ---------- scene ----------
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -301,7 +312,7 @@ export async function aapneVirtuellSkog({ S, b, inn, melding = () => {} }) {
   function oppdaterHud(x, y) {
     const s = finnFlate(x, y); const hp = helningHer(x, y); const bk = bratthetKlasse(hp);
     const fk = fukt ? fuktI(fukt, x, y) : null;
-    const ekstra = [NAER(x, y), hp != null && (visBratt || hp >= 33) ? `⛰ ${bratthetTekst(hp)}` : '', fukt && (visFukt || fk === 'd0' || fk === 'vann') ? `💧 ${fuktTekst(fk)}` : ''].filter(Boolean).join('<br>');
+    const ekstra = [NAER(x, y), hp != null && (visBratt || hp >= 33) ? `⛰ ${bratthetTekst(hp)}` : '', fukt && s?.b && (visFukt || fk === 'd0' || fk === 'vann') ? `💧 ${fuktTekst(fk)}` : ''].filter(Boolean).join('<br>');
     if (fk !== sistFukt) { if ((fk === 'd0' || fk === 'vann') && renderer.xr.isPresenting) vrTavle([`💧 ${fuktKlasse(fk).kort}: ${fuktKlasse(fk).navn.replace('Grunnvann ', 'grunnvann ')}`, fuktKlasse(fk).drift], 5); sistFukt = fk; }
     const bid = `${s?.b?.id || s?.id || '-'}|${ekstra}|${framtid?.scenario || ''}`;
     // I VR: tavle når du går inn i et område som ikke kan drives med vanlige maskiner

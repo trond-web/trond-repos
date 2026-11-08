@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.59.0 – Ingen blå jorder i VR (2026-11-08)
+
+*Rettet.* Markfuktighet vises nå bare i skog og på myr i den virtuelle skogen. Jorder, fotballbaner, tomter og veier får sin vanlige farge og forveksles ikke lenger med vann – også i minikartet.
+
 ## 1.58.0 – Versjonslogg i appen (2026-11-05)
 
 *Nytt.* Klikk på versjonsnummeret nederst i menyen, eller «Hva er nytt» i Om-boksen og i SkogIQ Felt, for å se hva som er nytt. Etter en oppdatering vises det nyeste én gang.
