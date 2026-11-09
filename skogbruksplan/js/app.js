@@ -1445,6 +1445,22 @@ async function beregnFukt() {
 // Produksjonsdata fra hogstmaskinen (StanForD 2010): hogd flate, kjørespor, velteplasser og stammer per treslag.
 let stanfordLag = null;
 const STAMME_FARGE = { G: '#1f6b4a', F: '#c98500', L: '#8fbf3f' };
+// Forslag til driftsveg (driftsveg-ui.js): basvegen, velteplasser og hindrene den gikk utenom.
+let driftsvegLag = null;
+function visDriftsvegLag(gj, { zoom = false } = {}) {
+  if (driftsvegLag) { driftsvegLag.remove(); driftsvegLag = null; }
+  if (!gj || !kart) return;
+  const FARGE = { kulturminne: '#9a5b2b', miljo: '#1f7a3f', hensyn: '#b5179e' };
+  driftsvegLag = L.geoJSON(gj, {
+    interactive: false,
+    style: (f) => (f.properties.lag === 'velteplass' ? { radius: 8, color: '#fff', weight: 2.5, fillColor: '#2a78d6', fillOpacity: 1 } : f.properties.lag === 'driftsveg'
+      ? { color: f.properties.status === 'beholdt' ? '#8a4b00' : '#e07b00', weight: 5, opacity: 0.95, dashArray: f.properties.status === 'beholdt' ? null : '10 6', lineCap: 'round', lineJoin: 'round' }
+      : { color: FARGE[f.properties.lag] || '#d03b3b', weight: 1.5, fillColor: FARGE[f.properties.lag] || '#d03b3b', fillOpacity: 0.25 }),
+    pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 8, color: '#fff', weight: 2, fillColor: '#2a78d6', fillOpacity: 1 }),
+  }).addTo(kart);
+  driftsvegLag.eachLayer((l) => { if (l.feature?.properties.lag === 'driftsveg') l.bringToFront(); });
+  if (zoom) { const b = driftsvegLag.getBounds(); if (b.isValid()) kart.fitBounds(b, { maxZoom: 17, ...synligPadding(kart, 40) }); }
+}
 function visStanfordLag(gj) {
   if (stanfordLag) { stanfordLag.remove(); stanfordLag = null; }
   if (!gj || !kart) return;
@@ -2397,7 +2413,7 @@ function kobleHendelser() {
       if (erMobil()) settArk('halv');
     },
     startValg: (o) => { visTiltakVisning('plan'); settValgModus(true, o); },
-    visKartlag: visStanfordLag,
+    visKartlag: visStanfordLag, visDriftsveg: visDriftsvegLag,
   });
   $('#tiltakVisning').addEventListener('click', (e) => { const b = e.target.closest('[data-tv]'); if (b) visTiltakVisning(b.dataset.tv); });
   $('#velgTiltakBtn').addEventListener('click', () => settValgModus(!valgModus));

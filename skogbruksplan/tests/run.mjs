@@ -3121,6 +3121,40 @@ test('Del med tømmerkjøper på serveren: egne svarfelt, utløpsdato, visninger
   assert.equal(tilbudApi(r, { method: 'GET', url: '/api/tommerx', headers: {} }, res0, '/api/tommerx', {}, '/api/tommer'), false);
 });
 
+test('Driftsveg: unngår våt mark, kulturminner og bratt sideterreng, gjenbruker spor og dekker tømmeret', async () => {
+  const DV = await import('../js/driftsveg.js');
+  const { geoTilUtm } = await import('../js/proj.js');
+  const X = 600000; const Y = 6700000;
+  const kv = (x0, y0, x1, y1) => ({ type: 'Polygon', coordinates: [[[X + x0, Y + y0], [X + x1, Y + y0], [X + x1, Y + y1], [X + x0, Y + y1], [X + x0, Y + y0]]] });
+  const felt = [{ geometri: kv(0, 200, 300, 500), m3: 6000 }, { geometri: kv(300, 200, 500, 400), m3: 1000 }];
+  const veier = [{ type: 'LineString', coordinates: [[X - 200, Y], [X + 700, Y]] }];
+  const g = DV.lagRutenett(felt.map((f) => f.geometri), veier, { celle: 10 });
+  assert.equal(g.d, 10); assert.ok(g.y0 <= Y, 'rutenettet tar med bilveien');
+  // Myr (y 100–140) med en tørr åpning ved x 380–420, og et kulturminne mellom veien og hogstflaten.
+  const fukt = { x0: g.x0, y0: g.y0, d: g.d, nx: g.nx, ny: g.ny, k: Array.from({ length: g.nx * g.ny }, (_, k) => { const [x, y] = DV.senter(g, k); return y - Y > 100 && y - Y < 140 && !(x - X > 380 && x - X < 420) ? 'd0' : null; }) };
+  const z = Array.from({ length: g.nx * g.ny }, (_, k) => { const [x, y] = DV.senter(g, k); return 100 + (x - X < 60 ? (60 - (x - X)) * 0.6 : 0) + (y - Y) * 0.05; });
+  const sperret = [kv(120, 150, 160, 190)];
+  const f = DV.lagForslag(g, { felt, veier, sperret, fukt, z }, {});
+  assert.ok(!f.feil, f.feil); assert.equal(f.status, 'forslag');
+  const pts = f.geometri.coordinates.flat().map(([lon, lat]) => geoTilUtm(lon, lat, 33)).map(([x, y]) => [x - X, y - Y]);
+  assert.equal(f.stat.vaat, 0, 'krysser myra i den tørre åpningen');
+  assert.ok(!pts.some(([x, y]) => x > 115 && x < 165 && y > 145 && y < 195), 'går utenom kulturminnet med sikringssone');
+  assert.ok(f.stat.dekketAndel >= 90, `dekker tømmeret (${f.stat.dekketAndel} %)`);
+  assert.ok(f.stat.maksSide <= DV.STANDARD.maksSide, 'sidehelling innenfor grensen');
+  assert.equal(f.velteplasser.length >= 1, true);
+  const rett = f.rett; assert.ok(rett.vaat > 0, 'rett linje til veien ville gått over myr');
+  // Eksisterende traktorvei gjennom åpningen brukes (ingen nye inngrep der).
+  const spor = [{ type: 'LineString', coordinates: [[X + 400, Y], [X + 400, Y + 300]] }];
+  const f2 = DV.lagForslag(g, { felt, veier, sperret: [], fukt, z, spor }, {});
+  assert.ok(f2.stat.paaSpor > 100, `bruker traktorveien (${f2.stat.paaSpor} m)`); assert.ok(f2.stat.nyttSpor < f.stat.lengde, 'mindre nytt spor');
+  // Uten bilvei: feilmelding. Helt sperret: feilmelding.
+  assert.match(DV.lagForslag(DV.lagRutenett(felt.map((x) => x.geometri), [], { celle: 20 }), { felt, veier: [] }).feil, /bilvei/);
+  assert.match(DV.lagForslag(g, { felt, veier, sperret: [kv(-100, 150, 800, 190)] }).feil, /farbar/);
+  // Råd og GPX
+  assert.ok(f.rad.some((r) => /kommunen/.test(r))); assert.match(DV.lagForslag(g, { felt, veier, fukt, z }, { dekning: 80 }).rad[0], /høyst 80 m/);
+  const x = DV.gpx('Driftsveg 2026-1', f.geometri, f.velteplasser); assert.match(x, /<trkseg>/); assert.match(x, /Velteplass 1/);
+});
+
 test('Versjonslogg: følger versjonsnummeret, er sortert, «nytt siden sist» og CHANGELOG.md er oppdatert', () => {
   assert.equal(LOGG.ENDRINGER[0].versjon, VERSJON, 'første oppføring er gjeldende versjon');
   for (let i = 1; i < LOGG.ENDRINGER.length; i++) { const a = LOGG.ENDRINGER[i - 1]; const b = LOGG.ENDRINGER[i]; assert.ok(LOGG.nyere(a.versjon, b.versjon), `${a.versjon} før ${b.versjon}`); assert.ok(a.dato >= b.dato, `dato ${a.dato} ≥ ${b.dato}`); }
