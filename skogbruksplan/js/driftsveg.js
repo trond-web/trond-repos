@@ -40,6 +40,7 @@ export const STANDARD = {
   vei: 0.05,               // bilvei
   tommer: 0.45,            // inntil 45 % rabatt der det står mest tømmer
   maksGrener: 30, restAndel: 0.04, sikring: 5,
+  offentligStart: 150,     // «meter» påslag for å ende ved offentlig veg: velteplass der krever arbeidsvarslingsplan
 };
 
 // ---------- geometri ----------
@@ -79,6 +80,7 @@ export function naermesteVei(feltBoks, veier) {
 
 // Rutenett over hogstflatene, utvidet til nærmeste bilvei (høyst maksVei meter).
 export function lagRutenett(feltUtm, veierUtm, { celle = null, maksRuter = STANDARD.maksRuter, kant = 60, maksVei = 1500 } = {}) {
+  // veierUtm: alle bilveier (private og offentlige) – rutenettet utvides til den nærmeste.
   let [x0, y0, x1, y1] = boksAv(feltUtm); const feltBoks = [x0, y0, x1, y1];
   const vei = naermesteVei(feltBoks, veierUtm);
   if (vei && vei.avstand <= maksVei) { x0 = Math.min(x0, vei.p[0]); y0 = Math.min(y0, vei.p[1]); x1 = Math.max(x1, vei.p[0]); y1 = Math.max(y1, vei.p[1]); }
@@ -99,8 +101,8 @@ function rasterLinjer(g, geoms, ut, verdi) {
 }
 
 // Bygger lagene i rutenettet. felt: [{ geometri (UTM), m3 (volum som tas ut) }].
-export function byggLag(g, { felt = [], z = null, fukt = null, sperret = [], hensyn = [], veier = [], spor = [], sikring = STANDARD.sikring } = {}) {
-  const n = g.nx * g.ny; const L = { felt: new Int16Array(n).fill(-1), vol: new Float32Array(n), sperret: new Uint8Array(n), hensyn: new Uint8Array(n), vei: new Uint8Array(n), spor: new Uint8Array(n), fukt: new Array(n).fill(null), z };
+export function byggLag(g, { felt = [], z = null, fukt = null, sperret = [], hensyn = [], veier = [], offentlige = [], spor = [], sikring = STANDARD.sikring } = {}) {
+  const n = g.nx * g.ny; const L = { felt: new Int16Array(n).fill(-1), vol: new Float32Array(n), sperret: new Uint8Array(n), hensyn: new Uint8Array(n), vei: new Uint8Array(n), offentlig: new Uint8Array(n), spor: new Uint8Array(n), fukt: new Array(n).fill(null), z };
   const bokser = (liste) => liste.map((x) => ({ x, bb: boksAv([x.geometri || x]) }));
   const fb = bokser(felt); const sb = bokser(sperret); const hb = bokser(hensyn);
   const iBoks = (p, bb, b = 0) => p[0] >= bb[0] - b && p[0] <= bb[2] + b && p[1] >= bb[1] - b && p[1] <= bb[3] + b;
@@ -114,7 +116,7 @@ export function byggLag(g, { felt = [], z = null, fukt = null, sperret = [], hen
   }
   // Volumet i hver flate fordeles likt på rutene i flaten.
   for (let k = 0; k < n; k++) if (L.felt[k] >= 0) L.vol[k] = (felt[L.felt[k]].m3 || 0) / telle.get(L.felt[k]);
-  rasterLinjer(g, spor, L.spor, 1); rasterLinjer(g, veier, L.vei, 1);
+  rasterLinjer(g, spor, L.spor, 1); rasterLinjer(g, offentlige, L.offentlig, 1); rasterLinjer(g, offentlige, L.vei, 1); rasterLinjer(g, veier, L.vei, 1);
   for (let k = 0; k < n; k++) if (L.vei[k]) L.sperret[k] = 0; // bilveien er alltid farbar
   if (z) L.hoyde = z;
   return L;
@@ -158,9 +160,9 @@ function sidehelling(L, g, v, u) {
 }
 
 // Dijkstra fra kildene (kost 0) utover. Kantene regnes i lastet retning: fra naboen mot kilden.
-export function dijkstra(L, g, kilder, o = STANDARD, rabatt = null) {
+export function dijkstra(L, g, kilder, o = STANDARD, rabatt = null, startKost = () => 0) {
   const n = g.nx * g.ny; const kost = new Float64Array(n).fill(Infinity); const forrige = new Int32Array(n).fill(-1); const h = new Heap();
-  for (const k of kilder) { kost[k] = 0; h.push(k, 0); }
+  for (const k of kilder) { const s = startKost(k); if (s < kost[k]) { kost[k] = s; h.push(k, s); } }
   while (h.size) {
     const v = h.pop(); const kv = kost[v]; const i = v % g.nx; const j = Math.floor(v / g.nx);
     for (const [di, dj] of NAB) {
@@ -187,7 +189,7 @@ export function optimaliser(g, L, o = STANDARD) {
   const dekk = (k) => { const i = k % g.nx; const j = Math.floor(k / g.nx); for (let b = -r; b <= r; b++) for (let a = -r; a <= r; a++) { if (a * a + b * b > r * r) continue; const x = i + a; const y = j + b; if (x >= 0 && y >= 0 && x < g.nx && y < g.ny) dekket[y * g.nx + x] = 1; } };
   let kilder = vei; let restVol = totalVol; const uoppnaelig = new Uint8Array(n);
   for (let runde = 0; runde < o.maksGrener && restVol > totalVol * o.restAndel; runde++) {
-    const { kost, forrige } = dijkstra(L, g, kilder, o, rabatt);
+    const { kost, forrige } = dijkstra(L, g, kilder, o, rabatt, (k) => (L.offentlig[k] && !nett.has(k) ? o.offentligStart : 0));
     // Rute med mest udekket volum innenfor dekningsradius (blant de som kan nås).
     let best = -1; let bestGevinst = 0;
     for (let k = 0; k < n; k++) {
@@ -241,6 +243,7 @@ function statistikk(g, L, grener, o, totalVol) {
   return {
     velteplasser,
     stat: {
+      offentligVelteplass: velteplasser.some((k) => L.offentlig?.[k]),
       lengde: Math.round(total), nyttSpor: Math.round(total - paaSpor), paaSpor: Math.round(paaSpor), vaat: Math.round(vaat), hensyn: Math.round(hensyn), utenfor: Math.round(utenfor), bratt: Math.round(bratt),
       maksStigning: Math.round(maksStigning), maksSide: Math.round(maksSide), sporAreal: Math.round((total - paaSpor) * o.bredde),
       volum: Math.round(totalVol), kranAndel: totalVol ? Math.round((kran / totalVol) * 100) : 0, dekketAndel: totalVol ? Math.round((dekketVol / totalVol) * 100) : 0,
@@ -282,6 +285,7 @@ export function rad(stat, { grunnlag = {}, dekning = STANDARD.dekning } = {}) {
   if (!grunnlag.hoyde) r.push('Høydedata manglet, så helning er ikke tatt med. Kontroller traseen i terrenget.');
   if (!grunnlag.fukt) r.push('Markfuktighetskartet manglet, så våt mark er ikke tatt med. Kontroller traseen i terrenget.');
   if (!grunnlag.kulturminner) r.push('Kulturminner kunne ikke hentes. Sjekk kulturminnesok.no før drift.');
+  if (stat.offentligVelteplass) r.push('Velteplassen ligger ved offentlig veg: tømmeret skal ligge minst 3 m fra vegkanten, og drifta krever godkjent arbeidsvarslingsplan. Lag skiltplan for oppdraget.');
   r.push('Bygging av permanent traktorveg (klasse 7 eller 8) med graving eller planering krever godkjenning fra kommunen. Kjørespor uten terrenginngrep krever ikke det.');
   return r;
 }

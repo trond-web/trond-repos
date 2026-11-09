@@ -220,6 +220,29 @@ function naerEiendom(geom, grense, maksM) {
   return pts.some((p, i) => i % 3 === 0 && avstandTilLinje(p, kant) <= maksM);
 }
 
+// Offentlige veger (europa-, riks-, fylkes- og kommunale veger) med fartsgrenser i en UTM33-boks [x0, y0, x1, y1] –
+// til skiltplanen (skiltplan.js). Gir [{ kategori, ref, geometri (lon/lat), fartDeler: [{ geometri, fart }] }].
+export async function hentOffentligeVeier(bb, { hent = fetch, logg = () => {} } = {}) {
+  const ks = bb.map((v) => Math.round(v)).join(',');
+  logg('Henter offentlige veger og fartsgrenser fra NVDB …');
+  const [segmenter, farter] = await Promise.all([
+    Promise.all(['E', 'R', 'F', 'K'].map((k) => hentAlle(hent, `${NVDB}/vegnett/api/v4/veglenkesekvenser/segmentert?kartutsnitt=${ks}&srid=5973&vegsystemreferanse=${k}&antall=1000`).catch(() => []))).then((x) => x.flat()),
+    hentAlle(hent, `${NVDB}/vegobjekter/api/v4/vegobjekter/105?kartutsnitt=${ks}&srid=5973&inkluder=egenskaper,geometri&antall=1000`).catch(() => []),
+  ]);
+  const fartDeler = farter.map((o) => ({ geometri: o.geometri?.wkt && wktTilGeo(o.geometri.wkt), fart: Number(o.egenskaper?.find((e) => e.navn === 'Fartsgrense')?.verdi) || null })).filter((f) => f.geometri && f.fart && /Line/.test(f.geometri.type));
+  const perVei = new Map();
+  for (const s of segmenter) {
+    if (s.typeVeg && /gang|sykkel|fortau|trapp/i.test(s.typeVeg)) continue;
+    const geo = s.geometri?.wkt && wktTilGeo(s.geometri.wkt); if (!geo || !/Line/.test(geo.type)) continue;
+    const ref = (s.vegsystemreferanse?.kortform || '').split(' ')[0] || '';
+    const kategori = s.vegsystemreferanse?.vegsystem?.vegkategori || ref[0] || 'K';
+    const n = `${kategori}${ref}`;
+    if (!perVei.has(n)) perVei.set(n, { kategori, ref, deler: [] });
+    perVei.get(n).deler.push(...(geo.type === 'LineString' ? [geo.coordinates] : geo.coordinates));
+  }
+  return [...perVei.values()].map((v) => ({ kategori: v.kategori, ref: v.ref, geometri: { type: 'MultiLineString', coordinates: v.deler }, fartDeler }));
+}
+
 // Henter skogsbilveier (S) og eventuelt private veier (P) som ligger på eller inntil eiendommen,
 // pluss landbruksvegklasse, bommer, snuplasser og stikkrenner.
 export async function hentNvdbVeier(grense, { hent = fetch, medPrivate = true, logg = () => {} } = {}) {

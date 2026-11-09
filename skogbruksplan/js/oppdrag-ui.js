@@ -5,6 +5,7 @@ import { KRAVPUNKTER } from './pefc.js';
 import { svgKart } from './rapporter.js';
 import { VEIKLASSER, VEISTIL } from './veier.js';
 import { lagDriftsvegUi } from './driftsveg-ui.js';
+import { lagSkiltplanUi } from './skiltplan-ui.js';
 import { signatur } from './versjon.js';
 import { fmt } from './charts.js';
 import { lagTilbudUi } from './tilbud-ui.js';
@@ -15,7 +16,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const opsj = (liste, valgt) => liste.map(([v, t]) => `<option value="${esc(v)}" ${String(v) === String(valgt ?? '') ? 'selected' : ''}>${esc(t)}</option>`).join('');
 const kravNavn = (nr) => KRAVPUNKTER.find((k) => k.nr === nr)?.tittel || '';
 
-export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, visBestander, uthev, tiltakNavn, startValg, visKartlag, visDriftsveg = () => {} }) {
+export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, visBestander, uthev, tiltakNavn, startValg, visKartlag, visDriftsveg = () => {}, visSkilt = () => {} }) {
   let valgt = null; let filter = 'aktive';
   const S = () => hentPlan();
   const alle = () => S().oppdrag || [];
@@ -27,6 +28,8 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
   const stanfordUi = lagStanfordUi({ hentPlan, endret, melding, visKartlag });
   // Forslag til driftsveg for hogstoppdrag (driftsveg-ui.js).
   const driftsvegUi = lagDriftsvegUi({ hentPlan, endret, melding, okonomi, visLag: visDriftsveg });
+  // Skiltplan og arbeidsvarsling (skiltplan-ui.js).
+  const skiltUi = lagSkiltplanUi({ hentPlan, endret, melding, visLag: visSkilt });
 
   function mengdeTekst(o, s) {
     const ot = typeFor(o.type);
@@ -71,6 +74,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
       ${tilbudUi.html(o)}
       ${stanfordUi.html(o)}
       ${driftsvegUi.html(o)}
+      ${skiltUi.html(o)}
       <form class="skjema tre-kol" id="oppdragSkjema">
         <label class="hel">Tittel <input name="tittel" value="${esc(o.tittel)}"></label>
         <label>Status <select name="status">${opsj(Object.entries(OPPDRAGSSTATUS).map(([k, v]) => [k, v.navn]), o.status)}</select></label>
@@ -107,6 +111,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     uthev(o ? linjer(S(), o).map((l) => l.bestand.id) : []);
     if (o) stanfordUi.kart(o); else stanfordUi.lukk();
     if (o?.driftsveg) driftsvegUi.kart(o); else driftsvegUi.lukk();
+    if (o?.skiltplan) skiltUi.kart(o); else skiltUi.lukk();
   }
 
   function apne(id) { valgt = id; const o = finn(id); if (o) tilbudUi.apnet(o, tegn); tegn(); if (o) visBestander(linjer(S(), o).map((l) => l.bestand.id)); }
@@ -164,6 +169,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     if (valgt && finn(valgt) && e.target.closest('[data-tb]') && await tilbudUi.klikk(e, finn(valgt), tegn)) return;
     if (valgt && finn(valgt) && e.target.closest('[data-sf]') && await stanfordUi.klikk(e, finn(valgt), tegn)) return;
     if (valgt && finn(valgt) && e.target.closest('[data-dv]') && driftsvegUi.klikk(e, finn(valgt), tegn)) return;
+    if (valgt && finn(valgt) && e.target.closest('[data-sp]') && skiltUi.klikk(e, finn(valgt), tegn)) return;
     const rad = e.target.closest('[data-oppdrag]');
     if (rad) { apne(rad.dataset.oppdrag); return; }
     const h = e.target.closest('[data-oh]'); if (!h) return;
@@ -184,6 +190,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     if (tilbudUi.endring(e, o, tegn)) return;
     if (stanfordUi.endring(e, o, tegn)) return;
     if (driftsvegUi.endring(e)) return;
+    if (skiltUi.endring(e, o)) return;
     if (f.dataset.sjekk) { o.sjekk = { ...o.sjekk, [f.dataset.sjekk]: f.checked }; lagre(); return; }
     if (f.dataset.felt) { const def = typeFor(o.type).felt.find((x) => x.id === f.dataset.felt); o.felt = { ...o.felt, [f.dataset.felt]: def?.type === 'tall' ? (f.value === '' ? '' : Number(f.value)) : f.value }; lagre(); return; }
     if (!f.name) return;

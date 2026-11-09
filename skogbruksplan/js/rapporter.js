@@ -93,8 +93,8 @@ export function svgKart(S, farge, { bredde = 720, hoyde = 460, etiketter = true,
   // Ekstra objekter (f.eks. miljøobjekter): flater, linjer og punkter i egen farge.
   for (const o of ekstra) {
     const g = o.geometri; if (!g) continue;
-    if (g.type === 'Point') { const [sx, sy] = p(g.coordinates).split(','); ut += `<circle cx="${sx}" cy="${sy}" r="4" fill="${o.farge}" stroke="#fff" stroke-width="1"/>`; }
-    else if (/Line/.test(g.type)) { const linjer = g.type === 'LineString' ? [g.coordinates] : g.coordinates; ut += `<path d="${linjer.map((l) => `M${l.map(p).join('L')}`).join('')}" fill="none" stroke="${o.farge}" stroke-width="2"/>`; }
+    if (g.type === 'Point') { const [sx, sy] = p(g.coordinates).split(','); ut += `<circle cx="${sx}" cy="${sy}" r="${o.tekst ? 7 : 4}" fill="${o.farge}" stroke="#fff" stroke-width="1"/>${o.tekst ? `<text x="${sx}" y="${Number(sy) + 3.5}" text-anchor="middle" font-size="9" font-weight="700" fill="#111">${esc(o.tekst)}</text>` : ''}`; }
+    else if (/Line/.test(g.type)) { const linjer = g.type === 'LineString' ? [g.coordinates] : g.coordinates; ut += `<path d="${linjer.map((l) => `M${l.map(p).join('L')}`).join('')}" fill="none" stroke="${o.farge}" stroke-width="${o.bredde || 2}"/>`; }
     else if (/Polygon/.test(g.type)) ut += `<path d="${sti(g)}" fill="${o.farge}" fill-opacity="0.35" stroke="${o.farge}" stroke-width="1.2" fill-rule="evenodd"/>`;
   }
   if (etiketter) {

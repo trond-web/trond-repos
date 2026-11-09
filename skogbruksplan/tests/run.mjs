@@ -3150,9 +3150,57 @@ test('Driftsveg: unngår våt mark, kulturminner og bratt sideterreng, gjenbruke
   // Uten bilvei: feilmelding. Helt sperret: feilmelding.
   assert.match(DV.lagForslag(DV.lagRutenett(felt.map((x) => x.geometri), [], { celle: 20 }), { felt, veier: [] }).feil, /bilvei/);
   assert.match(DV.lagForslag(g, { felt, veier, sperret: [kv(-100, 150, 800, 190)] }).feil, /farbar/);
+  // Offentlig veg: sporet kan ende der (og rådet nevner arbeidsvarsling), men en privat veg litt lenger unna foretrekkes.
+  const fo = DV.lagForslag(g, { felt, veier: [], offentlige: veier, fukt, z }, {});
+  assert.ok(fo.stat.offentligVelteplass); assert.ok(fo.rad.some((r) => /arbeidsvarslingsplan/.test(r)));
+  const privat = [{ type: 'LineString', coordinates: [[X - 50, Y + 560], [X + 520, Y + 560]] }];
+  const g3 = DV.lagRutenett(felt.map((x) => x.geometri), [...veier, ...privat], { celle: 10 });
+  const fp = DV.lagForslag(g3, { felt, veier: privat, offentlige: veier }, {});
+  assert.ok(!fp.stat.offentligVelteplass, 'privat veg nord for flatene velges framfor fylkesvegen');
   // Råd og GPX
   assert.ok(f.rad.some((r) => /kommunen/.test(r))); assert.match(DV.lagForslag(g, { felt, veier, fukt, z }, { dekning: 80 }).rad[0], /høyst 80 m/);
   const x = DV.gpx('Driftsveg 2026-1', f.geometri, f.velteplasser); assert.match(x, /<trkseg>/); assert.match(x, /Velteplass 1/);
+});
+
+test('Skiltplan: arbeidsvarsling ved velteplass, kryssing og hogst inntil offentlig veg, stier og krav', async () => {
+  const SP = await import('../js/skiltplan.js');
+  const X = 600000; const Y = 6700000; const P = (x, y) => [X + x, Y + y];
+  const kv = (x0, y0, x1, y1) => ({ type: 'Polygon', coordinates: [[P(x0, y0), P(x1, y0), P(x1, y1), P(x0, y1), P(x0, y0)]] });
+  const fv = { kategori: 'F', ref: 'FV224', linjer: [[P(-1000, 0), P(-200, 0)], [P(-200, 0), P(1000, 0)]], fartDeler: [{ fart: 80, linjer: [[P(-1000, 0), P(1000, 0)]] }] };
+  const g = { felt: [kv(-100, 20, 100, 200)], velteplasser: [P(0, 10)], driftsveg: [[P(300, -100), P(300, 100)]], offentlige: [fv], stier: [[P(-400, 150), P(-50, 150)]], idag: '2026-11-09' };
+  const r = SP.lagSkiltplan(g);
+  assert.deepEqual(r.situasjoner.map((s) => s.type).sort(), ['hogst-ved-veg', 'kryssing', 'sti', 'velteplass']);
+  // Velteplass: 110 Vegarbeid + 808 «Tømmerlasting» 200 m før i begge retninger (80 km/t), og nedsatt fart 60.
+  const v = r.skilt.filter((s) => s.situasjon === 'A1' && s.skilt[0] === '110');
+  assert.equal(v.length, 2); assert.equal(v[0].tekst, 'Tømmerlasting');
+  const xs = v.map((s) => Math.round(SP.utmPunkt(s.punkt)[0] - X)).sort((a, b) => a - b);
+  assert.ok(Math.abs(xs[0] + 200) <= 6 && Math.abs(xs[1] - 200) <= 6, `200 m hver vei langs vegen, også over skjøten mellom segmentene (${xs})`);
+  assert.equal(r.skilt.filter((s) => s.situasjon === 'A1' && s.skilt[0] === '362').every((s) => s.fart === 60), true);
+  // Kryssing: 156 Annen fare med «Kryssende tømmertransport».
+  const k = r.skilt.filter((s) => s.skilt[0] === '156'); assert.equal(k.length, 2); assert.equal(k[0].tekst, 'Kryssende tømmertransport');
+  // Sti inn i fareområdet (hogstflaten + 90 m).
+  const sti = r.skilt.filter((s) => s.situasjon.startsWith('D')); assert.equal(sti.length, 1); assert.match(sti[0].tekst, /90 m/);
+  assert.ok(Math.abs(SP.utmPunkt(sti[0].punkt)[0] - X + 190) < 8, 'skiltet står der stien når sikkerhetssonen');
+  // Søknad og krav
+  assert.equal(r.soknader.length, 1); assert.equal(r.soknader[0].myndighet, 'Statens vegvesen'); assert.match(r.soknader[0].hvordan, /Din side/);
+  const krav = r.krav.map((x) => x.id); for (const id of ['plan', 'kompetanse', 'avstand3', 'skjaering', 'bunnflo', 'kryssing', 'felling', 'sti-skilt', 'sti-rydd', 'kraft', 'fjern']) assert.ok(krav.includes(id), id);
+  assert.ok(r.krav.every((x) => SP.KILDER[x.kilde]), 'alle krav har kilde');
+  // Kommunal veg 40 km/t: kortere avstand, kommunen søkes, ingen fartsreduksjon.
+  const r2 = SP.lagSkiltplan({ ...g, driftsveg: [], stier: [], offentlige: [{ kategori: 'K', ref: 'KV1001', linjer: fv.linjer, fart: 40 }] });
+  assert.equal(r2.soknader[0].myndighet, 'kommunen'); assert.ok(!r2.skilt.some((s) => s.skilt.includes('362'))); assert.equal(r2.situasjoner[0].avstand, 75);
+  // Velteplass ved privat skogsbilveg, langt fra offentlig veg: ingen søknad, infoskilt.
+  const r3 = SP.lagSkiltplan({ felt: [kv(-100, 1020, 100, 1200)], velteplasser: [P(0, 1010)], offentlige: [fv], private: [{ kategori: 'S', ref: 'SV12', linjer: [[P(-300, 1005), P(300, 1005)]] }], stier: [] });
+  assert.equal(r3.soknader.length, 0); assert.equal(r3.situasjoner[0].type, 'velteplass-privat'); assert.match(r3.skilt[0].merknad, /kommunen/);
+  assert.ok(!r3.krav.some((x) => x.id === 'plan'));
+  // Avstand etter fart, og vegens ende
+  // Spor som bare ender ved vegen er ingen kryssing; to velteplasser tett langs samme veg deler skiltsett.
+  assert.equal(SP.krysninger([[P(300, 300), P(300, 2)]], fv.linjer).length, 0); assert.equal(SP.krysninger([[P(300, 100), P(300, -100)]], fv.linjer).length, 1);
+  const r4 = SP.lagSkiltplan({ ...g, driftsveg: [], stier: [], velteplasser: [P(0, 10), P(80, 12)] });
+  const a2 = r4.situasjoner.find((s) => s.id === 'A2'); assert.equal(a2.sammeSkilt, 'A1'); assert.equal(r4.skilt.filter((s) => s.skilt[0] === '110' && s.tekst === 'Tømmerlasting').length, 2);
+  assert.deepEqual([30, 50, 60, 80, 90].map(SP.skiltAvstand), [75, 75, 150, 200, 250]);
+  const kort = SP.langsVeg(P(0, 0), [{ linjer: [[P(-50, 0), P(400, 0)]] }], 200).map((x) => x.avstand).sort((a, b) => a - b);
+  assert.ok(kort[0] <= 52 && kort[1] >= 195, `vegen slutter etter 50 m den ene veien (${kort})`);
+  assert.match(SP.skiltSvg(r.skilt[0]), /<svg/); assert.match(SP.skiltTekst({ skilt: ['362'], fart: 60 }), /362 Fartsgrense 60/);
 });
 
 test('Versjonslogg: følger versjonsnummeret, er sortert, «nytt siden sist» og CHANGELOG.md er oppdatert', () => {
