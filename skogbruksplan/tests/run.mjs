@@ -3040,6 +3040,87 @@ test('Kulturminner: klikk-info fra Riksantikvaren (GML), sikringssone, henting f
   assert.deepEqual([...m.keys()], ['f1']); assert.equal(m.get('f1')[0].geometri, undefined);
 });
 
+test('Del med tømmerkjøper: utvalg, pakke uten eierens data, forslag, sammenligning og nedlasting', async () => {
+  const TK = await import('../js/tommerkjoper.js');
+  const kv = (x, y, d) => ({ type: 'Polygon', coordinates: [[[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]]] });
+  const S = { eiendom: { navn: 'Testskogen', kommune: 'Løten', gnrbnr: '12/3', eier: 'Ola Nordmann' }, verdi: { rente: 3 }, bestand: [
+    { id: 'b1', nr: '1', areal: 20, treslag: 'G', bonitet: 17, alder: 90, volumDaa: 30, geometri: kv(11, 60.9, 0.002), bratthet: { andel: { taubane: 0, vinsj: 0 }, ikkeDrivbar: 0, bratt: 0, snitt: 8, maks: 20 }, markfukt: { andeler: { d25: 0.3 }, vat: 0.3 }, tiltak: [{ id: 't1', type: 'sluttavvirkning', aar: 2026, status: 'planlagt' }] },
+    { id: 'b2', nr: '2', areal: 10, treslag: 'F', bonitet: 11, alder: 70, volumDaa: 20, geometri: kv(11.01, 60.9, 0.002), tiltak: [{ id: 't2', type: 'tynning', aar: 2028, status: 'planlagt' }] },
+    { id: 'b3', nr: '3', areal: 5, treslag: 'G', bonitet: 14, alder: 10, volumDaa: 1, miljo: true, merknad: 'Bekkekløft', tiltak: [] },
+    { id: 'b4', nr: '4', areal: 5, treslag: 'G', bonitet: 14, alder: 95, volumDaa: 25, tiltak: [{ id: 't4', type: 'sluttavvirkning', aar: 2020, status: 'utfort' }] }] };
+  assert.deepEqual(TK.foreslaaBestand(S, 'planlagt', { iAar: 2026 }), ['b1', 'b2']);
+  assert.ok(TK.foreslaaBestand(S, 'hogstmoden', { iAar: 2026 }).includes('b4'), 'utført hogst teller ikke som planlagt, men gammel skog er hogstmoden');
+  assert.ok(!TK.foreslaaBestand(S, 'hogstmoden', { iAar: 2026 }).includes('b3'), 'miljøfigur er ikke hogstmoden');
+  const d = TK.nyDeling(S, { idag: '2026-11-09', kontakt: { navn: 'Ola', telefon: '900 00 000' }, iAar: 2026 });
+  assert.equal(d.svarfrist, '2026-11-30'); assert.equal(d.utloper, '2027-02-07'); assert.deepEqual(d.bestand, ['b1', 'b2']);
+  assert.deepEqual(TK.mangler(d), ['minst én kjøper']);
+  d.mottakere = [{ id: 'k1', firma: 'Kjøper A', navn: 'Kari', epost: 'kari@a.no' }, { id: 'k2', firma: 'Kjøper B' }, { id: 'k3', firma: 'Kjøper C' }];
+  d.bestand.push('b3');
+  const p = TK.delingPakke(S, d, { iAar: 2026, tiltakNavn: (t) => ({ sluttavvirkning: 'Sluttavvirkning', tynning: 'Tynning' }[t]) });
+  assert.equal(p.sum.bestand, 3); assert.equal(p.sum.areal, 35); assert.equal(p.sted, 'Testskogen, Løten'); assert.equal(p.gnrbnr, '12/3');
+  const b1 = p.bestand.find((b) => b.nr === '1'); const b2 = p.bestand.find((b) => b.nr === '2');
+  assert.equal(b1.m3, 600); assert.equal(b1.hogst.m3, 600); assert.equal(b1.hogst.navn, 'Sluttavvirkning');
+  assert.equal(b2.hogst.aar, 2028); assert.ok(b2.hogst.m3 > 50 && b2.hogst.m3 < 70, `tynning tar 25 % av framskrevet volum (${b2.hogst.m3})`);
+  assert.equal(b1.drift.fukt.niva, 'vat'); assert.equal(b1.drift.bratt.niva, 'lett'); assert.equal(p.bestand.find((b) => b.nr === '3').miljo, true);
+  assert.equal(p.sum.salg, 600 + b2.hogst.m3, 'planlagt uttak der hogst er planlagt – miljøfiguren uten hogst selges ikke');
+  assert.equal(p.sum.sortiment.gs, 360); assert.equal(p.sum.sortiment.gm, 240); assert.equal(p.sum.sortiment.lm, 0);
+  const S4 = { ...S, bestand: [S.bestand[3]] }; const p4 = TK.delingPakke(S4, { ...d, bestand: ['b4'] }, { iAar: 2026 }); assert.equal(p4.sum.salg, p4.bestand[0].m3, 'uten planlagt hogst: stående volum');
+  assert.equal(p.kart.length, 2);
+  const json = JSON.stringify(p); for (const hemmelig of ['Ola Nordmann', 'rente', 'Kari', 'kari@', 'Kjøper A', 'Kjøper B', 'eier']) assert.ok(!json.includes(hemmelig), `deles ikke: ${hemmelig}`);
+  const p2 = TK.delingPakke(S, { ...d, ta: { kart: false, drift: false, hensyn: false, eiendom: false } }, { iAar: 2026 });
+  assert.equal(p2.kart.length, 0); assert.equal(p2.gnrbnr, undefined); assert.equal(p2.bestand[0].drift, undefined); assert.equal(p2.bestand[0].miljo, undefined);
+  // Svar: rensing og sjekk (samme som serveren bruker)
+  assert.equal(TK.sjekkSvar(TK.rensSvar({ firma: 'A' })), 'Oppgi minst én pris eller en fast sum');
+  assert.equal(TK.sjekkSvar(TK.rensSvar({ priser: { gs: 500 } })), 'Oppgi firma');
+  const r = TK.rensSvar({ firma: 'A', priser: { gs: '520', gm: 300, fs: -5, xx: 9 }, drift: '170', ondsinnet: '<script>' });
+  assert.deepEqual(r.priser, { gs: 520, gm: 300, fs: null, fm: null, lm: null }); assert.equal(r.drift, 170); assert.equal(r.ondsinnet, undefined);
+  // Netto: pris × sortiment − drift × m³; fast sum; manglende sortiment flagges
+  const alle = { gs: 520, gm: 310, fs: 500, fm: 300 };
+  const v = TK.vurderSvar(p, { priser: alle, drift: 170 });
+  const brutto = Object.entries(alle).reduce((a, [k, x]) => a + x * p.sum.sortiment[k], 0);
+  assert.equal(v.brutto, brutto); assert.equal(v.netto, brutto - 170 * p.sum.salg); assert.deepEqual(v.mangler, []);
+  assert.deepEqual(TK.vurderSvar(p, { priser: { gs: 520 } }).mangler, ['Gran massevirke', 'Furu sagtømmer', 'Furu massevirke']);
+  assert.equal(TK.vurderSvar(p, { priser: {}, fastSum: 200000 }).netto, 200000);
+  d.svar = [{ mottakerId: 'k1', firma: 'Kjøper A', priser: alle, drift: 170, gyldigTil: '2099-01-01', mottatt: '2026-11-20T10:00:00Z' },
+    { mottakerId: 'k2', firma: 'Kjøper B', priser: { ...alle, gs: 560 }, drift: 175, gyldigTil: '2026-11-10', mottatt: '2026-11-21T10:00:00Z' },
+    { mottakerId: 'k3', firma: 'Kjøper C', priser: { gs: 900 }, drift: 100, mottatt: '2026-12-05T10:00:00Z' }];
+  const rader = TK.sammenlign(d, p, { idag: '2026-11-25' });
+  assert.equal(rader.find((x) => x.best).mottakerId, 'k1', 'B er utløpt, C mangler priser');
+  assert.ok(rader.find((x) => x.mottakerId === 'k3').etterFrist); assert.ok(!rader.find((x) => x.mottakerId === 'k2').gyldig);
+  TK.velgKjoper(d, 'k1', p, { idag: '2026-11-25' });
+  assert.equal(d.status, 'tildelt'); assert.equal(d.valgt, 'k1'); assert.equal(d.solgt.netto, Math.round(v.netto));
+  // Nedlasting og meldinger
+  const c = TK.csv(p); assert.ok(c.startsWith('﻿Bestand;')); assert.equal(c.trim().split('\r\n').length, 4); assert.ok(c.includes('Bekkekløft'));
+  const g = TK.geojson(p); assert.equal(g.features.length, 2); assert.equal(g.features[0].properties.bestand, '1'); assert.equal(g.features[0].properties.uttak_m3, 600);
+  const t = TK.delingTekst(p, d.mottakere[0], 'https://x/tommer.html?f=1&k=2'); assert.ok(t.tekst.includes('https://x/tommer.html?f=1&k=2')); assert.match(t.tekst, /planlagt hogst 2026–2028/);
+});
+
+test('Del med tømmerkjøper på serveren: egne svarfelt, utløpsdato, visninger og stopp', async () => {
+  const { lagTilbudRelay, tilbudApi, erMottakerKall } = await import('../tilbud-relay.js');
+  const F = await import('../js/tommer-felles.js');
+  let tid = Date.parse('2026-11-09T12:00:00Z');
+  const r = lagTilbudRelay({ naa: () => tid, rens: F.rensSvar, sjekk: F.sjekkSvar });
+  const { id, eier, koder } = r.opprett({ data: { tittel: 'Tømmer' }, mottakere: [{ id: 'a', navn: 'A' }, { id: 'b', navn: 'B' }], utloper: '2026-12-01' });
+  assert.equal(r.vis(id, koder.a).data.tittel, 'Tømmer'); r.vis(id, koder.a);
+  assert.equal(r.svar(id, koder.a, { priser: { gs: 500 } }).status, 400, 'firma mangler');
+  assert.ok(r.svar(id, koder.a, { firma: 'A AS', priser: { gs: 500 }, drift: 160 }).ok);
+  const sv = r.svarFor(id, eier); assert.equal(sv.svar[0].priser.gs, 500); assert.equal(sv.visninger.a.antall, 2); assert.equal(sv.visninger.b.antall, 0); assert.equal(sv.utloper, '2026-12-01');
+  tid = Date.parse('2026-12-02T12:00:00Z');
+  assert.equal(r.vis(id, koder.b).status, 410, 'utløpt lenke'); assert.equal(r.svar(id, koder.a, { firma: 'A', fastSum: 1 }).status, 410);
+  assert.ok(r.oppdater(id, eier, { utloper: '2027-01-01' }).ok); assert.equal(r.vis(id, koder.b).data.tittel, 'Tømmer', 'forlenget');
+  assert.ok(r.slett(id, eier).ok); assert.equal(r.vis(id, koder.a).status, 404, 'stoppet deling');
+  // HTTP under /api/tommer, og åpne mottakerkall
+  assert.ok(erMottakerKall('GET', '/api/tommer/0123456789abcdef', '/api/tommer')); assert.ok(erMottakerKall('POST', '/api/tommer/0123456789abcdef/svar', '/api/tommer'));
+  assert.ok(!erMottakerKall('POST', '/api/tommer', '/api/tommer')); assert.ok(!erMottakerKall('GET', '/api/tommer/0123456789abcdef/svar', '/api/tommer')); assert.ok(!erMottakerKall('GET', '/api/tommer/0123456789abcdef', '/api/tilbud'));
+  assert.ok(erMottakerKall('GET', '/api/tilbud/0123456789abcdef'));
+  const kjor = (metode, url, kropp) => new Promise((ok) => { const h = {}; const req = { method: metode, url, headers: {}, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(JSON.stringify(kropp))); f(); }, 0); }, destroy() {} }; const res = { writeHead(s) { this.s = s; }, end(b) { ok({ status: this.s, kropp: JSON.parse(b) }); } }; assert.ok(tilbudApi(r, req, res, new URL(url, 'http://x').pathname, {}, '/api/tommer')); });
+  const p = await kjor('POST', '/api/tommer', { data: { tittel: 'T' }, mottakere: [{ id: 'a', navn: 'A' }] }); assert.equal(p.status, 200);
+  assert.equal((await kjor('POST', `/api/tommer/${p.kropp.id}/svar?k=${p.kropp.koder.a}`, { firma: 'A', fastSum: 100000 })).status, 200);
+  assert.equal((await kjor('GET', `/api/tommer/${p.kropp.id}/svar?e=${p.kropp.eier}`)).kropp.svar[0].fastSum, 100000);
+  const res0 = { writeHead() {}, end() {} }; assert.equal(tilbudApi(r, { method: 'GET', url: '/api/tilbud', headers: {} }, res0, '/api/tilbud', {}, '/api/tommer'), false);
+  assert.equal(tilbudApi(r, { method: 'GET', url: '/api/tommerx', headers: {} }, res0, '/api/tommerx', {}, '/api/tommer'), false);
+});
+
 test('Versjonslogg: følger versjonsnummeret, er sortert, «nytt siden sist» og CHANGELOG.md er oppdatert', () => {
   assert.equal(LOGG.ENDRINGER[0].versjon, VERSJON, 'første oppføring er gjeldende versjon');
   for (let i = 1; i < LOGG.ENDRINGER.length; i++) { const a = LOGG.ENDRINGER[i - 1]; const b = LOGG.ENDRINGER[i]; assert.ok(LOGG.nyere(a.versjon, b.versjon), `${a.versjon} før ${b.versjon}`); assert.ok(a.dato >= b.dato, `dato ${a.dato} ≥ ${b.dato}`); }

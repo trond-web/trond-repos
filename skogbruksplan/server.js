@@ -10,7 +10,8 @@ import { lagRelay, kontrollerApi } from './kontroller-relay.js';
 import { lagPlanRelay, planApi } from './plan-relay.js';
 import { lagJdRelay, jdApi, JD_SANDKASSE } from './jd-relay.js';
 import { lagInnlogging, innloggingApi, krevInnlogging, corsFor, lagEpostSender } from './auth.js';
-import { lagTilbudRelay, tilbudApi } from './tilbud-relay.js';
+import { lagTilbudRelay, tilbudApi, erMottakerKall } from './tilbud-relay.js';
+import { rensSvar as rensTommerSvar, sjekkSvar as sjekkTommerSvar } from './js/tommer-felles.js';
 import { lagSkyLager, skyApi } from './sky-lager.js';
 
 const ROT = path.dirname(fileURLToPath(import.meta.url));
@@ -72,6 +73,8 @@ const relay = lagRelay({ fil: process.env.KONTROLLER_FIL || null });
 const planRelay = lagPlanRelay({ fil: process.env.PLAN_FIL || null });
 // Tilbudsforespørsler til utførere (tilbud-relay.js). Mottakerne svarer via lenke uten innlogging.
 const tilbudRelay = lagTilbudRelay({ fil: process.env.TILBUD_FIL || null });
+// Deling med tømmerkjøpere (js/tommerkjoper.js). Lagres ved siden av BRUKER_FIL (Railway-volumet) når TOMMER_FIL ikke er satt.
+const tommerRelay = lagTilbudRelay({ fil: process.env.TOMMER_FIL || (process.env.BRUKER_FIL ? path.join(path.dirname(process.env.BRUKER_FIL), 'tommer.json') : null), rens: rensTommerSvar, sjekk: sjekkTommerSvar });
 // Innlogging (auth.js): brukernavn og passord settes som miljøvariabler på serveren, aldri i koden.
 // Med APP_REGISTRERING=1 registrerer brukerne seg selv; brukere og bruksstatistikk lagres i BRUKER_FIL (Railway-volum).
 // Skylagring av planene per bruker (sky-lager.js). SKY_MAPPE, eller mappen «sky» ved siden av BRUKER_FIL (Railway-volumet).
@@ -108,10 +111,11 @@ const server = http.createServer(async (req, res) => {
   if (innloggingApi(innlogging, req, res, sti, SIKKERHET)) return;
   // Utførernes visning og svar er åpne (personlig kode i lenken). Oppdragsgiverens kall (opprette, hente svar, tildele)
   // krever innlogging når den er slått på, og eiernøkkelen.
-  const utforerKall = (req.method === 'GET' && /^\/api\/tilbud\/[a-f0-9]{16}$/.test(sti)) || (req.method === 'POST' && /^\/api\/tilbud\/[a-f0-9]{16}\/svar$/.test(sti));
-  if (utforerKall && tilbudApi(tilbudRelay, req, res, sti, SIKKERHET)) return;
+  if (erMottakerKall(req.method, sti) && tilbudApi(tilbudRelay, req, res, sti, SIKKERHET)) return;
+  if (erMottakerKall(req.method, sti, '/api/tommer') && tilbudApi(tommerRelay, req, res, sti, SIKKERHET, '/api/tommer')) return;
   if (krevInnlogging(innlogging, req, res, sti, SIKKERHET)) return;
   if (tilbudApi(tilbudRelay, req, res, sti, SIKKERHET)) return;
+  if (tilbudApi(tommerRelay, req, res, sti, SIKKERHET, '/api/tommer')) return;
   if (kontrollerApi(relay, req, res, sti, SIKKERHET)) return;
   if (skyApi(sky, skyOppsett, req, res, sti, SIKKERHET)) return;
   if (planApi(planRelay, req, res, sti, SIKKERHET)) return;

@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.60.0 – Del med tømmerkjøper (2026-11-09)
+
+*Nytt.* Del bestand, volumer, kart og driftsforhold med tømmerkjøpere via personlige lenker. Kjøperne gir prisforslag per sortiment, og du sammenligner netto, velger kjøper eller stopper delingen.
+
 ## 1.59.0 – Ingen blå jorder i VR (2026-11-08)
 
 *Rettet.* Markfuktighet vises nå bare i skog og på myr i den virtuelle skogen. Jorder, fotballbaner, tomter og veier får sin vanlige farge og forveksles ikke lenger med vann – også i minikartet.

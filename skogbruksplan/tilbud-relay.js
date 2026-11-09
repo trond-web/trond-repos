@@ -2,6 +2,8 @@
 // hver mottaker får sin egen kode i lenken (tilbud.html?f=id&k=kode), ser bare forespørselen og sitt eget svar, og kan
 // sende og endre tilbudet til saken er avgjort. Mottakerne trenger ikke innlogging. Data slettes etter 180 dager uten bruk.
 // Bare Node sitt standardbibliotek. Data i minnet, og i en fil når TILBUD_FIL er satt.
+// Det samme mellomleddet brukes for deling med tømmerkjøpere (/api/tommer, js/tommerkjoper.js) med egne svarfelt
+// (rens/sjekk) og en sluttdato for lenkene (utloper).
 import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -19,7 +21,10 @@ function rensSvar(s = {}) {
   return { prisform: s.prisform === 'fast' ? 'fast' : 'enhet', pris: tall(s.pris), enhetspris: tall(s.enhetspris), oppstart: dato(s.oppstart), ferdig: dato(s.ferdig), gyldigTil: dato(s.gyldigTil), firma: rensTekst(s.firma, 120), orgnr: rensTekst(s.orgnr, 20).replace(/\D/g, ''), kontaktperson: rensTekst(s.kontaktperson, 120), telefon: rensTekst(s.telefon, 40), epost: rensTekst(s.epost, 120), kommentar: rensTekst(s.kommentar, 3000), krav };
 }
 
-export function lagTilbudRelay({ fil = null, naa = () => Date.now() } = {}) {
+const datoNaa = (n) => new Date(n).toISOString().slice(0, 10);
+const gyldigDato = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
+const standardSjekk = (r) => (r.pris == null && r.enhetspris == null ? 'Oppgi pris' : null);
+export function lagTilbudRelay({ fil = null, naa = () => Date.now(), rens = rensSvar, sjekk = standardSjekk } = {}) {
   let data = { f: {} };
   if (fil) { try { data = JSON.parse(readFileSync(fil, 'utf8')); } catch { /* ny */ } }
   let t = null; const lagre = () => { if (!fil) return; clearTimeout(t); t = setTimeout(() => { try { writeFileSync(fil, JSON.stringify(data)); } catch { /* ignorer */ } }, 1000); };
@@ -38,15 +43,17 @@ export function lagTilbudRelay({ fil = null, naa = () => Date.now() } = {}) {
   };
   const eier = (id, e) => { const f = gyldigId(id) ? data.f[id] : null; return f && lik(e, f.eier) ? f : null; };
   const mottaker = (id, k) => { const f = gyldigId(id) ? data.f[id] : null; if (!f || typeof k !== 'string') return null; const kode = Object.keys(f.mottakere).find((x) => lik(k, x)); return kode ? { f, m: f.mottakere[kode], kode } : null; };
+  const utlopt = (f) => f.utloper && datoNaa(naa()) > f.utloper;
   return {
-    opprett({ data: d, mottakere } = {}) {
+    opprett({ data: d, mottakere, utloper } = {}) {
       const s = sjekkData(d); if (s) return s; rydd();
-      const id = hex(8); const f = data.f[id] = { eier: hex(16), data: d, status: 'sendt', mottakere: {}, svar: {}, laget: naa(), brukt: naa() };
+      const id = hex(8); const f = data.f[id] = { eier: hex(16), data: d, status: 'sendt', mottakere: {}, svar: {}, laget: naa(), brukt: naa(), utloper: gyldigDato(utloper) };
       const koder = leggTilMottakere(f, mottakere); lagre();
       return { id, eier: f.eier, koder };
     },
-    oppdater(id, e, { data: d, status, mottakere } = {}) {
+    oppdater(id, e, { data: d, status, mottakere, utloper } = {}) {
       const f = eier(id, e); if (!f) return feil(404, 'Forespørselen finnes ikke');
+      if (utloper !== undefined) f.utloper = gyldigDato(utloper);
       if (d !== undefined) { const s = sjekkData(d); if (s) return s; f.data = d; }
       if (status && ['sendt', 'tildelt', 'avsluttet'].includes(status)) f.status = status;
       if (status === 'tildelt' && mottakere?.valgt) f.valgt = String(mottakere.valgt);
@@ -55,19 +62,21 @@ export function lagTilbudRelay({ fil = null, naa = () => Date.now() } = {}) {
     },
     svarFor(id, e) {
       const f = eier(id, e); if (!f) return feil(404, 'Forespørselen finnes ikke'); f.brukt = naa();
-      return { status: f.status, svar: Object.entries(f.svar).map(([mid, s]) => ({ mottakerId: mid, ...s })), apnet: Object.fromEntries(Object.values(f.mottakere).map((m) => [m.id, m.apnet])) };
+      return { status: f.status, utloper: f.utloper || null, svar: Object.entries(f.svar).map(([mid, s]) => ({ mottakerId: mid, ...s })), apnet: Object.fromEntries(Object.values(f.mottakere).map((m) => [m.id, m.apnet])), visninger: Object.fromEntries(Object.values(f.mottakere).map((m) => [m.id, { antall: m.visninger || 0, sist: m.sist || null }])) };
     },
     // Det mottakeren ser. Første visning merkes som «åpnet».
     vis(id, k) {
       const x = mottaker(id, k); if (!x) return feil(404, 'Lenken er ugyldig eller utløpt');
-      if (!x.m.apnet) { x.m.apnet = naa(); lagre(); } x.f.brukt = naa();
-      return { data: x.f.data, status: x.f.status, mottaker: { navn: x.m.navn }, svar: x.f.svar[x.m.id] || null, vunnet: x.f.status === 'tildelt' ? x.f.valgt === x.m.id : null };
+      if (utlopt(x.f)) return feil(410, 'Lenken er utløpt. Ta kontakt med avsenderen for ny tilgang.');
+      if (!x.m.apnet) x.m.apnet = naa(); x.m.visninger = (x.m.visninger || 0) + 1; x.m.sist = naa(); x.f.brukt = naa(); lagre();
+      return { data: x.f.data, status: x.f.status, utloper: x.f.utloper || null, mottaker: { navn: x.m.navn }, svar: x.f.svar[x.m.id] || null, vunnet: x.f.status === 'tildelt' ? x.f.valgt === x.m.id : null };
     },
     svar(id, k, s) {
       const x = mottaker(id, k); if (!x) return feil(404, 'Lenken er ugyldig eller utløpt');
+      if (utlopt(x.f)) return feil(410, 'Lenken er utløpt');
       if (x.f.status !== 'sendt') return feil(409, 'Forespørselen er avgjort – tilbud kan ikke sendes eller endres');
       if (JSON.stringify(s || {}).length > MAKS_SVAR) return feil(413, 'Tilbudet er for stort');
-      const r = rensSvar(s); if (r.pris == null && r.enhetspris == null) return feil(400, 'Oppgi pris');
+      const r = rens(s); const mangel = sjekk(r); if (mangel) return feil(400, mangel);
       x.f.svar[x.m.id] = { ...r, mottatt: new Date(naa()).toISOString(), endret: x.f.svar[x.m.id] ? true : false }; x.f.brukt = naa(); lagre();
       return { ok: true, mottatt: x.f.svar[x.m.id].mottatt };
     },
@@ -77,15 +86,17 @@ export function lagTilbudRelay({ fil = null, naa = () => Date.now() } = {}) {
 
 // HTTP: /api/tilbud… – gir true når forespørselen er håndtert.
 const TILLATT_OPPHAV = /^(https:\/\/(skogiq-production\.up\.railway\.app|trond-web\.github\.io)|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/;
-export function tilbudApi(relay, req, res, sti, ekstraHoder = {}) {
-  if (!sti.startsWith('/api/tilbud')) return false;
+// Mottakerens kall (visning og svar) er åpne – koden i lenken gir tilgang.
+export const erMottakerKall = (metode, sti, prefiks = '/api/tilbud') => (metode === 'GET' && sti.startsWith(`${prefiks}/`) && /^\/[a-f0-9]{16}$/.test(sti.slice(prefiks.length))) || (metode === 'POST' && sti.startsWith(`${prefiks}/`) && /^\/[a-f0-9]{16}\/svar$/.test(sti.slice(prefiks.length)));
+export function tilbudApi(relay, req, res, sti, ekstraHoder = {}, prefiks = '/api/tilbud') {
+  if (sti !== prefiks && !sti.startsWith(`${prefiks}/`)) return false;
   const o = req.headers.origin; const cors = o && TILLATT_OPPHAV.test(o) ? { 'Access-Control-Allow-Origin': o, Vary: 'Origin' } : {};
   const json = (status, obj) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...cors, ...ekstraHoder }); res.end(JSON.stringify(obj)); };
   const svar = (r) => (r?.feil ? json(r.status || 400, { feil: r.feil }) : json(200, r));
   const q = new URL(req.url, 'http://x').searchParams;
   const kropp = () => new Promise((ok) => { let n = 0; const d = []; req.on('data', (b) => { n += b.length; if (n > MAKS_FORESPORSEL + 10000) { req.destroy(); ok(null); } else d.push(b); }); req.on('end', () => { try { ok(JSON.parse(Buffer.concat(d).toString('utf8') || '{}')); } catch { ok(null); } }); req.on('error', () => ok(null)); });
   (async () => {
-    const m = sti.match(/^\/api\/tilbud(?:\/([a-f0-9]{16}))?(\/svar)?$/); if (!m) return json(404, { feil: 'Finnes ikke' });
+    const m = sti.slice(prefiks.length).match(/^(?:\/([a-f0-9]{16}))?(\/svar)?$/); if (!m) return json(404, { feil: 'Finnes ikke' });
     const [, id, del] = m; const e = q.get('e'); const k = q.get('k');
     if (!id && req.method === 'POST') { const b = await kropp(); return b ? svar(relay.opprett(b)) : json(400, { feil: 'Ugyldig forespørsel' }); }
     if (id && !del && req.method === 'PUT') { const b = await kropp(); return b ? svar(relay.oppdater(id, e, b)) : json(400, { feil: 'Ugyldig forespørsel' }); }

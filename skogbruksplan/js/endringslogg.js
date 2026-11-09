@@ -2,6 +2,7 @@
 // Nyeste først. Første oppføring skal ha samme versjon som js/versjon.js (sjekkes i testene).
 // type: ny = ny funksjon, forbedret = bedre eller utvidet funksjon, rettet = feilretting.
 export const ENDRINGER = [
+  { versjon: '1.60.0', dato: '2026-11-09', type: 'ny', tittel: 'Del med tømmerkjøper', tekst: 'Del bestand, volumer, kart og driftsforhold med tømmerkjøpere via personlige lenker. Kjøperne gir prisforslag per sortiment, og du sammenligner netto, velger kjøper eller stopper delingen.' },
   { versjon: '1.59.0', dato: '2026-11-08', type: 'rettet', tittel: 'Ingen blå jorder i VR', tekst: 'Markfuktighet vises nå bare i skog og på myr i den virtuelle skogen. Jorder, fotballbaner, tomter og veier får sin vanlige farge og forveksles ikke lenger med vann – også i minikartet.' },
   { versjon: '1.58.0', dato: '2026-11-05', type: 'ny', tittel: 'Versjonslogg i appen', tekst: 'Klikk på versjonsnummeret nederst i menyen, eller «Hva er nytt» i Om-boksen og i SkogIQ Felt, for å se hva som er nytt. Etter en oppdatering vises det nyeste én gang.' },
   { versjon: '1.57.0', dato: '2026-11-05', type: 'ny', tittel: 'Kulturminner i alle kart', tekst: 'Kulturminner fra Riksantikvaren i hovedkartet, SkogIQ Felt, rapporter, oppdrag og VR, med vernestatus og lenke ved klikk. Kommuneanalysen merker hogstflater med fredede kulturminner og kan skjule dem.' },
