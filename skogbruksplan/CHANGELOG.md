@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.62.0 – Skiltplan og arbeidsvarsling (2026-11-09)
+
+*Nytt.* For hvert oppdrag: skilt med plassering der tømmeret skal ut til offentlig veg, der driftsvegen krysser veg, der det hogges inntil vegen og der stier går inn i fareområdet – med søknad, kravliste og utskrift til søknaden om arbeidsvarsling.
+
 ## 1.61.0 – Forslag til driftsveg (2026-11-09)
 
 *Nytt.* For hogstoppdrag foreslår SkogIQ hvor basvegen for lassbæreren bør gå: minst mulig kjørespor og terrenginngrep, utenom våt mark, bratt sideterreng, kulturminner og miljøfigurer – og der det står mest tømmer. Behold eller slett forslaget, og last det ned som GPX.

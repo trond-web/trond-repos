@@ -1461,6 +1461,20 @@ function visDriftsvegLag(gj, { zoom = false } = {}) {
   driftsvegLag.eachLayer((l) => { if (l.feature?.properties.lag === 'driftsveg') l.bringToFront(); });
   if (zoom) { const b = driftsvegLag.getBounds(); if (b.isValid()) kart.fitBounds(b, { maxZoom: 17, ...synligPadding(kart, 40) }); }
 }
+// Skiltplan (skiltplan-ui.js): skiltene som små skiltsymboler med nummer, og stedene som krever varsling.
+let skiltLag = null;
+async function visSkiltLag(d, { zoom = false } = {}) {
+  if (skiltLag) { skiltLag.remove(); skiltLag = null; }
+  if (!d || !kart) return;
+  const SP = await import('./skiltplan.js');
+  skiltLag = L.featureGroup().addTo(kart);
+  for (const s of d.situasjoner || []) L.circleMarker([s.punkt[1], s.punkt[0]], { radius: 14, color: '#d0021b', weight: 2, dashArray: '4 3', fillOpacity: 0.08 }).bindTooltip(`${esc(s.id)}: ${esc(s.tittel)}`).addTo(skiltLag);
+  d.skilt.forEach((s, i) => {
+    const ikon = L.divIcon({ className: 'sp-markor', html: `<span class="sp-nr">${i + 1}</span>${SP.skiltSvg(s, 24)}`, iconSize: null, iconAnchor: [10, 34] });
+    L.marker([s.punkt[1], s.punkt[0]], { icon: ikon, keyboard: false }).bindPopup(`<b>${i + 1}. ${esc(SP.skiltTekst(s))}</b><br>${esc(s.merknad)}`).addTo(skiltLag);
+  });
+  if (zoom) { const b = skiltLag.getBounds(); if (b.isValid()) kart.fitBounds(b, { maxZoom: 16, ...synligPadding(kart, 60) }); }
+}
 function visStanfordLag(gj) {
   if (stanfordLag) { stanfordLag.remove(); stanfordLag = null; }
   if (!gj || !kart) return;
@@ -2413,7 +2427,7 @@ function kobleHendelser() {
       if (erMobil()) settArk('halv');
     },
     startValg: (o) => { visTiltakVisning('plan'); settValgModus(true, o); },
-    visKartlag: visStanfordLag, visDriftsveg: visDriftsvegLag,
+    visKartlag: visStanfordLag, visDriftsveg: visDriftsvegLag, visSkilt: visSkiltLag,
   });
   $('#tiltakVisning').addEventListener('click', (e) => { const b = e.target.closest('[data-tv]'); if (b) visTiltakVisning(b.dataset.tv); });
   $('#velgTiltakBtn').addEventListener('click', () => settValgModus(!valgModus));

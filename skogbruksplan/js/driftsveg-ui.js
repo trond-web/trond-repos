@@ -88,7 +88,13 @@ export function lagDriftsvegUi({ hentPlan, endret, melding, okonomi, visLag }) {
       try { const r = await V.hentTraktorveierOgStier(firkant(bb), {}); spor = [...r.traktorveier, ...r.stier].map((v) => v.geometri); } catch { /* valgfritt */ }
     }
     const veierUtm = bilveier.map(DV.tilUtm);
-    const g = DV.lagRutenett(feltUtm, veierUtm, { maksRuter: 8000 });
+    // Offentlige veger (NVDB): sporet kan ende der, men private veger foretrekkes (velteplass ved offentlig veg krever arbeidsvarsling).
+    let offentligeUtm = [];
+    try {
+      const fb = DV.lagRutenett(feltUtm, [], { celle: 50 }).feltBoks; framdrift('Henter offentlige veger fra NVDB …');
+      offentligeUtm = (await V.hentOffentligeVeier([fb[0] - 1500, fb[1] - 1500, fb[2] + 1500, fb[3] + 1500])).map((v) => DV.tilUtm(v.geometri));
+    } catch { /* bare private veger */ }
+    const g = DV.lagRutenett(feltUtm, [...veierUtm, ...offentligeUtm], { maksRuter: 8000 });
     framdrift(`Rutenett ${g.nx} × ${g.ny} ruter à ${g.d} m. Henter høydedata fra Kartverket …`);
     const { hentHoyder } = await import('./skog3d-omgivelser.js');
     let z = null;
@@ -112,7 +118,7 @@ export function lagDriftsvegUi({ hentPlan, endret, melding, okonomi, visLag }) {
     return {
       g, advarsler,
       grunnlag: {
-        felt: feltUtm.map((geometri, i) => ({ geometri, m3: felt[i].m3 })), veier: veierUtm, spor: spor.map(DV.tilUtm), z, fukt, kulturminner: kulturOk,
+        felt: feltUtm.map((geometri, i) => ({ geometri, m3: felt[i].m3 })), veier: veierUtm, offentlige: offentligeUtm, spor: spor.map(DV.tilUtm), z, fukt, kulturminner: kulturOk,
         sperret: [...kultur, ...miljo].map((x) => DV.tilUtm(x.geometri)), hensyn: natur.map((x) => DV.tilUtm(x.geometri)),
       },
     };

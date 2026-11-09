@@ -1142,3 +1142,12 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .dv-advarsel p { margin: 4px 0; font-size: 13.5px; }
 .dv-valg { display: grid; gap: 4px; font-size: 13px; margin: 6px 0; max-width: 360px; }
 .dv-framdrift { font-weight: 600; }
+
+/* Skiltplan (skiltplan-ui.js) */
+.kort.sp { border: 1px solid color-mix(in srgb, #d0021b 30%, var(--border)); background: color-mix(in srgb, #ffd100 5%, var(--surface)); margin: 8px 0 12px; }
+.kort.sp.beholdt { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.sp-boks { border-left: 4px solid #d0021b; background: var(--surface-2); border-radius: 10px; padding: 8px 12px; margin: 8px 0; } .sp-boks.ok { border-left-color: var(--accent); } .sp-boks p { margin: 4px 0; }
+.sp-h { margin: 12px 0 4px; font-size: 14px; } .sp-liste { margin: 0; padding-left: 18px; font-size: 13.5px; }
+.sp-skilt { display: inline-flex; align-items: center; gap: 2px; } .sp-tabell td { vertical-align: top; }
+.sp-markor { background: none; border: 0; } .sp-markor .sp-skilt { filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+.sp-nr { position: absolute; top: -8px; left: -8px; background: #111; color: #fff; font: 700 10px/1 system-ui, sans-serif; border-radius: 99px; padding: 2px 5px; }

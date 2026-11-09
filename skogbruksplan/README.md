@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.61.0** (2026-11-09) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.62.0** (2026-11-09) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -645,6 +645,46 @@ Forslaget blir bedre når:
 - hogstflatene er tegnet nøyaktig
 
 Koden ligger i `js/driftsveg.js` (beregningen, testbar i Node) og `js/driftsveg-ui.js`.
+
+## Skiltplan og arbeidsvarsling (Tiltak › Oppdrag › 🚧 Skiltplan)
+
+Skiltplanen finner hvor oppdraget berører veg og stier, foreslår skilt med plassering, lister søknader og krav, og lager en utskrift som kan legges ved søknaden om arbeidsvarsling. Planen kan beholdes eller slettes.
+
+**Hva som sjekkes (data fra NVDB, veiregisteret, driftsvegen og Kartverket FKB):**
+- **A Velteplass ved offentlig veg** (innen 30 m).
+  - Skilt: 110 «Vegarbeid» (gul bunn) med 808-underskilt «Tømmerlasting» i begge retninger.
+  - Ved 70 km/t eller mer foreslås også midlertidig fartsgrense (362).
+  - Et infoskilt markerer selve velteplassen.
+- **Velteplass ved privat veg eller skogsbilveg:** Bare infoskilt. Offentlige trafikkskilt på privat veg som er åpen for allmenn ferdsel krever skiltvedtak fra kommunen.
+- **B Driftsvegen krysser offentlig veg:** 156 «Annen fare» med «Kryssende tømmertransport» i begge retninger. Et spor som bare ender ved vegen, regnes ikke som kryssing.
+- **C Hogst inntil offentlig veg** (innen én trelengde, 30 m): 110 med «Skogsdrift». Trær felles bort fra vegen, og trafikken stanses ved felling som kan nå vegen.
+- **D Stier inn i fareområdet** (hogstflatene + 90 m sikkerhetssone rundt maskinene): Infoskilt der stien går inn i fareområdet.
+- **Plassering:** Varselskiltene plasseres langs vegnettet (ikke i luftlinje).
+  - Avstanden følger fartsgrensen: 75 m ved 50 km/t eller lavere, 150 m ved 60, 200 m ved 70–80 og 250 m ved 90 eller mer.
+  - Steder langs samme veg innenfor varslingsstrekningen deler skiltsett.
+
+**Søknad:**
+- Riks- og fylkesveg: Statens vegvesen, via Din side (tjenesten «Arbeidsvarsling», krever Altinn-tilgang).
+- Kommunal veg: kommunen.
+- Planen gjelder hele drifta, til siste lass er hentet.
+- Søknaden skal inneholde kontaktperson, byggherre, entreprenør og ansvarlig for arbeidsvarslingen med kompetansebevis (gyldig i 5 år), arbeidsbeskrivelse, risikovurdering og skisse. Utskriften dekker skissen, skiltlisten og risikovurderingen.
+
+**Kravliste (avkrysning, med kilde):**
+- **Søknad og ansvar:** godkjent plan før oppstart, kompetansebevis for den ansvarlige.
+- **Skilt:** størrelse MS, gul bunn. Skilt fjernes eller tildekkes når de ikke gjelder. Manuell dirigering bare når den er godkjent.
+- **Tømmer ved vegen:**
+  - minst 3 m fra vegkanten, aldri i skjæring eller på fylling
+  - må ikke kunne rulle ut i vegen eller grøfta
+  - må ikke redusere sikten
+  - bunnfloa høyst ±1 m mot kjørebanen, standplassen høyst 10 % helning
+  - ikke under strømførende ledning
+  - avkjørselstillatelse ved ny avkjørsel
+- **Stier og løyper:** ryddes mens hogsten pågår (PEFC).
+- **Varsling:** nettselskapet ved hogst nær kraftledning, og naboer.
+
+**Kilder:** Statens vegvesen (N301, søknad og kurs i arbeidsvarsling), skiltforskriften, Skoghåndboka (tømmer ved offentlig veg, hogst nær elektriske anlegg), Store norske leksikon (skilt 110) og Norsk PEFC Skogstandard. Skiltplanen er et forslag. Endelig plan godkjennes av skiltmyndigheten.
+
+Driftsvegen kan nå også ende ved offentlig veg, men private veger og skogsbilveger foretrekkes, fordi velteplass ved offentlig veg krever arbeidsvarsling.
 
 ## Hogstmaskin og lassbærer – StanForD 2010 (Tiltak › Oppdrag › 🌲 Hogstmaskin)
 
