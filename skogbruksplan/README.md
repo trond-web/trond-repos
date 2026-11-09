@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.59.0** (2026-11-08) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.60.0** (2026-11-09) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -560,6 +560,40 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## Del med tømmerkjøper (Verdi › 🤝 Del med tømmerkjøper)
+
+Skogeieren deler skogdata med en eller flere tømmerkjøpere, for eksempel andelslaget og et par andre for å sammenligne. Hver kjøper får en personlig lenke (`tommer.html?f=…&k=…`) og trenger ikke innlogging. Funksjonen finnes også i kommandolinjen («Del med tømmerkjøper»).
+
+**Flyten:**
+1. **Velg bestand.** Forslaget er bestand med planlagt hogst de neste 5 årene. Finnes ingen, foreslås hogstmoden skog, og ellers alt med volum. Du kan krysse av selv og vise utvalget i kartet.
+2. **Velg hva som deles.** Kart, driftsforhold (bratthet og markfuktighet), miljøhensyn (miljøfigurer og merknader) og gnr/bnr.
+3. **Velg salgsform og frister.**
+   - Salgsform er leveransevirke, rotsalg eller samlet tilbud.
+   - Du setter ønsket hogstperiode, svarfrist, hvor lenge lenken virker (90 dager som standard) og en melding.
+4. **Legg til kjøperne.** Send lenken med e-post, SMS eller kopier den.
+
+**Det kjøperen ser og kan gjøre:**
+- Eiendommen, kart, bestandstabell og volum til salg per treslag og sortiment.
+- Nedlasting som CSV (bestandsliste) og GeoJSON (kartdata).
+- Prisforslag per sortiment (kr/m³) og driftskostnad, eller en fast sum. Kjøperen oppgir også tidspunkt for hogst, gyldighet og PEFC.
+
+**Det skogeieren ser og kan gjøre:**
+- Når hver lenke er åpnet, og hvor mange ganger.
+- Forslagene sortert etter anslått netto. Netto er pris × anslått volum per sortiment minus driftskostnad, eller den faste summen.
+- Velge kjøper. Kjøperen får beskjed på siden, og de andre kan ikke lenger sende forslag.
+- Oppdatere dataene, legge til flere kjøpere, eller stoppe delingen. Lenkene slutter da å virke med en gang, og dataene slettes fra serveren.
+
+**Volumet:**
+- Volumet til salg er planlagt uttak der hogst er planlagt, ellers stående volum. Miljøfigurer uten planlagt hogst regnes ikke med.
+- Sagtømmerandelen er et grovt anslag: ved sluttavvirkning 60 % for gran og 50 % for furu, og lavere ved tynning.
+- Skogeierens egne priser, verdianslag og eiernavn deles aldri. Kjøperne ser ikke hverandre.
+
+**På serveren:**
+- Delingen bruker samme mellomledd som tilbudene (`tilbud-relay.js`), under `/api/tommer`, med egne svarfelt fra `js/tommer-felles.js`.
+- Lenkene har sluttdato (svarer 410 etter utløp), og serveren teller visninger.
+- Bare `tommer.html`, `js/tommer-svar.js` og `js/tommer-felles.js` er åpne uten innlogging.
+- Delingene lagres i `TOMMER_FIL`, eller i `tommer.json` ved siden av `BRUKER_FIL` på Railway-volumet.
 
 ## Hogstmaskin og lassbærer – StanForD 2010 (Tiltak › Oppdrag › 🌲 Hogstmaskin)
 

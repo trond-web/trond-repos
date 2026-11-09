@@ -34,6 +34,7 @@ import { RAPPORTER, lagRapport, lagRapportCsv } from './rapporter.js';
 import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling, hentAr5, lagFigurer, klippTil, trekkUtAvBestand } from './markslag.js';
 import { skadeOppsummering, RISIKONIVAA } from './skade.js';
 import { initVerdi, utenProduksjon } from './verdi-ui.js';
+import { initTommerkjoper } from './tommerkjoper-ui.js';
 import { hentDatagrunnlag } from './datagrunnlag.js';
 import { kalibrerPriser, verdiberegning, STANDARD_VERDI } from './verdi.js';
 import { VEIKLASSER, VEDLIKEHOLDSTYPER, VEISTIL } from './veier.js';
@@ -601,7 +602,7 @@ function angreDeling() {
 let kommuneVisning = null;
 let veiVisning = null;
 let pefcVisning = null;
-let verdiVisning = null;
+let verdiVisning = null; let tommerVisning = null;
 let aiVisning = null;
 let skogbrandVisning = null;
 let skifteplanVisning = null;
@@ -626,7 +627,7 @@ function visFane(navn) {
   if (navn === 'ksl') kslVisning?.vis();
   if (navn === 'karbon') karbonVisning?.vis();
   if (navn === 'framskriving') tegnFramskriving();
-  if (navn === 'verdi') verdiVisning?.tegn();
+  if (navn === 'verdi') { verdiVisning?.tegn(); tommerVisning?.tegn(); }
   if (navn === 'ai') aiVisning?.vis();
   if (navn === 'rapporter') tegnRapportKort();
   if (navn === 'planer') { tegnPlanListe(); lastKommuner(); }
@@ -2285,6 +2286,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '◈', tittel: 'PEFC-status og avvik', sok: 'pefc skogstandard krav avvik sertifisering', utfor: () => visFane('pefc') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
     ...Object.entries(RAPPORTER).map(([k, r]) => ({ gruppe: 'Rapporter', ikon: '▦', tittel: `Rapport: ${r.navn}`, under: r.beskrivelse, sok: 'rapport pdf utskrift skriv ut', utfor: () => visRapport(k) })),
+    { gruppe: 'Handlinger', ikon: '🤝', tittel: 'Del med tømmerkjøper', under: 'Del bestand, volumer og kart og få prisforslag', sok: 'tømmerkjøper tommerkjoper del dele tømmer salg selge hogst pris tilbud andelslag kjøper', utfor: () => { visFane('verdi'); tommerVisning?.apne(null); setTimeout(() => $('#tommerDeling')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
     { gruppe: 'Handlinger', ikon: '✨', tittel: 'Hva er nytt i SkogIQ.ai', under: `Versjonslogg – sist ${ENDRINGER[0].tittel}`, sok: 'hva er nytt versjonslogg endringer oppdatering nyheter changelog', utfor: () => visEndringslogg() },
     { gruppe: 'Handlinger', ikon: 'ℹ', tittel: `Om ${APPNAVN} – versjon ${VERSJON}`, under: `Utviklet av ${UTVIKLER}`, sok: 'om versjon utvikler laget av trond harald sand', utfor: () => { visFane('planer'); setTimeout(() => $('#fane-planer [data-om-app]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); } },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Ta sikkerhetskopi', sok: 'backup eksport lagre', utfor: () => eksporter('backup') },
@@ -2417,6 +2419,17 @@ function kobleHendelser() {
     hentPlan: () => S, endret: () => { lagreSnart(); tegnOversikt(); }, melding, iAar: IAAR,
     hentSsb: () => hentDataForAktivPlan(['ssb']),
     visBestand: (id) => { velgBestand(id); visFane('bestand'); },
+  });
+  // Del skogdata med tømmerkjøpere (tommerkjoper-ui.js) – øverst i Verdi-fanen.
+  tommerVisning = initTommerkjoper({
+    rot: () => $('#tommerDeling'), hentPlan: () => S, endret: () => lagreSnart(), melding, inn, iAar: IAAR,
+    tiltakNavn: (k) => TILTAKSTYPER[k]?.navn || k,
+    kontakt: () => { const m = innloggetBruker(); return m ? { navn: m.navn || '', epost: m.epost || '', telefon: m.profil?.telefon || '' } : null; },
+    visBestander: (ider) => {
+      const lag = ider.map((id) => lagPerBestand.get(id)).filter(Boolean); if (!lag.length) { melding('Ingen bestand med kartgeometri er valgt.'); return; }
+      kart.fitBounds(L.featureGroup(lag).getBounds(), { maxZoom: 16, ...synligPadding(kart, 40) });
+      if (erMobil()) settArk('halv');
+    },
   });
   kommuneVisning = initKommune({ kart, melding, innstillinger: inn, lastKommuner, finnKommune, lagPlanFor });
   $('#genKommune').addEventListener('focus', lastKommuner, { once: true });

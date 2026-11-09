@@ -1123,3 +1123,13 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .el-type { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; color: #fff; background: var(--farge); white-space: nowrap; }
 .nytt-melding { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 1200; display: grid; gap: 4px; max-width: min(460px, calc(100% - 24px)); padding: 12px 16px; border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 12px 40px rgba(0,0,0,.25); border-left: 5px solid var(--accent); font-size: 14px; }
 .nytt-melding div { display: flex; gap: 8px; margin-top: 4px; }
+
+/* Del med tømmerkjøper (tommerkjoper-ui.js) */
+.kort.tk-kort { border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+.tk-rad { cursor: pointer; } .tk-rad:hover { background: var(--surface-2); }
+.tk-status { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; color: #fff; background: var(--farge); white-space: nowrap; }
+.tk-bestand { max-height: 320px; overflow: auto; }
+.tk-ta { display: grid; gap: 6px; margin-bottom: 8px; } .tk-ta .avkrysning { flex-direction: row; align-items: center; gap: 8px; }
+.tabell tr.tk-best td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.kort.tk-solgt { border-left: 4px solid var(--accent); margin: 8px 0; }
+.tk-kort .md-rad span { font-family: inherit; letter-spacing: normal; text-transform: none; }
