@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.60.0** (2026-11-09) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.61.0** (2026-11-09) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -594,6 +594,57 @@ Skogeieren deler skogdata med en eller flere tømmerkjøpere, for eksempel andel
 - Lenkene har sluttdato (svarer 410 etter utløp), og serveren teller visninger.
 - Bare `tommer.html`, `js/tommer-svar.js` og `js/tommer-felles.js` er åpne uten innlogging.
 - Delingene lagres i `TOMMER_FIL`, eller i `tommer.json` ved siden av `BRUKER_FIL` på Railway-volumet.
+
+## Forslag til driftsveg (Tiltak › Oppdrag › 🛤 Driftsveg)
+
+For hogstoppdrag lager SkogIQ et forslag til hvor basvegen for lassbæreren bør gå. Basvegen er hovedkjøresporet fra hogstflatene til velteplass ved bilvei. Målet er minst mulig kjørespor og inngrep i terrenget, og at sporet går der det står mest tømmer. Forslaget vises i kartet, og skogeieren velger **Behold** eller **Slett**. En beholdt driftsveg kommer med på arbeidsordren og kan lastes ned som GPX (til maskinens eller førerens GPS) eller GeoJSON.
+
+**Grunnlag (hentes automatisk for området):**
+- **Høyder:** Kartverket DTM1 i et rutenett på 8–20 m, som gir stigning og sidehelling.
+- **Markfuktighet:** NIBIO DTW, som gir våt mark og vann.
+- **Kulturminner:** Riksantikvaren, med 5 m sikringssone.
+- **Naturtyper og arter:** NiN-naturtyper og viktige artsområder fra Miljødirektoratet.
+- **Miljøfigurer:** Miljøfigurer og MiS i planen.
+- **Veier:** Bilveier fra veiregisteret, eller fra NVDB når registeret ikke har vei i nærheten.
+- **Traktorveier og stier:** Eksisterende traktorveier og stier fra Kartverket (FKB).
+- **Tømmer:** Volumet som tas ut, fra hogstflatene i oppdraget.
+
+**Metode:** Kostnadsrutenett og minste-kostnads-sti (Dijkstra) i lastet kjøreretning mot velteplassen.
+- **Sperret:**
+  - vann
+  - kulturminner med sikringssone
+  - miljøfigurer
+  - sidehelling over 35 %
+  - stigning over 30 % (lastet oppover) og fall over 45 % (lastet nedover)
+- **Økende kostnad:**
+  - sidehelling over 15 %, fordi den gir velte- og gravefare
+  - stigning over 12 % og fall over 30 %
+  - våt mark: ×10 der grunnvannet er nærmere enn 0–25 cm, ×5 ved 25–50 cm og ×2 ved 50–100 cm
+  - naturtyper og artsområder (×6)
+  - skog utenfor hogstflatene (×2,5)
+- **Lavere kostnad:**
+  - eksisterende traktorvei eller sti (×0,25)
+  - der det står mest tømmer innen kranrekkevidde (opptil 45 % rabatt)
+- **Nettet bygges grådig:**
+  - Det starter ved bilveien.
+  - Hver nye gren går til stedet med mest tømmer som ennå ikke er dekket, og kobles til nettet med billigste sti. Spor som allerede er lagt, koster ingenting å bruke igjen.
+  - Det stopper når 96 % av tømmeret ligger innenfor valgt stikkveglengde: 30, 50 (standard) eller 80 m.
+
+**Resultat:**
+- **Lengder:** nytt spor, spor på eksisterende traktorvei og sporareal.
+- **Tømmer:** andel innen stikkveglengde og innen kranrekkevidde (10 m), og snittavstand til velteplass.
+- **Terreng:** meter over fuktig mark, største sidehelling og største stigning.
+- **Sammenligning:** en rett linje til nærmeste vei, til sammenligning.
+- **Råd til utfører:** risting, tele, kjøreretning og godkjenning.
+
+En permanent traktorveg (klasse 7 og 8) med graving eller planering krever godkjenning fra kommunen etter forskrift om planlegging og godkjenning av veier for landbruksformål. Kjørespor uten terrenginngrep krever det ikke.
+
+Forslaget blir bedre når:
+- veiregisteret har riktige bilveier og velteplasser
+- miljøfigurer og MiS ligger i planen
+- hogstflatene er tegnet nøyaktig
+
+Koden ligger i `js/driftsveg.js` (beregningen, testbar i Node) og `js/driftsveg-ui.js`.
 
 ## Hogstmaskin og lassbærer – StanForD 2010 (Tiltak › Oppdrag › 🌲 Hogstmaskin)
 

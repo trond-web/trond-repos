@@ -4,6 +4,7 @@ import { OPPDRAGSTYPER, OPPDRAGSSTATUS, AKTIVE_STATUS, typeFor, linjer, sammendr
 import { KRAVPUNKTER } from './pefc.js';
 import { svgKart } from './rapporter.js';
 import { VEIKLASSER, VEISTIL } from './veier.js';
+import { lagDriftsvegUi } from './driftsveg-ui.js';
 import { signatur } from './versjon.js';
 import { fmt } from './charts.js';
 import { lagTilbudUi } from './tilbud-ui.js';
@@ -14,7 +15,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const opsj = (liste, valgt) => liste.map(([v, t]) => `<option value="${esc(v)}" ${String(v) === String(valgt ?? '') ? 'selected' : ''}>${esc(t)}</option>`).join('');
 const kravNavn = (nr) => KRAVPUNKTER.find((k) => k.nr === nr)?.tittel || '';
 
-export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, visBestander, uthev, tiltakNavn, startValg, visKartlag }) {
+export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, visBestander, uthev, tiltakNavn, startValg, visKartlag, visDriftsveg = () => {} }) {
   let valgt = null; let filter = 'aktive';
   const S = () => hentPlan();
   const alle = () => S().oppdrag || [];
@@ -24,6 +25,8 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
   const tilbudUi = lagTilbudUi({ hentPlan, endret, melding, nyId: (p) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, okonomi, tiltakNavn });
   // Filsett til hogstmaskin og lassbærer, og produksjonsfiler tilbake (stanford-ui.js).
   const stanfordUi = lagStanfordUi({ hentPlan, endret, melding, visKartlag });
+  // Forslag til driftsveg for hogstoppdrag (driftsveg-ui.js).
+  const driftsvegUi = lagDriftsvegUi({ hentPlan, endret, melding, okonomi, visLag: visDriftsveg });
 
   function mengdeTekst(o, s) {
     const ot = typeFor(o.type);
@@ -67,6 +70,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
       <p class="hint" style="margin:0 0 10px">${mengdeTekst(o, s)}${s.netto ? ` · ${s.netto >= 0 ? 'netto' : 'kostnad'} ca. ${fmt(Math.abs(s.netto))} kr` : ''} · opprettet ${esc(o.opprettet)}</p>
       ${tilbudUi.html(o)}
       ${stanfordUi.html(o)}
+      ${driftsvegUi.html(o)}
       <form class="skjema tre-kol" id="oppdragSkjema">
         <label class="hel">Tittel <input name="tittel" value="${esc(o.tittel)}"></label>
         <label>Status <select name="status">${opsj(Object.entries(OPPDRAGSSTATUS).map(([k, v]) => [k, v.navn]), o.status)}</select></label>
@@ -102,6 +106,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     const el = $('#oppdragAntall'); if (el) el.textContent = n ? `(${n})` : '';
     uthev(o ? linjer(S(), o).map((l) => l.bestand.id) : []);
     if (o) stanfordUi.kart(o); else stanfordUi.lukk();
+    if (o?.driftsveg) driftsvegUi.kart(o); else driftsvegUi.lukk();
   }
 
   function apne(id) { valgt = id; const o = finn(id); if (o) tilbudUi.apnet(o, tegn); tegn(); if (o) visBestander(linjer(S(), o).map((l) => l.bestand.id)); }
@@ -124,6 +129,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
       ...(vr.veier || []).filter((v) => v.geometri).map((v) => ({ geometri: v.geometri, farge: (VEIKLASSER[v.klasse] || VEIKLASSER[0]).bilvei ? '#555555' : VEISTIL.traktorvei.farge })),
       ...(vr.stier || []).filter((x) => x.geometri).map((x) => ({ geometri: x.geometri, farge: VEISTIL.sti.farge })),
       ...(vr.punkter || []).filter((p) => p.type === 'velteplass' && p.geometri).map((p) => ({ geometri: p.geometri, farge: '#2a78d6' })),
+      ...driftsvegUi.ekstra(o),
     ];
     const kart = svgKart(plan, (b) => (ider.has(b.id) ? '#f39c4a' : '#eef0ea'), { bredde: 960, hoyde: 600, ekstra, markslag: false });
     const felt = ot.felt.filter((f) => o.felt?.[f.id] !== undefined && o.felt[f.id] !== '').map((f) => `<tr><th>${esc(f.navn)}</th><td>${esc(o.felt[f.id])}${f.enhet ? ` ${esc(f.enhet)}` : ''}</td></tr>`).join('');
@@ -157,6 +163,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
   panel.addEventListener('click', async (e) => {
     if (valgt && finn(valgt) && e.target.closest('[data-tb]') && await tilbudUi.klikk(e, finn(valgt), tegn)) return;
     if (valgt && finn(valgt) && e.target.closest('[data-sf]') && await stanfordUi.klikk(e, finn(valgt), tegn)) return;
+    if (valgt && finn(valgt) && e.target.closest('[data-dv]') && driftsvegUi.klikk(e, finn(valgt), tegn)) return;
     const rad = e.target.closest('[data-oppdrag]');
     if (rad) { apne(rad.dataset.oppdrag); return; }
     const h = e.target.closest('[data-oh]'); if (!h) return;
@@ -176,6 +183,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     const o = finn(valgt); if (!o) return;
     if (tilbudUi.endring(e, o, tegn)) return;
     if (stanfordUi.endring(e, o, tegn)) return;
+    if (driftsvegUi.endring(e)) return;
     if (f.dataset.sjekk) { o.sjekk = { ...o.sjekk, [f.dataset.sjekk]: f.checked }; lagre(); return; }
     if (f.dataset.felt) { const def = typeFor(o.type).felt.find((x) => x.id === f.dataset.felt); o.felt = { ...o.felt, [f.dataset.felt]: def?.type === 'tall' ? (f.value === '' ? '' : Number(f.value)) : f.value }; lagre(); return; }
     if (!f.name) return;
