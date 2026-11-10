@@ -147,6 +147,27 @@ export const OPPDRAGSSTATUS = {
   avbrutt: { navn: 'Avbrutt', farge: '#d03b3b' },
 };
 export const AKTIVE_STATUS = ['utkast', 'bestilt', 'pagar'];
+export const HOGSTOPPDRAG = ['sluttavvirkning', 'tynning', 'lukkethogst'];
+
+// Arbeidsflyten for et oppdrag: stegene i rekkefølge, hvilken fane de hører til, og om de er gjort. Det første
+// steget som ikke er gjort, merkes som neste. Valgfrie steg hoppes over når «neste» velges.
+export function stegFor(o) {
+  const hogst = HOGSTOPPDRAG.includes(o.type); const sjekk = typeFor(o.type).sjekk || [];
+  const n = sjekk.filter((k) => o.sjekk?.[k.id]).length; const avsluttet = ['utfort', 'avbrutt'].includes(o.status);
+  const steg = [
+    { id: 'periode', tekst: 'Sett når arbeidet skal gjøres', hjelp: 'Oppstart og frist under Oversikt.', fane: 'oversikt', ferdig: !!(o.periode?.fra || o.periode?.til) },
+    hogst && { id: 'driftsveg', tekst: 'Lag forslag til driftsveg', hjelp: 'Hvor lassbæreren bør kjøre – minst mulig spor og terrenginngrep.', fane: 'planlegging', ferdig: o.driftsveg?.status === 'beholdt', valgfri: true },
+    { id: 'skiltplan', tekst: 'Lag skiltplan', hjelp: 'Skilt og søknad om arbeidsvarsling når arbeidet berører veg eller stier.', fane: 'planlegging', ferdig: o.skiltplan?.status === 'beholdt', valgfri: !hogst },
+    { id: 'utforer', tekst: 'Be om tilbud eller velg utfører', hjelp: 'Send forespørsel til entreprenører, eller skriv inn utføreren direkte.', fane: 'utforer', ferdig: !!o.utforer?.navn },
+    { id: 'bestilt', tekst: 'Marker oppdraget som bestilt', hjelp: 'Når avtalen med utføreren er klar.', fane: 'oversikt', ferdig: o.status !== 'utkast' },
+    hogst && { id: 'maskin', tekst: 'Send filsett til hogstmaskinen', hjelp: 'StanForD-filer med kart, bestand og hensyn til maskinen.', fane: 'maskin', ferdig: !!(o.stanford?.eksportert?.length || o.stanford?.importer?.length), valgfri: true },
+    { id: 'sjekk', tekst: `Gå gjennom sjekklisten (${n} av ${sjekk.length})`, hjelp: 'PEFC-krav og praktiske punkter før og under arbeidet.', fane: 'sjekkliste', ferdig: sjekk.length > 0 && n === sjekk.length },
+    { id: 'utfort', tekst: 'Marker oppdraget som utført', hjelp: 'Tiltakene i planen merkes som utført.', fane: 'oversikt', ferdig: avsluttet },
+  ].filter(Boolean);
+  const neste = steg.find((x) => !x.ferdig && !x.valgfri) || steg.find((x) => !x.ferdig);
+  if (neste && !avsluttet) neste.neste = true;
+  return steg;
+}
 
 export const typeFor = (tiltakstype) => OPPDRAGSTYPER[tiltakstype] || OPPDRAGSTYPER.annet;
 

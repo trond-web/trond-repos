@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.63.0 – Enklere tiltak og oppdrag – og brukerveiledning (2026-11-10)
+
+*Forbedret.* Tydelige knapper på hvert tiltak og «＋ Oppdrag» rett fra tiltaket. Oppdragene er delt i faner med en arbeidsflyt som viser neste steg. Ny brukerveiledning i appen: trykk «?» øverst i panelet.
+
 ## 1.62.0 – Skiltplan og arbeidsvarsling (2026-11-09)
 
 *Nytt.* For hvert oppdrag: skilt med plassering der tømmeret skal ut til offentlig veg, der driftsvegen krysser veg, der det hogges inntil vegen og der stier går inn i fareområdet – med søknad, kravliste og utskrift til søknaden om arbeidsvarsling.
