@@ -1,6 +1,6 @@
 // «Oppdrag» i Tiltak-fanen: liste og detalj for oppdrag laget av valgte tiltak, med felt og sjekkliste per
 // oppdragstype, status, utfører, kart og utskrift av arbeidsordre. Logikken ligger i oppdrag.js.
-import { OPPDRAGSTYPER, OPPDRAGSSTATUS, AKTIVE_STATUS, typeFor, linjer, sammendrag, fjernLinje, slettOppdrag } from './oppdrag.js';
+import { OPPDRAGSTYPER, OPPDRAGSSTATUS, AKTIVE_STATUS, HOGSTOPPDRAG, typeFor, linjer, sammendrag, fjernLinje, slettOppdrag, stegFor } from './oppdrag.js';
 import { KRAVPUNKTER } from './pefc.js';
 import { svgKart } from './rapporter.js';
 import { VEIKLASSER, VEISTIL } from './veier.js';
@@ -61,43 +61,62 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     return `<label>${navn}<input data-felt="${f.id}" type="${f.type === 'tall' ? 'number' : f.type === 'dato' ? 'date' : 'text'}" ${f.type === 'tall' ? 'step="any"' : ''} value="${esc(verdi ?? '')}"></label>`;
   }
 
+  // Fanene i et oppdrag. Maskin bare for hogst.
+  const FANER = [['oversikt', 'Oversikt'], ['planlegging', 'Planlegging'], ['utforer', 'Utfører'], ['maskin', 'Maskin'], ['sjekkliste', 'Sjekkliste']];
+  const faneFor = new Map(); // oppdrag-id → aktiv fane
+  function stegHtml(o) {
+    const steg = stegFor(o); const ferdige = steg.filter((x) => x.ferdig).length;
+    return `<div class="op-steg"><div class="op-steg-topp"><b>Arbeidsflyt</b><span class="hint">${ferdige} av ${steg.length} steg gjort</span></div>
+      <ol>${steg.map((x) => `<li class="${x.ferdig ? 'ferdig' : ''} ${x.neste ? 'neste' : ''}"><button type="button" data-oh="steg" data-fane="${x.fane}"><span class="op-steg-ikon" aria-hidden="true">${x.ferdig ? '✓' : x.neste ? '➜' : ''}</span><span><b>${esc(x.tekst)}</b>${x.valgfri ? ' <span class="hint">(valgfritt)</span>' : ''}${x.neste ? `<small>${esc(x.hjelp)}</small>` : ''}</span></button></li>`).join('')}</ol></div>`;
+  }
   function detaljHtml(o) {
     const ot = typeFor(o.type); const s = sammendrag(S(), o, okonomi); const ls = linjer(S(), o);
-    const tapt = (o.linjer || []).length - ls.length;
+    const tapt = (o.linjer || []).length - ls.length; const hogst = HOGSTOPPDRAG.includes(o.type);
+    const faner = FANER.filter(([id]) => id !== 'maskin' || hogst);
+    let fane = faneFor.get(o.id) || 'oversikt'; if (!faner.some(([id]) => id === fane)) fane = 'oversikt';
+    const merke = { planlegging: [o.driftsveg?.status === 'beholdt', o.skiltplan?.status === 'beholdt'].filter(Boolean).length ? '✓' : '', utforer: o.utforer?.navn ? '✓' : o.tilbud?.status === 'sendt' ? '…' : '', maskin: o.stanford?.eksportert?.length ? '✓' : '', sjekkliste: `${s.sjekk}/${s.sjekkTotalt}` };
+    const skjemaUtforer = `<form class="skjema to-kol op-skjema">
+        <label class="hel">Utfører <span class="hint">(${esc(ot.utforer)})</span><input name="utforer.navn" value="${esc(o.utforer?.navn)}" placeholder="Firma eller navn"></label>
+        <label>Kontaktperson <input name="utforer.kontakt" value="${esc(o.utforer?.kontakt)}"></label>
+        <label>Telefon <input name="utforer.telefon" type="tel" value="${esc(o.utforer?.telefon)}"></label>
+        <label class="hel">E-post <input name="utforer.epost" type="email" value="${esc(o.utforer?.epost)}"></label>
+      </form>`;
+    const innhold = {
+      oversikt: `${stegHtml(o)}
+        <form class="skjema to-kol op-skjema" id="oppdragSkjema">
+          <label class="hel">Tittel <input name="tittel" value="${esc(o.tittel)}"></label>
+          <label>Status <select name="status">${opsj(Object.entries(OPPDRAGSSTATUS).map(([k, v]) => [k, v.navn]), o.status)}</select></label>
+          <span></span>
+          <label>Oppstart <input name="fra" type="date" value="${esc(o.periode?.fra)}"></label>
+          <label>Frist <input name="til" type="date" value="${esc(o.periode?.til)}"></label>
+          ${ot.felt.map((f) => feltHtml(f, o.felt?.[f.id])).join('')}
+          <label class="hel">Merknad / instruks til utfører <textarea name="merknad" rows="3">${esc(o.merknad)}</textarea></label>
+        </form>
+        <h4 class="undertittel">Tiltak i oppdraget <span class="hint">${ls.length}</span></h4>
+        ${ls.map(({ bestand: b, tiltak: t }) => { const ok = okonomi({ ...t, bestand: b }); return `<div class="tiltak-rad${t.status === 'utfort' ? ' status-utfort' : ''}">
+          <span class="hint">${t.aar}</span>
+          <div><div class="tittel">${esc(tiltakNavn(t.type))} – bestand <a href="#" data-oh="bestand" data-b="${b.id}">${esc(b.nr)}</a>${t.status === 'utfort' ? ' <span class="hint">✓ utført</span>' : ''}</div>
+          <div class="info">${fmt(b.areal, 1)} daa · ${esc(b.treslag || '')}${b.bonitet ?? ''}${ok.m3 ? ` · ca. ${fmt(ok.m3)} m³` : ''}${b.miljo ? ' · <b>miljøfigur</b>' : ''}</div></div>
+          <button class="knapp liten" data-oh="fjern" data-t="${t.id}" type="button" title="Ta tiltaket ut av oppdraget (det blir liggende i tiltaksplanen)" aria-label="Ta ut av oppdraget">✕</button>
+        </div>`; }).join('') || '<div class="tom">Ingen tiltak i oppdraget.</div>'}
+        ${tapt ? `<p class="hint">${tapt} tiltak er slettet fra planen siden oppdraget ble laget.</p>` : ''}
+        <div class="knapperad"><button class="knapp liten" data-oh="legg-til" type="button">+ Legg til flere ${esc(ot.kort.toLowerCase())}-tiltak</button></div>
+        <div class="op-fare"><button class="knapp liten fare" data-oh="slett" type="button">Slett oppdraget</button><span class="hint">Tiltakene blir liggende i tiltaksplanen.</span></div>`,
+      planlegging: `<p class="hint op-intro">Planlegg drifta før du bestiller: hvor maskinene skal kjøre, og hvilke skilt og søknader som trengs. Begge forslagene kan beholdes eller slettes.</p>${driftsvegUi.html(o)}${skiltUi.html(o)}`,
+      utforer: `<p class="hint op-intro">Be om tilbud fra en eller flere utførere, eller skriv inn utføreren direkte hvis avtalen allerede er klar.</p>${tilbudUi.html(o)}<h4 class="undertittel">Utfører</h4>${skjemaUtforer}`,
+      maskin: `<p class="hint op-intro">Filsett til hogstmaskin og lassbærer før drift, og produksjonsfilene tilbake etter drift.</p>${stanfordUi.html(o)}`,
+      sjekkliste: `<p class="hint op-intro">Krav og praktiske punkter for ${esc(ot.kort.toLowerCase())}. Kryss av etter hvert. PEFC-kravpunktene står bak.</p>
+        <div class="oppdrag-sjekk">${ot.sjekk.map((k) => `<label class="avkrysning"><input type="checkbox" data-sjekk="${k.id}" ${o.sjekk?.[k.id] ? 'checked' : ''}> <span>${esc(k.tekst)}${k.pefc ? ` <span class="hint">PEFC ${k.pefc} ${esc(kravNavn(k.pefc))}</span>` : ''}</span></label>`).join('')}</div>`,
+    };
     return `<div class="kort oppdrag-detalj">
       <div class="detalj-topp">
         <button class="knapp liten" data-oh="tilbake" type="button">← Alle oppdrag</button>
-        <div class="knapperad" style="margin:0"><button class="knapp liten" data-oh="zoom" type="button">Vis i kart</button><button class="knapp liten primar" data-oh="skriv" type="button">Skriv ut arbeidsordre</button><button class="knapp liten fare" data-oh="slett" type="button">Slett</button></div>
+        <div class="knapperad" style="margin:0"><button class="knapp liten" data-oh="zoom" type="button">Vis i kart</button><button class="knapp liten primar" data-oh="skriv" type="button">Skriv ut arbeidsordre</button><button class="knapp liten" data-hjelp="oppdrag" type="button" title="Brukerveiledning for oppdrag" aria-label="Hjelp">?</button></div>
       </div>
       <h3 style="margin:8px 0 2px">${esc(o.nr)} · ${esc(ot.navn)} ${statusPille(o)}</h3>
       <p class="hint" style="margin:0 0 10px">${mengdeTekst(o, s)}${s.netto ? ` · ${s.netto >= 0 ? 'netto' : 'kostnad'} ca. ${fmt(Math.abs(s.netto))} kr` : ''} · opprettet ${esc(o.opprettet)}</p>
-      ${tilbudUi.html(o)}
-      ${stanfordUi.html(o)}
-      ${driftsvegUi.html(o)}
-      ${skiltUi.html(o)}
-      <form class="skjema tre-kol" id="oppdragSkjema">
-        <label class="hel">Tittel <input name="tittel" value="${esc(o.tittel)}"></label>
-        <label>Status <select name="status">${opsj(Object.entries(OPPDRAGSSTATUS).map(([k, v]) => [k, v.navn]), o.status)}</select></label>
-        <label>Oppstart <input name="fra" type="date" value="${esc(o.periode?.fra)}"></label>
-        <label>Frist <input name="til" type="date" value="${esc(o.periode?.til)}"></label>
-        <label>Utfører <span class="hint">(${esc(ot.utforer)})</span><input name="utforer.navn" value="${esc(o.utforer?.navn)}"></label>
-        <label>Kontaktperson <input name="utforer.kontakt" value="${esc(o.utforer?.kontakt)}"></label>
-        <label>Telefon <input name="utforer.telefon" type="tel" value="${esc(o.utforer?.telefon)}"></label>
-        <label>E-post <input name="utforer.epost" type="email" value="${esc(o.utforer?.epost)}"></label>
-        ${ot.felt.map((f) => feltHtml(f, o.felt?.[f.id])).join('')}
-        <label class="hel">Merknad / instruks til utfører <textarea name="merknad" rows="3">${esc(o.merknad)}</textarea></label>
-      </form>
-      <h4 class="undertittel">Sjekkliste <span class="hint">${s.sjekk} av ${s.sjekkTotalt}</span></h4>
-      <div class="oppdrag-sjekk">${ot.sjekk.map((k) => `<label class="avkrysning"><input type="checkbox" data-sjekk="${k.id}" ${o.sjekk?.[k.id] ? 'checked' : ''}> <span>${esc(k.tekst)}${k.pefc ? ` <span class="hint">PEFC ${k.pefc} ${esc(kravNavn(k.pefc))}</span>` : ''}</span></label>`).join('')}</div>
-      <h4 class="undertittel">Tiltak i oppdraget <span class="hint">${ls.length}</span></h4>
-      ${ls.map(({ bestand: b, tiltak: t }) => { const ok = okonomi({ ...t, bestand: b }); return `<div class="tiltak-rad${t.status === 'utfort' ? ' status-utfort' : ''}">
-        <span class="hint">${t.aar}</span>
-        <div><div class="tittel">${esc(tiltakNavn(t.type))} – bestand <a href="#" data-oh="bestand" data-b="${b.id}">${esc(b.nr)}</a>${t.status === 'utfort' ? ' <span class="hint">✓ utført</span>' : ''}</div>
-        <div class="info">${fmt(b.areal, 1)} daa · ${esc(b.treslag || '')}${b.bonitet ?? ''}${ok.m3 ? ` · ca. ${fmt(ok.m3)} m³` : ''}${b.miljo ? ' · <b>miljøfigur</b>' : ''}</div></div>
-        <button class="knapp liten" data-oh="fjern" data-t="${t.id}" type="button" title="Fjern fra oppdraget" aria-label="Fjern fra oppdraget">✕</button>
-      </div>`; }).join('') || '<div class="tom">Ingen tiltak i oppdraget.</div>'}
-      ${tapt ? `<p class="hint">${tapt} tiltak er slettet fra planen siden oppdraget ble laget.</p>` : ''}
-      <div class="knapperad"><button class="knapp liten" data-oh="legg-til" type="button">+ Legg til flere ${esc(ot.kort.toLowerCase())}-tiltak</button></div>
+      <div class="op-faner" role="tablist">${faner.map(([id, navn]) => `<button type="button" role="tab" data-oh="fane" data-fane="${id}" aria-selected="${id === fane}" class="${id === fane ? 'aktiv' : ''}">${navn}${merke[id] ? ` <span class="op-merke">${merke[id]}</span>` : ''}</button>`).join('')}</div>
+      <div class="op-innhold">${innhold[fane]}</div>
     </div>`;
   }
 
@@ -176,6 +195,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     const o = finn(valgt);
     if (h.dataset.oh === 'tilbake') { valgt = null; tegn(); return; }
     if (!o) return;
+    if (h.dataset.oh === 'fane' || h.dataset.oh === 'steg') { faneFor.set(o.id, h.dataset.fane); tegn(); $('#oppdragPanel')?.scrollIntoView?.({ block: 'start' }); return; }
     if (h.dataset.oh === 'zoom') visBestander(linjer(S(), o).map((l) => l.bestand.id));
     if (h.dataset.oh === 'skriv') skrivUt(o);
     if (h.dataset.oh === 'bestand') { e.preventDefault(); visBestander([h.dataset.b]); }

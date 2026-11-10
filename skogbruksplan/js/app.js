@@ -28,6 +28,7 @@ import { initSkifteplan } from './skifteplan-ui.js';
 import { misMonster, misFigurer, misKartlag, misLegendStil, miljoLegendStil } from './miljokart.js';
 import { VERSJON, UTGITT, UTVIKLER, APPNAVN, signatur } from './versjon.js';
 import { ENDRINGER, html as endringsloggHtml, sidenSist, nyere } from './endringslogg.js';
+import { KAPITLER as HJELP, innholdHtml as hjelpInnhold, tocHtml as hjelpToc, sok as hjelpSok, heleHtml as hjelpHele } from './hjelp.js';
 import { lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
 import { genererTiltak, oppsummer as motorOppsummer, PRINSIPPER, KILDER as MOTOR_KILDER, endringer as motorEndringer, merkKjort, tilTiltak, anvend as anvendMotor, oppdaterBestand as motorOppdaterBestand, MOTOR_VERSJON, signatur as motorSignatur } from './tiltaksmotor.js';
 import { RAPPORTER, lagRapport, lagRapportCsv } from './rapporter.js';
@@ -609,7 +610,10 @@ let skifteplanVisning = null;
 const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', skifteplan: 'Skifteplan', ksl: 'KSL', karbon: 'Karbon', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
+// Kapittel i brukerveiledningen for hver fane («?» i panelets overskrift).
+const HJELP_FOR_FANE = { planer: 'kom-i-gang', oversikt: 'kom-i-gang', kommune: 'kommune', bestand: 'bestand', tiltak: 'tiltak', framskriving: 'verdi', veier: 'veier', verdi: 'verdi', rapporter: 'rapporter', skogbrand: 'miljo', skifteplan: 'miljo', ksl: 'miljo', karbon: 'miljo', pefc: 'miljo', ai: 'data', felt: 'felt', data: 'data' };
 function visFane(navn) {
+  const hk = $('#panelHjelp'); if (hk) hk.dataset.hjelp = HJELP_FOR_FANE[navn] || 'kom-i-gang';
   registrerBruk('fane', navn); // bruksstatistikk for administrator (innlogging.js)
   if (deling && navn !== 'bestand') stoppDeling();
   if (pefcVisning) { if (navn === 'pefc') setTimeout(() => pefcVisning.vis(), 0); else pefcVisning.skjul(); }
@@ -988,15 +992,20 @@ function tiltakRadHtml(t, { velg = false } = {}) {
   const b = t.bestand; const ok = tiltakOkonomi(t);
   const utfort = t.status === 'utfort';
   const kanVelges = velg && !t.forslag && tiltakLedig(t, S.oppdrag) && (!maalOppdrag || oppdragstype(t.type) === oppdragstype(maalOppdrag.type));
-  return `<div class="tiltak-rad ${utfort ? 'status-utfort' : ''} ${t.forslag ? 'forslag' : ''} ${velg ? 'velgbar' : ''} ${valgteTiltak.has(t.id) ? 'valgt' : ''}" data-bestand="${b.id}" data-tiltak="${t.id || ''}">
-    ${velg && !t.forslag ? `<input type="checkbox" class="velg-tiltak" data-handling="velg" aria-label="Velg tiltaket" ${valgteTiltak.has(t.id) ? 'checked' : ''} ${kanVelges ? '' : 'disabled'}>` : ''}
-    ${t.forslag ? `<button class="knapp liten primar" data-handling="godta" type="button">Legg til</button>` : `<button class="knapp liten utfort-knapp${utfort ? ' er-utfort' : ''}" data-handling="utfort" type="button" aria-pressed="${utfort}" title="${utfort ? 'Angre – sett tilbake til planlagt' : 'Marker som utført'}">${utfort ? '✓ Utført' : 'Utført'}</button>`}
-    <div>
-      <div class="tittel">${esc(TILTAKSTYPER[t.type]?.navn || t.type)} – bestand <a href="#" data-handling="vis">${esc(b.nr)}</a> <span class="hint">${t.aar}${utfort && t.utfortDato ? `, utført ${esc(t.utfortDato)}` : ''}</span>${oppdragMerke(t)}</div>
+  const kanOppdrag = !t.forslag && !utfort && !velg && t.id && tiltakLedig(t, S.oppdrag);
+  return `<div class="tiltak-rad tr ${utfort ? 'status-utfort' : ''} ${t.forslag ? 'forslag' : ''} ${velg ? 'velgbar' : ''} ${valgteTiltak.has(t.id) ? 'valgt' : ''}" data-bestand="${b.id}" data-tiltak="${t.id || ''}">
+    ${velg && !t.forslag ? `<input type="checkbox" class="velg-tiltak" data-handling="velg" aria-label="Velg ${esc(TILTAKSTYPER[t.type]?.navn || t.type)} i bestand ${esc(b.nr)}" ${valgteTiltak.has(t.id) ? 'checked' : ''} ${kanVelges ? '' : 'disabled'} title="${kanVelges ? 'Ta med i oppdraget' : 'Kan ikke velges: ligger i et aktivt oppdrag, er utført eller er en annen type enn oppdraget'}">` : ''}
+    <div class="tr-hoved">
+      <div class="tittel">${utfort ? '<span class="tr-ok" title="Utført">✓</span> ' : ''}${esc(TILTAKSTYPER[t.type]?.navn || t.type)} – bestand <a href="#" data-handling="vis" title="Åpne bestandet">${esc(b.nr)}</a> <span class="hint">${t.aar}${utfort && t.utfortDato ? `, utført ${esc(t.utfortDato)}` : ''}</span>${t.prioritet ? ` <span class="prio prio-${t.prioritet}" title="Prioritet ${t.prioritet} (1 er høyest)">P${t.prioritet}</span>` : ''}${oppdragMerke(t)}</div>
       <div class="info">${t.arealDaa != null && t.arealDaa < (b.areal || 0) - 0.05 ? `${fmt(t.arealDaa, 1)} av ${fmt(b.areal, 1)} daa` : `${fmt(b.areal, 1)} daa`} · ${b.treslag || ''}${b.bonitet ?? ''}${ok.m3 ? ` · ca. ${fmt(ok.m3)} m³` : ''} · ${ok.netto >= 0 ? 'netto' : 'kostnad'} ca. ${fmt(Math.abs(ok.netto))} kr${ok.skogfond ? ` · skogfond ${fmt(ok.skogfond)} kr` : ''}${t.kommentar ? ` · ${esc(t.kommentar)}` : ''}</div>
       ${begrunnelseHtml(t)}
+      <div class="tr-handlinger">
+        ${t.forslag ? '<button class="knapp liten primar" data-handling="godta" type="button">＋ Legg til i planen</button>' : `<button class="knapp liten utfort-knapp${utfort ? ' er-utfort' : ''}" data-handling="utfort" type="button" aria-pressed="${utfort}" title="${utfort ? 'Angre – sett tilbake til planlagt' : 'Marker tiltaket som utført'}">${utfort ? '↶ Angre utført' : '✓ Marker utført'}</button>`}
+        ${kanOppdrag && oppdragstype(t.type) ? '<button class="knapp liten" data-handling="nytt-oppdrag" type="button" title="Lag et oppdrag med dette tiltaket – for bestilling, tilbud, driftsveg og skiltplan">＋ Oppdrag</button>' : ''}
+        <button class="knapp liten" data-handling="zoom" type="button" title="Vis bestand ${esc(b.nr)} i kartet">🔍 Kart</button>
+        ${t.forslag ? '' : '<button class="knapp liten" data-handling="endre-tiltak" type="button" title="Endre type, år, areal, prioritet eller kommentar">✎ Endre</button><button class="knapp liten tr-slett" data-handling="slett-tiltak" type="button" title="Slett tiltaket" aria-label="Slett tiltaket">✕</button>'}
+      </div>
     </div>
-    <div style="display:flex;gap:6px;align-items:center">${t.prioritet ? `<span class="prio prio-${t.prioritet}">P${t.prioritet}</span>` : ''}<button class="knapp liten" data-handling="zoom" type="button" title="Zoom til bestand ${esc(b.nr)} i kartet" aria-label="Zoom til bestand">🔍</button>${t.forslag ? '' : '<button class="knapp liten" data-handling="endre-tiltak" type="button" title="Endre tiltak" aria-label="Endre">✎</button><button class="knapp liten" data-handling="slett-tiltak" type="button" title="Slett tiltak" aria-label="Slett">✕</button>'}</div>
   </div>`;
 }
 
@@ -1011,7 +1020,7 @@ function tegnTiltak() {
     const ok = ts.map(tiltakOkonomi);
     const netto = ok.reduce((s, o) => s + o.netto, 0); const m3 = ok.reduce((s, o) => s + o.m3, 0); const fond = ok.reduce((s, o) => s + o.skogfond, 0);
     return `<div class="tiltak-aar"><h4>${aar}${aar < IAAR && status !== 'utfort' ? ' ⚠️ forfalt' : ''}<span>${m3 ? `${fmt(m3)} m³ · ` : ''}netto ${fmt(netto)} kr${fond ? ` · skogfond ${fmt(fond)} kr` : ''}</span></h4>${ts.map((t) => tiltakRadHtml(t, { velg: valgModus })).join('')}</div>`;
-  }).join('') || '<div class="tom">Ingen tiltak i utvalget.</div>';
+  }).join('') || (alleTiltak().length ? '<div class="tom">Ingen tiltak i utvalget. Prøv «Alle» eller «Alle typer» i filtrene over.</div>' : `<div class="tom tom-veiledning"><b>Ingen tiltak i planen ennå</b><ol><li><b>Tiltaksmotor</b> foreslår hogst, tynning, planting og ungskogpleie for alle bestand – velg prinsipp og trykk «Lag forslag».</li><li>Eller åpne et bestand (Bestand-fanen eller trykk i kartet) og legg til tiltak der.</li><li>Når tiltakene er i planen, lager du <b>oppdrag</b> for det som skal bestilles.</li></ol><button type="button" class="knapp liten" data-hjelp="tiltak">Les mer i brukerveiledningen</button></div>`);
   tegnValgLinje();
   $('#motorPanel').innerHTML = motorKortHtml() + endringerHtml();
   const motor = forslag.some((f) => f.motorForslag);
@@ -1123,6 +1132,11 @@ function handterTiltakKlikk(e) {
   if (h === 'slett-tiltak') { if (!confirm(slettTekst(b, t))) return; slettTiltak(S, b, t); endret(); if (valgtId === b.id) visDetalj(); melding('Tiltaket er slettet.'); return; }
   if (h === 'endre-tiltak') { aapneTiltakDialog(b, t); return; }
   if (h === 'utfort') { settUtfort(b, t, t.status !== 'utfort'); endret(); if (valgtId === b.id) visDetalj(); }
+  if (h === 'nytt-oppdrag') {
+    const r = lagOppdrag(S, [{ bestand: b, tiltak: t }], { nyId, iAar: IAAR }); if (!r.oppdrag.length) { melding('Tiltaket ligger allerede i et aktivt oppdrag.'); return; }
+    endret(); visTiltakVisning('oppdrag'); oppdragVisning?.apne(r.oppdrag[0].id);
+    melding(`Oppdrag ${r.oppdrag[0].nr} er laget. Følg arbeidsflyten under Oversikt – eller legg til flere tiltak.`);
+  }
 }
 
 // Dialog for å endre et tiltak (type, status, år/dato, areal, prioritet, kommentar).
@@ -1218,6 +1232,29 @@ function visNyttSidenSist() {
   m.querySelector('[data-nytt-lukk]').onclick = () => { merkSett(); fjernNyttMelding(); };
 }
 document.addEventListener('click', (e) => { if (e.target.closest('[data-hva-nytt]')) { e.preventDefault(); visEndringslogg(); } });
+
+// ---------------------------------------------------------------- brukerveiledning (hjelp.js)
+// Åpnes fra «?» i menyen, kommandolinjen, Om-boksen og «?»-knapper med data-hjelp (kapittel-id) der funksjonene er.
+let hjelpKapittel = 'kom-i-gang';
+function visHjelp(id = hjelpKapittel) {
+  const d = $('#hjelpDialog'); hjelpKapittel = id || 'kom-i-gang';
+  if (!d.open || !d.querySelector('.hj-tekst')) {
+    d.innerHTML = `<div class="hj-topp"><h3>❓ Brukerveiledning</h3><input type="search" class="hj-sok" placeholder="Søk i veiledningen …" aria-label="Søk i veiledningen"><button type="button" class="knapp liten" data-hj="skriv" title="Skriv ut eller lagre som PDF">🖨 Skriv ut</button><button type="button" class="knapp liten" data-hj="lukk">Lukk</button></div>
+      <div class="hj-kropp"><nav class="hj-toc" aria-label="Innhold"></nav><div class="hj-tekst" tabindex="-1"></div></div>`;
+    const sok = d.querySelector('.hj-sok');
+    sok.oninput = () => { const liste = hjelpSok(sok.value); d.querySelector('.hj-toc').innerHTML = hjelpToc(hjelpKapittel, liste); if (liste.length && !liste.some((k) => k.id === hjelpKapittel)) visHjelp(liste[0].id); };
+    d.onclick = (e) => {
+      const kap = e.target.closest('[data-hj-kap]'); if (kap) { visHjelp(kap.dataset.hjKap); return; }
+      const h = e.target.closest('[data-hj]')?.dataset.hj;
+      if (h === 'lukk' || e.target === d) d.close();
+      if (h === 'skriv') { const w = window.open('', '_blank'); if (!w) { melding('Nettleseren blokkerte utskriftsvinduet.'); return; } w.document.write(`<!doctype html><meta charset="utf-8"><title>Brukerveiledning – ${APPNAVN}</title><style>body{font:13px/1.5 system-ui,sans-serif;max-width:820px;margin:24px auto;padding:0 16px;color:#111}h1{font-size:24px}h2{font-size:18px;margin-top:28px;border-top:1px solid #ddd;padding-top:12px}h4{margin:14px 0 4px}.hj-tips,.hj-obs{background:#f3f6f2;border-radius:8px;padding:6px 10px}kbd{border:1px solid #bbb;border-radius:4px;padding:0 4px;font-size:11px}a{color:inherit;text-decoration:none}@media print{button{display:none}section{break-inside:avoid-page}}</style><button onclick="print()">Skriv ut / lagre som PDF</button>${hjelpHele(APPNAVN, VERSJON)}`); w.document.close(); }
+    };
+  }
+  d.querySelector('.hj-toc').innerHTML = hjelpToc(hjelpKapittel, hjelpSok(d.querySelector('.hj-sok').value));
+  const t = d.querySelector('.hj-tekst'); t.innerHTML = hjelpInnhold(hjelpKapittel); t.scrollTop = 0;
+  if (!d.open) d.showModal();
+}
+document.addEventListener('click', (e) => { const el = e.target.closest('[data-hjelp]'); if (!el) return; e.preventDefault(); visHjelp(el.dataset.hjelp); });
 
 // ---------------------------------------------------------------- naboeiendommer
 // Eiendommene rundt (Kartverket) med status for skogbruksplan: plan i SkogIQ.ai, plan i NIBIOs register, eller mangler.
@@ -1509,7 +1546,7 @@ function tegnValgLinje() {
   const v = valgteListe(); const typer = [...new Set(v.map((x) => x.tiltak.type))];
   const ku = kartUtvalg; const sum = ku?.type ? oppsummerUtvalg(S, ku, inn()) : null;
   const kartTyper = Object.keys(OPPDRAGSTYPER).filter((k) => kanLageTiltak(k) || utvalgKandidater(S, k).length);
-  el.innerHTML = `<div class="valg-kart"><label>Velg i kartet <select data-valg-type ${maalOppdrag ? 'disabled' : ''}><option value="">Velg type …</option>${kartTyper.map((k) => `<option value="${k}" ${ku?.type === k ? 'selected' : ''}>${esc(OPPDRAGSTYPER[k].kort)}</option>`).join('')}</select></label>
+  el.innerHTML = `<p class="hint valg-intro"><b>Slik lager du oppdrag:</b> kryss av tiltakene som skal gjøres samlet – eller velg type og trykk på bestandene i kartet. Trykk så <b>Lag oppdrag</b>. Ulike tiltakstyper blir egne oppdrag. Ett enkelt tiltak? Bruk «＋ Oppdrag» på tiltaket.</p><div class="valg-kart"><label>Velg i kartet <select data-valg-type ${maalOppdrag ? 'disabled' : ''}><option value="">Velg type …</option>${kartTyper.map((k) => `<option value="${k}" ${ku?.type === k ? 'selected' : ''}>${esc(OPPDRAGSTYPER[k].kort)}</option>`).join('')}</select></label>
     <button class="knapp liten" type="button" data-valg="tegn" ${ku?.type && kanLageTiltak(ku.type) ? '' : 'disabled'}>✎ Tegn flate</button><button class="knapp liten" type="button" data-valg="angre" ${ku?.logg.length ? '' : 'disabled'}>↶ Angre</button>
     <span class="hint">${ku?.type ? `Trykk på bestand i kartet for å velge eller ta ut. Stiplet = har planlagt tiltak.${sum?.tiltak ? ` ${fmt(sum.daa, 1)} daa${sum.kost ? ` · ca. ${fmt(Math.round(sum.kost / 100) * 100)} kr` : ''}` : ''}` : 'Velg type for å velge bestand i kartet eller tegne en flate.'}</span></div>
   <span><b>${v.length}</b> tiltak valgt${typer.length > 1 ? ` · ${typer.length} typer → ${typer.length} oppdrag` : typer.length ? ` · ${esc(TILTAKSTYPER[typer[0]]?.navn || typer[0])}` : ''}${maalOppdrag ? ` · legges i ${esc(maalOppdrag.nr)}` : ''}</span>
@@ -1518,6 +1555,7 @@ function tegnValgLinje() {
 function visTiltakVisning(navn) {
   $$('#tiltakVisning [data-tv]').forEach((b) => b.classList.toggle('aktiv', b.dataset.tv === navn));
   $('#oppdragPanel').hidden = navn !== 'oppdrag'; $('#tiltakPlanPanel').hidden = navn !== 'plan';
+  const hk = $('#panelHjelp'); if (hk) hk.dataset.hjelp = navn === 'oppdrag' ? 'oppdrag' : 'tiltak';
   if (navn === 'oppdrag') oppdragVisning?.tegn(); else { oppdragVisning?.lukk(); oppdaterStiler(); }
 }
 // Trykk på bestand i kartet i velg-modus. Gir true når trykket er brukt.
@@ -2317,6 +2355,8 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
     ...Object.entries(RAPPORTER).map(([k, r]) => ({ gruppe: 'Rapporter', ikon: '▦', tittel: `Rapport: ${r.navn}`, under: r.beskrivelse, sok: 'rapport pdf utskrift skriv ut', utfor: () => visRapport(k) })),
     { gruppe: 'Handlinger', ikon: '🤝', tittel: 'Del med tømmerkjøper', under: 'Del bestand, volumer og kart og få prisforslag', sok: 'tømmerkjøper tommerkjoper del dele tømmer salg selge hogst pris tilbud andelslag kjøper', utfor: () => { visFane('verdi'); tommerVisning?.apne(null); setTimeout(() => $('#tommerDeling')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
+    { gruppe: 'Hjelp', ikon: '❓', tittel: 'Brukerveiledning', under: 'Slik bruker du SkogIQ.ai – steg for steg', sok: 'hjelp brukerveiledning veiledning manual hvordan bruke guide', utfor: () => visHjelp('kom-i-gang') },
+    ...HJELP.map((k) => ({ gruppe: 'Hjelp', ikon: k.ikon, tittel: `Hjelp: ${k.tittel}`, sok: `hjelp veiledning hvordan ${k.tittel.toLowerCase()}`, utfor: () => visHjelp(k.id) })),
     { gruppe: 'Handlinger', ikon: '✨', tittel: 'Hva er nytt i SkogIQ.ai', under: `Versjonslogg – sist ${ENDRINGER[0].tittel}`, sok: 'hva er nytt versjonslogg endringer oppdatering nyheter changelog', utfor: () => visEndringslogg() },
     { gruppe: 'Handlinger', ikon: 'ℹ', tittel: `Om ${APPNAVN} – versjon ${VERSJON}`, under: `Utviklet av ${UTVIKLER}`, sok: 'om versjon utvikler laget av trond harald sand', utfor: () => { visFane('planer'); setTimeout(() => $('#fane-planer [data-om-app]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); } },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Ta sikkerhetskopi', sok: 'backup eksport lagre', utfor: () => eksporter('backup') },
@@ -2363,7 +2403,7 @@ function kobleHendelser() {
     dra = null;
   });
   // Versjon og utvikler
-  for (const el of $$('[data-om-app]')) el.innerHTML = `<b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span> · <a href="#" data-hva-nytt>Hva er nytt?</a><br>Utviklet av ${UTVIKLER}<br><span data-bruker-info></span><a href="#" data-logg-ut>Logg ut</a>`;
+  for (const el of $$('[data-om-app]')) el.innerHTML = `<b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span> · <a href="#" data-hva-nytt>Hva er nytt?</a> · <a href="#" data-hjelp="kom-i-gang">Brukerveiledning</a><br>Utviklet av ${UTVIKLER}<br><span data-bruker-info></span><a href="#" data-logg-ut>Logg ut</a>`;
   visBruker();
   $('#railVersjon').textContent = `v${VERSJON}`; $('#railVersjon').title = `${signatur()} – klikk for å se hva som er nytt`;
   visNyttSidenSist();

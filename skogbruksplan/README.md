@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.62.0** (2026-11-09) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.63.0** (2026-11-10) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -560,6 +560,28 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## Brukerveiledning i appen og arbeidsflyt for oppdrag
+
+**Brukerveiledningen** (`js/hjelp.js`) har kapitler med søk, innholdsliste og utskrift/PDF. Den åpnes fra:
+- «?» i panelets overskrift (kapitlet for fanen du står i)
+- Om-boksen og kommandolinjen («hjelp», «brukerveiledning», «Hjelp: …»)
+- «?»-knappene i Tiltak og i oppdragene
+
+**Tiltaksplanen:**
+- Knappene ligger på egen rad under hvert tiltak, med tekst: ✓ Marker utført, ＋ Oppdrag, 🔍 Kart, ✎ Endre, ✕.
+- **＋ Oppdrag** lager et oppdrag av ett tiltak direkte.
+- «Nytt oppdrag» (flere tiltak) forklarer i velgemodusen hvordan man velger.
+- En tom plan viser hvordan man kommer i gang.
+
+**Oppdrag** er delt i faner:
+- **Oversikt:** arbeidsflyt, felt og tiltak
+- **Planlegging:** driftsveg og skiltplan
+- **Utfører:** tilbud og utfører
+- **Maskin:** StanForD, bare for hogst
+- **Sjekkliste**
+
+Oversikt viser **arbeidsflyten** (`stegFor` i `js/oppdrag.js`) med ✓ for gjort og ➜ for neste steg. Hvert steg leder til riktig fane. «Slett oppdraget» ligger nederst i Oversikt.
 
 ## Del med tømmerkjøper (Verdi › 🤝 Del med tømmerkjøper)
 

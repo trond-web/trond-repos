@@ -3203,6 +3203,29 @@ test('Skiltplan: arbeidsvarsling ved velteplass, kryssing og hogst inntil offent
   assert.match(SP.skiltSvg(r.skilt[0]), /<svg/); assert.match(SP.skiltTekst({ skilt: ['362'], fart: 60 }), /362 Fartsgrense 60/);
 });
 
+test('Oppdrag: arbeidsflyt med neste steg, og brukerveiledningen dekker alle hjelpelenker', async () => {
+  const OP = await import('../js/oppdrag.js'); const HJ = await import('../js/hjelp.js');
+  const o = { type: 'sluttavvirkning', status: 'utkast', sjekk: {} };
+  let st = OP.stegFor(o);
+  assert.deepEqual(st.map((x) => x.id), ['periode', 'driftsveg', 'skiltplan', 'utforer', 'bestilt', 'maskin', 'sjekk', 'utfort']);
+  assert.equal(st.find((x) => x.neste).id, 'periode');
+  o.periode = { fra: '2027-01-10' }; st = OP.stegFor(o);
+  assert.equal(st.find((x) => x.neste).id, 'skiltplan', 'valgfri driftsveg hoppes over når neste velges');
+  o.skiltplan = { status: 'beholdt' }; o.utforer = { navn: 'Hogst AS' }; o.status = 'bestilt'; st = OP.stegFor(o);
+  assert.equal(st.find((x) => x.neste).id, 'sjekk'); assert.match(st.find((x) => x.id === 'sjekk').tekst, /0 av \d+/);
+  for (const k of OP.typeFor('sluttavvirkning').sjekk) o.sjekk[k.id] = true; o.status = 'utfort'; st = OP.stegFor(o);
+  assert.ok(!st.some((x) => x.neste), 'ferdig oppdrag har ikke neste steg');
+  const p = OP.stegFor({ type: 'planting', status: 'utkast' }); assert.ok(!p.some((x) => x.id === 'driftsveg' || x.id === 'maskin')); assert.ok(p.find((x) => x.id === 'skiltplan').valgfri);
+  // Hjelpelenker i kode og HTML peker til kapitler som finnes, og søket finner dem.
+  const ider = new Set(HJ.KAPITLER.map((k) => k.id)); assert.equal(ider.size, HJ.KAPITLER.length);
+  const filer = ['../index.html', '../js/app.js', '../js/oppdrag-ui.js', '../js/hjelp.js'].map((f) => readFileSync(new URL(f, import.meta.url), 'utf8')).join('\n');
+  const brukt = [...filer.matchAll(/data-hjelp="([a-z-]+)"/g)].map((m) => m[1]);
+  assert.ok(brukt.length >= 6); for (const id of brukt) assert.ok(ider.has(id), `kapittel ${id} finnes`);
+  for (const id of ['tiltak', 'oppdrag', 'driftsveg', 'skiltplan', 'tilbud', 'maskin']) assert.ok(ider.has(id));
+  assert.equal(HJ.sok('arbeidsvarsling')[0].id, 'skiltplan'); assert.ok(HJ.sok('stikkveg').some((k) => k.id === 'driftsveg')); assert.equal(HJ.sok('xyzzy').length, 0);
+  assert.match(HJ.innholdHtml('oppdrag'), /Neste steg|neste steg/); assert.match(HJ.heleHtml('SkogIQ.ai', '1.0'), /<h2>.*Kom i gang/);
+});
+
 test('Versjonslogg: følger versjonsnummeret, er sortert, «nytt siden sist» og CHANGELOG.md er oppdatert', () => {
   assert.equal(LOGG.ENDRINGER[0].versjon, VERSJON, 'første oppføring er gjeldende versjon');
   for (let i = 1; i < LOGG.ENDRINGER.length; i++) { const a = LOGG.ENDRINGER[i - 1]; const b = LOGG.ENDRINGER[i]; assert.ok(LOGG.nyere(a.versjon, b.versjon), `${a.versjon} før ${b.versjon}`); assert.ok(a.dato >= b.dato, `dato ${a.dato} ≥ ${b.dato}`); }

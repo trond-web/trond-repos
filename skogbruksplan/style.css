@@ -1151,3 +1151,64 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .sp-skilt { display: inline-flex; align-items: center; gap: 2px; } .sp-tabell td { vertical-align: top; }
 .sp-markor { background: none; border: 0; } .sp-markor .sp-skilt { filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
 .sp-nr { position: absolute; top: -8px; left: -8px; background: #111; color: #fff; font: 700 10px/1 system-ui, sans-serif; border-radius: 99px; padding: 2px 5px; }
+
+/* Tiltaksrader: handlinger på egen rad under teksten (1.63) */
+.tiltak-rad.tr { grid-template-columns: minmax(0, 1fr); align-items: start; }
+.tiltak-rad.tr.velgbar { grid-template-columns: auto minmax(0, 1fr); }
+.tiltak-rad.tr .velg-tiltak { margin-top: 3px; }
+.tr-hoved { min-width: 0; display: grid; gap: 3px; }
+.tr-handlinger { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tr-handlinger .knapp.liten { padding: 4px 9px; font-size: 12.5px; }
+.tr-handlinger .tr-slett { margin-left: auto; color: var(--text-2); }
+.tr-ok { color: var(--accent); font-weight: 800; }
+.tiltak-rad.tr .prio { vertical-align: 1px; }
+.valg-intro { margin: 0 0 8px; font-size: 13px; }
+.tom-veiledning { text-align: left; padding: 14px 16px; } .tom-veiledning ol { margin: 6px 0 10px; padding-left: 20px; display: grid; gap: 4px; }
+.hjelp-knapp { min-width: 36px; justify-content: center; font-weight: 800; }
+
+/* Oppdrag: faner og arbeidsflyt (1.63) */
+.op-faner { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 6px 0 12px; overflow-x: auto; scrollbar-width: none; }
+.op-faner button { border: 0; background: none; padding: 8px 10px; font: 600 13.5px/1.2 inherit; font-family: inherit; color: var(--text-2); border-bottom: 2.5px solid transparent; cursor: pointer; white-space: nowrap; }
+.op-faner button.aktiv { color: var(--text); border-bottom-color: var(--accent); }
+.op-faner button:hover { color: var(--text); }
+.op-merke { font: 600 10.5px/1 var(--font-mono); color: var(--accent); margin-left: 2px; }
+.op-intro { margin: 0 0 10px; }
+.op-steg { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 14px; background: var(--surface-2); }
+.op-steg-topp { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.op-steg ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.op-steg li button { width: 100%; display: grid; grid-template-columns: 22px 1fr; gap: 6px; align-items: start; text-align: left; border: 0; background: none; padding: 5px 4px; border-radius: 8px; cursor: pointer; font: 13.5px/1.35 inherit; font-family: inherit; color: var(--text-2); }
+.op-steg li button:hover { background: var(--surface); }
+.op-steg li button b { font-weight: 600; }
+.op-steg li.ferdig button { color: var(--text-2); } .op-steg li.ferdig b { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--text-2) 50%, transparent); font-weight: 500; }
+.op-steg li.neste button { background: var(--surface); color: var(--text); box-shadow: inset 3px 0 0 var(--accent); }
+.op-steg li small { display: block; color: var(--text-2); font-size: 12px; margin-top: 1px; }
+.op-steg-ikon { width: 20px; height: 20px; border-radius: 99px; border: 1.5px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
+.op-steg li.ferdig .op-steg-ikon { background: var(--accent); border-color: var(--accent); color: #fff; }
+.op-steg li.neste .op-steg-ikon { border-color: var(--accent); color: var(--accent); }
+.op-skjema { margin-bottom: 8px; }
+.op-fare { display: flex; gap: 10px; align-items: center; margin-top: 18px; padding-top: 12px; border-top: 1px dashed var(--border); }
+
+/* Brukerveiledning (hjelp.js) */
+.rail-hjelp { width: 30px; height: 30px; margin: 0 auto 4px; border-radius: 99px; border: 1.5px solid rgba(255,255,255,.35); background: none; color: #e6eee8; font: 800 14px/1 var(--font-body, system-ui); cursor: pointer; display: grid; place-items: center; }
+.rail-hjelp:hover { background: rgba(255,255,255,.1); }
+.hjelp-dialog { width: min(980px, calc(100% - 24px)); max-height: calc(100% - 40px); height: 760px; padding: 0; display: none; }
+.hjelp-dialog[open] { display: flex; flex-direction: column; }
+.hj-topp { display: flex; gap: 8px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.hj-topp h3 { margin: 0; flex: 0 0 auto; } .hj-sok { flex: 1; min-width: 0; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; }
+.hj-kropp { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 0; flex: 1; }
+.hj-toc { overflow: auto; padding: 8px; border-right: 1px solid var(--border); display: grid; align-content: start; gap: 2px; }
+.hj-toc button { text-align: left; border: 0; background: none; padding: 7px 9px; border-radius: 8px; font: 500 13.5px/1.3 inherit; font-family: inherit; color: var(--text-2); cursor: pointer; }
+.hj-toc button:hover { background: var(--surface-2); } .hj-toc button.aktiv { background: var(--accent-soft, var(--surface-2)); color: var(--text); font-weight: 700; }
+.hj-tekst { overflow: auto; padding: 14px 22px 26px; font-size: 14.5px; line-height: 1.55; }
+.hj-tekst h3 { margin: 0 0 8px; font-size: 21px; } .hj-tekst h4 { margin: 16px 0 4px; }
+.hj-tekst ul, .hj-steg { padding-left: 22px; display: grid; gap: 5px; }
+.hj-tips, .hj-obs { background: var(--surface-2); border-radius: 10px; padding: 8px 12px; margin: 10px 0; }
+.hj-obs { border-left: 4px solid #e07b00; } .hj-tips { border-left: 4px solid var(--accent); }
+.hj-tekst kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; font: 600 12px var(--font-mono); }
+.hj-tekst a[data-hjelp] { color: var(--accent); }
+@media (max-width: 700px) { .hj-kropp { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } .hj-toc { display: flex; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); } .hj-toc button { white-space: nowrap; } .hj-topp { flex-wrap: wrap; } .hj-topp h3 { flex: 1; font-size: 17px; } .hj-sok { order: 3; flex-basis: 100%; } .hj-tekst { padding: 12px 16px 22px; } }
+
+.panel-hjelp { font: 800 15px/1 var(--font-body, system-ui); }
+.sb-under { box-shadow: 0 -16px 0 0 var(--surface); }
+.op-faner { flex-wrap: wrap; row-gap: 0; }
+.op-faner button { padding: 8px 8px; }
