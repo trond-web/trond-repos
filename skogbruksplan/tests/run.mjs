@@ -3275,6 +3275,19 @@ test('Ajourføring fra HPR: hogd flate, deling, egenskaper, tiltak, rydding, nyt
   const r2 = AJ.lagForslag(S, stammer, PC, { iAar: 2026 }); for (const f of r2.forslag) f.valg = 'ingen'; AJ.anvend(S, r2, {}); assert.equal(S.bestand.find((x) => x.id === 'A').hogstklasse, 5);
 });
 
+test('Be om tilbud (enkel veiviser): kandidater per type, tiltak i aktive oppdrag holdes utenfor', async () => {
+  const HT = await import('../js/tilbud-hurtig.js');
+  const S = { bestand: [
+    { id: 'a', nr: '2', tiltak: [{ id: 't1', type: 'sluttavvirkning', aar: 2027, status: 'planlagt' }, { id: 't2', type: 'planting', aar: 2028, status: 'planlagt' }] },
+    { id: 'b', nr: '10', tiltak: [{ id: 't3', type: 'sluttavvirkning', aar: 2026, status: 'planlagt' }, { id: 't4', type: 'tynning', aar: 2026, status: 'utfort' }] },
+    { id: 'c', nr: '3', tiltak: [{ id: 't5', type: 'sluttavvirkning', aar: 2026, status: 'planlagt', oppdragId: 'o1' }, { id: 't6', type: 'ungskogpleie', aar: 2030, status: 'planlagt' }] },
+  ], oppdrag: [{ id: 'o1', status: 'bestilt', linjer: [{ bestandId: 'c', tiltakId: 't5' }] }] };
+  const g = HT.grupper(S, 2026);
+  assert.deepEqual(g.map((x) => x.type), ['sluttavvirkning', 'planting', 'ungskogpleie'], 'tidligste år først, utførte tiltak er ikke med');
+  assert.deepEqual(g[0].liste.map((x) => x.bestand.nr), ['10', '2'], 'sortert på år, og tiltaket i et aktivt oppdrag er utelatt');
+  S.oppdrag[0].status = 'utfort'; assert.equal(HT.grupper(S, 2026)[0].liste.length, 3, 'avsluttet oppdrag binder ikke tiltaket');
+});
+
 test('Versjonslogg: følger versjonsnummeret, er sortert, «nytt siden sist» og CHANGELOG.md er oppdatert', () => {
   assert.equal(LOGG.ENDRINGER[0].versjon, VERSJON, 'første oppføring er gjeldende versjon');
   for (let i = 1; i < LOGG.ENDRINGER.length; i++) { const a = LOGG.ENDRINGER[i - 1]; const b = LOGG.ENDRINGER[i]; assert.ok(LOGG.nyere(a.versjon, b.versjon), `${a.versjon} før ${b.versjon}`); assert.ok(a.dato >= b.dato, `dato ${a.dato} ≥ ${b.dato}`); }
