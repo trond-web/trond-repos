@@ -49,7 +49,8 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     }).join('');
     return `<div class="kort">
       <div class="detalj-topp"><h3>Oppdrag</h3><select id="oppdragFilter" aria-label="Vis oppdrag">${opsj([['aktive', 'Aktive'], ['alle', 'Alle']], filter)}</select></div>
-      <p class="hint" style="margin-top:0">Velg ett eller flere planlagte tiltak under «Tiltaksplan» med «Velg til oppdrag» og trykk «Lag oppdrag». Hver tiltakstype får sin egen oppdragstype med egne felt og egen sjekkliste. Velger du flere typer, lages ett oppdrag per type.</p>
+      <div class="ht-start"><div><b>Vil du ha pris på en jobb?</b><span class="hint">Velg hva som skal gjøres og hvem som skal gi tilbud – oppdraget lages automatisk.</span></div><button type="button" class="knapp primar" data-be-om-tilbud>📨 Be om tilbud</button></div>
+      <p class="hint">Du kan også lage oppdrag uten tilbud: «＋ Oppdrag» på et tiltak, eller «Nytt oppdrag» under Tiltaksplan for flere tiltak.</p>
       ${rader || '<div class="tom">Ingen oppdrag ennå.</div>'}
       <details class="ekstra" style="margin-top:10px"><summary>Oppdragstyper (${Object.keys(OPPDRAGSTYPER).length})</summary>${Object.entries(OPPDRAGSTYPER).map(([k, t]) => `<div><b>${esc(t.navn)}</b> <span class="hint">for ${esc(tiltakNavn(k))} · ${esc(t.utforer)} · ${t.felt.length} felt, ${t.sjekk.length} punkter i sjekklisten</span></div>`).join('')}</details>
     </div>`;
@@ -133,7 +134,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     if (o?.skiltplan) skiltUi.kart(o); else skiltUi.lukk();
   }
 
-  function apne(id) { valgt = id; const o = finn(id); if (o) tilbudUi.apnet(o, tegn); tegn(); if (o) visBestander(linjer(S(), o).map((l) => l.bestand.id)); }
+  function apne(id, fane = null) { if (fane) faneFor.set(id, fane); valgt = id; const o = finn(id); if (o) tilbudUi.apnet(o, tegn); tegn(); if (o) visBestander(linjer(S(), o).map((l) => l.bestand.id)); }
 
   function settStatus(o, ny) {
     const for_ = o.status; o.status = ny;

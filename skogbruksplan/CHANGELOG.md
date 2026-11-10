@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.65.0 – Be om tilbud i tre enkle steg (2026-11-10)
+
+*Nytt.* Trykk «📨 Be om tilbud»: velg hva som skal gjøres, hvem som skal gi pris, og send. Oppdraget lages automatisk, og du sender lenken på e-post eller SMS.
+
 ## 1.64.0 – Ajourfør planen fra hogstmaskindata (2026-11-10)
 
 *Nytt.* Les inn hpr-fila: SkogIQ finner hogd flate og foreslår deling av bestand, nye egenskaper, utførte og nye tiltak og rydding i tiltak som ikke er aktuelle. Du velger hva som brukes, ser alt i kartet og kan angre.

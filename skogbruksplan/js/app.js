@@ -45,6 +45,7 @@ import { initKsl } from './ksl-ui.js';
 import { initKarbon } from './karbon-ui.js';
 import { initHprSr16 } from './hpr-sr16-ui.js';
 import { lagAjourforingUi } from './ajourforing-ui.js';
+import { lagHurtigTilbud } from './tilbud-hurtig.js';
 import { WMS as FUKT_WMS, LAG as FUKT_LAG, KLASSER as FUKT_KLASSER, perBestand as fuktPerBestand, vurdering as fuktVurdering, dekodPng as fuktDekod } from './markfukt.js';
 import { hentBratthet, flater as brattFlater, statistikk as brattStat, vurdering as brattVurdering, KLASSER as BRATT_KLASSER } from './bratthet.js';
 import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, OPPDRAGSTYPER, typeFor as oppdragstype } from './oppdrag.js';
@@ -604,7 +605,7 @@ function angreDeling() {
 let kommuneVisning = null;
 let veiVisning = null;
 let pefcVisning = null;
-let verdiVisning = null; let tommerVisning = null; let ajourVisning = null;
+let verdiVisning = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null;
 let aiVisning = null;
 let skogbrandVisning = null;
 let skifteplanVisning = null;
@@ -1002,7 +1003,7 @@ function tiltakRadHtml(t, { velg = false } = {}) {
       ${begrunnelseHtml(t)}
       <div class="tr-handlinger">
         ${t.forslag ? '<button class="knapp liten primar" data-handling="godta" type="button">＋ Legg til i planen</button>' : `<button class="knapp liten utfort-knapp${utfort ? ' er-utfort' : ''}" data-handling="utfort" type="button" aria-pressed="${utfort}" title="${utfort ? 'Angre – sett tilbake til planlagt' : 'Marker tiltaket som utført'}">${utfort ? '↶ Angre utført' : '✓ Marker utført'}</button>`}
-        ${kanOppdrag && oppdragstype(t.type) ? '<button class="knapp liten" data-handling="nytt-oppdrag" type="button" title="Lag et oppdrag med dette tiltaket – for bestilling, tilbud, driftsveg og skiltplan">＋ Oppdrag</button>' : ''}
+        ${kanOppdrag && oppdragstype(t.type) ? `<button class="knapp liten tr-tilbud" data-be-om-tilbud data-tiltak-id="${esc(t.id)}" type="button" title="Få pris på dette tiltaket fra en entreprenør, tømmerkjøper eller planteleverandør">📨 Be om tilbud</button><button class="knapp liten" data-handling="nytt-oppdrag" type="button" title="Lag et oppdrag med dette tiltaket – for bestilling, driftsveg og skiltplan">＋ Oppdrag</button>` : ''}
         <button class="knapp liten" data-handling="zoom" type="button" title="Vis bestand ${esc(b.nr)} i kartet">🔍 Kart</button>
         ${t.forslag ? '' : '<button class="knapp liten" data-handling="endre-tiltak" type="button" title="Endre type, år, areal, prioritet eller kommentar">✎ Endre</button><button class="knapp liten tr-slett" data-handling="slett-tiltak" type="button" title="Slett tiltaket" aria-label="Slett tiltaket">✕</button>'}
       </div>
@@ -2421,6 +2422,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
     ...Object.entries(RAPPORTER).map(([k, r]) => ({ gruppe: 'Rapporter', ikon: '▦', tittel: `Rapport: ${r.navn}`, under: r.beskrivelse, sok: 'rapport pdf utskrift skriv ut', utfor: () => visRapport(k) })),
     { gruppe: 'Handlinger', ikon: '🤝', tittel: 'Del med tømmerkjøper', under: 'Del bestand, volumer og kart og få prisforslag', sok: 'tømmerkjøper tommerkjoper del dele tømmer salg selge hogst pris tilbud andelslag kjøper', utfor: () => { visFane('verdi'); tommerVisning?.apne(null); setTimeout(() => $('#tommerDeling')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
+    { gruppe: 'Handlinger', ikon: '📨', tittel: 'Be om tilbud', under: 'Få pris fra entreprenør, tømmerkjøper eller planteleverandør – i tre steg', sok: 'tilbud pris entreprenør tømmerkjøper anbud forespørsel bestille jobb oppdrag hogst planting', utfor: () => hurtigTilbud?.start() },
     { gruppe: 'Handlinger', ikon: '🔄', tittel: 'Ajourfør planen fra hogstmaskindata (HPR)', under: 'Les inn hpr-fil: del bestand, oppdater egenskaper og tiltak', sok: 'hpr hogstmaskin ajourfør ajourføring stanford produksjonsfil hogd flate bestandsgrense oppdater plan', utfor: () => { visFane('data'); setTimeout(() => $('#ajourPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
     { gruppe: 'Kart', ikon: '🌲', tittel: 'Vis hogstmaskindata i kartet', sok: 'hpr stammer hogd flate kartlag hogstmaskin', utfor: () => { if ((S.hogstdata || []).length) ajourVisning?.visLagret(); else melding('Ingen hogstmaskindata er lest inn ennå. Bruk Data › Ajourfør planen fra hogstmaskindata.'); } },
     { gruppe: 'Hjelp', ikon: '❓', tittel: 'Brukerveiledning', under: 'Slik bruker du SkogIQ.ai – steg for steg', sok: 'hjelp brukerveiledning veiledning manual hvordan bruke guide', utfor: () => visHjelp('kom-i-gang') },
@@ -2531,6 +2533,14 @@ function kobleHendelser() {
     visBestander: (ider) => { const lag = ider.map((id) => lagPerBestand.get(id)).filter(Boolean); if (lag.length && erMobil()) settArk('halv'); },
   });
   tegnAjourPanel();
+  // «📨 Be om tilbud» – den enkle veien til et oppdrag med tilbudsforespørsel (tilbud-hurtig.js).
+  hurtigTilbud = lagHurtigTilbud({
+    hentPlan: () => S, endret, melding, okonomi: tiltakOkonomi, iAar: IAAR, nyId,
+    tiltakNavn: (k) => TILTAKSTYPER[k]?.navn || k,
+    kontakt: () => { const m = innloggetBruker(); return m ? { navn: m.navn || '', epost: m.epost || '', telefon: m.profil?.telefon || '' } : null; },
+    apneOppdrag: (id, fane) => { visFane('tiltak'); visTiltakVisning('oppdrag'); oppdragVisning?.apne(id, fane); },
+  });
+  document.addEventListener('click', (e) => { const k = e.target.closest('[data-be-om-tilbud]'); if (!k) return; e.preventDefault(); hurtigTilbud.start({ tiltakId: k.dataset.tiltakId || null, type: k.dataset.type || null }); });
   oppdragVisning = initOppdrag({
     hentPlan: () => S, endret, melding, okonomi: tiltakOkonomi, settUtfort,
     tiltakNavn: (k) => TILTAKSTYPER[k]?.navn || k,

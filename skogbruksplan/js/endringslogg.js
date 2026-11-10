@@ -2,6 +2,7 @@
 // Nyeste først. Første oppføring skal ha samme versjon som js/versjon.js (sjekkes i testene).
 // type: ny = ny funksjon, forbedret = bedre eller utvidet funksjon, rettet = feilretting.
 export const ENDRINGER = [
+  { versjon: '1.65.0', dato: '2026-11-10', type: 'ny', tittel: 'Be om tilbud i tre enkle steg', tekst: 'Trykk «📨 Be om tilbud»: velg hva som skal gjøres, hvem som skal gi pris, og send. Oppdraget lages automatisk, og du sender lenken på e-post eller SMS.' },
   { versjon: '1.64.0', dato: '2026-11-10', type: 'ny', tittel: 'Ajourfør planen fra hogstmaskindata', tekst: 'Les inn hpr-fila: SkogIQ finner hogd flate og foreslår deling av bestand, nye egenskaper, utførte og nye tiltak og rydding i tiltak som ikke er aktuelle. Du velger hva som brukes, ser alt i kartet og kan angre.' },
   { versjon: '1.63.0', dato: '2026-11-10', type: 'forbedret', tittel: 'Enklere tiltak og oppdrag – og brukerveiledning', tekst: 'Tydelige knapper på hvert tiltak og «＋ Oppdrag» rett fra tiltaket. Oppdragene er delt i faner med en arbeidsflyt som viser neste steg. Ny brukerveiledning i appen: trykk «?» øverst i panelet.' },
   { versjon: '1.62.0', dato: '2026-11-09', type: 'ny', tittel: 'Skiltplan og arbeidsvarsling', tekst: 'For hvert oppdrag: skilt med plassering der tømmeret skal ut til offentlig veg, der driftsvegen krysser veg, der det hogges inntil vegen og der stier går inn i fareområdet – med søknad, kravliste og utskrift til søknaden om arbeidsvarsling.' },

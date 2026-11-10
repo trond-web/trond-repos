@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.64.0** (2026-11-10) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.65.0** (2026-11-10) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -560,6 +560,23 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## Be om tilbud – den enkle veien (📨, `js/tilbud-hurtig.js`)
+
+En veiviser i tre steg lar skogeieren få pris på en jobb uten å sette seg inn i oppdrag og tilbudsfaner.
+
+**Steg:**
+1. **Hva skal gjøres?** Velg tiltakstype. Bestandene med planlagt tiltak (ikke utført og ikke i et aktivt oppdrag) vises med areal og volum, og årets og neste års tiltak er krysset av. Valgfri melding til utføreren.
+2. **Hvem skal gi tilbud?** Skriv firma og e-post eller mobil, eller velg aktører som er brukt før (`S.leverandorer`). Hjelpeteksten sier hvem som vanligvis gjør jobben.
+3. **Frist og send.** Svarfristen er satt til 14 dager, og arbeidsperioden er valgfri. Kontakten fylles ut fra profilen eller forrige forespørsel.
+
+**Etter sending:**
+- Oppdraget lages automatisk.
+- Forespørselen sendes med standardvalgene for typen: prisform, seriøsitetskrav og betaling (`nyForesporsel`).
+- Hver mottaker får knapper for e-post, SMS eller «Kopier lenke».
+- Svarene kommer inn i oppdraget under Utfører, med sammenligning og tildeling som før.
+
+**Hvor den åpnes:** Tiltak-fanen («📨 Be om tilbud» øverst og på hvert tiltak), oppdragslisten og kommandolinjen («tilbud»). Starter man fra et tiltak som allerede ligger i et oppdrag, åpnes det oppdragets Utfører-fane.
 
 ## Ajourføring av planen fra hogstmaskindata (Data › 🔄 og Oppdrag › Maskin)
 
