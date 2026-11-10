@@ -104,7 +104,22 @@ export const KAPITLER = [
   {
     id: 'maskin', ikon: '🌲', tittel: 'Hogstmaskin og lassbærer (StanForD)',
     tekst: `<p>For hogstoppdrag kan du laste ned et <b>filsett</b> som hogstmaskin og lassbærer åpner (StanForD 2010): oppdraget, bestandene, kart med hensyn og velteplasser, og apteringsinstruks.</p>
-      ${steg(['Åpne oppdraget › <b>Maskin</b>.', 'Velg versjon og koordinatsystem (standardvalgene passer de fleste maskiner).', '<b>Last ned filsett (ZIP)</b>, kopier til minnepinne og importer i maskinen (se LES_MEG.txt).', 'Etter drift: <b>Les inn produksjonsfiler</b> (.hpr, .fpr …). Tiltakene merkes utført med virkelig volum, og hogd flate vises i kartet.'])}`,
+      ${steg(['Åpne oppdraget › <b>Maskin</b>.', 'Velg versjon og koordinatsystem (standardvalgene passer de fleste maskiner).', '<b>Last ned filsett (ZIP)</b>, kopier til minnepinne og importer i maskinen (se LES_MEG.txt).', 'Etter drift: <b>Les inn produksjonsfiler</b> (.hpr, .fpr …) og trykk <b>Gå gjennom endringer i planen</b> – se <a href="#" data-hjelp="ajourforing">Ajourføring fra hogstmaskindata</a>.'])}`,
+  },
+  {
+    id: 'ajourforing', ikon: '🔄', tittel: 'Ajourføring fra hogstmaskindata (HPR)',
+    tekst: `<p>Etter hogst kan hpr-fila fra hogstmaskinen brukes til å ajourføre skogbruksplanen. Stammene har posisjon, så SkogIQ ser hvor det er hogd og hvor mye.</p>
+      <h4>Slik gjør du det</h4>
+      ${steg(['<b>Hogst i et oppdrag:</b> åpne oppdraget › <b>Maskin</b> › <b>Les inn produksjonsfiler</b>, og trykk <b>Gå gjennom endringer i planen</b>. Oppdraget får status og resultat samtidig.', '<b>Uten oppdrag:</b> gå til <b>Data</b> › <b>Ajourfør planen fra hogstmaskindata</b> og les inn hpr-fila (eller prøv med simulert hogst).', 'Gå gjennom forslaget for hvert bestand (se under). Kartet viser hogd flate, stammene og nye bestandsgrenser.', 'Trykk <b>Bruk valgte endringer</b>. Ingenting endres før dette.'])}
+      <h4>Hva som foreslås for hvert bestand</h4>
+      <ul><li><b>Grenser:</b> er bare en del av bestandet hogd, foreslås det å <b>dele bestandet</b> langs hogstkanten – den hogde delen blir et nytt bestand. Du kan i stedet velge å oppdatere hele bestandet, eller la det være.</li>
+      <li><b>Egenskaper:</b> ved flatehogst blir den hogde delen hogstklasse I (alder 0, volum 0). Ved tynning reduseres volum og treantall med det som ble tatt ut. Du ser før → etter.</li>
+      <li><b>Tiltak:</b> planlagt hogst merkes <b>utført</b> med virkelig volum og dato (ellers registreres hogsten som utført). Tiltak som ikke lenger er aktuelle – for eksempel tynning eller gjødsling i et flatehogd bestand – foreslås <b>fjernet</b>. Etter flatehogst foreslås <b>markberedning</b>, <b>planting</b> (eller kontroll av naturlig foryngelse for furu på lav bonitet) og <b>ungskogpleie</b>.</li>
+      <li><b>Hogd flate utenfor bestandene</b> kan bli et nytt bestand – kontroller først at den hører til eiendommen.</li></ul>
+      <p>Om hogsten er flatehogst eller tynning, avgjøres av hvor stor del av bestandets volum som ble tatt ut på den hogde flaten (over ca. 55 % regnes som flatehogst).</p>
+      ${tips('Kryss av og på for hver enkelt endring. Trykk på bestandet for å åpne og lukke det, og <b>Vis i kartet</b> for å se det.')}
+      ${obs('Den siste ajourføringen kan angres under <b>Data › Tidligere ajourføringer</b>. Grenser, egenskaper og tiltak settes da tilbake, og nye bestand fjernes.')}
+      <p><b>Vis hogstmaskindata i kartet</b> (i Data-kortet eller kommandolinjen) viser stammene farget etter treslag, hogd flate og maskinens kjørespor.</p>`,
   },
   {
     id: 'tommerkjoper', ikon: '🤝', tittel: 'Del med tømmerkjøper',

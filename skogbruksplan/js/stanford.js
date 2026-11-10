@@ -712,8 +712,9 @@ export function endringer(S, o, res, { fullHogst = 0.6 } = {}) {
 
 // Gjør ajourføringen: tiltak utført med virkelig volum, bestandene oppdatert, oppdragets status og kartdata.
 // Kan kjøres flere ganger med nye filer – bare endringen siden sist trekkes fra volumet.
-export function ajourfor(S, o, res, data, { naa = new Date(), fullHogst = 0.6, importId = null } = {}) {
-  const liste = endringer(S, o, res, { fullHogst });
+// planEndringer: false = bare oppdraget (status, resultat og kart) – bestand og tiltak er da ajourført i ajourforing.js.
+export function ajourfor(S, o, res, data, { naa = new Date(), fullHogst = 0.6, importId = null, planEndringer = true } = {}) {
+  const liste = planEndringer ? endringer(S, o, res, { fullHogst }) : [];
   const idag = naa.toISOString().slice(0, 10);
   o.stanford = o.stanford || {}; o.stanford.anvendt = o.stanford.anvendt || {};
   for (const e of liste) {

@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.64.0 – Ajourfør planen fra hogstmaskindata (2026-11-10)
+
+*Nytt.* Les inn hpr-fila: SkogIQ finner hogd flate og foreslår deling av bestand, nye egenskaper, utførte og nye tiltak og rydding i tiltak som ikke er aktuelle. Du velger hva som brukes, ser alt i kartet og kan angre.
+
 ## 1.63.0 – Enklere tiltak og oppdrag – og brukerveiledning (2026-11-10)
 
 *Forbedret.* Tydelige knapper på hvert tiltak og «＋ Oppdrag» rett fra tiltaket. Oppdragene er delt i faner med en arbeidsflyt som viser neste steg. Ny brukerveiledning i appen: trykk «?» øverst i panelet.

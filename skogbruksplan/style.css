@@ -1212,3 +1212,23 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .sb-under { box-shadow: 0 -16px 0 0 var(--surface); }
 .op-faner { flex-wrap: wrap; row-gap: 0; }
 .op-faner button { padding: 8px 8px; }
+
+/* Ajourføring fra hogstmaskindata (ajourforing-ui.js) */
+.kort.aj-panel { border: 1px solid color-mix(in srgb, #7a4a1d 35%, var(--border)); }
+.aj-kort { border: 1px solid var(--border); border-radius: 12px; margin: 8px 0; background: var(--surface); overflow: hidden; }
+.aj-kort.av { opacity: .65; }
+.aj-hode { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; text-align: left; border: 0; background: none; padding: 10px 12px; cursor: pointer; font: 13.5px/1.35 inherit; font-family: inherit; color: var(--text); }
+.aj-hode:hover { background: var(--surface-2); }
+.aj-type { font: 700 10.5px/1 var(--font-mono); padding: 4px 7px; border-radius: 99px; color: #fff; background: #7a4a1d; } .aj-type.aj-tynning { background: #2a78d6; }
+.aj-antall { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.aj-innhold { padding: 2px 14px 12px; border-top: 1px solid var(--border); }
+.aj-innhold h5 { margin: 12px 0 4px; font-size: 13px; }
+.aj-valg { display: grid; gap: 4px; margin-top: 10px; } .aj-valg label { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; } .aj-valg label.av { opacity: .55; }
+.aj-anb { font: 700 10px/1 var(--font-mono); color: var(--accent); border: 1px solid var(--accent); border-radius: 99px; padding: 2px 6px; margin-left: 4px; }
+.aj-tabell { border-collapse: collapse; font-size: 13px; margin: 4px 0 2px; } .aj-tabell td { padding: 3px 10px 3px 0; } .aj-tabell td.t { text-align: right; font-variant-numeric: tabular-nums; }
+.aj-tiltak { align-items: flex-start; font-size: 13.5px; } .aj-merke { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 99px; font-size: 11px; font-weight: 800; color: #fff; flex: 0 0 auto; }
+.aj-utfort .aj-merke, .aj-registrer .aj-merke { background: var(--accent); } .aj-fjern .aj-merke { background: #d03b3b; } .aj-ny .aj-merke { background: #2a78d6; }
+.aj-leg { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-2); margin: 4px 0 8px; } .aj-leg i { display: inline-block; width: 14px; height: 10px; margin-right: 4px; vertical-align: -1px; border-radius: 2px; }
+.aj-l-hogd { background: rgba(181,101,29,.25); border: 2px solid #7a4a1d; } .aj-l-ny { border-top: 3px dashed #e07b00; height: 0 !important; } .aj-l-st { width: 8px !important; height: 8px !important; border-radius: 99px !important; }
+.aj-knapper { position: sticky; bottom: 0; background: var(--surface); padding: 8px 0; margin-bottom: 0; }
+.aj-hist summary { cursor: pointer; font-size: 13px; padding: 4px 0; } .aj-hist ul { margin: 4px 0 8px; }

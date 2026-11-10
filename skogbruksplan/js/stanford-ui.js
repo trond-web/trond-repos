@@ -12,7 +12,7 @@ const HOGST = ['sluttavvirkning', 'tynning', 'lukkethogst'];
 const lastNed = (data, navn, type) => { const url = URL.createObjectURL(new Blob([data], { type })); const a = document.createElement('a'); a.href = url; a.download = navn; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000); };
 const fordeling = (obj, navn = (k) => k) => Object.entries(obj || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(navn(k))} ${fmt(v)} m³`).join(' · ');
 
-export function lagStanfordUi({ hentPlan, endret, melding, visKartlag = () => {} }) {
+export function lagStanfordUi({ hentPlan, endret, melding, visKartlag = () => {}, ajourforing = null }) {
   const S = () => hentPlan();
   let valg = { versjon: STANDARD_VERSJON, koordsys: 'EPSG:4326', apteringsinstruks: true, lassbaerer: true, konvolutt: true };
   let ventende = null; // { oppdragId, data, res, liste, hensyn, nokkel, valgteHensyn }
@@ -85,7 +85,8 @@ export function lagStanfordUi({ hentPlan, endret, melding, visKartlag = () => {}
       ${res.lassbaerer ? `<p class="hint">Lassbærer: ${fmt(res.lassbaerer.lass)} lass, ${fmt(res.lassbaerer.m3)} m³ ved ${Object.keys(res.lassbaerer.velteplasser).map(esc).join(', ')}.</p>` : ''}
       ${hensyn.length ? `<h5>Nye objekter fra maskinføreren (${hensyn.length})</h5>${hensyn.map((h, i) => `<label class="avkrysning"><input type="checkbox" data-sf-hensyn="${i}" ${ventende.valgteHensyn.has(i) ? 'checked' : ''}> ${esc(OBJEKTTYPER[h.type]?.navn || h.type)}: ${esc(h.navn)} <span class="hint">${esc(h.fil)}</span></label>`).join('')}<p class="hint">Valgte objekter legges inn i miljøregistreringene (PEFC).</p>` : ''}
       ${res.spor ? `<p class="hint">${fmt(res.spor)} kjørespor fra maskinen vises i kartet.</p>` : ''}
-      <div class="knapperad"><button type="button" class="knapp primar" data-sf="ajourfor" ${res.bestand.length || hensyn.length ? '' : 'disabled'}>✓ Ajourfør oppdrag, bestand og kart</button><button type="button" class="knapp" data-sf="avbryt">Avbryt</button></div></div>`;
+      ${ajourforing && res._stammer?.some((s) => s.pos) ? '<p class="hint">Neste steg: gå gjennom endringene i skogbruksplanen – deling av bestand etter hogd flate, egenskaper, utførte og nye tiltak, og rydding i tiltak som ikke lenger er aktuelle. Du velger hva som skal endres.</p>' : ''}
+      <div class="knapperad">${ajourforing && res._stammer?.some((s) => s.pos) ? `<button type="button" class="knapp primar" data-sf="gjennomga" ${res.bestand.length ? '' : 'disabled'}>Gå gjennom endringer i planen →</button>` : `<button type="button" class="knapp primar" data-sf="ajourfor" ${res.bestand.length || hensyn.length ? '' : 'disabled'}>✓ Ajourfør oppdrag, bestand og kart</button>`}<button type="button" class="knapp" data-sf="avbryt">Avbryt</button></div></div>`;
   }
 
   function resultatHtml(o) {
@@ -110,7 +111,7 @@ export function lagStanfordUi({ hentPlan, endret, melding, visKartlag = () => {}
     if (!HOGST.includes(o.type)) return '';
     return `<div class="kort sf"><h4 class="undertittel" style="margin-top:0">🌲 Hogstmaskin (StanForD 2010)</h4>
       ${arbeider ? `<p class="hint">${esc(arbeider)}</p>` : ''}
-      ${ventende?.oppdragId === o.id ? forhandsvisningHtml(o) : `${resultatHtml(o)}${eksportHtml(o)}${importHtml(o)}`}</div>`;
+      ${ajourforing?.aktiv(`o:${o.id}`) ? ajourforing.html(`o:${o.id}`) : ventende?.oppdragId === o.id ? forhandsvisningHtml(o) : `${resultatHtml(o)}${eksportHtml(o)}${importHtml(o)}`}</div>`;
   }
 
   function lastNedFilsett(o, tegn) {
@@ -161,6 +162,17 @@ export function lagStanfordUi({ hentPlan, endret, melding, visKartlag = () => {}
     if (k === 'last-ned') lastNedFilsett(o, tegn);
     if (k === 'simuler') { const sim = simulerDrift(S(), o); await lesFiler(o, sim.map((f) => ({ navn: f.navn, data: new TextEncoder().encode(f.data) })), tegn); return true; }
     if (k === 'ajourfor') bruk(o, tegn);
+    if (k === 'gjennomga' && ventende?.oppdragId === o.id) {
+      const v = ventende;
+      ajourforing.start(v.res._stammer, { kontekst: `o:${o.id}`, kilde: 'StanForD 2010', navn: `${o.nr} – ${v.data.filer[0] || 'hpr'}`, spor: (v.data.spor || []).slice(0, 300).map((l) => l.map(([a, b]) => [Math.round(a * 1e6) / 1e6, Math.round(b * 1e6) / 1e6])), tegn,
+        etterBruk: () => {
+          // Bestand og tiltak er ajourført – oppdraget får status, resultat og kart, og valgte miljøobjekter legges inn.
+          const plan = S(); ajourfor(plan, o, v.res, v.data, { importId: v.nokkel, planEndringer: false });
+          const valgte = v.hensyn.filter((_, i) => v.valgteHensyn.has(i));
+          if (valgte.length) { plan.pefc = plan.pefc || tomPefc(); const idag = new Date().toISOString().slice(0, 10); for (const h of valgte) plan.pefc.objekter.push({ id: `po${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, type: h.type, navn: h.navn, geometri: h.geometri, kilde: 'maskin', registrert: idag }); }
+          ventende = null; vistKart = null;
+        } });
+    }
     if (k === 'avbryt') { ventende = null; tegn(); }
     if (k === 'kart') { vistKart = null; kart(o); }
     if (k === 'csv') csv(o);

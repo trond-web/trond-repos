@@ -3226,6 +3226,55 @@ test('Oppdrag: arbeidsflyt med neste steg, og brukerveiledningen dekker alle hje
   assert.match(HJ.innholdHtml('oppdrag'), /Neste steg|neste steg/); assert.match(HJ.heleHtml('SkogIQ.ai', '1.0'), /<h2>.*Kom i gang/);
 });
 
+test('Ajourføring fra HPR: hogd flate, deling, egenskaper, tiltak, rydding, nytt bestand og angre', async () => {
+  let PC = null; try { PC = (await import('polygon-clipping')).default; } catch { return; /* valgfritt i testmiljøet */ }
+  const AJ = await import('../js/ajourforing.js');
+  const X = 600000; const Y = 6700000; const g = (x, y) => utmTilGeo(X + x, Y + y, 33);
+  const kv = (x0, y0, x1, y1) => ({ type: 'Polygon', coordinates: [[g(x0, y0), g(x1, y0), g(x1, y1), g(x0, y1), g(x0, y0)]] });
+  let seed = 1; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const stammer = [];
+  for (let i = 0; i < 2000; i++) stammer.push({ pos: g(rnd() * 100, rnd() * 200), treslag: 'G', fub: 0.25, dato: '2026-10-02' }); // flatehogst i vestre halvdel av A
+  for (let i = 0; i < 600; i++) stammer.push({ pos: g(220 + rnd() * 180, rnd() * 170), treslag: 'F', fub: 0.2, dato: '2026-10-05' }); // tynning i B
+  for (let i = 0; i < 400; i++) stammer.push({ pos: g(500 + rnd() * 50, rnd() * 50), treslag: 'L', fub: 0.1, dato: '2026-10-06' }); // utenfor planen
+  const S = { bestand: [
+    { id: 'A', nr: '6', areal: 40, treslag: 'G', bonitet: 17, alder: 90, volumDaa: 25, treantall: 60, hogstklasse: 5, geometri: kv(0, 0, 200, 200), tiltak: [{ id: 't1', type: 'sluttavvirkning', aar: 2026, status: 'planlagt' }, { id: 't2', type: 'gjodsling', aar: 2028, status: 'planlagt' }] },
+    { id: 'B', nr: '7', areal: 36, treslag: 'F', bonitet: 11, alder: 60, volumDaa: 18, treantall: 90, hogstklasse: 4, geometri: kv(210, 0, 410, 180), tiltak: [{ id: 't3', type: 'tynning', aar: 2027, status: 'planlagt' }, { id: 't4', type: 'tynning', aar: 2032, status: 'planlagt' }, { id: 't5', type: 'sluttavvirkning', aar: 2050, status: 'planlagt' }] },
+  ], oppdrag: [{ id: 'o1', linjer: [{ bestandId: 'A', tiltakId: 't1' }] }] };
+  const hf = AJ.hogdFlate(stammer.slice(0, 2000), PC); const ha = AJ.hogdFlate(stammer.slice(0, 2000), PC).mp;
+  assert.ok(hf.mp.length === 1, 'én sammenhengende hogd flate'); void ha;
+  const res = AJ.lagForslag(S, stammer, PC, { iAar: 2026 });
+  const [fa, fb] = res.forslag;
+  assert.equal(fa.nr, '6'); assert.equal(fa.type, 'flatehogst'); assert.equal(fa.anbefalt, 'del'); assert.ok(fa.dekning > 0.45 && fa.dekning < 0.62, `dekning ${fa.dekning}`);
+  assert.ok(fa.arealDel > 19 && fa.arealDel < 24 && Math.abs(fa.arealDel + fa.arealRest - 40) < 0.2, 'del + rest = bestandet');
+  assert.deepEqual(AJ.egenskaper(S, fa).map((x) => x.felt), ['hogstklasse', 'alder', 'volumDaa', 'treantall']);
+  assert.deepEqual(AJ.tiltakFor(fa).map((x) => `${x.handling}:${x.type}`), ['utfort:sluttavvirkning', 'ny:markberedning', 'ny:planting', 'ny:ungskogpleie']);
+  // Velger brukeren «hele», ryddes også tiltak som ikke er aktuelle etter flatehogst (gjødsling).
+  fa.valg = 'hele'; assert.ok(AJ.tiltakFor(fa).some((x) => x.handling === 'fjern' && x.type === 'gjodsling')); fa.valg = 'del';
+  assert.equal(fb.type, 'tynning'); assert.equal(fb.anbefalt, 'hele');
+  assert.deepEqual(AJ.tiltakFor(fb).map((x) => `${x.handling}:${x.type}:${x.aar}`), ['utfort:tynning:2027', 'fjern:tynning:2032'], 'sluttavvirkning 2050 beholdes');
+  assert.deepEqual(AJ.egenskaper(S, fb).map((x) => [x.felt, x.etter]), [['volumDaa', 14.7], ['treantall', 73]]);
+  assert.ok(res.utenfor && res.utenfor.areal > 1.5 && !res.utenfor.valgt, 'hogd flate utenfor planen foreslås, men er ikke valgt');
+  // Bruker fjerner ungskogpleie, og vil ha nytt bestand av flaten utenfor.
+  fa.tiltak.find((x) => x.type === 'ungskogpleie').valgt = false; res.utenfor.valgt = true;
+  let n = 0; const post = AJ.anvend(S, res, { idag: '2026-11-10', nyId: (p) => `${p}${++n}` });
+  const ny = S.bestand.find((b) => b.id === 'b1'); const a = S.bestand.find((b) => b.id === 'A'); const b = S.bestand.find((x) => x.id === 'B');
+  assert.equal(S.bestand.length, 4); assert.equal(ny.nr, '8'); assert.equal(ny.hogstklasse, 1); assert.equal(ny.alder, 0); assert.equal(ny.volumDaa, 0);
+  assert.deepEqual(ny.tiltak.map((x) => `${x.type}:${x.status}`), ['sluttavvirkning:utfort', 'markberedning:planlagt', 'planting:planlagt']);
+  assert.equal(ny.tiltak[0].utfortM3, 500); assert.equal(S.oppdrag[0].linjer[0].bestandId, 'b1', 'oppdraget følger det utførte tiltaket');
+  assert.equal(a.hogstklasse, 5); assert.equal(a.areal, fa.arealRest); assert.deepEqual(a.tiltak.map((x) => `${x.type}:${x.status}`).sort(), ['gjodsling:planlagt', 'sluttavvirkning:planlagt'], 'resten beholder planlagte tiltak');
+  assert.equal(b.volumDaa, 14.7); assert.deepEqual(b.tiltak.map((x) => `${x.type}:${x.aar}:${x.status}`), ['tynning:2027:utfort', 'sluttavvirkning:2050:planlagt']);
+  assert.ok(S.bestand.some((x) => /utenfor bestandene/.test(x.merknad || '')), 'nytt bestand av flaten utenfor');
+  assert.ok(post.logg.length >= 7); assert.equal(S.ajourforinger.length, 1);
+  // Kart og angre
+  AJ.lagreKart(S, { id: post.id, navn: 'test.hpr', stammer, hogd: res.hogd, dato: post.dato });
+  const gj = AJ.kartGeojson(S.hogstdata); assert.ok(gj.features.some((f) => f.properties.lag === 'hogd')); assert.equal(gj.features.filter((f) => f.properties.lag === 'stamme').length, 3000);
+  S.oppdrag[0].status = 'utfort'; assert.match(AJ.oppsummer(res.forslag[0]), /\(\d+,\d av /, 'desimalkomma');
+  assert.ok(AJ.angre(S, post.id)); assert.equal(S.oppdrag[0].status, 'pagar', 'oppdraget er ikke lenger utført'); assert.equal(S.bestand.length, 2); assert.equal(S.bestand.find((x) => x.id === 'A').areal, 40); assert.equal(S.bestand.find((x) => x.id === 'B').tiltak.length, 3);
+  assert.equal(S.oppdrag[0].linjer[0].bestandId, 'A'); assert.equal(S.ajourforinger.length, 0);
+  // «Ikke endre» gir ingen endringer.
+  const r2 = AJ.lagForslag(S, stammer, PC, { iAar: 2026 }); for (const f of r2.forslag) f.valg = 'ingen'; AJ.anvend(S, r2, {}); assert.equal(S.bestand.find((x) => x.id === 'A').hogstklasse, 5);
+});
+
 test('Versjonslogg: følger versjonsnummeret, er sortert, «nytt siden sist» og CHANGELOG.md er oppdatert', () => {
   assert.equal(LOGG.ENDRINGER[0].versjon, VERSJON, 'første oppføring er gjeldende versjon');
   for (let i = 1; i < LOGG.ENDRINGER.length; i++) { const a = LOGG.ENDRINGER[i - 1]; const b = LOGG.ENDRINGER[i]; assert.ok(LOGG.nyere(a.versjon, b.versjon), `${a.versjon} før ${b.versjon}`); assert.ok(a.dato >= b.dato, `dato ${a.dato} ≥ ${b.dato}`); }

@@ -16,7 +16,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const opsj = (liste, valgt) => liste.map(([v, t]) => `<option value="${esc(v)}" ${String(v) === String(valgt ?? '') ? 'selected' : ''}>${esc(t)}</option>`).join('');
 const kravNavn = (nr) => KRAVPUNKTER.find((k) => k.nr === nr)?.tittel || '';
 
-export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, visBestander, uthev, tiltakNavn, startValg, visKartlag, visDriftsveg = () => {}, visSkilt = () => {} }) {
+export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, visBestander, uthev, tiltakNavn, startValg, visKartlag, visDriftsveg = () => {}, visSkilt = () => {}, ajourforing = null }) {
   let valgt = null; let filter = 'aktive';
   const S = () => hentPlan();
   const alle = () => S().oppdrag || [];
@@ -25,7 +25,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
   // Be om tilbud fra utførere (tilbud-ui.js).
   const tilbudUi = lagTilbudUi({ hentPlan, endret, melding, nyId: (p) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, okonomi, tiltakNavn });
   // Filsett til hogstmaskin og lassbærer, og produksjonsfiler tilbake (stanford-ui.js).
-  const stanfordUi = lagStanfordUi({ hentPlan, endret, melding, visKartlag });
+  const stanfordUi = lagStanfordUi({ hentPlan, endret, melding, visKartlag, ajourforing });
   // Forslag til driftsveg for hogstoppdrag (driftsveg-ui.js).
   const driftsvegUi = lagDriftsvegUi({ hentPlan, endret, melding, okonomi, visLag: visDriftsveg });
   // Skiltplan og arbeidsvarsling (skiltplan-ui.js).
