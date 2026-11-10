@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.63.0** (2026-11-10) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.64.0** (2026-11-10) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -560,6 +560,37 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## Ajourføring av planen fra hogstmaskindata (Data › 🔄 og Oppdrag › Maskin)
+
+Hpr-fila fra hogstmaskinen (StanForD 2010) brukes til å ajourføre skogbruksplanen. Brukeren har kontroll hele veien: SkogIQ lager et **endringsforslag per bestand**, viser det i kartet, og ingenting endres før brukeren trykker «Bruk valgte endringer».
+
+**Hogd flate** (`hogdFlate` i `js/ajourforing.js`):
+- Hogd flate bygges i et rutenett på 5 m, med 7 m rundt hver stammeposisjon.
+- Hull mellom stikkveger tettes, øyer under 300 m² fjernes og hull under 600 m² fylles.
+- Flaten slås sammen til polygoner med polygon-clipping og forenkles.
+
+**Forslaget for hvert bestand** (`lagForslag`):
+- **Hogsttype:** Over 55 % av volumet tatt ut på den hogde delen regnes som flatehogst, ellers tynning. Mangler volum, brukes planlagt tiltak.
+- **Grenser:**
+  - **Del bestandet:** hogd del ∩ bestand blir nytt bestand (nytt nummer), og resten beholder nummer, egenskaper og planlagte tiltak.
+  - **Oppdater hele bestandet:** brukes når mer enn 85 % er hogd, eller når delen eller resten blir under 1 daa.
+  - **Ikke endre.**
+- **Egenskaper før → etter:**
+  - Flatehogst gir hogstklasse I, alder 0, volum 0, og treantall og høyde tømmes.
+  - Tynning reduserer volum og treantall med uttaket per daa.
+- **Tiltak:**
+  - Planlagt hogst merkes **utført** med m³, stammer og dato. Ved deling flyttes den til den hogde delen, også i oppdraget, og resten får et nytt planlagt tiltak.
+  - Ikke-planlagt hogst **registreres** som utført.
+  - Tiltak som ikke er aktuelle **fjernes**: etter flatehogst tynning, lukket hogst, sluttavvirkning, ungskogpleie, stammekvisting og gjødsling, og etter tynning ny tynning innen 8 år.
+  - **Nye** tiltak etter flatehogst: markberedning og planting året etter (foryngelsesplikt innen tre år), eller kontroll av naturlig foryngelse for furu på bonitet 11 og lavere, og ungskogpleie etter 12 år (8 år for lauv).
+- **Hogd flate utenfor bestandene** kan bli nytt bestand. Det er ikke valgt på forhånd.
+
+**Angre:** Hver ajourføring lagres i `S.ajourforinger` med kopi av bestandene før endringen. Den siste kan angres: grenser, egenskaper, tiltak og oppdragslinjer settes tilbake, nye bestand fjernes, og oppdrag som var satt til utført går tilbake til «pågår».
+
+**Kartlag** (`S.hogstdata`): stammer farget etter treslag (inntil 15 000 per fil), hogd flate, maskinens spor og nye bestandsgrenser. Kartlaget vises under gjennomgangen og med «Vis hogstmaskindata i kartet».
+
+**I oppdraget** (Maskin): etter innlesing går «Gå gjennom endringer i planen» til samme gjennomgang. Oppdraget får status, resultat og kart (`ajourfor` med `planEndringer: false`). Filer uten posisjoner (thp) bruker den enkle ajourføringen som før.
 
 ## Brukerveiledning i appen og arbeidsflyt for oppdrag
 

@@ -44,6 +44,7 @@ import { initOppdrag } from './oppdrag-ui.js';
 import { initKsl } from './ksl-ui.js';
 import { initKarbon } from './karbon-ui.js';
 import { initHprSr16 } from './hpr-sr16-ui.js';
+import { lagAjourforingUi } from './ajourforing-ui.js';
 import { WMS as FUKT_WMS, LAG as FUKT_LAG, KLASSER as FUKT_KLASSER, perBestand as fuktPerBestand, vurdering as fuktVurdering, dekodPng as fuktDekod } from './markfukt.js';
 import { hentBratthet, flater as brattFlater, statistikk as brattStat, vurdering as brattVurdering, KLASSER as BRATT_KLASSER } from './bratthet.js';
 import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, OPPDRAGSTYPER, typeFor as oppdragstype } from './oppdrag.js';
@@ -603,7 +604,7 @@ function angreDeling() {
 let kommuneVisning = null;
 let veiVisning = null;
 let pefcVisning = null;
-let verdiVisning = null; let tommerVisning = null;
+let verdiVisning = null; let tommerVisning = null; let ajourVisning = null;
 let aiVisning = null;
 let skogbrandVisning = null;
 let skifteplanVisning = null;
@@ -627,7 +628,7 @@ function visFane(navn) {
   $$('.fane').forEach((f) => { f.hidden = f.id !== `fane-${navn}`; });
   if (navn !== 'tiltak' && navn !== 'karbon' && uthevet.size) { uthevet = new Set(); oppdaterStiler(); }
   if (navn === 'tiltak' && !$('#oppdragPanel').hidden) oppdragVisning?.tegn();
-  if (navn === 'data') hprVisning?.tegn();
+  if (navn === 'data') { hprVisning?.tegn(); tegnAjourPanel(); }
   if (navn === 'ksl') kslVisning?.vis();
   if (navn === 'karbon') karbonVisning?.vis();
   if (navn === 'framskriving') tegnFramskriving();
@@ -1498,6 +1499,71 @@ function visDriftsvegLag(gj, { zoom = false } = {}) {
   driftsvegLag.eachLayer((l) => { if (l.feature?.properties.lag === 'driftsveg') l.bringToFront(); });
   if (zoom) { const b = driftsvegLag.getBounds(); if (b.isValid()) kart.fitBounds(b, { maxZoom: 17, ...synligPadding(kart, 40) }); }
 }
+// Hogstmaskindata (ajourforing.js): stammer farget etter treslag, hogd flate, maskinens spor og nye bestandsgrenser.
+let hogstdataLag = null;
+function visHogstdataLag(gj, { zoom = null } = {}) {
+  if (hogstdataLag) { hogstdataLag.remove(); hogstdataLag = null; }
+  if (!gj || !kart) return;
+  const r = L.canvas({ padding: 0.3 });
+  hogstdataLag = L.geoJSON(gj, {
+    renderer: r,
+    style: (f) => (f.properties.lag === 'hogd' ? { color: '#7a4a1d', weight: 2, fillColor: '#b5651d', fillOpacity: 0.16, dashArray: null }
+      : f.properties.lag === 'ny-grense' ? { color: '#e07b00', weight: 3.5, dashArray: '8 5', fill: false }
+      : { color: '#d03b3b', weight: 2, dashArray: '4 4' }),
+    pointToLayer: (f, ll) => L.circleMarker(ll, { renderer: r, radius: Math.max(1.6, Math.min(4, 1.4 + (f.properties.m3 || 0) * 3)), stroke: false, fillOpacity: 0.85, fillColor: STAMME_FARGE[f.properties.treslag] || '#555', interactive: false }),
+    onEachFeature: (f, l) => { if (f.properties.lag === 'hogd') l.bindTooltip(`Hogd flate${f.properties.navn ? ` – ${esc(f.properties.navn)}` : ''}${f.properties.m3 ? `: ${fmt(f.properties.m3)} m³, ${fmt(f.properties.antall)} stammer` : ''}`, { sticky: true }); if (f.properties.lag === 'ny-grense') l.bindTooltip(`Ny bestandsgrense${f.properties.nr ? ` (bestand ${esc(f.properties.nr)})` : ''}`, { sticky: true }); },
+  }).addTo(kart);
+  hogstdataLag.eachLayer((l) => { if (l.feature?.properties.lag === 'ny-grense') l.bringToFront(); });
+  if (zoom) { try { const b = L.geoJSON(zoom).getBounds(); if (b.isValid()) kart.fitBounds(b, { maxZoom: 17, ...synligPadding(kart, 50) }); } catch { /* ingen */ } }
+}
+// Data › 🔄 Ajourfør planen fra hogstmaskindata.
+function tegnAjourPanel() {
+  const el = $('#ajourPanel'); if (!el || !ajourVisning) return;
+  el.innerHTML = ajourVisning.aktiv('data') ? ajourVisning.html('data') : `<div class="detalj-topp"><h3 style="margin:0">🔄 Ajourfør planen fra hogstmaskindata</h3><button type="button" class="knapp liten" data-hjelp="ajourforing" title="Brukerveiledning" aria-label="Hjelp">?</button></div>
+    <p class="hint">Les inn hpr-fila fra hogstmaskinen (StanForD 2010). SkogIQ finner den hogde flaten ut fra stammenes posisjon og foreslår endringer i planen: deling av bestand langs hogstkanten, nye egenskaper (hogstklasse, alder, volum, treantall), utførte hogsttiltak med virkelig volum, nye tiltak (markberedning, planting, ungskogpleie) og rydding i tiltak som ikke lenger er aktuelle. Du går gjennom forslagene og velger hva som skal brukes – og kan angre etterpå.</p>
+    <div class="slipp-sone" data-aj-slipp>Dra hpr-fila hit, eller <label class="lenke">velg fil<input type="file" data-aj-fil multiple accept=".hpr,.hprz,.zip,.env,.ogr,.ogrz" hidden></label>${S.bestand?.some((b) => b.geometri) ? ' · <a href="#" data-aj-sim>prøv med simulert hogst</a>' : ''}</div>
+    <p class="hint">Hører hogsten til et oppdrag? Les inn filene under oppdraget › Maskin, så oppdateres også oppdraget.</p>
+    ${ajourVisning.historikkHtml()}`;
+}
+async function lesAjourFiler(filer, navn) {
+  const el = $('#ajourPanel'); if (el) el.querySelector('.slipp-sone')?.classList.add('arbeider');
+  try {
+    const { lesProduksjonsfiler } = await import('./stanford.js');
+    const data = await lesProduksjonsfiler(filer);
+    const hpr = data.meldinger.filter((m) => m.type === 'hpr');
+    if (!hpr.length) throw new Error(data.meldinger.some((m) => m.type === 'thp') ? 'Fila er en thp (bare summer, uten stammeposisjoner). Bruk hpr-fila fra hogstmaskinen.' : 'Fant ingen hpr-fil (stammer fra hogstmaskin) i filene.');
+    const st = new Map(); for (const m of hpr) for (const s of m.stammer) st.set(s.k, s);
+    await ajourVisning.start([...st.values()], { kontekst: 'data', kilde: 'HPR', navn: navn || data.filer.find((f) => /\.hpr/i.test(f)) || 'hpr', spor: (data.spor || []).slice(0, 300), tegn: tegnAjourPanel });
+    $('#ajourPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) { melding(e.message || 'Klarte ikke å lese fila.', 'feil'); tegnAjourPanel(); }
+}
+document.addEventListener('change', (e) => {
+  if (!e.target.matches('[data-aj-fil]')) return; const l = [...e.target.files]; e.target.value = '';
+  if (l.length) Promise.all(l.map(async (x) => ({ navn: x.name, data: new Uint8Array(await x.arrayBuffer()) }))).then((f) => lesAjourFiler(f));
+});
+document.addEventListener('click', async (e) => {
+  const a = e.target.closest('[data-aj-angre]'); if (a) { e.preventDefault(); if (ajourVisning.angre(a.dataset.ajAngre)) { tegnAjourPanel(); oppdragVisning?.tegn(); } return; }
+  if (e.target.closest('[data-aj-kart]')) { ajourVisning.visLagret(); return; }
+  if (e.target.closest('[data-aj-skjul]')) { ajourVisning.skjul(); return; }
+  if (e.target.closest('[data-aj-sim]')) {
+    e.preventDefault();
+    // Simulert hogst: flatehogst i ca. halve det største hogstmodne bestandet, så deling og nye tiltak kan prøves.
+    const { simulerDrift } = await import('./stanford.js');
+    const b = [...S.bestand].filter((x) => x.geometri && !x.miljo).sort((x, y) => (y.alder || 0) * (y.areal || 0) - (x.alder || 0) * (x.areal || 0))[0]; if (!b) return;
+    const t = { id: 'sim', type: 'sluttavvirkning', aar: IAAR, status: 'planlagt' };
+    const kopi = { ...S, bestand: [{ ...b, tiltak: [t] }] }; const o = { id: 'sim', nr: `SIM-${b.nr}`, type: 'sluttavvirkning', linjer: [{ bestandId: b.id, tiltakId: 'sim' }] };
+    const filer = simulerDrift(kopi, o, { maksStammer: 8000 }).filter((f) => f.navn.endsWith('.hpr')).map((f) => ({ navn: f.navn, data: new TextEncoder().encode(f.data) }));
+    const { lesProduksjonsfiler } = await import('./stanford.js'); const data = await lesProduksjonsfiler(filer);
+    const alle = data.meldinger.filter((m) => m.type === 'hpr').flatMap((m) => m.stammer).filter((s) => s.pos);
+    // Behold stammene i den vestlige halvdelen, så bestandet blir delvis hogd.
+    const xs = alle.map((s) => s.pos[0]).sort((p, q) => p - q); const midt = xs[Math.floor(xs.length * 0.55)];
+    await ajourVisning.start(alle.filter((s) => s.pos[0] <= midt), { kontekst: 'data', kilde: 'HPR (simulert)', navn: `Simulert hogst i bestand ${b.nr}`, tegn: tegnAjourPanel });
+  }
+});
+document.addEventListener('dragover', (e) => { const z = e.target.closest?.('[data-aj-slipp]'); if (z) { e.preventDefault(); z.classList.add('over'); } });
+document.addEventListener('dragleave', (e) => e.target.closest?.('[data-aj-slipp]')?.classList.remove('over'));
+document.addEventListener('drop', (e) => { const z = e.target.closest?.('[data-aj-slipp]'); if (!z) return; e.preventDefault(); z.classList.remove('over'); const l = [...e.dataTransfer.files]; Promise.all(l.map(async (x) => ({ navn: x.name, data: new Uint8Array(await x.arrayBuffer()) }))).then((f) => lesAjourFiler(f)); });
+
 // Skiltplan (skiltplan-ui.js): skiltene som små skiltsymboler med nummer, og stedene som krever varsling.
 let skiltLag = null;
 async function visSkiltLag(d, { zoom = false } = {}) {
@@ -2355,6 +2421,8 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
     ...Object.entries(RAPPORTER).map(([k, r]) => ({ gruppe: 'Rapporter', ikon: '▦', tittel: `Rapport: ${r.navn}`, under: r.beskrivelse, sok: 'rapport pdf utskrift skriv ut', utfor: () => visRapport(k) })),
     { gruppe: 'Handlinger', ikon: '🤝', tittel: 'Del med tømmerkjøper', under: 'Del bestand, volumer og kart og få prisforslag', sok: 'tømmerkjøper tommerkjoper del dele tømmer salg selge hogst pris tilbud andelslag kjøper', utfor: () => { visFane('verdi'); tommerVisning?.apne(null); setTimeout(() => $('#tommerDeling')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
+    { gruppe: 'Handlinger', ikon: '🔄', tittel: 'Ajourfør planen fra hogstmaskindata (HPR)', under: 'Les inn hpr-fil: del bestand, oppdater egenskaper og tiltak', sok: 'hpr hogstmaskin ajourfør ajourføring stanford produksjonsfil hogd flate bestandsgrense oppdater plan', utfor: () => { visFane('data'); setTimeout(() => $('#ajourPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
+    { gruppe: 'Kart', ikon: '🌲', tittel: 'Vis hogstmaskindata i kartet', sok: 'hpr stammer hogd flate kartlag hogstmaskin', utfor: () => { if ((S.hogstdata || []).length) ajourVisning?.visLagret(); else melding('Ingen hogstmaskindata er lest inn ennå. Bruk Data › Ajourfør planen fra hogstmaskindata.'); } },
     { gruppe: 'Hjelp', ikon: '❓', tittel: 'Brukerveiledning', under: 'Slik bruker du SkogIQ.ai – steg for steg', sok: 'hjelp brukerveiledning veiledning manual hvordan bruke guide', utfor: () => visHjelp('kom-i-gang') },
     ...HJELP.map((k) => ({ gruppe: 'Hjelp', ikon: k.ikon, tittel: `Hjelp: ${k.tittel}`, sok: `hjelp veiledning hvordan ${k.tittel.toLowerCase()}`, utfor: () => visHjelp(k.id) })),
     { gruppe: 'Handlinger', ikon: '✨', tittel: 'Hva er nytt i SkogIQ.ai', under: `Versjonslogg – sist ${ENDRINGER[0].tittel}`, sok: 'hva er nytt versjonslogg endringer oppdatering nyheter changelog', utfor: () => visEndringslogg() },
@@ -2457,6 +2525,12 @@ function kobleHendelser() {
   });
   // Hogstmaskindata (HPR) mot SR16 i Data-fanen (hpr-sr16-ui.js).
   hprVisning = initHprSr16({ hentPlan: () => S, endret, melding, visKartlag: visStanfordLag, visBestand: (id) => { if (S.bestand.some((b) => b.id === id)) velgBestand(id); } });
+  // Ajourføring av planen fra hogstmaskindata (ajourforing-ui.js) – i Data-fanen og i oppdragets Maskin-fane.
+  ajourVisning = lagAjourforingUi({
+    hentPlan: () => S, endret, melding, iAar: IAAR, lastPC: lastKlipping, visKart: visHogstdataLag,
+    visBestander: (ider) => { const lag = ider.map((id) => lagPerBestand.get(id)).filter(Boolean); if (lag.length && erMobil()) settArk('halv'); },
+  });
+  tegnAjourPanel();
   oppdragVisning = initOppdrag({
     hentPlan: () => S, endret, melding, okonomi: tiltakOkonomi, settUtfort,
     tiltakNavn: (k) => TILTAKSTYPER[k]?.navn || k,
@@ -2467,7 +2541,7 @@ function kobleHendelser() {
       if (erMobil()) settArk('halv');
     },
     startValg: (o) => { visTiltakVisning('plan'); settValgModus(true, o); },
-    visKartlag: visStanfordLag, visDriftsveg: visDriftsvegLag, visSkilt: visSkiltLag,
+    visKartlag: visStanfordLag, visDriftsveg: visDriftsvegLag, visSkilt: visSkiltLag, ajourforing: ajourVisning,
   });
   $('#tiltakVisning').addEventListener('click', (e) => { const b = e.target.closest('[data-tv]'); if (b) visTiltakVisning(b.dataset.tv); });
   $('#velgTiltakBtn').addEventListener('click', () => settValgModus(!valgModus));
