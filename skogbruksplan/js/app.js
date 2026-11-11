@@ -836,7 +836,7 @@ function visDetalj() {
       <div><b>${fmt(tilv, 1)} m³/år</b><span>tilvekst (est.)</span></div>
       <div><b>${fmt(om10)} m³</b><span>volum om 10 år uten hogst</span></div>
       <div><b>${hm ? (hm <= IAAR ? 'Nå' : hm) : '–'}</b><span>hogstmoden${min ? ` (≥ ${min} år)` : ''}</span></div>
-      <div><b>${fmt(s.volumDaa * (b.areal || 0) * rotnettoPerM3(b.treslag, inn()) / 1000)} k</b><span>kr rotnetto ved hogst nå</span></div>
+      <div><b>${fmt(s.volumDaa * (b.areal || 0) * rotnettoPerM3(b, inn()) / 1000)} k</b><span>kr rotnetto ved hogst nå</span></div>
       ${(() => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? `<div><b>${fmt(a.meter)} m</b><span>til nærmeste bilvei${a.meter > veiVisning.maks() ? ' – lang terrengtransport' : ''}</span></div>` : ''; })()}
     </div>
     ${treslagSeksjonHtml(b)}
@@ -938,15 +938,15 @@ function tetthetFeltHtml(b) {
 // Treslagsfordeling og volum per treslag i bestandsinfoen. Andelene kan skrives inn (prosent).
 const TS_KILDE = { registrert: 'Registrert', import: 'Fra planen', sr16: 'SR16-anslag', hovedtreslag: 'Bare hovedtreslag' };
 function treslagSeksjonHtml(b) {
-  const v = volumPerTreslag(b); const avvik = avvikHovedtreslag(b);
+  const v = volumPerTreslag(b, inn()); const avvik = avvikHovedtreslag(b);
   const pst = (x) => Math.round(x * 100);
   return `<div id="treslagSeksjon" class="treslag-seksjon">
     <div class="treslag-topp"><h3>Treslag og volum</h3><span class="ungskog-kilde ${v.kilde === 'registrert' ? 'registrert' : v.kilde === 'hovedtreslag' ? 'beregnet' : 'data'}" title="${esc(v.forklaring)}">${TS_KILDE[v.kilde]}</span></div>
     <div class="treslag-stolpe" role="img" aria-label="Treslagsfordeling: ${TRESLAG_REKKE.map((t) => `${TRESLAG_NAVN[t]} ${pst(v.rader.find((r) => r.t === t).andel)} %`).join(', ')}">${v.rader.filter((r) => r.andel > 0).map((r) => `<span style="flex:${r.andel};background:${TRESLAG_FARGE[r.t]}">${r.andel >= 0.12 ? `${TRESLAG_NAVN[r.t]} ${pst(r.andel)} %` : ''}</span>`).join('')}</div>
-    <table class="treslag-tabell"><thead><tr><th>Treslag</th><th>Andel</th><th class="t">m³/daa</th><th class="t">m³</th></tr></thead><tbody>
-      ${v.rader.map((r) => `<tr><td><i style="background:${TRESLAG_FARGE[r.t]}"></i>${TRESLAG_NAVN[r.t]}</td><td><label class="pst-felt"><input type="text" inputmode="decimal" data-andel="${r.t}" value="${v.kilde === 'hovedtreslag' ? '' : pst(r.andel)}" placeholder="${pst(r.andel)}" aria-label="Andel ${TRESLAG_NAVN[r.t].toLowerCase()} i prosent"> %</label></td><td class="t">${fmt(r.daa, 1)}</td><td class="t"><b>${fmt(r.m3)}</b></td></tr>`).join('')}
-      <tr class="sum"><td>Sum</td><td>100 %</td><td class="t">${fmt(v.volumDaa, 1)}</td><td class="t"><b>${fmt(v.m3)}</b></td></tr></tbody></table>
-    <small class="hint">${esc(v.forklaring)}. Volumet er stående volum i dag fordelt etter andelene.${avvik ? ` <b>${TRESLAG_NAVN[avvik]} dominerer, men hovedtreslaget er ${esc(TRESLAG[b.treslag] || 'gran').toLowerCase()}.</b> <button class="lenkeknapp" type="button" data-hovedtreslag="${avvik}">Sett hovedtreslag til ${TRESLAG_NAVN[avvik].toLowerCase()}</button>` : ''}${v.kilde !== 'hovedtreslag' ? ' <button class="lenkeknapp" type="button" data-andel-nullstill>Nullstill</button>' : ''}</small>
+    <table class="treslag-tabell"><thead><tr><th>Treslag</th><th>Andel</th><th class="t">m³/daa</th><th class="t">m³</th><th class="t" title="Rotnetto ved hogst nå: pris minus driftskostnad per treslag (Innstillinger)">Rotnetto</th></tr></thead><tbody>
+      ${v.rader.map((r) => `<tr><td><i style="background:${TRESLAG_FARGE[r.t]}"></i>${TRESLAG_NAVN[r.t]}</td><td><label class="pst-felt"><input type="text" inputmode="decimal" data-andel="${r.t}" value="${v.kilde === 'hovedtreslag' ? '' : pst(r.andel)}" placeholder="${pst(r.andel)}" aria-label="Andel ${TRESLAG_NAVN[r.t].toLowerCase()} i prosent"> %</label></td><td class="t">${fmt(r.daa, 1)}</td><td class="t"><b>${fmt(r.m3)}</b></td><td class="t">${fmt(r.netto / 1000)}k <small class="hint">(${fmt(r.perM3)}/m³)</small></td></tr>`).join('')}
+      <tr class="sum"><td>Sum</td><td>100 %</td><td class="t">${fmt(v.volumDaa, 1)}</td><td class="t"><b>${fmt(v.m3)}</b></td><td class="t"><b>${fmt(v.netto / 1000)}k</b></td></tr></tbody></table>
+    <small class="hint">${esc(v.forklaring)}. Volumet er stående volum i dag fordelt etter andelene. Rotnetto (kr) er pris minus driftskostnad per treslag ved hogst nå – verdiberegningen, tiltakene og rapportene bruker samme fordeling.${avvik ? ` <b>${TRESLAG_NAVN[avvik]} dominerer, men hovedtreslaget er ${esc(TRESLAG[b.treslag] || 'gran').toLowerCase()}.</b> <button class="lenkeknapp" type="button" data-hovedtreslag="${avvik}">Sett hovedtreslag til ${TRESLAG_NAVN[avvik].toLowerCase()}</button>` : ''}${v.kilde !== 'hovedtreslag' ? ' <button class="lenkeknapp" type="button" data-andel-nullstill>Nullstill</button>' : ''}</small>
   </div>`;
 }
 function kobleTreslag(b) {
@@ -1039,7 +1039,7 @@ function tiltakOkonomi(t) {
     const aarFrem = Math.max(0, (t.aar || IAAR) - IAAR);
     const v = framskriv([b], aarFrem, inn(), { folgPlan: false }).perBestand.get(b.id)[aarFrem].volumDaa * areal;
     const m3 = v * hogstAndel(t.type, inn(), t);
-    const netto = m3 * hogstNettoPerM3(t.type, b.treslag, inn());
+    const netto = m3 * hogstNettoPerM3(t.type, b, inn());
     const brutto = m3 * (inn().pris[b.treslag] ?? inn().pris.G);
     return { m3, netto, skogfond: brutto * inn().skogfondProsent / 100 };
   }

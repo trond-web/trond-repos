@@ -18,6 +18,7 @@ import { synligeTiltaksflater, treffVed, tiltakStil, tiltakNavn, tiltakLinje, ti
 import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
 import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
+import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, treslagKortHtml, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag } from './treslag.js';
 import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
 import { endringer as motorEndringer, oppdaterBestand as motorOppdater, merkKjort } from './tiltaksmotor.js';
@@ -252,11 +253,32 @@ function tiltakRad(b, t, medBestand = false) {
 }
 // Ungskog (HK I–II): treantall før/etter regulering og høyder, med beregnede verdier der ingenting er registrert,
 // og økonomisk effekt av å gjennomføre eller ikke gjennomføre ungskogpleie (eller planting).
+// Treantall per treslag i hogstklasse II (før/etter regulering). Redigerbart i «Registrer målte verdier»; en endret
+// rad lagres når du trykker Ferdig (tomme felt får den beregnede verdien, helt tom rad fjerner registreringen).
+function treantallTreslag(b, red) {
+  if (!visTreantallTreslag(b, inn())) return '';
+  const d = treantallPerTreslag(b, { inn: inn() });
+  const rad = (fase, navn) => { const x = d[fase]; return `<tr><td>${navn}<small>${x.kilde === 'registrert' ? 'målt' : x.kilde === 'fordelt' ? 'fordelt' : 'modell'}</small></td>${TRESLAG_REKKE.map((t) => `<td class="t">${red ? `<input type="text" inputmode="numeric" data-tt-fase="${fase}" data-tt="${t}" value="${x.kilde === 'registrert' ? x[t] : ''}" placeholder="${x[t]}" aria-label="${TRESLAG_NAVN[t]} ${navn.toLowerCase()}">` : fmt(x[t])}</td>`).join('')}<td class="t"><b>${fmt(x.sum)}</b></td></tr>`; };
+  return `<h4 class="ts-under">Treantall per treslag (trær/daa)</h4><table class="ts-tabell tt"><thead><tr><th></th>${TRESLAG_REKKE.map((t) => `<th class="t"><i style="background:${TRESLAG_FARGE[t]}"></i>${TRESLAG_NAVN[t]}</th>`).join('')}<th class="t">Sum</th></tr></thead><tbody>${rad('for', 'Før regulering')}${rad('etter', 'Etter regulering')}</tbody></table>
+    ${red ? '<p class="hint">Tell gran, furu og lauv i prøveflater og skriv inn per daa. Tomme felt får beregnet verdi.</p>' : ''}`;
+}
+function lagreTreantallTreslag(b) {
+  let endret = false;
+  for (const fase of ['for', 'etter']) {
+    const felt = [...document.querySelectorAll(`[data-tt-fase="${fase}"]`)]; if (!felt.length || felt.every((x) => x.value === x.defaultValue)) continue;
+    const tom = felt.every((x) => x.value.trim() === '');
+    const verdier = Object.fromEntries(felt.map((x) => [x.dataset.tt, tom ? '' : (x.value.trim() || x.placeholder)]));
+    if (!settTreantallTreslag(b, fase, verdier)) { melding('Ugyldig treantall.'); return null; }
+    endret = true;
+  }
+  return endret;
+}
 function ungskogSeksjon(b) {
   if (!erUngskog(b, inn())) return '';
   const red = ungskogRed === b.id; const e = effekt(b);
   const planlagt = e && (b.tiltak || []).some((t) => t.type === e.type && t.status !== 'utfort');
   return `<h3>Ungskog</h3>${ungskogHtml(ungskogData(b, { inn: inn() }), { inputs: red })}
+    ${treantallTreslag(b, red)}
     <div class="knapper">${red ? '<button type="button" class="knapp primar" data-h="ungskog-ferdig">Ferdig</button>' : '<button type="button" class="knapp" data-h="ungskog-reg">✎ Registrer målte verdier</button>'}</div>
     ${e ? `<h3>Effekt av ${e.type === 'ungskogpleie' ? 'ungskogpleie' : 'planting'}</h3>${effektHtml(e, { kompakt: true })}
       ${planlagt ? '' : `<div class="knapper"><button type="button" class="knapp" data-h="effekt-tiltak" data-type="${e.type}">+ Planlegg ${e.type === 'ungskogpleie' ? 'ungskogpleie' : 'planting'} ${IAAR}</button></div>`}` : ''}`;
@@ -294,6 +316,7 @@ function visBestand(id, { zoom = false } = {}) {
       ${(() => { if (!erUngskog(b, inn()) || (!fraSr16(b) && b.ungskog?.treantallFor == null)) return `<div class="tall"><b>${fmt(b.treantall)}</b><span>trær/daa</span></div>`; const t = ungskogData(b, { inn: inn() }).treantallFor; return `<div class="tall"><b>${fmt(t.verdi)}</b><span>trær/daa${t.kilde === 'registrert' ? ' (målt)' : t.kilde === 'beregnet' ? ' (modell)' : ''}</span></div>`; })()}
       ${(() => { const mh = middelhoyde(b, { inn: inn() }); return `<div class="tall"><b>${fmt(mh.verdi, 1)}</b><span>m høyde${mh.kilde === 'registrert' ? ' (snitt bar/lauv)' : ''}</span></div>`; })()}
     </div>
+    <h3>Treslag og volum</h3>${treslagKortHtml(volumPerTreslag(b, inn()), { fmt, esc })}
     ${naturHtml(b)}
     ${b.vegetasjon?.kode ? `<p class="hint">Vegetasjonstype ${esc(b.vegetasjon.kode)} ${esc(b.vegetasjon.navn || '')}</p>` : ''}
     ${b.merknad ? `<p class="hint">${esc(b.merknad)}</p>` : ''}
@@ -735,6 +758,7 @@ function kobleHendelser() {
       if (e) { if (h === 'motor-oppdater') motorOppdater(P, e); else merkKjort(b, P.motor?.prinsipp || 'balansert'); await lagrePlanen(); tegnTiltaksflater(); }
       visBestand(b.id); melding(h === 'motor-oppdater' ? 'Tiltakene er oppdatert.' : 'Tiltakene beholdes.');
     }
+    if (h === 'ungskog-ferdig' && valgtId) { const b = finn(valgtId); const r = lagreTreantallTreslag(b); if (r === null) return; if (r) await lagrePlanen(); }
     if (h === 'ungskog-reg' || h === 'ungskog-ferdig') { const top = $('#arkInnhold').scrollTop; ungskogRed = h === 'ungskog-reg' ? valgtId : null; visBestand(valgtId); $('#arkInnhold').scrollTop = top; if (ungskogRed) document.querySelector('[data-ungskog]')?.focus(); }
     if (h === 'effekt-tiltak') {
       const b = finn(valgtId); if (!b) return;
@@ -754,6 +778,7 @@ function kobleHendelser() {
     }
     if (e.target.dataset?.ungskog && valgtId) {
       const b = finn(valgtId); const top = $('#arkInnhold').scrollTop;
+      if (lagreTreantallTreslag(b) === null) return; // ikke mist treantall per treslag som er skrevet inn
       if (!settUngskog(b, e.target.dataset.ungskog, e.target.value.trim())) { melding('Ugyldig verdi.'); return; }
       await lagrePlanen(); visBestand(b.id); $('#arkInnhold').scrollTop = top; return;
     }

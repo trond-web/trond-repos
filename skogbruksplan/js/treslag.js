@@ -3,7 +3,7 @@
 //   * volum per treslag: stående volum i dag fordelt etter andelene (m³/daa og m³ for bestandet)
 //   * treantall per treslag i hogstklasse II, før og etter regulering: registrert, eller fordelt fra modellen
 //     (bar/lauv fra ungskogmodellen, bar fordelt på gran og furu etter treslagsfordelingen)
-import { startTilstand, treslagAndel, hogstklasseFor, STANDARD_INNSTILLINGER } from './model.js';
+import { startTilstand, treslagAndel, hogstklasseFor, rotnettoPerM3, STANDARD_INNSTILLINGER } from './model.js';
 import { ungskogData, treantallModell } from './ungskog.js';
 
 export const TRESLAG_REKKE = ['G', 'F', 'L'];
@@ -24,11 +24,21 @@ export function fordeling(b) {
   return { andel: Object.fromEntries(TRESLAG_REKKE.map((x) => [x, x === t ? 1 : 0])), kilde: 'hovedtreslag', forklaring: `Bare hovedtreslaget (${TRESLAG_NAVN[t].toLowerCase()}) er kjent – legg inn fordelingen` };
 }
 
-// Volum per treslag i dag: [{ t, andel, daa (m³/daa), m3 }] og totalt.
-export function volumPerTreslag(b) {
+// Volum per treslag i dag og rotnetto ved hogst nå (pris – driftskostnad per treslag, Innstillinger):
+// { rader: [{ t, andel, daa (m³/daa), m3, perM3, netto }], volumDaa, m3, netto, kilde, forklaring }
+export function volumPerTreslag(b, inn = STANDARD_INNSTILLINGER) {
   const f = fordeling(b); const vd = startTilstand(b).volumDaa || 0; const areal = b.areal || 0;
-  const rader = TRESLAG_REKKE.map((t) => ({ t, andel: f.andel[t], daa: vd * f.andel[t], m3: vd * areal * f.andel[t] }));
-  return { rader, volumDaa: vd, m3: vd * areal, kilde: f.kilde, forklaring: f.forklaring };
+  const rader = TRESLAG_REKKE.map((t) => { const m3 = vd * areal * f.andel[t]; const perM3 = rotnettoPerM3(t, inn); return { t, andel: f.andel[t], daa: vd * f.andel[t], m3, perM3, netto: m3 * perM3 }; });
+  return { rader, volumDaa: vd, m3: vd * areal, netto: rader.reduce((s, r) => s + r.netto, 0), kilde: f.kilde, forklaring: f.forklaring };
+}
+
+// Treslag og volum som HTML (SkogIQ Felt): stolpe og tabell uten redigering.
+export function treslagKortHtml(v, { fmt = (x) => String(Math.round(x)), esc = (x) => String(x) } = {}) {
+  const pst = (x) => Math.round(x * 100);
+  return `<div class="ts-kort"><div class="ts-stolpe" role="img" aria-label="Treslagsfordeling">${v.rader.filter((r) => r.andel > 0).map((r) => `<span style="flex:${r.andel};background:${TRESLAG_FARGE[r.t]}">${r.andel >= 0.15 ? `${TRESLAG_NAVN[r.t]} ${pst(r.andel)} %` : ''}</span>`).join('')}</div>
+    <table class="ts-tabell"><thead><tr><th>Treslag</th><th class="t">Andel</th><th class="t">m³</th><th class="t">Rotnetto</th></tr></thead><tbody>${v.rader.map((r) => `<tr><td><i style="background:${TRESLAG_FARGE[r.t]}"></i>${TRESLAG_NAVN[r.t]}</td><td class="t">${pst(r.andel)} %</td><td class="t">${fmt(r.m3)}</td><td class="t">${fmt(r.netto / 1000)}k</td></tr>`).join('')}
+    <tr class="sum"><td>Sum</td><td class="t">100 %</td><td class="t">${fmt(v.m3)}</td><td class="t">${fmt(v.netto / 1000)}k</td></tr></tbody></table>
+    <small>${esc(v.forklaring)}. Rotnetto ved hogst nå (kr).</small></div>`;
 }
 
 // Registrer fordelingen i prosent { G, F, L } (tomme = 0). Alt tomt fjerner fordelingen. Gir false ved ugyldig verdi.

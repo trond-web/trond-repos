@@ -247,7 +247,7 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
           const volDa = s.volumDaa * (1 + 0.03 * om);
           const uttakDaa = volDa * hogstAndel('tynning', inn);
           if (uttakDaa >= 3) {
-            const netto = uttakDaa * (b.areal || 0) * hogstNettoPerM3('tynning', ts, inn);
+            const netto = uttakDaa * (b.areal || 0) * hogstNettoPerM3('tynning', b, inn);
             legg(b, 'tynning', iAar + om, om === 0 ? 1 : 2, `${forste ? 'Første' : 'Andre'}gangstynning ved ${fra}–${til} m (ca. ${Math.round(uttakDaa * (b.areal || 0))} m³)`, `Overhøyde ca. ${hDa.toFixed(0)} m i ${iAar + om}. Tynning tar ut ${Math.round(hogstAndel('tynning', inn) * 100)} % (maks 40 % for stabilitet) og gir grovere, mer verdifulle trær. Anslått netto ${kr(netto)}.`, ['tynning', 'storm'], { regel: 'tynning' });
           }
         }
@@ -290,11 +290,11 @@ export function genererTiltak(S, { iAar = new Date().getFullYear(), horisont = 3
     const Pk = PRINSIPPER[prinsippFor(b)];
     const karbonTekst = Pk.karbon && aar > k.maalAar - Pk.forlengelse ? ` Karbon: hogsten er lagt minst ${Pk.forlengelse} år etter økonomisk optimum for å bygge karbonlager${k.risiko?.storm?.nivaa?.id === 'hoy' ? ', men framskyndet fordi stormrisikoen er høy (tap må dekkes fra bufferen)' : ''}.` : '';
     if (valg.form === 'lukket') {
-      const netto = m3 * hogstNettoPerM3('lukkethogst', ts, inn);
+      const netto = m3 * hogstNettoPerM3('lukkethogst', b, inn);
       legg(b, 'lukkethogst', aar, aar <= iAar + 2 ? 1 : 2, `Lukket hogst (plukk-/gruppehogst), uttak ca. ${Math.round(andel * 100)} % – ca. ${Math.round(m3)} m³`, `${valg.tekst} Mer enn 15 trær/daa står igjen, åpninger under 2 daa, og ny generasjon kommer naturlig. Anslått netto ${kr(netto)} (inkl. ${inn.lukketTillegg ?? 40} kr/m³ høyere driftskostnad).${okonomi}${karbonTekst}${utsatt}`, Pk.karbon ? ['lukket', 'lukketDef', 'pefc', 'okonomi', 'karbonOmlop'] : ['lukket', 'lukketDef', 'pefc', 'okonomi'], { regel: 'lukket', hogstform: 'selektiv', uttak: andel });
       for (let n = aar + 15; n <= slutt; n += 15) legg(b, 'lukkethogst', n, 3, `Nytt lukket hogstinngrep (ca. ${Math.round(andel * 100)} %)`, 'Lukket hogst gjentas med 15–20 års mellomrom mens skogen holdes kontinuerlig dekket.', ['lukket', 'lukketDef'], { regel: 'lukket-gjentak', hogstform: 'selektiv', uttak: andel });
     } else {
-      const netto = m3 * hogstNettoPerM3('sluttavvirkning', ts, inn);
+      const netto = m3 * hogstNettoPerM3('sluttavvirkning', b, inn);
       const formTekst = valg.form === 'frotre' ? 'frøtrestilling (5–10 frøtrær/daa)' : 'flatehogst';
       legg(b, 'sluttavvirkning', aar, aar <= iAar + 2 ? 1 : 2, `Sluttavvirkning – ${formTekst}, ca. ${Math.round(m3)} m³`, `${valg.tekst} Alder ${Math.round(s.alder)} år, laveste hogstalder etter PEFC er ${pefcAlder(bo)?.nedre ?? '–'} år. Anslått netto ${kr(netto)}. Behold minst 10 livsløpstrær/daa og kantsoner mot vann (PEFC).${okonomi}${karbonTekst}${utsatt}`, Pk.karbon ? ['okonomi', 'pefc', 'karbonOmlop'] : ['okonomi', 'pefc'], { regel: 'sluttavvirkning', hogstform: valg.form === 'frotre' ? 'frotre' : 'flatehogst' });
       foryngelse(b, aar, valg.form);

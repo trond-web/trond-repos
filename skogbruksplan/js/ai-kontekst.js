@@ -53,7 +53,7 @@ export function lagKontekst(S, { iAar = new Date().getFullYear(), pefcFunn = [],
     const planl = (b.tiltak || []).filter((t) => t.status !== 'utfort').map((t) => `${TILTAKSTYPER[t.type]?.navn || t.type} ${t.aar}`).join(' + ');
     const utf = (b.tiltak || []).filter((t) => t.status === 'utfort').map((t) => `${TILTAKSTYPER[t.type]?.navn || t.type} ${t.aar}`).join(' + ');
     d.push([b.nr, b.teig, r1(a), TRESLAG[b.treslag] || '', b.bonitet ?? '', hk || '', r0(st.alder), r1(st.volumDaa), r0(st.volumDaa * a), r1(arligTilvekstDaa(b) * a), min ?? '',
-      min ? iAar + Math.max(0, Math.ceil(min - st.alder)) : '', r0(st.volumDaa * a * rotnettoPerM3(b.treslag, inn)), b.miljo ? 'ja' : '', b.vegetasjon?.kode ? `${b.vegetasjon.kode} ${b.vegetasjon.navn}${b.vegetasjon.kilde === 'anslag' ? ' (anslått)' : ''}` : '', planl, utf, b.merknad].map(csv).join(';'));
+      min ? iAar + Math.max(0, Math.ceil(min - st.alder)) : '', r0(st.volumDaa * a * rotnettoPerM3(b, inn)), b.miljo ? 'ja' : '', b.vegetasjon?.kode ? `${b.vegetasjon.kode} ${b.vegetasjon.navn}${b.vegetasjon.kilde === 'anslag' ? ' (anslått)' : ''}` : '', planl, utf, b.merknad].map(csv).join(';'));
   }
   d.push('');
   const fr = framskriv(S.bestand, 20, inn, { folgPlan: true, startAar: iAar }).aarRader;

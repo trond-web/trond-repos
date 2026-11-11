@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.71.0 – Rotnetto per treslag, og treslag i SkogIQ Felt (2026-11-11)
+
+*Forbedret.* Verdiberegning, tiltak, rapporter og skadeberegning vekter rotnettoen etter treslagsfordelingen i bestandet. Bestandsinfoen viser rotnetto per treslag. SkogIQ Felt viser treslag og volum, og treantall per treslag i hogstklasse II kan registreres i felt.
+
 ## 1.70.0 – Treslag og volum i bestandsinfoen (2026-11-11)
 
 *Nytt.* Bestandsinfoen viser treslagsfordeling (gran, furu, lauv) med kilde og volum per treslag, og andelene kan skrives inn. I hogstklasse II vises treantall per treslag før og etter regulering, beregnet eller registrert i felt.

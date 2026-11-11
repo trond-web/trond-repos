@@ -275,7 +275,7 @@ export function beregnSkade(S, skade, { klipping = null } = {}) {
     const st = startTilstand(b);
     const a = daa ?? 0;
     const v = a * st.volumDaa * andel;
-    const kr = v * rotnettoPerM3(b.treslag, inn);
+    const kr = v * rotnettoPerM3(b, inn);
     volum += v; verdi += kr; areal += a;
     return { id, nr: b.nr, daa: a, treslag: b.treslag, bonitet: b.bonitet, alder: Math.round(st.alder), volumDaa: st.volumDaa, volum: v, verdi: kr };
   });
