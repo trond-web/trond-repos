@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.72.0 – Endre treslagsfordeling i SkogIQ Felt (2026-11-11)
+
+*Forbedret.* I bestandskortet i SkogIQ Felt kan du endre andelene for gran, furu og lauv med «✎ Endre fordeling». Store −/+ 5 %-knapper gjør det lett med hansker, og summen vises underveis. Fordelingen synkroniseres til fullversjonen og brukes i volum og verdi.
+
 ## 1.71.0 – Rotnetto per treslag, og treslag i SkogIQ Felt (2026-11-11)
 
 *Forbedret.* Verdiberegning, tiltak, rapporter og skadeberegning vekter rotnettoen etter treslagsfordelingen i bestandet. Bestandsinfoen viser rotnetto per treslag. SkogIQ Felt viser treslag og volum, og treantall per treslag i hogstklasse II kan registreres i felt.

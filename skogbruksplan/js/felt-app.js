@@ -18,7 +18,7 @@ import { synligeTiltaksflater, treffVed, tiltakStil, tiltakNavn, tiltakLinje, ti
 import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
 import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
-import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, treslagKortHtml, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag } from './treslag.js';
+import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, treslagKortHtml, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag, settTreslagAndel, fordeling as tsFordeling, avvikHovedtreslag } from './treslag.js';
 import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
 import { endringer as motorEndringer, oppdaterBestand as motorOppdater, merkKjort } from './tiltaksmotor.js';
@@ -47,6 +47,7 @@ let gps = { watch: null, pos: null, folg: false, markor: null, sirkel: null };
 let installHendelse = null; let spor = null; let flate = null;
 let drone = null; let oppdrag = null; let uthevOppdrag = new Set(); let kandidatOppdrag = new Set(); // bestand i oppdraget som er åpent, og bestand som kan velges
 let ungskogRed = null; // bestand der ungskogfeltene er åpne for registrering
+let tsRed = null; // bestand der treslagsfordelingen endres
 let tiltaksflateLag = null; let valgtTiltak = null; let treffMarkor = null; // tiltak som er valgt i kartet, og markør for trykkpunktet
 
 // ---------- hjelpere ----------
@@ -262,6 +263,23 @@ function treantallTreslag(b, red) {
   return `<h4 class="ts-under">Treantall per treslag (trær/daa)</h4><table class="ts-tabell tt"><thead><tr><th></th>${TRESLAG_REKKE.map((t) => `<th class="t"><i style="background:${TRESLAG_FARGE[t]}"></i>${TRESLAG_NAVN[t]}</th>`).join('')}<th class="t">Sum</th></tr></thead><tbody>${rad('for', 'Før regulering')}${rad('etter', 'Etter regulering')}</tbody></table>
     ${red ? '<p class="hint">Tell gran, furu og lauv i prøveflater og skriv inn per daa. Tomme felt får beregnet verdi.</p>' : ''}`;
 }
+// Treslag og volum i bestandskortet. «✎ Endre fordeling» åpner felt for prosent gran/furu/lauv med summen underveis og
+// ±5-knapper (lett med hansker); lagres med «Lagre». Samme lagring som fullversjonen (registrert fordeling).
+function treslagFelt(b) {
+  const v = volumPerTreslag(b, inn());
+  if (tsRed !== b.id) return `<h3>Treslag og volum</h3>${treslagKortHtml(v, { fmt, esc })}<div class="knapper"><button type="button" class="knapp" data-h="ts-red">✎ Endre fordeling</button></div>`;
+  const f = tsFordeling(b); const pst = (t) => Math.round(f.andel[t] * 100);
+  return `<h3>Treslag og volum</h3><div class="ts-red">
+    ${TRESLAG_REKKE.map((t) => `<div class="ts-red-rad"><span><i style="background:${TRESLAG_FARGE[t]}"></i>${TRESLAG_NAVN[t]}</span>
+      <button type="button" class="knapp ts-steg" data-ts-steg="${t}|-5" aria-label="${TRESLAG_NAVN[t]} minus 5 prosent">−</button>
+      <label><input type="text" inputmode="numeric" data-ts-andel="${t}" value="${pst(t)}" aria-label="Andel ${TRESLAG_NAVN[t].toLowerCase()} i prosent"> %</label>
+      <button type="button" class="knapp ts-steg" data-ts-steg="${t}|5" aria-label="${TRESLAG_NAVN[t]} pluss 5 prosent">+</button></div>`).join('')}
+    <div class="ts-red-sum" data-ts-sum>Sum ${TRESLAG_REKKE.reduce((s, t) => s + pst(t), 0)} %</div>
+    <p class="hint">Anslå andelen av volumet. Blir summen ikke 100 %, skaleres andelene.</p>
+    <div class="knapper"><button type="button" class="knapp primar" data-h="ts-lagre">Lagre</button><button type="button" class="knapp" data-h="ts-avbryt">Avbryt</button>${b.treslagAndel ? '<button type="button" class="knapp" data-h="ts-nullstill">Nullstill</button>' : ''}</div></div>`;
+}
+function tsSum() { const s = TRESLAG_REKKE.reduce((x, t) => x + (Number(String(document.querySelector(`[data-ts-andel="${t}"]`)?.value || '').replace(',', '.')) || 0), 0); const el = document.querySelector('[data-ts-sum]'); if (el) { el.textContent = `Sum ${Math.round(s)} %`; el.classList.toggle('avvik', Math.abs(s - 100) > 0.5); } }
+
 function lagreTreantallTreslag(b) {
   let endret = false;
   for (const fase of ['for', 'etter']) {
@@ -299,7 +317,7 @@ function motorBanner(b) {
 }
 function visBestand(id, { zoom = false } = {}) {
   const b = finn(id); if (!b) return;
-  if (ungskogRed !== id) ungskogRed = null;
+  if (ungskogRed !== id) ungskogRed = null; if (tsRed !== id) tsRed = null;
   valgtId = id; oppdaterStiler();
   if (zoom) { const l = lagPerBestand.get(id); if (l) kart.fitBounds(l.getBounds(), { maxZoom: 16, padding: [40, 40], paddingBottomRight: [40, window.innerHeight * 0.45] }); }
   const s = startTilstand(b); const h = hk(b);
@@ -316,7 +334,7 @@ function visBestand(id, { zoom = false } = {}) {
       ${(() => { if (!erUngskog(b, inn()) || (!fraSr16(b) && b.ungskog?.treantallFor == null)) return `<div class="tall"><b>${fmt(b.treantall)}</b><span>trær/daa</span></div>`; const t = ungskogData(b, { inn: inn() }).treantallFor; return `<div class="tall"><b>${fmt(t.verdi)}</b><span>trær/daa${t.kilde === 'registrert' ? ' (målt)' : t.kilde === 'beregnet' ? ' (modell)' : ''}</span></div>`; })()}
       ${(() => { const mh = middelhoyde(b, { inn: inn() }); return `<div class="tall"><b>${fmt(mh.verdi, 1)}</b><span>m høyde${mh.kilde === 'registrert' ? ' (snitt bar/lauv)' : ''}</span></div>`; })()}
     </div>
-    <h3>Treslag og volum</h3>${treslagKortHtml(volumPerTreslag(b, inn()), { fmt, esc })}
+    ${treslagFelt(b)}
     ${naturHtml(b)}
     ${b.vegetasjon?.kode ? `<p class="hint">Vegetasjonstype ${esc(b.vegetasjon.kode)} ${esc(b.vegetasjon.navn || '')}</p>` : ''}
     ${b.merknad ? `<p class="hint">${esc(b.merknad)}</p>` : ''}
@@ -735,6 +753,8 @@ function kobleHendelser() {
     const slett = e.target.closest('[data-slett-reg]'); if (slett) { if (!confirm('Slette registreringen?')) return; merkSlettet(P, 'registreringer', slett.dataset.slettReg); P.registreringer = P.registreringer.filter((r) => r.id !== slett.dataset.slettReg); await lagrePlanen(); tegnRegistreringer(); visRegListe(); return; }
     const st = e.target.closest('[data-tf-status]'); if (st && endring) { endring.utkast = { ...lesEndring(), status: st.dataset.tfStatus }; visEndreTiltak(endring.bid, endring.tid); return; }
     const kat = e.target.closest('[data-kat]'); if (kat && regPagar) { regPagar.kategori = kat.dataset.kat; regPagar.tekst = $('#regTekst').value; document.querySelectorAll('[data-kat]').forEach((c) => c.setAttribute('aria-pressed', String(c === kat))); return; }
+    const steg = e.target.closest('[data-ts-steg]');
+    if (steg) { const [t, d] = steg.dataset.tsSteg.split('|'); const inp = document.querySelector(`[data-ts-andel="${t}"]`); inp.value = Math.max(0, Math.min(100, (Number(String(inp.value).replace(',', '.')) || 0) + Number(d))); tsSum(); return; }
     const h = e.target.closest('[data-h]')?.dataset.h; if (!h) return;
     if (h === 'hent-kode') { hentFraPc($('#hentKode')?.value); return; }
     if (h === 'synk') { await synkNaa({ stille: false }); if (!$('#ark').hidden) visPlaner(); return; }
@@ -757,6 +777,18 @@ function kobleHendelser() {
       const b = finn(valgtId); const e = motorEndring(b);
       if (e) { if (h === 'motor-oppdater') motorOppdater(P, e); else merkKjort(b, P.motor?.prinsipp || 'balansert'); await lagrePlanen(); tegnTiltaksflater(); }
       visBestand(b.id); melding(h === 'motor-oppdater' ? 'Tiltakene er oppdatert.' : 'Tiltakene beholdes.');
+    }
+    if (['ts-red', 'ts-avbryt', 'ts-lagre', 'ts-nullstill'].includes(h) && valgtId) {
+      const b = finn(valgtId); const top = $('#arkInnhold').scrollTop;
+      if (h === 'ts-lagre') {
+        const verdier = Object.fromEntries(TRESLAG_REKKE.map((t) => [t, document.querySelector(`[data-ts-andel="${t}"]`).value.trim()]));
+        if (!settTreslagAndel(b, verdier)) { melding('Andelen må være et tall mellom 0 og 100.'); return; }
+        const sum = TRESLAG_REKKE.reduce((x, t) => x + (Number(String(verdier[t]).replace(',', '.')) || 0), 0);
+        const av = avvikHovedtreslag(b);
+        await lagrePlanen(); melding(`${Math.abs(sum - 100) > 0.5 ? `Summen var ${Math.round(sum)} % – skalert til 100 %. ` : ''}Treslagsfordelingen er lagret.${av ? ` ${TRESLAG_NAVN[av]} dominerer – hovedtreslaget er ${(TRESLAG[b.treslag] || 'gran').toLowerCase()}.` : ''}`);
+      }
+      if (h === 'ts-nullstill') { settTreslagAndel(b, {}); await lagrePlanen(); }
+      tsRed = h === 'ts-red' ? b.id : null; visBestand(b.id); $('#arkInnhold').scrollTop = top; return;
     }
     if (h === 'ungskog-ferdig' && valgtId) { const b = finn(valgtId); const r = lagreTreantallTreslag(b); if (r === null) return; if (r) await lagrePlanen(); }
     if (h === 'ungskog-reg' || h === 'ungskog-ferdig') { const top = $('#arkInnhold').scrollTop; ungskogRed = h === 'ungskog-reg' ? valgtId : null; visBestand(valgtId); $('#arkInnhold').scrollTop = top; if (ungskogRed) document.querySelector('[data-ungskog]')?.focus(); }
@@ -785,7 +817,7 @@ function kobleHendelser() {
     if (e.target.dataset?.tf === 'helt' && endring) { endring.utkast = lesEndring(); visEndreTiltak(endring.bid, endring.tid); return; }
     if (e.target.id === 'startFelt') { ls.set(LS.start, e.target.checked ? '1' : null); melding(e.target.checked ? 'Appen åpner nå i mobilversjonen.' : 'Appen åpner i fullversjonen.'); }
   });
-  ark.addEventListener('input', (e) => { if (drone.input(e)) return; if (e.target.id === 'regTekst' && regPagar) regPagar.tekst = e.target.value; });
+  ark.addEventListener('input', (e) => { if (drone.input(e)) return; if (e.target.dataset?.tsAndel) { tsSum(); return; } if (e.target.id === 'regTekst' && regPagar) regPagar.tekst = e.target.value; });
   // Sveip ned for å lukke: fra håndtaket/toppen, eller fra innholdet når det er rullet helt til toppen.
   const arkEl = $('#ark'); let dra = null;
   arkEl.addEventListener('touchstart', (e) => {

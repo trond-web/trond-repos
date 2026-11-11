@@ -259,3 +259,11 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .ts-tabell.tt td:first-child { font-size: 12.5px; } .ts-tabell.tt td:first-child small { display: block; color: var(--muted); font-size: 11px; }
 .ts-tabell.tt input { width: 100%; min-width: 3em; padding: 6px; font: inherit; text-align: right; box-sizing: border-box; }
 .ts-under { margin: 10px 0 4px; font-size: 14px; }
+
+.ts-red { display: grid; gap: 8px; margin: 4px 0 10px; }
+.ts-red-rad { display: grid; grid-template-columns: 1fr 44px 92px 44px; gap: 6px; align-items: center; }
+.ts-red-rad > span { font-weight: 600; } .ts-red-rad i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+.ts-red-rad label { display: flex; align-items: center; gap: 4px; margin: 0; }
+.ts-red-rad input { width: 100%; padding: 9px 8px; font: inherit; font-size: 17px; text-align: right; box-sizing: border-box; }
+.ts-steg { min-height: 44px; padding: 0; font-size: 20px; font-weight: 700; }
+.ts-red-sum { font-weight: 700; text-align: right; } .ts-red-sum.avvik { color: var(--danger, #b4302f); }
