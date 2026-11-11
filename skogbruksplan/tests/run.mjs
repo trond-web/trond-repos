@@ -3361,6 +3361,13 @@ test('Treslag: fordeling med kilde, volum per treslag, registrering og treantall
   assert.ok(T.settTreantallTreslag(u, 'etter', { G: '', F: '', L: '' })); assert.equal(u.ungskog.treantallEtter, undefined);
 });
 
+test('E-post via eget e-postprogram: mailto med riktig koding', async () => {
+  const { mailto } = await import('../js/epost.js');
+  const u = mailto({ til: 'ola@x.no', emne: 'Glemt passord – SkogIQ.ai', tekst: 'Hei!\n\nLinje 2 & mer?' });
+  assert.ok(u.startsWith('mailto:ola@x.no?subject=')); assert.ok(!/[\s]/.test(u), 'ingen rå mellomrom eller linjeskift');
+  const q = new URLSearchParams(u.split('?')[1].replace(/\+/g, '%2B')); assert.equal(q.get('subject'), 'Glemt passord – SkogIQ.ai'); assert.equal(q.get('body'), 'Hei!\n\nLinje 2 & mer?');
+});
+
 test('Sikkerhetskopi: tar, kryptering, S3-signatur, kopi med opprydding, opplasting og gjenoppretting', async () => {
   const B = await import('../backup.js');
   const { mkdtempSync, mkdirSync, writeFileSync, readFileSync: les, readdirSync, rmSync } = await import('node:fs'); const { tmpdir } = await import('node:os'); const { join } = await import('node:path');

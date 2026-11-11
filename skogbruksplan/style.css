@@ -1336,3 +1336,5 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .treantall-treslag { margin: 8px 0; }
 .treantall-treslag h4 { margin: 0 0 4px; font-size: 14px; } .treantall-treslag h4 small { font-weight: 400; color: var(--text-2); }
 .treslag-tabell tr.sum td.avvik { color: var(--danger, #b4302f); }
+.nv-epost { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 13px; }
+.nv-epost a.knapp { text-decoration: none; }
