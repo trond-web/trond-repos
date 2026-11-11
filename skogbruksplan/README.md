@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.68.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.69.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -560,6 +560,45 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## Vilkår og personvern (🔒 `js/personvern.js`, `personvern.html`)
+
+SkogIQ.ai behandler personopplysninger: konto, profil, planer med eiendomsdata, chat, tilbud og deling. Det krever en personvernerklæring etter GDPR artikkel 13 og brukervilkår som brukeren godtar.
+
+Behandlingsgrunnlaget er i hovedsak **avtale** (art. 6 nr. 1 b), ikke samtykke. Brukeren *godtar* derfor vilkårene og personvernerklæringen, og godkjenningen lagres som dokumentasjon. Bruksstatistikken bygger på **berettiget interesse** og kan slås av.
+
+**Én kilde:** `js/personvern.js` har versjon, behandlinger, leverandører, rettigheter og vilkår. Den brukes av:
+- `personvern.html` (åpen side, også uten innlogging)
+- registreringen
+- godkjenningsdialogen
+- serveren
+
+**Behandlingene:** konto, profil, bruksstatistikk, skylagring, overføring mellom enheter, tilbud, tømmerkjøper, nettverk og chat, John Deere, kart og offentlige data, Spør AI og lagring i nettleseren. For hver behandling står formål, opplysninger, grunnlag, lagringstid og mottakere.
+
+**Leverandørene:**
+- Railway (servere i Amsterdam, EU)
+- GitHub Pages
+- Resend
+- CDN-er og Google Fonts
+- Anthropic (bare med egen nøkkel)
+- John Deere
+- offentlige kartkilder
+
+**Godkjenning:**
+- Ved registrering må brukeren krysse av for vilkårene. Serveren avviser registrering uten gjeldende versjon.
+- Eldre brukere, og alle etter en vesentlig endring (`VILKAR.kreverGodkjenning`), får en dialog ved innlogging som ikke kan lukkes uten å godta eller logge ut. Dette gjelder både fullversjonen og SkogIQ Felt.
+- Brukeren lagrer siste godkjenning (`vilkar`) og en logg (`vilkarLogg`).
+
+**Brukerens rettigheter, under Min profil → Personvern og dine data:**
+- **Last ned mine data** (`GET /api/konto/eksport`, GDPR art. 15 og 20): konto uten passord-hash, godkjenninger, bruksstatistikk, planlisten i skyen og nettverk med chat.
+- **Bruksstatistikk av/på** (`POST /api/konto/innstillinger`, art. 21): slettes og telles ikke lenger.
+- **Slett kontoen min** (`POST /api/konto/slett`, art. 17): krever passord og sletter konto, skylagring, nettverk og statistikk med en gang. Administratorer slettes av en annen administrator.
+
+**Holdes oppdatert** (se `CLAUDE.md`):
+- Testene feiler hvis en `/api`-sti på serveren ikke tilhører en behandling i erklæringen.
+- Testene feiler også hvis teksten endres uten at versjonen økes (sjekksum per versjon i `tests/run.mjs`).
+
+**Må fylles ut av eier:** behandlingsansvarlig (`ANSVARLIG` i `js/personvern.js`: navn, organisasjonsnummer og e-post for personvern).
 
 ## Nettverk og chat (💬 Nettverk, `nettverk.js` og `js/nettverk-ui.js`)
 

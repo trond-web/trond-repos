@@ -2,6 +2,7 @@
 // Nyeste først. Første oppføring skal ha samme versjon som js/versjon.js (sjekkes i testene).
 // type: ny = ny funksjon, forbedret = bedre eller utvidet funksjon, rettet = feilretting.
 export const ENDRINGER = [
+  { versjon: '1.69.0', dato: '2026-11-11', type: 'ny', tittel: 'Vilkår og personvern', tekst: 'Brukervilkår og personvernerklæring som godtas ved registrering, og ved neste innlogging for eksisterende brukere. Under Min profil kan du laste ned alle dataene dine, slå av bruksstatistikken og slette kontoen.' },
   { versjon: '1.68.0', dato: '2026-11-11', type: 'ny', tittel: 'Nettverk og chat', tekst: 'Skogeiere kobler seg til innkjøpere og entreprenører under Nettverk, og partene chatter direkte i SkogIQ.ai. Ved innlogging ser skogeieren hvor mange innkjøpere og entreprenører som er med.' },
   { versjon: '1.67.0', dato: '2026-11-11', type: 'ny', tittel: 'Roller', tekst: 'Velg én eller flere roller – skogeier, entreprenør, innkjøper eller offentlig – når du registrerer deg. Har du ikke valgt, blir du bedt om det ved neste innlogging. Endres i Min profil.' },
   { versjon: '1.66.0', dato: '2026-11-11', type: 'ny', tittel: 'Måleverktøy i kartet', tekst: 'Trykk «Mål» over kartet: mål lengde, eller tegn en flate og få areal, omkrets og stående volum – totalt og fordelt på gran, furu og lauv – med bestandene flaten dekker.' },

@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.69.0 – Vilkår og personvern (2026-11-11)
+
+*Nytt.* Brukervilkår og personvernerklæring som godtas ved registrering, og ved neste innlogging for eksisterende brukere. Under Min profil kan du laste ned alle dataene dine, slå av bruksstatistikken og slette kontoen.
+
 ## 1.68.0 – Nettverk og chat (2026-11-11)
 
 *Nytt.* Skogeiere kobler seg til innkjøpere og entreprenører under Nettverk, og partene chatter direkte i SkogIQ.ai. Ved innlogging ser skogeieren hvor mange innkjøpere og entreprenører som er med.

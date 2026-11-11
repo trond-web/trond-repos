@@ -28,6 +28,9 @@
   .feil { color: var(--danger); font-size: 14px; min-height: 20px; margin: 10px 0 0; }
   .ok { color: var(--accent); font-size: 14px; font-weight: 600; margin: 6px 0 0; }
   .lenker { margin: 8px 0 0; text-align: center; font-size: 14px; } .lenker a { color: var(--accent); }
+  .godta { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; font-size: 13.5px; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+  .godta input { width: 20px; height: 20px; flex: none; margin: 1px 0 0; accent-color: var(--accent); }
+  .godta a, footer a { color: var(--accent); } .godta.mangler { border-color: var(--danger); }
   footer { margin-top: 18px; font-size: 12px; color: var(--text-2); text-align: center; }
   .roller { border: 0; padding: 0; margin: 0 0 12px; }
   .roller legend { font-size: 14px; font-weight: 600; margin-bottom: 6px; } .roller legend small { font-weight: 400; color: var(--text-2); }
@@ -92,13 +95,15 @@
       <small id="rolleHjelp">Rollen tilpasser SkogIQ.ai til deg. Du kan endre den i Min profil.</small>
     </fieldset>
     <label id="kodeFelt" hidden>Registreringskode <small>fra administrator</small><input name="kode" autocomplete="off"></label>
+    <label class="godta"><input type="checkbox" name="vilkar" required><span>Jeg har lest og godtar <a href="personvern.html#vilkar" target="_blank" rel="noopener">brukervilkårene</a> og <a href="personvern.html#personvern" target="_blank" rel="noopener">personvernerklæringen</a>.</span></label>
     <button type="submit">Registrer og logg inn</button>
     <div class="feil" role="alert"></div>
   </form>
-  <footer>Utviklet av Trond Harald Sand</footer>
+  <footer>Utviklet av Trond Harald Sand · <a href="personvern.html">Vilkår og personvern</a></footer>
 </main>
 <script type="module">
   import { RAILWAY, LS_OKT } from './js/innlogging.js';
+  import { VILKAR } from './js/personvern.js';
   const API = /github\.io$/.test(location.hostname) ? RAILWAY : '';
   // Bare adresser i appen selv (ingen videresending til andre nettsteder).
   // «?full» og «#…» gjelder appen i samme mappe (./), ikke innloggingssiden.
@@ -131,13 +136,14 @@
     } catch { feil.textContent = 'Ingen kontakt med SkogIQ-serveren. Sjekk nettet.'; } finally { knapp.disabled = false; }
   }
   inn.addEventListener('submit', (e) => { e.preventDefault(); send(inn, '/api/logginn', { bruker: inn.bruker.value.trim(), passord: inn.passord.value }); });
-  reg.addEventListener('change', (e) => { if (e.target.name === 'roller') { reg.querySelector('.roller').classList.remove('mangler'); reg.querySelector('.feil').textContent = ''; } });
+  reg.addEventListener('change', (e) => { if (e.target.name === 'vilkar') reg.querySelector('.godta').classList.remove('mangler'); if (e.target.name === 'roller') { reg.querySelector('.roller').classList.remove('mangler'); reg.querySelector('.feil').textContent = ''; } });
   reg.addEventListener('submit', (e) => {
     e.preventDefault();
     if (reg.passord.value !== reg.passord2.value) { reg.querySelector('.feil').textContent = 'Passordene er ikke like'; return; }
     const roller = [...reg.querySelectorAll('input[name="roller"]:checked')].map((x) => x.value);
     if (!roller.length) { reg.querySelector('.feil').textContent = 'Velg minst én rolle.'; reg.querySelector('.roller').classList.add('mangler'); reg.querySelector('input[name="roller"]').focus(); return; }
-    send(reg, '/api/registrer', { navn: reg.navn.value.trim(), bruker: reg.bruker.value.trim().toLowerCase(), passord: reg.passord.value, kode: reg.kode.value.trim(), roller });
+    if (!reg.vilkar.checked) { reg.querySelector('.feil').textContent = 'Du må godta brukervilkårene og personvernerklæringen.'; reg.querySelector('.godta').classList.add('mangler'); reg.vilkar.focus(); return; }
+    send(reg, '/api/registrer', { navn: reg.navn.value.trim(), bruker: reg.bruker.value.trim().toLowerCase(), passord: reg.passord.value, kode: reg.kode.value.trim(), roller, vilkar: VILKAR.versjon });
   });
   glemt.addEventListener('submit', async (e) => {
     e.preventDefault(); const f = glemt.querySelector('.feil'); const ok = glemt.querySelector('.ok'); f.textContent = ''; ok.textContent = ''; const knapp = glemt.querySelector('button'); knapp.disabled = true;

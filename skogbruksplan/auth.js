@@ -15,6 +15,7 @@
 // (annen adresse, informasjonskapselen følger ikke med). Nytt passord eller sperring gjør gamle økter ugyldige.
 import { createHmac, createHash, timingSafeEqual, randomBytes, scryptSync } from 'node:crypto';
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { VILKAR } from './js/personvern.js';
 
 export const OKT_NAVN = 'skogiq_okt';
 const DAG = 24 * 3600 * 1000;
@@ -32,6 +33,9 @@ export const ROLLER = ['skogeier', 'bonde', 'radgiver', 'entreprenor', 'annet'];
 // Den eldre enkeltrollen «rolle» over beholdes bare for å foreslå roller til brukere som ble registrert før.
 export const BRUKERROLLER = { skogeier: 'Skogeier', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', offentlig: 'Offentlig' };
 export const rensRoller = (r) => [...new Set((Array.isArray(r) ? r : r == null ? [] : [r]).map((x) => String(x || '').trim().toLowerCase()).filter((x) => BRUKERROLLER[x]))];
+// Versjoner som «1.10» sammenlignes tall for tall. Brukeren må godta på nytt når godtatt versjon er eldre enn kreverGodkjenning.
+export const sammenlignVersjon = (a, b) => { const x = String(a || '0').split('.').map(Number); const y = String(b || '0').split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return Math.sign(d); } return 0; };
+export const maaGodta = (b) => !!b && (!b.vilkar?.versjon || sammenlignVersjon(b.vilkar.versjon, VILKAR.kreverGodkjenning) < 0);
 const dagNokkel = (t) => new Date(t).toISOString().slice(0, 10);
 const tekst = (v, n) => String(v ?? '').trim().slice(0, n);
 
@@ -58,6 +62,7 @@ export function lagBrukerlager({ fil = null, naa = () => Date.now() } = {}) {
     slett(u) { delete data.brukere[u]; for (const d of Object.values(data.bruk)) delete d[u]; lagre(); },
     // Bruk per dag og bruker: s = sidevisninger, k = kall til serveren, m = aktive minutter, f = faner/moduler.
     bruk(u, type, detalj = '') {
+      if (data.brukere[u]?.ingenStatistikk) { const b = data.brukere[u]; b.sistAktiv = naa(); return; }
       const dag = dagNokkel(naa()); const d = data.bruk[dag] || (data.bruk[dag] = {}); const x = d[u] || (d[u] = { s: 0, k: 0, m: 0, f: {} });
       if (type === 'side') x.s++; else if (type === 'kall') x.k++; else if (type === 'aktiv') x.m += 1; else if (type === 'fane' && detalj) x.f[detalj] = (x.f[detalj] || 0) + 1;
       const b = data.brukere[u]; if (b) b.sistAktiv = naa();
@@ -70,7 +75,7 @@ export function lagBrukerlager({ fil = null, naa = () => Date.now() } = {}) {
 }
 
 // sendEpost({ til, emne, tekst }) → Promise: sender e-post (glemt passord). Uten den går forespørselen til administrator.
-export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', registrering = false, fil = null, admin = '', kode = '', dager = 30, naa = () => Date.now(), lager = null, sendEpost = null, ekstraBruker = null, vedSlett = null } = {}) {
+export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', registrering = false, fil = null, admin = '', kode = '', dager = 30, naa = () => Date.now(), lager = null, sendEpost = null, ekstraBruker = null, vedSlett = null, eksport = null } = {}) {
   const enkel = !!(bruker && passord);
   const aktiv = enkel || !!registrering;
   const store = registrering ? (lager || lagBrukerlager({ fil, naa })) : null;
@@ -85,7 +90,9 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
   const glemtIp = new Map(); // ip → [tidspunkter for «glemt passord»]
   const nyReset = (b, ms) => { const token = randomBytes(24).toString('base64url'); store.lagre({ ...b, reset: { hash: sha(token), exp: naa() + ms } }); return token; };
   const erAdmin = (u) => { const b = store?.hent(u); return !!(store ? b && (b.rolle === 'admin' || admins.has(b.navn)) : enkel && u === bruker); };
-  const offentlig = (b) => ({ bruker: b.navn, navn: b.visning || b.navn, epost: b.epost || '', admin: erAdmin(b.navn), roller: b.profil?.roller || [], ...(b.profil ? { profil: b.profil } : {}) });
+  const offentlig = (b) => ({ bruker: b.navn, navn: b.visning || b.navn, epost: b.epost || '', admin: erAdmin(b.navn), roller: b.profil?.roller || [], ...(b.profil ? { profil: b.profil } : {}), vilkar: { godtatt: b.vilkar?.versjon || null, tid: b.vilkar?.tid || null, gjeldende: VILKAR.versjon, kreves: maaGodta(b) }, statistikk: !b.ingenStatistikk });
+  // Godkjenning av vilkår og personvernerklæring: siste godkjenning, og en logg over alle (dokumentasjon).
+  const godkjenning = (b, versjon, kilde) => { const v = { versjon, tid: naa(), kilde }; return { vilkar: v, vilkarLogg: [...(b.vilkarLogg || []), v].slice(-20) }; };
   const finn = (u) => store?.finn(u) || null;
   return {
     aktiv, registrering: !!store, permanent: store ? store.permanent : true, kodeKreves: !!(store && kode), epostAktiv: !!sendEpost, dager, lager: store,
@@ -112,7 +119,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       if (!ok && !blokkert) { feil.get(ip).push(naa()); if (feil.size > 10000) feil.delete(feil.keys().next().value); }
       return { ok, blokkert, bruker: ok ? (store ? funnet : bruker) : null };
     },
-    registrer(ip, { bruker: b, passord: p, navn, kode: k, roller } = {}) {
+    registrer(ip, { bruker: b, passord: p, navn, kode: k, roller, vilkar } = {}) {
       if (!store) return { feil: 'Registrering er ikke slått på', status: 403 };
       const t = naa(); const l = (reg.get(ip) || []).filter((x) => t - x < 3600000); reg.set(ip, l);
       if (l.length >= 5) return { feil: 'For mange registreringer fra denne adressen – prøv igjen om en time', status: 429 };
@@ -125,8 +132,9 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       // Administratornavnene (APP_ADMIN) er reservert: ellers kunne hvem som helst registrere dem først og bli admin.
       if (admins.has(u)) return { feil: 'Brukernavnet er reservert', status: 403 };
       const rr = rensRoller(roller); if (!rr.length) return { feil: 'Velg minst én rolle (skogeier, entreprenør, innkjøper eller offentlig)', status: 400 };
+      if (vilkar !== VILKAR.versjon) return { feil: 'Du må godta brukervilkårene og personvernerklæringen for å registrere deg', status: 400 };
       l.push(t);
-      const ny = store.lagre({ navn: u, visning: tekst(navn, 80) || u.split('@')[0], epost: u, ...hashPassord(p), pv: 0, rolle: 'bruker', sperret: false, opprettet: t, sistInnlogget: t, innlogginger: 1, profil: { roller: rr } });
+      const ny = store.lagre({ navn: u, visning: tekst(navn, 80) || u.split('@')[0], epost: u, ...hashPassord(p), pv: 0, rolle: 'bruker', sperret: false, opprettet: t, sistInnlogget: t, innlogginger: 1, profil: { roller: rr }, ...godkjenning({}, VILKAR.versjon, 'registrering') });
       return { ok: true, bruker: ny.navn };
     },
     // Bytt passord og/eller e-post (e-posten brukes til «glemt passord»). Krever nåværende passord.
@@ -171,6 +179,34 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
     },
     // Administrator lager lenke for nytt passord (gyldig 24 timer) når e-post ikke er satt opp.
     adminLenke(u) { const b = store?.hent(u); if (!b) return { feil: 'Finner ikke brukeren', status: 404 }; return { ok: true, token: nyReset(b, RESET_ADMIN_MS), epost: b.epost || '', navn: b.visning || b.navn }; },
+    // Godta gjeldende vilkår (ved neste innlogging etter en vesentlig endring, eller for eldre brukere).
+    godtaVilkar(u, versjon) {
+      const b = store?.hent(u); if (!b) return { feil: 'Krever registrering', status: 400 };
+      if (versjon !== VILKAR.versjon) return { feil: 'Vilkårene er oppdatert – last siden på nytt', status: 409 };
+      store.lagre({ ...b, ...godkjenning(b, versjon, 'innlogging') }); return { ok: true, vilkar: offentlig(store.hent(u)).vilkar };
+    },
+    // Personverninnstillinger: statistikk = false slår av bruksstatistikken for brukeren (protest, GDPR art. 21).
+    innstillinger(u, { statistikk } = {}) {
+      const b = store?.hent(u); if (!b) return { feil: 'Krever registrering', status: 400 };
+      if (typeof statistikk === 'boolean') { const ny = { ...b, ingenStatistikk: !statistikk }; if (!statistikk) for (const d of Object.values(store.data.bruk)) delete d[b.navn]; store.lagre(ny); }
+      return { ok: true, statistikk: !store.hent(u).ingenStatistikk };
+    },
+    // Innsyn og dataportabilitet (GDPR art. 15 og 20): alt som er lagret om brukeren, uten passord-hash.
+    mineData(u) {
+      const b = store?.hent(u); if (!b) return null;
+      const { hash, salt, reset, pv, ...konto } = b;
+      const bruk = Object.fromEntries(Object.entries(store.data.bruk).filter(([, d]) => d[b.navn]).map(([dag, d]) => [dag, d[b.navn]]));
+      let ekstra = {}; try { ekstra = eksport ? eksport(b.navn) || {} : {}; } catch (e) { console.error('Eksport feilet:', e.message); }
+      return { eksportert: new Date(naa()).toISOString(), tjeneste: 'SkogIQ.ai', vilkarGjeldende: VILKAR.versjon, konto, bruksstatistikk: bruk, ...ekstra };
+    },
+    // Slett egen konto (GDPR art. 17). Krever passordet. Administratorer slettes av en annen administrator.
+    slettMeg(u, passord) {
+      const b = store?.hent(u); if (!b) return { feil: 'Krever registrering', status: 400 };
+      if (!riktigPassord(String(passord || ''), b)) return { feil: 'Feil passord', status: 401 };
+      if (erAdmin(b.navn)) return { feil: 'Administratorer kan ikke slette seg selv. Be en annen administrator om å gjøre det.', status: 400 };
+      store.slett(b.navn); try { vedSlett?.(b.navn); } catch (e) { console.error('Sletting av brukerdata feilet:', e.message); }
+      return { ok: true };
+    },
     bruk(u, type, detalj) { if (store?.hent(u)) store.bruk(store.hent(u).navn, type, tekst(detalj, 40)); },
     // Profil: navn og kontaktinformasjon, rolle og gård/foretak. Lagres sammen med brukeren.
     hentProfil(u) { const b = store?.hent(u); return b ? { navn: b.visning || b.navn, epost: b.epost || '', ...(b.profil || {}) } : null; },
@@ -226,12 +262,12 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
 
 // Det som kan hentes uten innlogging: innloggingssiden, helsesjekken, ikoner og manifester (lastes uten
 // informasjonskapsel når appen installeres).
-const APENT = /^\/(logginn\.html|tilbud\.html|js\/tilbud-svar\.js|tommer\.html|js\/tommer-svar\.js|js\/tommer-felles\.js|js\/innlogging\.js|healthz|api\/logginn|api\/registrer|api\/glemt|api\/tilbakestill|api\/meg|icon\.svg|ikon-[\w-]+\.png|manifest\.webmanifest|felt\.webmanifest|favicon\.ico)$/;
+const APENT = /^\/(logginn\.html|personvern\.html|js\/personvern\.js|tilbud\.html|js\/tilbud-svar\.js|tommer\.html|js\/tommer-svar\.js|js\/tommer-felles\.js|js\/innlogging\.js|healthz|api\/logginn|api\/registrer|api\/glemt|api\/tilbakestill|api\/meg|icon\.svg|ikon-[\w-]+\.png|manifest\.webmanifest|felt\.webmanifest|favicon\.ico)$/;
 const TILLATT_OPPHAV = /^(https:\/\/(skogiq-production\.up\.railway\.app|trond-web\.github\.io)|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/;
 export const corsFor = (req) => { const o = req.headers.origin; return o && TILLATT_OPPHAV.test(o) ? { 'Access-Control-Allow-Origin': o, Vary: 'Origin' } : {}; };
 const ip = (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '?';
 const kapsel = (req, verdi, maxAlder) => `${OKT_NAVN}=${encodeURIComponent(verdi)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAlder}${req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : ''}`;
-const API_STIER = ['/api/logginn', '/api/loggut', '/api/meg', '/api/registrer', '/api/glemt', '/api/tilbakestill', '/api/passord', '/api/bruk', '/api/admin/oversikt', '/api/admin/bruker'];
+const API_STIER = ['/api/logginn', '/api/loggut', '/api/meg', '/api/registrer', '/api/glemt', '/api/tilbakestill', '/api/passord', '/api/bruk', '/api/admin/oversikt', '/api/admin/bruker', '/api/samtykke', '/api/konto/eksport', '/api/konto/slett', '/api/konto/innstillinger'];
 // Lenke for nytt passord på samme adresse som forespørselen kom til (Railway), ikke en adresse klienten oppgir.
 const resetLenke = (req, token) => `${req.headers['x-forwarded-proto'] === 'https' || /railway\.app$/.test(req.headers.host || '') ? 'https' : 'http'}://${req.headers.host || 'localhost'}/logginn.html#tilbakestill=${token}`;
 
@@ -245,6 +281,11 @@ export function innloggingApi(inn, req, res, sti, ekstraHoder = {}) {
     if (!okt || !inn.erAdmin(okt.u)) return json(okt ? 403 : 401, { feil: 'Bare for administrator', innlogging: !okt }), true;
     const n = Math.min(400, Math.max(7, Number(new URL(req.url, 'http://x').searchParams.get('dager')) || 30));
     return json(200, inn.oversikt({ antallDager: n })), true;
+  }
+  if (sti === '/api/konto/eksport') {
+    if (!okt) return json(401, { feil: 'Logg inn i SkogIQ.ai', innlogging: true }), true;
+    const d = inn.mineData(okt.u); if (!d) return json(400, { feil: 'Krever registrering' }), true;
+    return json(200, d, { 'Content-Disposition': `attachment; filename="skogiq-mine-data-${new Date().toISOString().slice(0, 10)}.json"` }), true;
   }
   if (req.method !== 'POST') return json(405, { feil: 'Metoden er ikke tillatt' }), true;
   if (sti === '/api/loggut') return json(200, { ok: true }, { 'Set-Cookie': kapsel(req, '', 0) }), true;
@@ -266,6 +307,9 @@ export function innloggingApi(inn, req, res, sti, ekstraHoder = {}) {
     if (sti === '/api/tilbakestill') { const r = inn.tilbakestill(b.token, b.passord); if (r.feil) return json(r.status || 400, { feil: r.feil }); inn.bruk(r.bruker, 'side'); return loggInn(r.bruker); }
     if (!okt) return json(401, { feil: 'Logg inn i SkogIQ.ai', innlogging: true });
     if (sti === '/api/passord') { const r = inn.byttPassord(okt.u, b.gammelt, b.nytt, b.epost); if (r.feil) return json(r.status || 400, { feil: r.feil }); return loggInn(okt.u); }
+    if (sti === '/api/samtykke') { const r = inn.godtaVilkar(okt.u, b.versjon); return r.feil ? json(r.status || 400, { feil: r.feil }) : json(200, r); }
+    if (sti === '/api/konto/innstillinger') { const r = inn.innstillinger(okt.u, b); return r.feil ? json(r.status || 400, { feil: r.feil }) : json(200, r); }
+    if (sti === '/api/konto/slett') { const r = inn.slettMeg(okt.u, b.passord); if (r.feil) return json(r.status || 400, { feil: r.feil }); return json(200, { ok: true }, { 'Set-Cookie': kapsel(req, '', 0) }); }
     if (sti === '/api/bruk') { if (['aktiv', 'fane'].includes(b.type)) inn.bruk(okt.u, b.type, b.detalj); return json(200, { ok: true }); }
     if (sti === '/api/admin/bruker') {
       if (!inn.erAdmin(okt.u)) return json(403, { feil: 'Bare for administrator' });

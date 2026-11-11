@@ -3,6 +3,7 @@
 //   * På GitHub Pages (annen adresse) lagres økten som token i nettleseren og sendes som Authorization-hode på alle
 //     kall til SkogIQ-serveren. Uten gyldig økt sendes brukeren til logginn.html.
 //   * Uten nett slipper en enhet som har vært innlogget før inn (planene ligger lokalt); serverkall krever ny innlogging.
+import { VILKAR, KORT } from './personvern.js';
 export const RAILWAY = 'https://skogiq-production.up.railway.app';
 export const LS_OKT = 'skogiq-okt';
 const LS_SETT = 'skogiq-innlogget-for';
@@ -39,7 +40,7 @@ if (typeof window !== 'undefined' && !window.__skogiqInnlogging && !/logginn\.ht
       const r = await opprinnelig(`${API}/api/meg`, { headers: t ? { Authorization: `Bearer ${t}` } : {}, credentials: 'same-origin', cache: 'no-store' });
       if (r.status === 401) { ls.del(LS_OKT); tilInnlogging(); return; }
       const d = await r.json().catch(() => ({})); if (d.bruker) ls.set(LS_SETT, '1');
-      if (d.aktiv && d.bruker) { meg = d; visBruker(); startBruk(opprinnelig); window.dispatchEvent(new CustomEvent('skogiq-innlogget', { detail: d })); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => sporRoller(), { once: true }); else sporRoller(); }
+      if (d.aktiv && d.bruker) { meg = d; visBruker(); startBruk(opprinnelig); window.dispatchEvent(new CustomEvent('skogiq-innlogget', { detail: d })); const spor = () => sporVilkar().then(sporRoller); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', spor, { once: true }); else spor(); }
     } catch {
       // Uten nett: slipp inn en enhet som har vært innlogget før.
       if (erPages && !ls.get(LS_SETT)) { tilInnlogging(); return; }
@@ -80,6 +81,36 @@ export const BRUKERROLLER = { skogeier: { navn: 'Skogeier', ikon: '🌲', tekst:
 const FRA_GAMMEL = { skogeier: 'skogeier', bonde: 'skogeier', entreprenor: 'entreprenor' };
 const rolleValg = (valgt, navn = 'roller') => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${Object.entries(BRUKERROLLER).map(([k, r]) => `<label style="display:flex;gap:8px;align-items:flex-start;padding:9px 10px;border:1.5px solid ${valgt.includes(k) ? '#1f6b4a' : '#cfd6d1'};border-radius:12px;cursor:pointer;background:${valgt.includes(k) ? '#e6f0ea' : '#fff'};font-size:14px" data-rolle-kort><input type="checkbox" name="${navn}" value="${k}" ${valgt.includes(k) ? 'checked' : ''} style="width:18px;height:18px;margin-top:2px;accent-color:#1f6b4a;flex:none"><span style="display:grid;gap:1px"><b>${r.ikon} ${r.navn}</b><small style="color:#555;font-size:11.5px">${r.tekst}</small></span></label>`).join('')}</div>`;
 const merkKort = (d) => d.addEventListener('change', (e) => { const l = e.target.closest('[data-rolle-kort]'); if (!l) return; const p = e.target.checked; l.style.borderColor = p ? '#1f6b4a' : '#cfd6d1'; l.style.background = p ? '#e6f0ea' : '#fff'; });
+// Vilkår og personvern (js/personvern.js): brukere som ikke har godtatt gjeldende versjon (eldre brukere, eller etter en
+// vesentlig endring), må godta ved innlogging før de går videre. Dialogen kan ikke lukkes uten å godta eller logge ut.
+export function sporVilkar() {
+  if (typeof document === 'undefined' || !meg?.bruker || !meg.registrering || !meg.vilkar?.kreves || document.querySelector('.vilkar-dialog')) return Promise.resolve();
+  const f0 = brukFetch || window.fetch.bind(window);
+  const ny = !!meg.vilkar.godtatt;
+  const d = document.createElement('dialog'); d.className = 'vilkar-dialog';
+  d.style.cssText = 'border:0;border-radius:18px;padding:0;max-width:480px;width:calc(100% - 24px);font:15px/1.45 system-ui,sans-serif;color:#10241c;background:#fbfcfa;box-shadow:0 20px 60px rgba(0,0,0,.3)';
+  d.innerHTML = `<form method="dialog" style="display:grid;gap:12px;padding:20px">
+    <div><b style="font-size:19px">${ny ? 'Vi har oppdatert vilkårene' : 'Vilkår og personvern'}</b><p style="margin:4px 0 0;color:#43544b;font-size:14px">${ny ? `Brukervilkårene og personvernerklæringen er endret (versjon ${rens(VILKAR.versjon)}). Les gjennom og godta for å fortsette.` : 'For å bruke SkogIQ.ai må du godta brukervilkårene og personvernerklæringen. Kort fortalt:'}</p></div>
+    <ul style="margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:14px">${KORT.map((t) => `<li style="background:#eef3ef;border-radius:10px;padding:8px 12px"><b style="color:#1f6b4a">✓</b> ${rens(t)}</li>`).join('')}</ul>
+    <a href="personvern.html" target="_blank" rel="noopener" style="color:#1f6b4a;font-size:14px;font-weight:600">Les hele erklæringen ↗</a>
+    <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;padding:10px 12px;border:1.5px solid #cfd6d1;border-radius:12px;cursor:pointer"><input type="checkbox" name="godta" style="width:20px;height:20px;flex:none;margin:0;accent-color:#1f6b4a"><span>Jeg har lest og godtar brukervilkårene og personvernerklæringen.</span></label>
+    <div data-f style="color:#b4302f;min-height:18px;font-size:13px"></div>
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center"><button type="button" data-logg-ut style="padding:9px 12px;border-radius:9px;border:0;background:none;color:#555;text-decoration:underline;cursor:pointer">Logg ut</button><button value="ok" style="padding:11px 18px;border-radius:10px;border:0;background:#1f6b4a;color:#fff;font-weight:700;cursor:pointer">Godta og fortsett</button></div></form>`;
+  document.body.appendChild(d);
+  d.addEventListener('cancel', (e) => e.preventDefault());
+  d.showModal();
+  return new Promise((ferdig) => {
+    d.querySelector('form').addEventListener('submit', async (e) => {
+      e.preventDefault(); const vis = (t) => { d.querySelector('[data-f]').textContent = t; };
+      if (!d.querySelector('[name="godta"]').checked) { vis('Kryss av for at du godtar vilkårene.'); return; }
+      try {
+        const r = await f0(`${API}/api/samtykke`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...autHode() }, credentials: 'same-origin', body: JSON.stringify({ versjon: VILKAR.versjon }) });
+        const j = await r.json().catch(() => ({})); if (!r.ok) { vis(j.feil || 'Klarte ikke å lagre'); return; }
+        meg = { ...meg, vilkar: j.vilkar }; d.close(); d.remove(); ferdig();
+      } catch { vis('Ingen kontakt med serveren. Prøv igjen.'); }
+    });
+  });
+}
 // Brukere uten rolle får en enkel dialog ved innlogging: kryss av og lagre (kan ikke lukkes uten å velge).
 export async function sporRoller() {
   if (typeof document === 'undefined' || !meg?.bruker || !meg.registrering || (meg.roller || []).length || document.querySelector('.rolle-dialog')) return;
@@ -134,6 +165,17 @@ export async function minProfil() {
       <label style="display:grid;gap:3px;font-size:13px;grid-column:1/-1">Om gården og skogen <small style="color:#555">(brukes av «Spør AI» og i rapporter)</small><textarea name="om" rows="3" maxlength="600" style="${felt}">${rens(p.om)}</textarea></label>
     </fieldset>
     ${sky ? `<div style="padding:10px 12px;border-radius:12px;background:#eef3ef;font-size:13px">☁ <b>Skylagring:</b> ${sky.antall} plan${sky.antall === 1 ? '' : 'er'} · ${mbT(sky.bytes)} av ${mbT(sky.kvote)}${sky.papirkurv ? ` · ${sky.papirkurv} i papirkurven` : ''}. Planene dine er lagret på SkogIQ-serveren og er tilgjengelige på alle enhetene du logger inn på.</div>` : ''}
+    <details data-personvern style="border-top:1px solid #ddd;padding-top:10px"><summary style="font-weight:700;cursor:pointer">Personvern og dine data</summary>
+      <div style="display:grid;gap:10px;margin-top:8px;font-size:14px">
+      <p style="margin:0;color:#43544b">Du godtok vilkårene${meg?.vilkar?.godtatt ? ` (versjon ${rens(meg.vilkar.godtatt)}${meg.vilkar.tid ? `, ${new Date(meg.vilkar.tid).toLocaleDateString('nb-NO')}` : ''})` : ''}. <a href="personvern.html" target="_blank" rel="noopener" style="color:#1f6b4a">Les vilkår og personvernerklæring ↗</a></p>
+      <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer"><input type="checkbox" data-pv-statistikk ${meg?.statistikk === false ? '' : 'checked'} style="width:18px;height:18px;flex:none;margin:1px 0 0;accent-color:#1f6b4a"><span>Tillat bruksstatistikk <small style="color:#555;display:block">Hvilke faner som brukes og aktiv tid, så vi kan forbedre SkogIQ.ai. Slår du det av, slettes statistikken som er samlet inn.</small></span></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" data-pv-eksport style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff;cursor:pointer">⬇ Last ned mine data</button><button type="button" data-pv-slett style="padding:9px 14px;border-radius:9px;border:1px solid #b4302f;background:#fff;color:#b4302f;cursor:pointer">Slett kontoen min …</button></div>
+      <div data-pv-slett-boks hidden style="display:grid;gap:8px;padding:12px;border-radius:12px;background:#fbeaea">
+        <b style="color:#b4302f">Slette kontoen for godt?</b><span>Profilen, skylagrede planer, koblinger og chatmeldinger og bruksstatistikken din slettes med en gang og kan ikke gjenopprettes. Planer som ligger lokalt på enhetene dine, blir liggende der. Last ned dataene dine først hvis du vil ta vare på dem.</span>
+        <label style="display:grid;gap:3px;font-size:13px">Passordet ditt<input type="password" data-pv-passord autocomplete="current-password" style="${felt}"></label>
+        <button type="button" data-pv-slett-bekreft style="padding:9px 14px;border-radius:9px;border:0;background:#b4302f;color:#fff;font-weight:700;cursor:pointer">Slett kontoen min</button></div>
+      </div>
+    </details>
     <details style="border-top:1px solid #ddd;padding-top:10px"><summary style="font-weight:700;cursor:pointer">Konto: e-post og passord</summary>
       <div style="display:grid;gap:8px;margin-top:8px">
       <input type="text" name="u" autocomplete="username" value="${rens(meg?.bruker)}" hidden>
@@ -144,6 +186,28 @@ export async function minProfil() {
     <div data-f style="color:#b4302f;min-height:18px;font-size:13px"></div>
     <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button value="ut" formnovalidate data-logg-ut style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff">Logg ut</button><span style="display:flex;gap:8px"><button value="avbryt" formnovalidate style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff">Avbryt</button><button value="ok" style="padding:9px 14px;border-radius:9px;border:0;background:#1f6b4a;color:#fff;font-weight:700">Lagre</button></span></div></form>`;
   document.body.appendChild(d); merkKort(d); d.showModal();
+  // Personvern: statistikk av/på, last ned mine data og slett kontoen.
+  const pvVis = (t) => { d.querySelector('[data-f]').textContent = t; };
+  d.querySelector('[data-pv-statistikk]').addEventListener('change', async (e) => {
+    const paa = e.target.checked;
+    try { const r = await f0(`${API}/api/konto/innstillinger`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...autHode() }, credentials: 'same-origin', body: JSON.stringify({ statistikk: paa }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.feil); meg = { ...meg, statistikk: j.statistikk }; pvVis(''); } catch (x) { e.target.checked = !paa; pvVis(x.message || 'Klarte ikke å lagre innstillingen'); }
+  });
+  d.querySelector('[data-pv-eksport]').addEventListener('click', async () => {
+    try {
+      const r = await f0(`${API}/api/konto/eksport`, { headers: autHode(), credentials: 'same-origin', cache: 'no-store' }); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).feil);
+      const url = URL.createObjectURL(await r.blob()); const a = document.createElement('a'); a.href = url; a.download = `skogiq-mine-data-${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (x) { pvVis(x.message || 'Klarte ikke å hente dataene'); }
+  });
+  d.querySelector('[data-pv-slett]').addEventListener('click', () => { const b = d.querySelector('[data-pv-slett-boks]'); b.hidden = !b.hidden; if (!b.hidden) d.querySelector('[data-pv-passord]').focus(); });
+  d.querySelector('[data-pv-slett-bekreft]').addEventListener('click', async () => {
+    const p = d.querySelector('[data-pv-passord]').value; if (!p) { pvVis('Skriv passordet ditt for å slette kontoen.'); return; }
+    if (!confirm('Siste sjanse: slette kontoen og alle dataene dine i SkogIQ.ai for godt?')) return;
+    try {
+      const r = await f0(`${API}/api/konto/slett`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...autHode() }, credentials: 'same-origin', body: JSON.stringify({ passord: p }) }); const j = await r.json().catch(() => ({}));
+      if (!r.ok) { pvVis(j.feil || 'Klarte ikke å slette kontoen'); return; }
+      ls.del(LS_OKT); ls.del(LS_SETT); alert('Kontoen din er slettet. Takk for at du brukte SkogIQ.ai.'); location.replace('logginn.html');
+    } catch { pvVis('Ingen kontakt med serveren.'); }
+  });
   d.querySelector('form').addEventListener('submit', async (e) => {
     if (e.submitter?.value !== 'ok') { d.close(); d.remove(); return; }
     e.preventDefault(); const f = e.target; const vis = (t) => { d.querySelector('[data-f]').textContent = t; };
