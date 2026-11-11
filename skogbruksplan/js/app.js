@@ -58,6 +58,7 @@ import { nyttUtvalg, kanLageTiltak, kandidater as utvalgKandidater, bestandStatu
 import { mpTilUtm, mpTilGeo, fordelPaaBestand } from './sporlogg.js';
 import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
+import { eiendomGrenseLag as eiendomGrenseLagRod } from './eiendomslag.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, settTreslagAndel, avvikHovedtreslag, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag } from './treslag.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
@@ -181,7 +182,7 @@ function initKart() {
   artLag = NATUR.lagKartlag(L, 'art', { pane: 'analysePane' });
   // Kulturminner (Riksantikvaren): lokaliteter, sikringssoner og ikoner. Klikk viser navn, vernestatus og lenker.
   kulturLag = L.tileLayer.wms(KULTUR.KART.url, { layers: KULTUR.KART.lag, format: 'image/png', transparent: true, opacity: 0.85, pane: 'analysePane', maxZoom: 20, attribution: 'Kulturminner © Riksantikvaren' });
-  eiendomGrenseLag = L.tileLayer.wms('https://wms.geonorge.no/skwms1/wms.matrikkel', { layers: 'eiendomsgrense,eiendoms_id', format: 'image/png', transparent: true, opacity: 0.85, minZoom: 13, maxZoom: 20, pane: 'analysePane', attribution: 'Eiendomsgrenser © Kartverket' });
+  eiendomGrenseLag = eiendomGrenseLagRod(L, { pane: 'analysePane' }); // røde grenser (js/eiendomslag.js)
   fuktLag = L.tileLayer.wms(FUKT_WMS, { layers: FUKT_LAG, format: 'image/png', transparent: true, opacity: 0.75, pane: 'analysePane', attribution: 'Markfuktighet © NIBIO' });
   graa.addTo(kart);
   markslagLag = L.featureGroup().addTo(kart);

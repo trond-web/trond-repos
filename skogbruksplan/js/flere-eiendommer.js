@@ -3,7 +3,7 @@
 // eiendommen. Klikk på en annen eiendom viser nøkkeltall og «Åpne planen». Valget lagres i nettleseren.
 import { STANDARD_INNSTILLINGER, startTilstand, beregnetHogstklasse, hogstklasseFor, laavesteHogstalder, hkGrenser } from './model.js';
 
-// Fargene skiller eiendommene fra hverandre (og fra den åpne planen, som har rød stiplet grense).
+// Fargene skiller eiendommene fra hverandre (bestandskanter og navneskilt). Eiendomsgrensene er røde, som overalt.
 export const EIENDOM_FARGER = ['#2a78d6', '#7a3fb8', '#0f8f8a', '#c2410c', '#a21caf', '#4d7c0f', '#0369a1', '#b45309'];
 const HK_FARGER = ['#fcfdfe', '#f8f6a9', '#d9f6c7', '#9bd47f', '#ef9a7c'];
 const NOKKEL = 'synligePlaner';
@@ -76,7 +76,8 @@ export function initFlereEiendommer({ L, kart, hentPlan, listPlaner, hentVerdi, 
         const h = hkFor(b, inn);
         L.geoJSON(b.geometri, { pane: 'andrePane', style: { color: f, weight: 0.8, opacity: 0.7, fillColor: h ? HK_FARGER[h - 1] : '#999', fillOpacity: h ? 0.55 : 0.1 } }).addTo(gruppe);
       }
-      if (plan.eiendom?.grense) L.geoJSON(plan.eiendom.grense, { pane: 'andrePane', style: { color: f, weight: 2.5, dashArray: '6 4', fill: false } }).addTo(gruppe);
+      // Eiendomsgrenser er alltid røde. Fargen f skiller eiendommene på bestandskantene og navneskiltet.
+      if (plan.eiendom?.grense) L.geoJSON(plan.eiendom.grense, { pane: 'andrePane', style: { color: '#d03b3b', weight: 2.5, dashArray: '6 4', fill: false } }).addTo(gruppe);
       gruppe.on('click', (e) => { if (opptatt()) return; L.DomEvent.stopPropagation(e); L.popup({ maxWidth: 260 }).setLatLng(e.latlng).setContent(popup(plan, p.id)).openOn(kart); });
       const bb = planBoks(plan);
       if (bb) L.tooltip({ permanent: true, direction: 'center', className: 'andre-etikett', interactive: false, pane: 'tooltipPane' }).setLatLng([(bb[1] + bb[3]) / 2, (bb[0] + bb[2]) / 2]).setContent(`<span style="border-color:${f};color:${f}">${esc(plan.eiendom?.navn || p.navn)}</span>`).addTo(gruppe);
