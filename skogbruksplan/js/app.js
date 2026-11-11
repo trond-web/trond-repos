@@ -47,6 +47,7 @@ import { initHprSr16 } from './hpr-sr16-ui.js';
 import { lagAjourforingUi } from './ajourforing-ui.js';
 import { lagHurtigTilbud } from './tilbud-hurtig.js';
 import { lagMaaling } from './maaling-ui.js';
+import { lagNettverk } from './nettverk-ui.js';
 import { WMS as FUKT_WMS, LAG as FUKT_LAG, KLASSER as FUKT_KLASSER, perBestand as fuktPerBestand, vurdering as fuktVurdering, dekodPng as fuktDekod } from './markfukt.js';
 import { hentBratthet, flater as brattFlater, statistikk as brattStat, vurdering as brattVurdering, KLASSER as BRATT_KLASSER } from './bratthet.js';
 import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, OPPDRAGSTYPER, typeFor as oppdragstype } from './oppdrag.js';
@@ -606,15 +607,15 @@ function angreDeling() {
 let kommuneVisning = null;
 let veiVisning = null;
 let pefcVisning = null;
-let verdiVisning = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null; let maaling = null;
+let verdiVisning = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null; let maaling = null; let nettverk = null;
 let aiVisning = null;
 let skogbrandVisning = null;
 let skifteplanVisning = null;
-const FANE_TITLER = { planer: 'Planer', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', skifteplan: 'Skifteplan', ksl: 'KSL', karbon: 'Karbon', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
+const FANE_TITLER = { planer: 'Planer', nettverk: 'Nettverk', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', skifteplan: 'Skifteplan', ksl: 'KSL', karbon: 'Karbon', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 // Kapittel i brukerveiledningen for hver fane («?» i panelets overskrift).
-const HJELP_FOR_FANE = { planer: 'kom-i-gang', oversikt: 'kom-i-gang', kommune: 'kommune', bestand: 'bestand', tiltak: 'tiltak', framskriving: 'verdi', veier: 'veier', verdi: 'verdi', rapporter: 'rapporter', skogbrand: 'miljo', skifteplan: 'miljo', ksl: 'miljo', karbon: 'miljo', pefc: 'miljo', ai: 'data', felt: 'felt', data: 'data' };
+const HJELP_FOR_FANE = { planer: 'kom-i-gang', nettverk: 'nettverk', oversikt: 'kom-i-gang', kommune: 'kommune', bestand: 'bestand', tiltak: 'tiltak', framskriving: 'verdi', veier: 'veier', verdi: 'verdi', rapporter: 'rapporter', skogbrand: 'miljo', skifteplan: 'miljo', ksl: 'miljo', karbon: 'miljo', pefc: 'miljo', ai: 'data', felt: 'felt', data: 'data' };
 function visFane(navn) {
   const hk = $('#panelHjelp'); if (hk) hk.dataset.hjelp = HJELP_FOR_FANE[navn] || 'kom-i-gang';
   registrerBruk('fane', navn); // bruksstatistikk for administrator (innlogging.js)
@@ -635,6 +636,7 @@ function visFane(navn) {
   if (navn === 'karbon') karbonVisning?.vis();
   if (navn === 'framskriving') tegnFramskriving();
   if (navn === 'verdi') { verdiVisning?.tegn(); tommerVisning?.tegn(); }
+  if (navn === 'nettverk') nettverk?.vis(); else nettverk?.skjul();
   if (navn === 'ai') aiVisning?.vis();
   if (navn === 'rapporter') tegnRapportKort();
   if (navn === 'planer') { tegnPlanListe(); lastKommuner(); }
@@ -2390,7 +2392,7 @@ async function startGenerering(e) {
 }
 
 // ---------------------------------------------------------------- kommandopalett
-const FANE_IKON = { planer: '▤', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', rapporter: '▦', skogbrand: '🔥', skifteplan: '🌾', karbon: '♲', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
+const FANE_IKON = { planer: '▤', nettverk: '💬', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', rapporter: '▦', skogbrand: '🔥', skifteplan: '🌾', karbon: '♲', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
 let planlisteCache = [];
 function kommandoValg(q) {
   listPlaner().then((l) => { planlisteCache = l; });
@@ -2423,6 +2425,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
     ...Object.entries(RAPPORTER).map(([k, r]) => ({ gruppe: 'Rapporter', ikon: '▦', tittel: `Rapport: ${r.navn}`, under: r.beskrivelse, sok: 'rapport pdf utskrift skriv ut', utfor: () => visRapport(k) })),
     { gruppe: 'Handlinger', ikon: '🤝', tittel: 'Del med tømmerkjøper', under: 'Del bestand, volumer og kart og få prisforslag', sok: 'tømmerkjøper tommerkjoper del dele tømmer salg selge hogst pris tilbud andelslag kjøper', utfor: () => { visFane('verdi'); tommerVisning?.apne(null); setTimeout(() => $('#tommerDeling')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
+    { gruppe: 'Handlinger', ikon: '💬', tittel: 'Nettverk og chat', under: 'Innkjøpere, entreprenører og skogeiere du er koblet til', sok: 'nettverk chat melding innkjøper entreprenør skogeier kobling koble kontakt', utfor: () => visFane('nettverk') },
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål i kartet', under: 'Lengde, areal, omkrets og volum per treslag', sok: 'mål måle måleverktøy lengde areal avstand omkrets volum treslag kubikk daa linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('areal'); } },
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål avstand (lengde)', sok: 'mål avstand lengde meter linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('lengde'); } },
     { gruppe: 'Handlinger', ikon: '📬', tittel: 'Mine tilbudsforespørsler', under: 'Se sendte forespørsler og tilbudene du har fått', sok: 'tilbud svar mine forespørsler mottatt sendt anbud', utfor: () => { visFane('tiltak'); visTiltakVisning('oppdrag'); oppdragVisning?.lukk(); oppdragVisning?.tegn(); } },
@@ -2537,6 +2540,13 @@ function kobleHendelser() {
     visBestander: (ider) => { const lag = ider.map((id) => lagPerBestand.get(id)).filter(Boolean); if (lag.length && erMobil()) settArk('halv'); },
   });
   tegnAjourPanel();
+  // Nettverk (nettverk-ui.js): koblinger mellom skogeiere, innkjøpere og entreprenører, med chat.
+  nettverk = lagNettverk({
+    rot: () => $('#nettverkPanel'), melding, innlogget: () => !!innloggetBruker()?.registrering,
+    merke: (n) => { const m = $('#nettverkMerke'); if (m) { m.hidden = !n; m.textContent = n > 9 ? '9+' : String(n || ''); } },
+  });
+  const startNettverk = (meg) => { if (meg?.registrering) nettverk.start(); };
+  if (innloggetBruker()) startNettverk(innloggetBruker()); else window.addEventListener('skogiq-innlogget', (e) => startNettverk(e.detail), { once: true });
   // «📨 Be om tilbud» – den enkle veien til et oppdrag med tilbudsforespørsel (tilbud-hurtig.js).
   hurtigTilbud = lagHurtigTilbud({
     hentPlan: () => S, endret, melding, okonomi: tiltakOkonomi, iAar: IAAR, nyId,
@@ -2801,13 +2811,28 @@ async function visVelkomst(meg, { tving = false } = {}) {
     <p class="velkomst-humor">${esc(w.humor)}</p>
     ${w.vaer ? `<p class="velkomst-vaer">🌦 ${esc(w.vaer)}${w.raad ? ` <b>${esc(w.raad)}</b>` : ''}</p>` : ''}
     <p class="velkomst-tiltak">🌲 ${esc(w.tiltak.tekst)}</p>
+    <p class="velkomst-nettverk" data-velkomst-nett hidden></p>
     <div class="knapperad"><button type="button" class="knapp liten primar" data-velkomst="${w.tiltak.handling}">${w.tiltak.handling === 'planer' ? 'Lag skogbruksplan' : 'Se tiltakene'}</button><button type="button" class="knapp liten" data-velkomst="lukk">Til kartet</button></div>`;
   document.body.appendChild(el);
   const lukk = () => { el.classList.add('borte'); setTimeout(() => el.remove(), 250); };
+  // Nettverket: skogeier ser hvor mange innkjøpere og entreprenører som finnes; aktører ser skogeiere og uleste meldinger.
+  if (meg.registrering) (async () => {
+    try {
+      const r = await fetch(`${SYNK_API}/api/nettverk`, { credentials: 'same-origin' }); if (!r.ok) return; const d = await r.json(); const p = el.querySelector('[data-velkomst-nett]'); if (!p) return;
+      const roller = d.roller || []; const s = d.statistikk || {}; const aktive = (d.koblinger || []).filter((k) => k.status === 'aktiv');
+      const del = [];
+      if (roller.includes('skogeier')) { const mine = aktive.filter((k) => k.jegEr === 'skogeier'); del.push(`SkogIQ har <b>${s.innkjopere} ${s.innkjopere === 1 ? 'innkjøper' : 'innkjøpere'}</b> og <b>${s.entreprenorer} ${s.entreprenorer === 1 ? 'entreprenør' : 'entreprenører'}</b>.${mine.length ? ` Du er koblet til ${mine.length}.` : ' Knytt deg til dem i Nettverk.'}`); }
+      if (roller.includes('innkjoper') || roller.includes('entreprenor')) { const mine = aktive.filter((k) => k.jegEr === 'aktor'); del.push(`Du har <b>${mine.length} skogeier${mine.length === 1 ? '' : 'e'}</b> i nettverket.`); }
+      if (d.ulest) del.push(`<b>${d.ulest} ulest${d.ulest === 1 ? '' : 'e'} melding${d.ulest === 1 ? '' : 'er'}</b>.`);
+      if (d.forespørsler) del.push(`<b>${d.forespørsler} ny${d.forespørsler === 1 ? '' : 'e'} forespørsel${d.forespørsler === 1 ? '' : 'er'}</b> om kobling.`);
+      if (!del.length) return;
+      p.innerHTML = `🤝 ${del.join(' ')} <button type="button" class="knapp liten" data-velkomst="nettverk">Åpne nettverket</button>`; p.hidden = false;
+    } catch { /* uten nett */ }
+  })();
   el.addEventListener('click', (e) => {
     const h = e.target.closest('[data-velkomst]')?.dataset.velkomst;
     if (e.target.closest('.velkomst-lukk') || h === 'lukk') lukk();
-    else if (h) { lukk(); visFane(h === 'planer' ? 'planer' : 'tiltak'); if (erMobil()) settArk('halv'); }
+    else if (h) { lukk(); visFane(h === 'planer' ? 'planer' : h === 'nettverk' ? 'nettverk' : 'tiltak'); if (erMobil()) settArk('halv'); }
   });
   setTimeout(() => { if (document.body.contains(el)) lukk(); }, 45000);
 }

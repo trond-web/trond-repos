@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.68.0 – Nettverk og chat (2026-11-11)
+
+*Nytt.* Skogeiere kobler seg til innkjøpere og entreprenører under Nettverk, og partene chatter direkte i SkogIQ.ai. Ved innlogging ser skogeieren hvor mange innkjøpere og entreprenører som er med.
+
 ## 1.67.0 – Roller (2026-11-11)
 
 *Nytt.* Velg én eller flere roller – skogeier, entreprenør, innkjøper eller offentlig – når du registrerer deg. Har du ikke valgt, blir du bedt om det ved neste innlogging. Endres i Min profil.

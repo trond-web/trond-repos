@@ -131,6 +131,18 @@ export const KAPITLER = [
       <p><b>Vis hogstmaskindata i kartet</b> (i Data-kortet eller kommandolinjen) viser stammene farget etter treslag, hogd flate og maskinens kjørespor.</p>`,
   },
   {
+    id: 'nettverk', ikon: '💬', tittel: 'Nettverk og chat',
+    tekst: `<p>I <b>Nettverk</b> kobler skogeiere seg til innkjøpere og entreprenører – og partene kan skrive sammen direkte i SkogIQ.ai.</p>
+      <h4>Som skogeier</h4>
+      ${steg(['Øverst ser du hvor mange innkjøpere og entreprenører som er i SkogIQ.ai.', 'Søk etter navn, firma eller kommune under <b>Finn innkjøpere og entreprenører</b>, og trykk <b>＋ Innkjøper</b> eller <b>＋ Entreprenør</b>.', 'Når de godtar, står de under <b>Mine innkjøpere</b> og <b>Mine entreprenører</b>. Trykk <b>💬 Chat</b> for å skrive.'])}
+      <h4>Som innkjøper eller entreprenør</h4>
+      ${steg(['Skogeiere som ber om kobling, ser du under <b>Forespørsler til deg</b> – trykk <b>Godta</b>.', 'Du kan også invitere en skogeier med e-postadressen vedkommende bruker i SkogIQ.ai.', 'Skogeierne dine står under <b>Mine skogeiere</b>, med chat.'])}
+      <h4>Chat</h4>
+      <p><kbd>Enter</kbd> sender, <kbd>Shift</kbd> + <kbd>Enter</kbd> gir ny linje. Nye meldinger vises som et tall på fanen Nettverk og som et varsel. «Lest» vises når mottakeren har sett meldingen.</p>
+      ${tips('Rollene dine (skogeier, innkjøper, entreprenør) bestemmer hva du ser. Endre dem i Min profil.')}
+      ${obs('Andre brukere ser navnet ditt, firma og kommune – aldri e-postadressen. Begge kan avslutte en kobling; da stenges chatten.')}`,
+  },
+  {
     id: 'tommerkjoper', ikon: '🤝', tittel: 'Del med tømmerkjøper',
     tekst: `<p>Under <b>Verdi › Del med tømmerkjøper</b> deler du bestand, volumer, kart og driftsforhold med en eller flere tømmerkjøpere – og får prisforslag tilbake.</p>
       ${steg(['Trykk <b>Ny deling</b> og velg bestand (planlagt hogst, hogstmoden skog eller egne valg).', 'Velg hva som deles, salgsform og frister, og legg til kjøperne.', 'Send den personlige lenken. Du ser når hver kjøper har åpnet den.', '<b>Hent forslag</b>: forslagene sorteres etter anslått netto til deg. <b>Velg</b> kjøper – eller <b>Stopp delingen</b>, så slutter lenkene å virke.'])}
