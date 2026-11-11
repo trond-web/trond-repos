@@ -106,6 +106,8 @@ export function lagNettverk({ fil = null, brukere, naa = () => Date.now() } = {}
       return { ok: true, melding: { id: m.id, fraMeg: true, tekst: m.tekst, tid: m.tid } };
     },
     // Når en bruker slettes: koblinger og meldinger fjernes.
+    // Innsyn: koblingene og alle meldingene brukeren er part i.
+    eksport(u) { return mine(u).map((k) => ({ ...k, motpart: kort(brukere.hent(motpart(k, u))), meldinger: (data.meldinger[k.id] || []).map((m) => ({ fraMeg: m.fra === u, tekst: m.tekst, tid: new Date(m.tid).toISOString() })) })); },
     slettBruker(u) { for (const k of Object.values(data.koblinger)) if (k.skogeier === u || k.aktor === u) { delete data.koblinger[k.id]; delete data.meldinger[k.id]; } lagre(); },
     _data: () => data,
   };

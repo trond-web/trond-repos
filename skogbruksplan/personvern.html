@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vilkår og personvern – SkogIQ.ai</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root { --bg: #e9ede7; --surface: #fbfcfa; --surface-2: #eff3ee; --text: #10241c; --text-2: #43544b; --border: rgba(16,36,28,.16); --accent: #1f6b4a; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0e1a15; --surface: #15241d; --surface-2: #1b2d25; --text: #e6efe9; --text-2: #a9bcb1; --border: rgba(230,239,233,.16); --accent: #3f9b6e; color-scheme: dark; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 'Schibsted Grotesk', system-ui, -apple-system, sans-serif; padding: 16px; }
+  main { max-width: 820px; margin: 0 auto; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 28px clamp(16px, 4vw, 40px); }
+  a { color: var(--accent); }
+  .topp { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .logo { font-size: 22px; font-weight: 800; margin: 0; } .logo b { color: #c93a55; }
+  h1 { font-size: 28px; margin: 18px 0 2px; letter-spacing: -.3px; }
+  h2 { font-size: 21px; margin: 32px 0 6px; padding-top: 12px; border-top: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 18px 0 4px; }
+  p { margin: 0 0 10px; color: var(--text-2); }
+  .pv-meta { font-size: 14px; }
+  .kort { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 8px; }
+  .kort li { background: var(--surface-2); border-radius: 12px; padding: 10px 14px; }
+  .kort li::before { content: '✓ '; color: var(--accent); font-weight: 800; }
+  .pv-liste { display: grid; gap: 6px; }
+  .pv-beh { border: 1px solid var(--border); border-radius: 12px; padding: 0 14px; }
+  .pv-beh summary { cursor: pointer; padding: 10px 0; display: grid; gap: 2px; }
+  .pv-beh summary span { font-size: 14px; color: var(--text-2); }
+  dl { margin: 0 0 12px; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 14.5px; }
+  dt { font-weight: 700; } dd { margin: 0; color: var(--text-2); }
+  .pv-tabell { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .pv-tabell th, .pv-tabell td { text-align: left; vertical-align: top; padding: 7px 8px; border-bottom: 1px solid var(--border); }
+  .pv-tabell th { font-size: 12.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--text-2); }
+  @media (max-width: 560px) { dl { grid-template-columns: 1fr; gap: 0 0; } dd { margin-bottom: 8px; } .pv-tabell thead { display: none; } .pv-tabell tr { display: grid; padding: 8px 0; border-bottom: 1px solid var(--border); } .pv-tabell td { border: 0; padding: 1px 0; } .pv-tabell td:first-child { font-weight: 700; } }
+  @media print { body { background: #fff; padding: 0; } main { border: 0; } .pv-beh { break-inside: avoid; } details > :not(summary) { display: block; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="topp"><p class="logo">Skog<b>IQ</b>.ai</p><a href="./">← Til SkogIQ.ai</a></div>
+  <h1>Vilkår og personvern</h1>
+  <div id="innhold"><p>Laster …</p></div>
+</main>
+<script type="module">
+  import { html, KORT } from './js/personvern.js';
+  const el = document.getElementById('innhold');
+  el.innerHTML = `<ul class="kort">${KORT.map((t) => `<li>${t}</li>`).join('')}</ul>${html()}`;
+  // Åpne behandlingen det lenkes til (#pv-nettverk), og alle ved utskrift.
+  const apne = () => { const d = location.hash && document.querySelector(location.hash); if (d?.tagName === 'DETAILS') { d.open = true; d.scrollIntoView(); } else if (d) d.scrollIntoView(); };
+  apne(); window.addEventListener('hashchange', apne);
+  window.addEventListener('beforeprint', () => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
+</script>
+</body>
+</html>

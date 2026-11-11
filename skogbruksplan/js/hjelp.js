@@ -143,6 +143,14 @@ export const KAPITLER = [
       ${obs('Andre brukere ser navnet ditt, firma og kommune – aldri e-postadressen. Begge kan avslutte en kobling; da stenges chatten.')}`,
   },
   {
+    id: 'personvern', ikon: '🔒', tittel: 'Vilkår, personvern og dine data',
+    tekst: `<p>Du eier dataene dine. SkogIQ.ai bruker dem bare til å levere tjenesten, og selger dem aldri. Les hele <a href="personvern.html" target="_blank" rel="noopener">brukervilkårene og personvernerklæringen</a>.</p>
+      <h4>Under Min profil → Personvern og dine data</h4>
+      ${steg(['<b>Last ned mine data</b> gir en fil med alt som er lagret om deg: kontoen, profilen, godkjenningene, bruksstatistikken, planlisten i skyen og nettverket med chatmeldinger.', '<b>Tillat bruksstatistikk</b> kan slås av. Da slettes statistikken som er samlet inn, og ingen ny telles.', '<b>Slett kontoen min</b> sletter profilen, skylagrede planer, koblinger, chat og statistikk med en gang. Du må skrive passordet ditt.'])}
+      ${tips('Endres vilkårene vesentlig, får du beskjed neste gang du logger inn, og må godta på nytt.')}
+      ${obs('Planer du deler med tømmerkjøpere eller sender som tilbudsforespørsel, ser mottakerne til lenken utløper (senest 180 dager uten bruk).')}`,
+  },
+  {
     id: 'tommerkjoper', ikon: '🤝', tittel: 'Del med tømmerkjøper',
     tekst: `<p>Under <b>Verdi › Del med tømmerkjøper</b> deler du bestand, volumer, kart og driftsforhold med en eller flere tømmerkjøpere – og får prisforslag tilbake.</p>
       ${steg(['Trykk <b>Ny deling</b> og velg bestand (planlagt hogst, hogstmoden skog eller egne valg).', 'Velg hva som deles, salgsform og frister, og legg til kjøperne.', 'Send den personlige lenken. Du ser når hver kjøper har åpnet den.', '<b>Hent forslag</b>: forslagene sorteres etter anslått netto til deg. <b>Velg</b> kjøper – eller <b>Stopp delingen</b>, så slutter lenkene å virke.'])}

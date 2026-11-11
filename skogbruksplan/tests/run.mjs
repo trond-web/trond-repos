@@ -1,4 +1,5 @@
 // Kjør med: node tests/run.mjs
+import { VILKAR as PV_VILKAR } from '../js/personvern.js';
 import assert from 'node:assert/strict';
 import { utmTilGeo, geoTilUtm, arealM2, punktIGeometri, etikettPunkt } from '../js/proj.js';
 import { parseSosi, lagSosi } from '../js/sosi.js';
@@ -2618,8 +2619,8 @@ test('Registrering: e-post som brukernavn, hashet passord, innlogging, konto, sp
   assert.equal(inn.registrer('1', { bruker: 'kari@example.no', passord: 'kort' }).status, 400);
   assert.equal(inn.registrer('1', { bruker: 'kari@example.no', passord: 'kari2026!!' }).status, 400, 'passord med e-postnavnet');
   assert.equal(inn.registrer('1', { bruker: 'Kari@Example.no', passord: 'skogen-2026', navn: 'Kari Skog' }).status, 400, 'rolle er obligatorisk');
-  assert.equal(inn.registrer('1', { bruker: 'Kari@Example.no', passord: 'skogen-2026', roller: ['tulling'] }).status, 400, 'ukjent rolle');
-  assert.ok(inn.registrer('1', { bruker: 'Kari@Example.no', passord: 'skogen-2026', navn: 'Kari Skog', roller: ['skogeier', 'Innkjoper', 'skogeier'] }).ok);
+  assert.equal(inn.registrer('1', { bruker: 'Kari@Example.no', passord: 'skogen-2026', vilkar: PV_VILKAR.versjon, roller: ['tulling'] }).status, 400, 'ukjent rolle');
+  assert.ok(inn.registrer('1', { bruker: 'Kari@Example.no', passord: 'skogen-2026', navn: 'Kari Skog', vilkar: PV_VILKAR.versjon, roller: ['skogeier', 'Innkjoper', 'skogeier'] }).ok);
   assert.deepEqual(inn.lager.hent('kari@example.no').profil.roller, ['skogeier', 'innkjoper'], 'roller renses og lagres i profilen');
   assert.deepEqual(inn.meg('kari@example.no').roller, ['skogeier', 'innkjoper']);
   assert.equal(inn.lagreProfil('kari@example.no', { navn: 'Kari Skog', roller: [] }).status, 400, 'kan ikke fjerne alle roller');
@@ -2628,7 +2629,7 @@ test('Registrering: e-post som brukernavn, hashet passord, innlogging, konto, sp
   assert.equal(inn.registrer('2', { bruker: 'kari@example.no', passord: 'annet-passord' }).status, 409, 'opptatt');
   assert.equal(inn.registrer('1', { bruker: 'sjef@example.no', passord: 'noe-passord-1' }).status, 403, 'administratornavn er reservert');
   const kari = inn.lager.hent('kari@example.no'); assert.equal(kari.visning, 'Kari Skog'); assert.equal(kari.epost, 'kari@example.no'); assert.ok(kari.hash && kari.salt && !JSON.stringify(kari).includes('skogen-2026'));
-  assert.equal(inn.lager.hent(inn.registrer('3', { bruker: 'ola.nordmann@example.no', passord: 'granskog-11', roller: ['skogeier'] }).bruker).visning, 'ola.nordmann');
+  assert.equal(inn.lager.hent(inn.registrer('3', { bruker: 'ola.nordmann@example.no', passord: 'granskog-11', vilkar: PV_VILKAR.versjon, roller: ['skogeier'] }).bruker).visning, 'ola.nordmann');
   // Innlogging med e-post (store/små bokstaver) og med eldre brukernavn
   assert.ok(inn.sjekk('1', 'KARI@example.no', 'skogen-2026').ok); assert.ok(!inn.sjekk('1', 'kari@example.no', 'feil').ok);
   assert.ok(inn.erAdmin('trond') && !inn.erAdmin('kari@example.no')); assert.ok(inn.sjekk('1', 'trond', 'skog-og-mark').ok);
@@ -2656,15 +2657,15 @@ test('Registrering: e-post som brukernavn, hashet passord, innlogging, konto, sp
   inn.lager.flush(); assert.ok(JSON.parse(les(fil, 'utf8')).brukere['kari@example.no']);
   const inn2 = lagInnlogging({ registrering: true, fil, admin: 'trond', naa: () => tid }); assert.ok(inn2.sjekk('1', 'kari@example.no', 'nytt-passord1').ok); assert.equal(inn2.lesToken(inn.lagToken('trond')).u, 'trond');
   // Grenser og kode
-  for (let i = 0; i < 5; i++) inn.registrer('7.7.7.7', { bruker: `spam${i}@example.no`, passord: 'passord-123', roller: ['skogeier'] });
-  assert.equal(inn.registrer('7.7.7.7', { bruker: 'spam9@example.no', passord: 'passord-123', roller: ['skogeier'] }).status, 429);
+  for (let i = 0; i < 5; i++) inn.registrer('7.7.7.7', { bruker: `spam${i}@example.no`, passord: 'passord-123', vilkar: PV_VILKAR.versjon, roller: ['skogeier'] });
+  assert.equal(inn.registrer('7.7.7.7', { bruker: 'spam9@example.no', passord: 'passord-123', vilkar: PV_VILKAR.versjon, roller: ['skogeier'] }).status, 429);
   const medKode = lagInnlogging({ registrering: true, kode: 'SKOG2026', naa: () => tid }); assert.ok(medKode.kodeKreves && !medKode.permanent);
-  assert.equal(medKode.registrer('1', { bruker: 'ola@example.no', passord: 'passord-123' }).status, 403); assert.ok(medKode.registrer('1', { bruker: 'ola@example.no', passord: 'passord-123', kode: 'SKOG2026', roller: ['offentlig'] }).ok);
+  assert.equal(medKode.registrer('1', { bruker: 'ola@example.no', passord: 'passord-123' }).status, 403); assert.ok(medKode.registrer('1', { bruker: 'ola@example.no', passord: 'passord-123', kode: 'SKOG2026', vilkar: PV_VILKAR.versjon, roller: ['offentlig'] }).ok);
   // HTTP
   const res = () => { const r = { status: 0, hoder: {}, kropp: '', writeHead(st, hd = {}) { r.status = st; r.hoder = hd; }, end(b = '') { r.kropp = String(b); r.ferdig?.(); } }; return r; };
   const req = (metode, url, { hoder = {}, kropp = null } = {}) => { const h = {}; return { method: metode, url, headers: { host: 'skogiq.test', ...hoder }, socket: { remoteAddress: '3.3.3.3' }, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(kropp)); f(); }, 0); }, destroy() {} }; };
   const api = (q, i = inn) => new Promise((ok) => { const r = res(); r.ferdig = () => ok(r); if (!innloggingApi(i, q, r, new URL(q.url, 'http://x').pathname)) ok(null); });
-  const ny = await api(req('POST', '/api/registrer', { kropp: JSON.stringify({ bruker: 'per@example.no', passord: 'granskog-77', navn: 'Per', roller: ['entreprenor'] }) })); assert.equal(ny.status, 201);
+  const ny = await api(req('POST', '/api/registrer', { kropp: JSON.stringify({ bruker: 'per@example.no', passord: 'granskog-77', navn: 'Per', vilkar: PV_VILKAR.versjon, roller: ['entreprenor'] }) })); assert.equal(ny.status, 201);
   const { token, admin } = JSON.parse(ny.kropp); assert.ok(token); assert.equal(admin, false);
   const meg = JSON.parse((await api(req('GET', '/api/meg', { hoder: { authorization: `Bearer ${token}` } }))).kropp); assert.equal(meg.navn, 'Per'); assert.equal(meg.epost, 'per@example.no'); assert.equal(meg.epost === 'per@example.no' && meg.registrering, true);
   assert.equal((await api(req('POST', '/api/bruk', { hoder: { authorization: `Bearer ${token}` }, kropp: JSON.stringify({ type: 'fane', detalj: 'karbon' }) }))).status, 200);
@@ -2687,7 +2688,7 @@ test('Registrering: e-post som brukernavn, hashet passord, innlogging, konto, sp
   assert.equal((await api(req('POST', '/api/tilbakestill', { kropp: JSON.stringify({ token: rt, passord: 'enda-et-pw-1' }) }))).status, 400, 'lenken kan brukes én gang');
   // Glemt passord med e-posttjeneste: lenke sendes til e-posten, gyldig én time
   const sendt = []; const medEpost = lagInnlogging({ registrering: true, naa: () => tid, sendEpost: async (m) => { sendt.push(m); } });
-  medEpost.registrer('1', { bruker: 'lise@example.no', passord: 'bjorkeskog-1', navn: 'Lise', roller: ['skogeier'] });
+  medEpost.registrer('1', { bruker: 'lise@example.no', passord: 'bjorkeskog-1', navn: 'Lise', vilkar: PV_VILKAR.versjon, roller: ['skogeier'] });
   const g3 = JSON.parse((await api(req('POST', '/api/glemt', { kropp: JSON.stringify({ epost: 'LISE@example.no' }) }), medEpost)).kropp); assert.deepEqual(g3, { ok: true, epost: true });
   assert.equal(sendt.length, 1); assert.equal(sendt[0].til, 'lise@example.no'); assert.match(sendt[0].tekst, /Hei Lise![\s\S]*logginn\.html#tilbakestill=/);
   await api(req('POST', '/api/glemt', { kropp: JSON.stringify({ epost: 'ukjent@example.no' }) }), medEpost); assert.equal(sendt.length, 1, 'ingen e-post til ukjente');
@@ -2903,7 +2904,7 @@ test('Skylagring: synkronisering mellom to enheter – opplasting, nye planer, f
 test('Profil på serveren: felt, validering og navn', async () => {
   const { lagInnlogging } = await import('../auth.js');
   const inn = lagInnlogging({ registrering: true });
-  const r = inn.registrer('1.1.1.1', { bruker: 'per@gard.no', passord: 'langtpassord1', navn: 'Per', roller: ['skogeier'] }); assert.ok(r.ok);
+  const r = inn.registrer('1.1.1.1', { bruker: 'per@gard.no', passord: 'langtpassord1', navn: 'Per', vilkar: PV_VILKAR.versjon, roller: ['skogeier'] }); assert.ok(r.ok);
   assert.deepEqual(inn.hentProfil('per@gard.no'), { navn: 'Per', epost: 'per@gard.no', roller: ['skogeier'] });
   assert.equal(inn.lagreProfil('per@gard.no', { navn: '' }).status, 400);
   assert.equal(inn.lagreProfil('per@gard.no', { navn: 'Per', rolle: 'konge' }).status, 400);
@@ -2913,7 +2914,7 @@ test('Profil på serveren: felt, validering og navn', async () => {
   assert.ok(ok.ok); assert.equal(ok.profil.navn, 'Per Hansen'); assert.equal(ok.profil.om.length, 600); assert.equal(ok.profil.ukjent, undefined);
   assert.equal(inn.meg('per@gard.no').navn, 'Per Hansen'); assert.equal(inn.meg('per@gard.no').profil.kommune, 'Ullensaker');
   const sett = []; const inn2 = lagInnlogging({ registrering: true, bruker: 'admin', passord: 'adminpassord9', ekstraBruker: (u) => ({ sky: { antall: u.length } }), vedSlett: (u) => sett.push(u) });
-  inn2.registrer('1.1.1.2', { bruker: 'ola@x.no', passord: 'langtpassord2', roller: ['skogeier'] });
+  inn2.registrer('1.1.1.2', { bruker: 'ola@x.no', passord: 'langtpassord2', vilkar: PV_VILKAR.versjon, roller: ['skogeier'] });
   assert.equal(inn2.oversikt().brukere.find((b) => b.bruker === 'ola@x.no').sky.antall, 8);
   inn2.endreBruker('admin', 'ola@x.no', 'slett'); assert.deepEqual(sett, ['ola@x.no'], 'skydata slettes med brukeren');
   // AI-konteksten tar med profilen
@@ -3319,6 +3320,73 @@ test('Måleverktøy: lengde, areal, omkrets og volum per bestand og treslag', as
   assert.equal(v.fordelingKilde, 'blandet'); assert.ok(Math.abs(v.rader.find((r) => r.nr === '1').andelAvBestand - 0.5) < 0.01);
   assert.match(MA.sammendrag({ modus: 'areal', len: MA.lengde([]), fl: MA.flate([g(100, -50), g(300, -50), g(300, 100), g(100, 100)]), vol: v }), /Gran: 120 m³/);
   assert.equal(MA.volum(S, [g(0, 0), g(10, 0)], PC), null, 'for få punkter');
+});
+
+// Sjekksum for innholdet i vilkår og personvernerklæring per versjon (js/personvern.js). Endres teksten, må
+// VILKAR.versjon økes og en ny linje legges til her. Gamle linjer blir stående som historikk.
+const PERSONVERN_SJEKKSUM = {
+  '1.0': '16a230b34f20c608',
+};
+
+test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
+  const PV = await import('../js/personvern.js'); const { readFileSync: les, readdirSync } = await import('node:fs'); const { createHash } = await import('node:crypto');
+  // Hver /api-sti på serveren må tilhøre en behandling i erklæringen (første ledd i stien).
+  const filer = ['server.js', 'auth.js', ...readdirSync(new URL('..', import.meta.url)).filter((f) => /^[\w-]+\.js$/.test(f) && f !== 'server.js' && f !== 'auth.js')];
+  const ledd = new Set(); for (const f of filer) for (const m of les(new URL(`../${f}`, import.meta.url), 'utf8').matchAll(/['`"]\/api\/([a-z0-9_-]+)/g)) ledd.add(m[1]);
+  const dekket = new Set(PV.BEHANDLINGER.flatMap((b) => b.api.map((x) => x.split('/')[2])));
+  const mangler = [...ledd].filter((x) => !dekket.has(x));
+  assert.deepEqual(mangler, [], `Nye /api-stier må føres inn i BEHANDLINGER i js/personvern.js (formål, opplysninger, lagringstid, mottakere): ${mangler.join(', ')}`);
+  for (const b of PV.BEHANDLINGER) { for (const k of ['id', 'navn', 'formaal', 'opplysninger', 'lagring', 'mottakere']) assert.ok(String(b[k] || '').length > 1, `${b.id}: ${k}`); assert.ok(PV.GRUNNLAG[b.grunnlag], `${b.id}: grunnlag`); }
+  assert.equal(new Set(PV.BEHANDLINGER.map((b) => b.id)).size, PV.BEHANDLINGER.length);
+  // Versjon og sjekksum: tekstendringer krever ny versjon, og kreverGodkjenning kan ikke være nyere enn versjonen.
+  const sum = createHash('sha256').update(PV.innhold()).digest('hex').slice(0, 16);
+  assert.equal(PERSONVERN_SJEKKSUM[PV.VILKAR.versjon], sum, `Vilkår/personvern er endret uten ny versjon. Øk VILKAR.versjon i js/personvern.js (og kreverGodkjenning ved vesentlige endringer), og legg til '${PV.VILKAR.versjon === Object.keys(PERSONVERN_SJEKKSUM).at(-1) ? 'NY_VERSJON' : PV.VILKAR.versjon}': '${sum}' i PERSONVERN_SJEKKSUM`);
+  const { sammenlignVersjon } = await import('../auth.js');
+  assert.ok(sammenlignVersjon(PV.VILKAR.kreverGodkjenning, PV.VILKAR.versjon) <= 0); assert.equal(sammenlignVersjon('1.10', '1.9'), 1); assert.equal(sammenlignVersjon('1.0', '1'), 0);
+  assert.match(PV.VILKAR.dato, /^\d{4}-\d{2}-\d{2}$/);
+  // HTML-en har alle behandlingene og leverandørene, og sidene lenker til erklæringen.
+  const h = PV.html(); for (const b of PV.BEHANDLINGER) assert.ok(h.includes(`id="pv-${b.id}"`)); for (const t of PV.TREDJEPARTER) assert.ok(h.includes(t.navn.replace(/&/g, '&amp;')));
+  assert.match(les(new URL('../logginn.html', import.meta.url), 'utf8'), /personvern\.html[\s\S]*name="vilkar"|name="vilkar"[\s\S]*personvern\.html/);
+  assert.match(les(new URL('../js/innlogging.js', import.meta.url), 'utf8'), /\/api\/samtykke/);
+});
+
+test('Personvern: godkjenning ved registrering og innlogging, innsyn, statistikk av og sletting av egen konto', async () => {
+  const { lagInnlogging, innloggingApi } = await import('../auth.js'); const { VILKAR } = await import('../js/personvern.js');
+  let tid = Date.UTC(2026, 10, 11, 9); let slettet = null;
+  const inn = lagInnlogging({ registrering: true, admin: 'sjef@x.no', naa: () => tid, vedSlett: (u) => { slettet = u; }, eksport: (u) => ({ nettverk: [{ med: 'kjop@x.no', meldinger: [{ tekst: `hei ${u}` }] }] }) });
+  assert.equal(inn.registrer('1', { bruker: 'ola@x.no', passord: 'granskog-1', roller: ['skogeier'] }).status, 400, 'må godta vilkårene');
+  assert.equal(inn.registrer('1', { bruker: 'ola@x.no', passord: 'granskog-1', roller: ['skogeier'], vilkar: '0.1' }).status, 400, 'må godta gjeldende versjon');
+  assert.ok(inn.registrer('1', { bruker: 'ola@x.no', passord: 'granskog-1', roller: ['skogeier'], vilkar: VILKAR.versjon }).ok);
+  const ola = inn.lager.hent('ola@x.no'); assert.equal(ola.vilkar.versjon, VILKAR.versjon); assert.equal(ola.vilkar.tid, tid); assert.equal(ola.vilkarLogg.length, 1); assert.equal(ola.vilkarLogg[0].kilde, 'registrering');
+  assert.deepEqual(inn.meg('ola@x.no').vilkar, { godtatt: VILKAR.versjon, tid, gjeldende: VILKAR.versjon, kreves: false });
+  // Eldre bruker uten godkjenning (eller med eldre versjon enn kreverGodkjenning) må godta ved innlogging.
+  inn.lager.lagre({ ...inn.lager.hent('ola@x.no'), navn: 'gammel@x.no', epost: 'gammel@x.no', vilkar: undefined, vilkarLogg: undefined });
+  assert.equal(inn.meg('gammel@x.no').vilkar.kreves, true);
+  inn.lager.lagre({ ...inn.lager.hent('gammel@x.no'), vilkar: { versjon: '0.9', tid: 1 } }); assert.equal(inn.meg('gammel@x.no').vilkar.kreves, true, 'eldre versjon');
+  assert.equal(inn.godtaVilkar('gammel@x.no', '0.9').status, 409, 'bare gjeldende versjon kan godtas');
+  tid += 1000; assert.equal(inn.godtaVilkar('gammel@x.no', VILKAR.versjon).vilkar.kreves, false); assert.equal(inn.lager.hent('gammel@x.no').vilkarLogg.at(-1).kilde, 'innlogging');
+  // Over HTTP
+  const res = () => { const r = { status: 0, hoder: {}, kropp: '', writeHead(st, hd = {}) { r.status = st; r.hoder = hd; }, end(b = '') { r.kropp = String(b); r.ferdig?.(); } }; return r; };
+  const req = (metode, url, { token = null, kropp = null } = {}) => { const h = {}; return { method: metode, url, headers: { host: 'skogiq.test', ...(token ? { authorization: `Bearer ${token}` } : {}) }, socket: { remoteAddress: '4.4.4.4' }, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(JSON.stringify(kropp))); f(); }, 0); }, destroy() {} }; };
+  const api = (q) => new Promise((ok) => { const r = res(); r.ferdig = () => ok({ status: r.status, hoder: r.hoder, d: JSON.parse(r.kropp || '{}') }); if (!innloggingApi(inn, q, r, new URL(q.url, 'http://x').pathname)) ok(null); });
+  const reg = await api(req('POST', '/api/registrer', { kropp: { bruker: 'kari@x.no', passord: 'bjorkeskog-2', navn: 'Kari', roller: ['innkjoper'] } })); assert.equal(reg.status, 400);
+  const ok = await api(req('POST', '/api/registrer', { kropp: { bruker: 'kari@x.no', passord: 'bjorkeskog-2', navn: 'Kari', roller: ['innkjoper'], vilkar: VILKAR.versjon } })); assert.equal(ok.status, 201); const token = ok.d.token;
+  assert.equal((await api(req('POST', '/api/samtykke', { kropp: { versjon: VILKAR.versjon } }))).status, 401);
+  assert.equal((await api(req('POST', '/api/samtykke', { token, kropp: { versjon: VILKAR.versjon } }))).d.ok, true);
+  // Bruksstatistikk: slås av (og det som er samlet inn, slettes), og telles ikke lenger.
+  inn.bruk('kari@x.no', 'fane', 'kart'); assert.ok(Object.values(inn.lager.data.bruk).some((d) => d['kari@x.no']));
+  const av = await api(req('POST', '/api/konto/innstillinger', { token, kropp: { statistikk: false } })); assert.equal(av.d.statistikk, false);
+  assert.ok(!Object.values(inn.lager.data.bruk).some((d) => d['kari@x.no']), 'statistikken er slettet'); inn.bruk('kari@x.no', 'fane', 'kart'); assert.ok(!Object.values(inn.lager.data.bruk).some((d) => d['kari@x.no']), 'telles ikke');
+  assert.equal(inn.meg('kari@x.no').statistikk, false);
+  // Innsyn: alt om brukeren, uten passord-hash, med data fra de andre modulene.
+  const eks = await api(req('GET', '/api/konto/eksport', { token })); assert.equal(eks.status, 200); assert.match(eks.hoder['Content-Disposition'], /attachment; filename="skogiq-mine-data-/);
+  assert.equal(eks.d.konto.epost, 'kari@x.no'); assert.equal(eks.d.konto.vilkar.versjon, VILKAR.versjon); assert.ok(!('hash' in eks.d.konto) && !('salt' in eks.d.konto)); assert.equal(eks.d.nettverk[0].meldinger[0].tekst, 'hei kari@x.no');
+  assert.equal((await api(req('GET', '/api/konto/eksport'))).status, 401);
+  // Sletting av egen konto: krever passord; administratorer kan ikke slette seg selv.
+  assert.equal((await api(req('POST', '/api/konto/slett', { token, kropp: { passord: 'feil-passord' } }))).status, 401); assert.ok(inn.lager.hent('kari@x.no'));
+  const sl = await api(req('POST', '/api/konto/slett', { token, kropp: { passord: 'bjorkeskog-2' } })); assert.equal(sl.status, 200); assert.match(sl.hoder['Set-Cookie'], /Max-Age=0/);
+  assert.equal(inn.lager.hent('kari@x.no'), null); assert.equal(slettet, 'kari@x.no', 'skylagring og nettverk slettes også'); assert.equal(inn.lesToken(token), null, 'økten er ugyldig');
+  inn.lager.lagre({ ...inn.lager.hent('ola@x.no'), navn: 'sjef@x.no', epost: 'sjef@x.no' }); assert.equal(inn.slettMeg('sjef@x.no', 'granskog-1').status, 400);
 });
 
 test('Nettverk: statistikk, katalog uten e-post, koblinger begge veier, tilgang, chat og uleste', async () => {
