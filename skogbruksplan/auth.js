@@ -28,6 +28,10 @@ export const MIN_PASSORD = 8;
 // Profilfelt og maks lengde. Rollen brukes til å tilpasse løsningen (skogeier, bonde, rådgiver, entreprenør).
 export const PROFILFELT = { telefon: 30, rolle: 20, foretak: 120, orgnr: 11, adresse: 120, postnr: 4, poststed: 60, kommune: 60, andelslag: 80, om: 600 };
 export const ROLLER = ['skogeier', 'bonde', 'radgiver', 'entreprenor', 'annet'];
+// Brukerroller (én eller flere per bruker, obligatorisk ved registrering). Lagres i profilen som «roller».
+// Den eldre enkeltrollen «rolle» over beholdes bare for å foreslå roller til brukere som ble registrert før.
+export const BRUKERROLLER = { skogeier: 'Skogeier', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', offentlig: 'Offentlig' };
+export const rensRoller = (r) => [...new Set((Array.isArray(r) ? r : r == null ? [] : [r]).map((x) => String(x || '').trim().toLowerCase()).filter((x) => BRUKERROLLER[x]))];
 const dagNokkel = (t) => new Date(t).toISOString().slice(0, 10);
 const tekst = (v, n) => String(v ?? '').trim().slice(0, n);
 
@@ -81,7 +85,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
   const glemtIp = new Map(); // ip → [tidspunkter for «glemt passord»]
   const nyReset = (b, ms) => { const token = randomBytes(24).toString('base64url'); store.lagre({ ...b, reset: { hash: sha(token), exp: naa() + ms } }); return token; };
   const erAdmin = (u) => { const b = store?.hent(u); return !!(store ? b && (b.rolle === 'admin' || admins.has(b.navn)) : enkel && u === bruker); };
-  const offentlig = (b) => ({ bruker: b.navn, navn: b.visning || b.navn, epost: b.epost || '', admin: erAdmin(b.navn), ...(b.profil ? { profil: b.profil } : {}) });
+  const offentlig = (b) => ({ bruker: b.navn, navn: b.visning || b.navn, epost: b.epost || '', admin: erAdmin(b.navn), roller: b.profil?.roller || [], ...(b.profil ? { profil: b.profil } : {}) });
   const finn = (u) => store?.finn(u) || null;
   return {
     aktiv, registrering: !!store, permanent: store ? store.permanent : true, kodeKreves: !!(store && kode), epostAktiv: !!sendEpost, dager, lager: store,
@@ -108,7 +112,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       if (!ok && !blokkert) { feil.get(ip).push(naa()); if (feil.size > 10000) feil.delete(feil.keys().next().value); }
       return { ok, blokkert, bruker: ok ? (store ? funnet : bruker) : null };
     },
-    registrer(ip, { bruker: b, passord: p, navn, kode: k } = {}) {
+    registrer(ip, { bruker: b, passord: p, navn, kode: k, roller } = {}) {
       if (!store) return { feil: 'Registrering er ikke slått på', status: 403 };
       const t = naa(); const l = (reg.get(ip) || []).filter((x) => t - x < 3600000); reg.set(ip, l);
       if (l.length >= 5) return { feil: 'For mange registreringer fra denne adressen – prøv igjen om en time', status: 429 };
@@ -120,8 +124,9 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       if (finn(u)) return { feil: 'E-postadressen er allerede registrert – bruk «Glemt passord» hvis du ikke husker passordet', status: 409 };
       // Administratornavnene (APP_ADMIN) er reservert: ellers kunne hvem som helst registrere dem først og bli admin.
       if (admins.has(u)) return { feil: 'Brukernavnet er reservert', status: 403 };
+      const rr = rensRoller(roller); if (!rr.length) return { feil: 'Velg minst én rolle (skogeier, entreprenør, innkjøper eller offentlig)', status: 400 };
       l.push(t);
-      const ny = store.lagre({ navn: u, visning: tekst(navn, 80) || u.split('@')[0], epost: u, ...hashPassord(p), pv: 0, rolle: 'bruker', sperret: false, opprettet: t, sistInnlogget: t, innlogginger: 1 });
+      const ny = store.lagre({ navn: u, visning: tekst(navn, 80) || u.split('@')[0], epost: u, ...hashPassord(p), pv: 0, rolle: 'bruker', sperret: false, opprettet: t, sistInnlogget: t, innlogginger: 1, profil: { roller: rr } });
       return { ok: true, bruker: ny.navn };
     },
     // Bytt passord og/eller e-post (e-posten brukes til «glemt passord»). Krever nåværende passord.
@@ -175,6 +180,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       const p = {};
       for (const [k, n] of Object.entries(PROFILFELT)) if (data[k] != null) p[k] = tekst(data[k], n);
       if (p.rolle && !ROLLER.includes(p.rolle)) return { feil: 'Ukjent rolle', status: 400 };
+      if (data.roller !== undefined) { const rr = rensRoller(data.roller); if (!rr.length) return { feil: 'Velg minst én rolle', status: 400 }; p.roller = rr; }
       if (p.telefon && !/^[+\d\s()-]{5,30}$/.test(p.telefon)) return { feil: 'Ugyldig telefonnummer', status: 400 };
       if (p.orgnr && !/^\d{3}\s?\d{3}\s?\d{3}$/.test(p.orgnr)) return { feil: 'Organisasjonsnummer har 9 siffer', status: 400 };
       if (p.postnr && !/^\d{4}$/.test(p.postnr)) return { feil: 'Postnummer har 4 siffer', status: 400 };

@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.67.0 – Roller (2026-11-11)
+
+*Nytt.* Velg én eller flere roller – skogeier, entreprenør, innkjøper eller offentlig – når du registrerer deg. Har du ikke valgt, blir du bedt om det ved neste innlogging. Endres i Min profil.
+
 ## 1.66.0 – Måleverktøy i kartet (2026-11-11)
 
 *Nytt.* Trykk «Mål» over kartet: mål lengde, eller tegn en flate og få areal, omkrets og stående volum – totalt og fordelt på gran, furu og lauv – med bestandene flaten dekker.

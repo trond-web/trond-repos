@@ -20,7 +20,9 @@ export function lagKontekst(S, { iAar = new Date().getFullYear(), pefcFunn = [],
   d.push(`# Skogbruksplan: ${e.navn || 'uten navn'}`);
   d.push(`Kommune: ${e.kommune || '–'}${e.kommunenr ? ` (${e.kommunenr})` : ''}. Gnr/bnr: ${e.gnrbnr || '–'}. Eier: ${e.eier || '–'}. Takstår: ${e.takstAar || '–'}. Dagens år: ${iAar}.`);
   // Brukerens profil (Min profil): rolle og det brukeren har skrevet om gården og skogen.
-  if (profil && (profil.rolle || profil.om || profil.foretak)) d.push(`Brukeren: ${[profil.rolle && `rolle ${profil.rolle}`, profil.foretak && `gård/foretak ${profil.foretak}`, profil.andelslag && `skogeierandelslag ${profil.andelslag}`].filter(Boolean).join(', ') || '–'}.${profil.om ? ` Om gården og skogen (skrevet av brukeren): ${String(profil.om).slice(0, 600)}` : ''}`);
+  const ROLLENAVN = { skogeier: 'skogeier', entreprenor: 'entreprenør', innkjoper: 'innkjøper (tømmer)', offentlig: 'offentlig forvaltning' };
+  const roller = (profil?.roller || []).map((r) => ROLLENAVN[r] || r).join(', ');
+  if (profil && (roller || profil.rolle || profil.om || profil.foretak)) d.push(`Brukeren: ${[roller ? `roller: ${roller}` : profil.rolle && `rolle ${profil.rolle}`, profil.foretak && `gård/foretak ${profil.foretak}`, profil.andelslag && `skogeierandelslag ${profil.andelslag}`].filter(Boolean).join(', ') || '–'}.${profil.om ? ` Om gården og skogen (skrevet av brukeren): ${String(profil.om).slice(0, 600)}` : ''}`);
   if (S.metadata) {
     const m = S.metadata;
     d.push(`Generert fra åpne data ${m.laget ? m.laget.slice(0, 10) : ''}: eiendom ${r0(m.eiendomDaa)} daa, skog ${r0(m.skogDaa)} daa, ${m.antallFraPlan || 0} bestand fra tidligere plan (registrert ${m.planRegistrert || '–'}), SR16 målt ${m.sr16Aar || '–'}.`);

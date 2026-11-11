@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.66.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.67.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -560,6 +560,17 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## Roller (Skogeier, Entreprenør, Innkjøper, Offentlig)
+
+Hver bruker har én eller flere roller, lagret i profilen som `profil.roller`. Gyldige nøkler er `skogeier`, `entreprenor`, `innkjoper` og `offentlig` (`BRUKERROLLER` i `auth.js`).
+- **Registrering:** Rollen er obligatorisk. Skjemaet har fire avkrysningskort, og serveren avviser registrering uten gyldig rolle med 400. Ukjente verdier fjernes, og duplikater slås sammen.
+- **Brukere uten rolle:** Etter innlogging (`/api/meg` gir `roller: []`) viser `innlogging.js` en enkel dialog. Den kan ikke lukkes med Esc. Rollen er forhåndsvalgt ut fra den eldre enkeltrollen («bonde» og «skogeier» gir Skogeier, «entreprenør» gir Entreprenør). Dialogen vises i alle sider som laster `innlogging.js` (appen, SkogIQ Felt og kontroller-siden).
+- **Min profil:** Rollene vises som avkrysningskort. Minst én må være valgt, og andre profilendringer beholder rollene.
+- **Admin:** antall brukere per rolle og «uten rolle», og rollene som merker på hver bruker.
+- **Spør AI:** Rollene tas med i konteksten om brukeren.
+
+Den eldre enkeltrollen `profil.rolle` beholdes for bakoverkompatibilitet, men vises ikke lenger.
 
 ## Måleverktøy i kartet (📏 Mål, `js/maaling.js` og `js/maaling-ui.js`)
 
