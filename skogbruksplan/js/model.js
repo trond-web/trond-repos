@@ -446,7 +446,12 @@ export function arligTilvekstDaa(b) {
 
 // ---------- Økonomi ----------
 
+// Treslagsandelene for et bestand: registrert/importert fordeling, ellers bare hovedtreslaget. Sum 1.
+export function bestandAndeler(b) { return (b?.treslagAndel && treslagAndel(b.treslagAndel)) || { [b?.treslag || 'G']: 1 }; }
+// Rotnetto per m³ (pris – driftskostnad). treslag er 'G'/'F'/'L', eller et bestand: da veies netto etter
+// treslagsfordelingen (volum per treslag), slik at f.eks. 60 % gran og 40 % furu gir 0,6 × gran + 0,4 × furu.
 export function rotnettoPerM3(treslag, inn = STANDARD_INNSTILLINGER, tynning = false) {
+  if (treslag && typeof treslag === 'object') return Object.entries(bestandAndeler(treslag)).reduce((s, [t, a]) => s + a * rotnettoPerM3(t, inn, tynning), 0);
   const pris = inn.pris[treslag] ?? inn.pris.G;
   const drift = tynning ? inn.driftTynning : (inn.drift[treslag] ?? inn.drift.G);
   return pris - drift;
@@ -477,19 +482,19 @@ export function framskriv(bestandListe, aarFrem, inn = STANDARD_INNSTILLINGER, {
           if (tk.type === 'sluttavvirkning' && s.volumDaa > 0) {
             const m3 = s.volumDaa * areal;
             avvirkning += m3;
-            inntekt += m3 * rotnettoPerM3(b.treslag, inn);
+            inntekt += m3 * rotnettoPerM3(b, inn);
             s.volumDaa = 0; s.alder = 0;
           } else if (tk.type === 'lukkethogst' && s.volumDaa > 0) {
             // Lukket hogst: en del av volumet tas ut, skogen står videre (alderen beholdes, ny generasjon kommer inn under).
             const andel = hogstAndel('lukkethogst', inn, tk);
             const m3 = s.volumDaa * areal * andel;
             avvirkning += m3;
-            inntekt += m3 * hogstNettoPerM3('lukkethogst', b.treslag, inn);
+            inntekt += m3 * hogstNettoPerM3('lukkethogst', b, inn);
             s.volumDaa *= (1 - andel);
           } else if (tk.type === 'tynning' && s.volumDaa > 0) {
             const m3 = s.volumDaa * areal * inn.tynningUttak;
             avvirkning += m3;
-            inntekt += m3 * rotnettoPerM3(b.treslag, inn, true);
+            inntekt += m3 * rotnettoPerM3(b, inn, true);
             s.volumDaa *= (1 - inn.tynningUttak);
           } else {
             kostnad += tiltakKostnad(tk.type, areal, inn);
@@ -580,7 +585,7 @@ export function sammendrag(bestandListe, inn = STANDARD_INNSTILLINGER) {
     perTreslag[b.treslag || 'G'] += s.volumDaa * a;
     const hk = hogstklasseFor(b, inn);
     if (hk) perHk[hk][b.treslag || 'G'] += a; else utenHk += a;
-    if (hk === 5) verdiHogstmoden += s.volumDaa * a * rotnettoPerM3(b.treslag, inn);
+    if (hk === 5) verdiHogstmoden += s.volumDaa * a * rotnettoPerM3(b, inn);
   }
   return { areal, volum, tilvekst, verdiHogstmoden, perHk, perTreslag, utenHk, co2: tilvekst * inn.co2PerM3, antall: bestandListe.length };
 }

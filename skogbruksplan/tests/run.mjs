@@ -3337,6 +3337,14 @@ test('Treslag: fordeling med kilde, volum per treslag, registrering og treantall
   // Import fra plan og fra SR16
   const imp = normaliserBestand({ BESTNR: '2', TRESLAG: 'G', AREAL: 5, GRAN_PST: 70, FURU_PST: 20, LAUV_PST: 10, VOLUM_DAA: 20 }); assert.equal(T.fordeling(imp).kilde, 'import'); assert.equal(T.fordeling(imp).andel.G, 0.7);
   const sr = normaliserBestand({ BESTNR: '3', TRESLAG: 'G', AREAL: 5, GRAN_PST: 50, FURU_PST: 50, KILDE: 'SR16' }); assert.equal(T.fordeling(sr).kilde, 'sr16');
+  // Rotnetto veies etter fordelingen (verdi, tiltak og rapporter bruker samme)
+  const M = await import('../js/model.js'); const I = M.STANDARD_INNSTILLINGER;
+  const bl = { ...b, treslagAndel: { G: 0.6, F: 0.4 } };
+  assert.equal(Math.round(M.rotnettoPerM3(bl, I) * 100), Math.round((0.6 * M.rotnettoPerM3('G', I) + 0.4 * M.rotnettoPerM3('F', I)) * 100));
+  assert.equal(M.rotnettoPerM3({ treslag: 'F' }, I), M.rotnettoPerM3('F', I), 'uten fordeling: hovedtreslaget');
+  assert.equal(Math.round(M.hogstNettoPerM3('lukkethogst', bl, I)), Math.round(M.rotnettoPerM3(bl, I) - (I.lukketTillegg ?? 40)));
+  const vb = T.volumPerTreslag(bl, I); assert.equal(Math.round(vb.netto), Math.round(vb.m3 * M.rotnettoPerM3(bl, I))); assert.equal(Math.round(vb.rader[1].netto), Math.round(vb.rader[1].m3 * M.rotnettoPerM3('F', I)));
+  assert.match(T.treslagKortHtml(vb), /Gran 60 %[\s\S]*Furu 40 %/);
   // Hogstklasse II: treantall per treslag
   const u = { id: 'u', nr: '4', treslag: 'G', bonitet: 17, areal: 8, alder: 12, hogstklasse: 2, treslagAndel: { G: 0.8, F: 0.2 }, tiltak: [] };
   assert.ok(T.visTreantallTreslag(u)); assert.ok(!T.visTreantallTreslag(b));

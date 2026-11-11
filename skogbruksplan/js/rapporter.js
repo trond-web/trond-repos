@@ -167,7 +167,7 @@ function hovedtallData(S, iAar) {
     alderSum += st.alder * a;
     if (b.miljo) { miljoDaa += a; continue; }
     const min = laavesteHogstalder(b, inn) || 999;
-    if (st.alder >= min) { modentNaa += st.volumDaa * a; modentKr += st.volumDaa * a * rotnettoPerM3(ts, inn); }
+    if (st.alder >= min) { modentNaa += st.volumDaa * a; modentKr += st.volumDaa * a * rotnettoPerM3(b, inn); }
     else if (st.alder + 10 >= min) modent10 += st.volumDaa * a;
   }
   const eiendomDaa = S.metadata?.eiendomDaa || null;
@@ -274,7 +274,7 @@ export function hogstprognose(S, { iAar, aar = 30 }) {
     if (HOGSTTYPER.includes(t.type)) {
       const fr = framskriv([b], t.aar - iAar, inn, { folgPlan: false }).perBestand.get(b.id).at(-1);
       const m3 = fr.volumDaa * (b.areal || 0) * hogstAndel(t.type, inn, t);
-      const netto = m3 * hogstNettoPerM3(t.type, b.treslag, inn);
+      const netto = m3 * hogstNettoPerM3(t.type, b, inn);
       hogst.push({ aar: t.aar, b, type: t.type, m3, netto, alder: fr.alder });
       p[t.type === 'tynning' ? 'tynning' : 'slutt'] += m3; p.netto += netto;
     } else { const k = tiltakKostnad(t.type, b.areal || 0, inn); p.kostnad += k; p.netto -= k; }
@@ -290,7 +290,7 @@ export function hogstprognose(S, { iAar, aar = 30 }) {
     const m3 = fr.volumDaa * (b.areal || 0);
     if (m3 < 1) continue;
     periode(iAar + om).modent += m3;
-    potensial.push({ aar: iAar + om, b, m3, netto: m3 * rotnettoPerM3(b.treslag, inn), alder: fr.alder, naa: om === 0 });
+    potensial.push({ aar: iAar + om, b, m3, netto: m3 * rotnettoPerM3(b, inn), alder: fr.alder, naa: om === 0 });
   }
   const fr = framskriv(S.bestand, aar, inn, { folgPlan: true, startAar: iAar }).aarRader;
   for (const p of perioder) { const r = fr.filter((x) => x.aar >= p.fra && x.aar <= p.til); p.tilvekst = r.reduce((s, x) => s + x.tilvekst, 0); p.staaende = r[0]?.staaende ?? 0; p.staaendeSlutt = (fr.find((x) => x.aar === p.til + 1) || fr.at(-1)).staaende; }

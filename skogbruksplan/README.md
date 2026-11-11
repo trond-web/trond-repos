@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.70.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.71.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -79,7 +79,21 @@ Store eiendommer støttes:
 
 Andelene skrives inn direkte i tabellen og lagres når du forlater feltene eller trykker Enter. Summen vises mens du skriver, og verdier som ikke blir 100 %, skaleres. Dominerer et annet treslag enn hovedtreslaget, foreslås det å endre hovedtreslaget.
 
-**Volum per treslag:** stående volum i dag fordelt etter andelene, i m³/daa og m³ for bestandet.
+**Volum per treslag:** stående volum i dag fordelt etter andelene, i m³/daa og m³ for bestandet, og **rotnetto per treslag** ved hogst nå (pris minus driftskostnad per treslag fra Innstillinger).
+
+**Økonomien bruker fordelingen.** `rotnettoPerM3` og `hogstNettoPerM3` tar et bestand og vekter netto etter treslagsandelene, for eksempel 0,6 × gran + 0,4 × furu. Bestand uten fordeling bruker hovedtreslaget som før. Dette gjelder:
+- nøkkeltallet «kr rotnetto ved hogst nå»
+- tiltaksøkonomien
+- framskriving og verdi av hogstmoden skog
+- tiltaksmotorens forslag
+- rapportene
+- skadeberegningen
+- innsikt
+- grunnlaget for «Spør AI»
+
+Jordverdi og ungskogeffekten regner fortsatt per treslag (framtidig bestand).
+
+**SkogIQ Felt** viser «Treslag og volum» (stolpe og tabell med andel, m³ og rotnetto) i bestandskortet. I hogstklasse II vises treantall per treslag før og etter regulering. Under «Registrer målte verdier» kan treantallet skrives inn, og det lagres med «Ferdig».
 
 **Treantall per treslag i hogstklasse II**, under Ungskog: gran, furu og lauv før og etter regulering, i trær/daa.
 - **Beregnet:**

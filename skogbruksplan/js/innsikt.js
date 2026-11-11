@@ -24,7 +24,7 @@ export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtranspor
   });
   if (moden.length) {
     const m3 = moden.reduce((s, b) => s + startTilstand(b).volumDaa * (b.areal || 0), 0);
-    const kr = moden.reduce((s, b) => s + startTilstand(b).volumDaa * (b.areal || 0) * rotnettoPerM3(b.treslag, inn), 0);
+    const kr = moden.reduce((s, b) => s + startTilstand(b).volumDaa * (b.areal || 0) * rotnettoPerM3(b, inn), 0);
     ut.push({ vekt: 90, type: 'handling', tittel: `${moden.length} bestand er hogstmodne uten planlagt hogst`, tekst: `Ca. ${tall(m3)} m³ og ${tall(kr / 1000)} k kr i rotnetto.`, handling: { tekst: 'Foreslå tiltak', id: 'foresla' } });
   }
 
