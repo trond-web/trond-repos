@@ -13,6 +13,7 @@ import { lagInnlogging, innloggingApi, krevInnlogging, corsFor, lagEpostSender }
 import { lagTilbudRelay, tilbudApi, erMottakerKall } from './tilbud-relay.js';
 import { rensSvar as rensTommerSvar, sjekkSvar as sjekkTommerSvar } from './js/tommer-felles.js';
 import { lagSkyLager, skyApi } from './sky-lager.js';
+import { lagNettverk, nettverkApi } from './nettverk.js';
 
 const ROT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8080;
@@ -32,7 +33,7 @@ const TYPER = {
   '.sos': 'text/plain; charset=utf-8',
 };
 // Mapper og filer som ikke skal publiseres.
-const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|package(-lock)?\.json|railway\.json)$|\/\./;
+const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|package(-lock)?\.json|railway\.json)$|\/\./;
 const KOMPRIMER = /^(text\/|application\/(json|geo\+json|manifest\+json)|image\/svg)/;
 
 const SIKKERHET = {
@@ -85,7 +86,7 @@ const innlogging = lagInnlogging({
   bruker: process.env.APP_BRUKER || '', passord: process.env.APP_PASSORD || '', hemmelighet: process.env.APP_HEMMELIGHET || '',
   registrering: process.env.APP_REGISTRERING === '1', fil: process.env.BRUKER_FIL || null, admin: process.env.APP_ADMIN || '', kode: process.env.APP_REGISTRERINGSKODE || '',
   sendEpost: lagEpostSender({ nokkel: process.env.EPOST_NOKKEL || '', fra: process.env.EPOST_FRA || '' }),
-  ekstraBruker: (u) => ({ sky: sky.bruk(u) }), vedSlett: (u) => sky.slettBruker(u),
+  ekstraBruker: (u) => ({ sky: sky.bruk(u) }), vedSlett: (u) => { sky.slettBruker(u); nettverk?.slettBruker(u); },
 });
 // Uten innlogging (lokal utvikling) brukes én lokal bruker med profil i minnet.
 const lokalProfil = { navn: 'Lokal bruker', epost: '' };
@@ -94,6 +95,8 @@ const skyOppsett = {
   profil: innlogging.registrering ? { hent: (u) => innlogging.hentProfil(u), lagre: (u, d) => innlogging.lagreProfil(u, d) } : { hent: () => lokalProfil, lagre: (u, d) => { Object.assign(lokalProfil, d); return { ok: true, profil: lokalProfil }; } },
   cors: corsFor,
 };
+// Nettverk mellom skogeiere, innkjøpere og entreprenører med chat (nettverk.js). Krever registrering av brukere.
+const nettverk = innlogging.registrering ? lagNettverk({ fil: process.env.NETTVERK_FIL || (process.env.BRUKER_FIL ? path.join(path.dirname(process.env.BRUKER_FIL), 'nettverk.json') : null), brukere: { hent: (u) => innlogging.lager.hent(u), alle: () => innlogging.lager.alle() } }) : null;
 if (innlogging.registrering && !innlogging.permanent) console.warn('BRUKER_FIL er ikke satt – registrerte brukere forsvinner når serveren startes på nytt.');
 // John Deere Operations Center (se jd-relay.js). Uten JD_CLIENT_ID/JD_CLIENT_SECRET svarer /api/jd/status at det ikke er satt opp.
 const jdRelay = lagJdRelay({ klientId: process.env.JD_CLIENT_ID || '', hemmelighet: process.env.JD_CLIENT_SECRET || '', tilbakeUrl: process.env.JD_REDIRECT || '', api: process.env.JD_API || JD_SANDKASSE, fil: process.env.JD_FIL || null });
@@ -118,6 +121,7 @@ const server = http.createServer(async (req, res) => {
   if (tilbudApi(tommerRelay, req, res, sti, SIKKERHET, '/api/tommer')) return;
   if (kontrollerApi(relay, req, res, sti, SIKKERHET)) return;
   if (skyApi(sky, skyOppsett, req, res, sti, SIKKERHET)) return;
+  if (nettverkApi(nettverk, skyOppsett, req, res, sti, SIKKERHET)) return;
   if (planApi(planRelay, req, res, sti, SIKKERHET)) return;
   if (jdApi(jdRelay, req, res, sti, SIKKERHET)) return;
   if (req.method !== 'GET' && req.method !== 'HEAD') return svar(res, 405, 'Metoden er ikke tillatt');

@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.67.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.68.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -560,6 +560,37 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## Nettverk og chat (💬 Nettverk, `nettverk.js` og `js/nettverk-ui.js`)
+
+Skogeiere kobler seg til innkjøpere og entreprenører, og partene chatter direkte i SkogIQ.ai.
+
+**Velkomst ved innlogging:**
+- Skogeiere ser hvor mange innkjøpere og entreprenører som finnes i løsningen, og hvor mange de er koblet til.
+- Aktører ser hvor mange skogeiere de har.
+- Alle ser uleste meldinger og nye forespørsler, med knappen «Åpne nettverket».
+
+**Fanen Nettverk:**
+- **Statistikk:** innkjøpere, entreprenører og skogeiere.
+- **Forespørsler:** innkommende med «Godta» og «Avslå», og utgående med «Trekk».
+- **Skogeier:**
+  - «Mine innkjøpere» og «Mine entreprenører»
+  - søk i katalogen etter navn, firma eller kommune
+  - «＋ Innkjøper» og «＋ Entreprenør» for å be om kobling
+- **Innkjøper og entreprenør:**
+  - «Mine skogeiere»
+  - invitasjon av skogeier med e-postadressen skogeieren bruker i SkogIQ.ai; aktører kan ikke bla gjennom skogeiere
+- **Chat per aktiv kobling:**
+  - bobler, dato-skiller og «lest»
+  - Enter sender, Shift + Enter gir ny linje
+  - oppdateres hvert 4. sekund mens chatten er åpen
+- **Merke på fanen** med uleste meldinger og forespørsler. Oversikten hentes hvert minutt, og nye meldinger varsles.
+
+**Server** (`/api/nettverk`, krever innlogging og registrering):
+- **Katalog:** viser navn, foretak, kommune og roller, aldri e-post. Sperrede brukere er skjult.
+- **Koblinger:** Den andre parten må godta. Ber begge om det samme, godtas koblingen automatisk. Begge kan avslutte, og da stenges chatten.
+- **Meldinger:** høyst 2000 tegn, 30 per minutt per bruker og 2000 per kobling. Lest-markør per bruker.
+- **Lagring:** i `NETTVERK_FIL`, ellers `nettverk.json` ved siden av `BRUKER_FIL` (Railway-volumet). Når en bruker slettes, slettes også koblinger og meldinger.
 
 ## Roller (Skogeier, Entreprenør, Innkjøper, Offentlig)
 

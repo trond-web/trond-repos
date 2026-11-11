@@ -25,6 +25,7 @@
   </a>
   <nav class="faner" role="tablist" aria-label="Moduler">
     <button role="tab" data-fane="planer" title="Planer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 4.5 9-4.5" opacity=".5"/></svg><span>Planer</span></button>
+    <button role="tab" data-fane="nettverk" title="Nettverk – innkjøpere, entreprenører og skogeiere, med chat"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M14 14.6c.9-.6 1.9-.9 3-.9 2.3 0 4 1.5 4.5 4.3"/></svg><span>Nettverk</span><i class="rail-merke" id="nettverkMerke" hidden></i></button>
     <button role="tab" data-fane="kommune" title="Kommune"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5 9 4l6 2.5L20 4v13.5L15 20l-6-2.5L4 20Z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span>Kommune</span></button>
     <button role="tab" data-fane="oversikt" class="aktiv" title="Oversikt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14a8 8 0 1 1 16 0"/><path d="m12 14 4-5"/><circle cx="12" cy="14" r="1.5"/><path d="M4 18h16"/></svg><span>Oversikt</span></button>
     <button role="tab" data-fane="bestand" title="Bestand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5 11 3l9 4-2 10-8 4-6-6Z"/><path d="M11 3 10 12l8 5M10 12l-6 3"/></svg><span>Bestand</span></button>
@@ -531,6 +532,9 @@
     </div>
 
     <!-- DATA -->
+    <!-- NETTVERK -->
+    <div class="fane" id="fane-nettverk" hidden><div id="nettverkPanel"></div></div>
+
     <div class="fane" id="fane-data" hidden>
       <div class="kort">
         <h3>Eiendom</h3>

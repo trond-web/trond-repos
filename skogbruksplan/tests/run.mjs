@@ -3321,6 +3321,57 @@ test('Måleverktøy: lengde, areal, omkrets og volum per bestand og treslag', as
   assert.equal(MA.volum(S, [g(0, 0), g(10, 0)], PC), null, 'for få punkter');
 });
 
+test('Nettverk: statistikk, katalog uten e-post, koblinger begge veier, tilgang, chat og uleste', async () => {
+  const { lagNettverk, nettverkApi } = await import('../nettverk.js');
+  const B = { 'ola@x.no': { navn: 'ola@x.no', visning: 'Ola Skog', epost: 'ola@x.no', profil: { roller: ['skogeier'], kommune: 'Løten' } },
+    'kjop@x.no': { navn: 'kjop@x.no', visning: 'Kari Kjøper', epost: 'kjop@x.no', profil: { roller: ['innkjoper'], foretak: 'Tømmer AS', kommune: 'Elverum' } },
+    'ent@x.no': { navn: 'ent@x.no', visning: 'Per Entreprenør', epost: 'ent@x.no', profil: { roller: ['entreprenor', 'innkjoper'], foretak: 'Hogst AS' } },
+    'liv@x.no': { navn: 'liv@x.no', visning: 'Liv Skog', epost: 'liv@x.no', profil: { roller: ['skogeier'] } },
+    'off@x.no': { navn: 'off@x.no', visning: 'Kommunen', profil: { roller: ['offentlig'] } },
+    'sperret@x.no': { navn: 'sperret@x.no', visning: 'Sperret', sperret: true, profil: { roller: ['innkjoper'] } } };
+  let tid = 1e12; const n = lagNettverk({ brukere: { hent: (u) => B[String(u).toLowerCase()] || null, alle: () => Object.values(B) }, naa: () => tid });
+  assert.deepEqual(n.statistikk(), { skogeiere: 2, innkjopere: 2, entreprenorer: 1 }, 'sperrede brukere telles ikke');
+  const kat = n.aktorer('ola@x.no'); assert.deepEqual(kat.map((x) => x.navn), ['Kari Kjøper', 'Per Entreprenør'], 'sortert på navn, sperrede er skjult'); assert.ok(!JSON.stringify(kat).includes('epost'), 'katalogen viser ikke e-post');
+  assert.equal(n.aktorer('ola@x.no', { q: 'elverum' }).length, 1); assert.equal(n.aktorer('ola@x.no', { rolle: 'entreprenor' }).length, 1);
+  // Skogeier ber om kobling til innkjøper; bare innkjøperen kan godta.
+  const k1 = n.be('ola@x.no', { til: 'kjop@x.no', rolle: 'innkjoper' }); assert.equal(k1.status, 'foresporsel');
+  assert.equal(n.be('ola@x.no', { til: 'kjop@x.no', rolle: 'innkjoper' }).status, 409, 'ikke to like forespørsler');
+  assert.equal(n.svar('ola@x.no', k1.kobling, 'godta').status, 403, 'avsenderen kan ikke godta selv');
+  assert.equal(n.send('ola@x.no', k1.kobling, 'hei').status, 409, 'chat bare i aktive koblinger');
+  assert.equal(n.oversikt('kjop@x.no').forespørsler, 1);
+  assert.equal(n.svar('kjop@x.no', k1.kobling, 'godta').status, 'aktiv');
+  // Ugyldige koblinger
+  assert.equal(n.be('ola@x.no', { til: 'liv@x.no', rolle: 'innkjoper' }).status, 400, 'skogeier til skogeier');
+  assert.equal(n.be('ola@x.no', { til: 'kjop@x.no', rolle: 'entreprenor' }).status, 400, 'innkjøperen er ikke entreprenør');
+  assert.equal(n.be('ola@x.no', { til: 'ukjent@x.no', rolle: 'innkjoper' }).status, 404); assert.equal(n.be('ola@x.no', { til: 'ola@x.no', rolle: 'innkjoper' }).status, 400);
+  // Entreprenør inviterer skogeier med e-post; skogeieren ber om det samme → godtas automatisk.
+  const k2 = n.be('ent@x.no', { til: 'Liv@X.no', rolle: 'entreprenor' }); assert.equal(k2.status, 'foresporsel');
+  assert.equal(n.be('liv@x.no', { til: 'ent@x.no', rolle: 'entreprenor' }).status, 'aktiv');
+  assert.equal(n.be('off@x.no', { til: 'liv@x.no', rolle: 'innkjoper' }).status, 400, 'offentlig kan ikke koble seg som innkjøper');
+  // Chat og uleste
+  tid += 1000; assert.ok(n.send('ola@x.no', k1.kobling, '  Hei, har du pris på gran?  ').ok); tid += 1000; n.send('ola@x.no', k1.kobling, 'Ca. 500 m³');
+  let o = n.oversikt('kjop@x.no'); assert.equal(o.ulest, 2); assert.equal(o.koblinger[0].siste.tekst, 'Ca. 500 m³'); assert.equal(o.koblinger[0].motpart.navn, 'Ola Skog');
+  const m = n.meldinger('kjop@x.no', k1.kobling); assert.equal(m.meldinger.length, 2); assert.equal(m.meldinger[0].tekst, 'Hei, har du pris på gran?'); assert.ok(!m.meldinger[0].fraMeg);
+  assert.equal(n.oversikt('kjop@x.no').ulest, 0, 'lest etter henting'); assert.ok(n.meldinger('ola@x.no', k1.kobling).meldinger.every((x) => x.lest), 'avsender ser «lest»');
+  assert.equal(n.meldinger('ola@x.no', k1.kobling, { etter: m.meldinger[0].tid }).meldinger.length, 1, 'bare nye meldinger');
+  assert.equal(n.meldinger('liv@x.no', k1.kobling).status, 404, 'andre har ikke tilgang'); assert.equal(n.send('ola@x.no', k1.kobling, '   ').status, 400);
+  assert.equal(n.send('ola@x.no', k1.kobling, 'x'.repeat(5000)).melding.tekst.length, 2000);
+  for (let i = 0; i < 40; i++) n.send('liv@x.no', k2.kobling, `m${i}`); assert.equal(n.send('liv@x.no', k2.kobling, 'for mye').status, 429, 'spamgrense');
+  // Avslutt og slett
+  assert.equal(n.svar('kjop@x.no', k1.kobling, 'avslutt').status, 'avsluttet'); assert.equal(n.send('ola@x.no', k1.kobling, 'hei').status, 409);
+  assert.equal(n.aktorer('ola@x.no').find((x) => x.bruker === 'kjop@x.no').kobling, null, 'kan be om ny kobling etter avslutning');
+  n.slettBruker('liv@x.no'); assert.equal(n.oversikt('ent@x.no').koblinger.length, 0);
+  // HTTP
+  const kjor = (metode, url, bruker, kropp) => new Promise((ok) => { const h = {}; const req = { method: metode, url, headers: {}, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(JSON.stringify(kropp))); f(); }, 0); }, destroy() {} }; const res = { writeHead(st) { this.s = st; }, end(b) { ok({ status: this.s, kropp: JSON.parse(b) }); } }; nettverkApi(n, { bruker: () => bruker }, req, res, new URL(url, 'http://x').pathname); });
+  assert.equal((await kjor('GET', '/api/nettverk', null)).status, 401);
+  assert.equal((await kjor('GET', '/api/nettverk', 'ola@x.no')).kropp.statistikk.innkjopere, 2);
+  const ny = await kjor('POST', '/api/nettverk/koblinger', 'ola@x.no', { til: 'ent@x.no', rolle: 'entreprenor' }); assert.equal(ny.kropp.status, 'foresporsel');
+  assert.equal((await kjor('PUT', `/api/nettverk/koblinger/${ny.kropp.kobling}`, 'ent@x.no', { handling: 'godta' })).kropp.status, 'aktiv');
+  assert.equal((await kjor('POST', `/api/nettverk/koblinger/${ny.kropp.kobling}/meldinger`, 'ent@x.no', { tekst: 'Hei Ola!' })).status, 200);
+  assert.equal((await kjor('GET', `/api/nettverk/koblinger/${ny.kropp.kobling}/meldinger`, 'ola@x.no')).kropp.meldinger[0].tekst, 'Hei Ola!');
+  assert.equal((await kjor('GET', '/api/nettverk/aktorer?q=hogst', 'ola@x.no')).kropp.aktorer.length, 1);
+});
+
 test('Versjonslogg: følger versjonsnummeret, er sortert, «nytt siden sist» og CHANGELOG.md er oppdatert', () => {
   assert.equal(LOGG.ENDRINGER[0].versjon, VERSJON, 'første oppføring er gjeldende versjon');
   for (let i = 1; i < LOGG.ENDRINGER.length; i++) { const a = LOGG.ENDRINGER[i - 1]; const b = LOGG.ENDRINGER[i]; assert.ok(LOGG.nyere(a.versjon, b.versjon), `${a.versjon} før ${b.versjon}`); assert.ok(a.dato >= b.dato, `dato ${a.dato} ≥ ${b.dato}`); }

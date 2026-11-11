@@ -1288,3 +1288,30 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .maal-tips { background: rgba(17,17,17,.85); color: #fff; border: 0; font: 600 12px/1.3 var(--font-mono, monospace); box-shadow: none; } .maal-tips::before { display: none; } .maal-tips small { opacity: .8; }
 .leaflet-container.maaler { cursor: crosshair; }
 @media (max-width: 760px) { .maale-panel { top: 158px; left: 58px; right: 8px; width: auto; max-height: 40vh; padding: 6px 8px; font-size: 12.5px; } .maal-taster, .maal-hjelp { display: none; } .maal-topp { margin-bottom: 4px; } .maal-modus button { padding: 4px 2px; font-size: 12px; } .maal-stor { padding: 5px 8px; margin: 4px 0; } .maal-stor b { font-size: 16px; } .maal-stor span { font-size: 11px; } .maal-knapper { margin-top: 4px; } }
+
+/* Nettverk og chat (nettverk-ui.js) */
+.rail-merke { position: absolute; top: 4px; right: 10px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: #d03b3b; color: #fff; font: 700 10px/16px var(--font-body, system-ui); font-style: normal; text-align: center; }
+.nv-stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 10px; }
+.nv-stat div { display: grid; justify-items: center; padding: 10px 6px; border-radius: 12px; background: var(--surface-2); } .nv-stat span { font-size: 20px; } .nv-stat b { font-size: 22px; line-height: 1.1; } .nv-stat small { color: var(--text-2); font-size: 12px; }
+.nv-del { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 6px; } .nv-del h3 { margin: 8px 0 2px; font-size: 16px; }
+.nv-person { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 10px; border: 1px solid var(--border); border-radius: 12px; margin: 6px 0; background: var(--surface); }
+.nv-person.ulest { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+.nv-avatar { width: 36px; height: 36px; border-radius: 99px; background: var(--accent); color: #fff; display: grid; place-items: center; font: 700 13px var(--font-body, system-ui); flex: none; }
+.nv-hoved { display: grid; gap: 1px; min-width: 0; } .nv-hoved b { font-size: 14px; } .nv-hoved .hint { font-size: 12px; }
+.nv-siste { font-size: 12.5px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nv-knapper { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.nv-ulest { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: #d03b3b; color: #fff; font: 700 11px/20px var(--font-body, system-ui); text-align: center; }
+.nv-merke { font: 600 11px var(--font-mono, monospace); color: var(--accent); }
+.nv-foresporsler { border: 1px solid color-mix(in srgb, #e07b00 40%, var(--border)); border-radius: 12px; padding: 4px 10px 8px; margin: 8px 0; background: color-mix(in srgb, #e07b00 5%, var(--surface)); }
+.nv-sok { display: flex; gap: 6px; flex-wrap: wrap; } .nv-sok input { flex: 1; min-width: 160px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; } .nv-sok select { padding: 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; }
+.nv-chat { display: flex; flex-direction: column; height: calc(100vh - 170px); min-height: 380px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.nv-chat-topp { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border); } .nv-chat-topp .nv-hoved { flex: 1; }
+.nv-meny { position: relative; } .nv-meny summary { list-style: none; cursor: pointer; padding: 4px 10px; border-radius: 8px; font-size: 18px; } .nv-meny summary::-webkit-details-marker { display: none; } .nv-meny[open] .knapp { position: absolute; right: 0; top: 34px; white-space: nowrap; z-index: 5; }
+.nv-meldinger { flex: 1; overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--surface-2); }
+.nv-dag { align-self: center; font-size: 11.5px; color: var(--text-2); padding: 2px 10px; border-radius: 99px; background: var(--surface); margin: 6px 0; }
+.nv-boble { max-width: 80%; align-self: flex-start; display: grid; gap: 2px; padding: 8px 11px; border-radius: 14px 14px 14px 4px; background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.06); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.nv-boble.meg { align-self: flex-end; border-radius: 14px 14px 4px 14px; background: var(--accent); color: #fff; } .nv-boble small { font-size: 10.5px; opacity: .7; justify-self: end; }
+.nv-tom { align-self: center; margin: auto; }
+.nv-skriv { display: flex; gap: 8px; padding: 8px; border-top: 1px solid var(--border); background: var(--surface); } .nv-skriv textarea { flex: 1; resize: none; padding: 9px 12px; border-radius: 18px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; max-height: 140px; } .nv-skriv .knapp { border-radius: 99px; width: 42px; height: 42px; padding: 0; justify-content: center; }
+.velkomst-nettverk .knapp { margin-left: 4px; }
+@media (max-width: 760px) { .nv-chat { height: calc(100dvh - 260px); } }
