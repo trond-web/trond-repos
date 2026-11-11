@@ -3387,6 +3387,10 @@ test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og s
   const h = PV.html(); for (const b of PV.BEHANDLINGER) assert.ok(h.includes(`id="pv-${b.id}"`)); for (const t of PV.TREDJEPARTER) assert.ok(h.includes(t.navn.replace(/&/g, '&amp;')));
   assert.match(les(new URL('../logginn.html', import.meta.url), 'utf8'), /personvern\.html[\s\S]*name="vilkar"|name="vilkar"[\s\S]*personvern\.html/);
   assert.match(les(new URL('../js/innlogging.js', import.meta.url), 'utf8'), /\/api\/samtykke/);
+  // DPIA-en følger erklæringen: samme versjon, og alle behandlingene er vurdert.
+  const dpia = les(new URL('../docs/DPIA.md', import.meta.url), 'utf8');
+  assert.match(dpia, new RegExp(`erklæring versjon: ${PV.VILKAR.versjon.replace('.', '\\.')}\\b`), `docs/DPIA.md bygger på en eldre versjon av erklæringen – oppdater DPIA-en til versjon ${PV.VILKAR.versjon}`);
+  for (const b of PV.BEHANDLINGER) assert.ok(dpia.includes(`(\`${b.id}\`)`), `docs/DPIA.md mangler behandlingen «${b.navn}» (${b.id}) i kapittel 2`);
 });
 
 test('Personvern: godkjenning ved registrering og innlogging, innsyn, statistikk av og sletting av egen konto', async () => {

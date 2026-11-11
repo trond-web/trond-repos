@@ -630,6 +630,8 @@ Behandlingsgrunnlaget er i hovedsak **avtale** (art. 6 nr. 1 b), ikke samtykke. 
 - Testene feiler hvis en `/api`-sti på serveren ikke tilhører en behandling i erklæringen.
 - Testene feiler også hvis teksten endres uten at versjonen økes (sjekksum per versjon i `tests/run.mjs`).
 
+**DPIA:** `docs/DPIA.md` vurderer om det trengs en vurdering av personvernkonsekvenser. Den trolig ikke påkrevd i dag, men gjøres frivillig. Dokumentet inneholder beskrivelse, nødvendighet og proporsjonalitet, risikovurdering per behandling (R1–R13), handlingsplan (T1–T10) og endringer som gjør den påkrevd. Testene sjekker at den følger versjonen av erklæringen og har med alle behandlingene.
+
 **Må fylles ut av eier:** behandlingsansvarlig (`ANSVARLIG` i `js/personvern.js`: navn, organisasjonsnummer og e-post for personvern).
 
 ## Nettverk og chat (💬 Nettverk, `nettverk.js` og `js/nettverk-ui.js`)
