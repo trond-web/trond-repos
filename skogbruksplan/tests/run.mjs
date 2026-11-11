@@ -3365,6 +3365,7 @@ test('Treslag: fordeling med kilde, volum per treslag, registrering og treantall
 // VILKAR.versjon økes og en ny linje legges til her. Gamle linjer blir stående som historikk.
 const PERSONVERN_SJEKKSUM = {
   '1.0': '16a230b34f20c608',
+  '1.1': 'e0995a4ed43e36bc', // behandlingsansvarlig og kontakt fylt ut
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
@@ -3400,6 +3401,8 @@ test('Personvern: godkjenning ved registrering og innlogging, innsyn, statistikk
   assert.equal(inn.registrer('1', { bruker: 'ola@x.no', passord: 'granskog-1', roller: ['skogeier'] }).status, 400, 'må godta vilkårene');
   assert.equal(inn.registrer('1', { bruker: 'ola@x.no', passord: 'granskog-1', roller: ['skogeier'], vilkar: '0.1' }).status, 400, 'må godta gjeldende versjon');
   assert.ok(inn.registrer('1', { bruker: 'ola@x.no', passord: 'granskog-1', roller: ['skogeier'], vilkar: VILKAR.versjon }).ok);
+  assert.ok(inn.registrer('1', { bruker: 'eldre.side@x.no', passord: 'granskog-1', roller: ['skogeier'], vilkar: VILKAR.kreverGodkjenning }).ok, 'eldre side med versjon ≥ kreverGodkjenning kan registrere');
+  assert.equal(inn.registrer('1', { bruker: 'fram@x.no', passord: 'granskog-1', roller: ['skogeier'], vilkar: '99.0' }).status, 400, 'ukjent framtidig versjon');
   const ola = inn.lager.hent('ola@x.no'); assert.equal(ola.vilkar.versjon, VILKAR.versjon); assert.equal(ola.vilkar.tid, tid); assert.equal(ola.vilkarLogg.length, 1); assert.equal(ola.vilkarLogg[0].kilde, 'registrering');
   assert.deepEqual(inn.meg('ola@x.no').vilkar, { godtatt: VILKAR.versjon, tid, gjeldende: VILKAR.versjon, kreves: false });
   // Eldre bruker uten godkjenning (eller med eldre versjon enn kreverGodkjenning) må godta ved innlogging.

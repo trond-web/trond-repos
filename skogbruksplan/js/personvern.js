@@ -9,10 +9,10 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.0', dato: '2026-11-11', kreverGodkjenning: '1.0' };
+export const VILKAR = { versjon: '1.1', dato: '2026-11-11', kreverGodkjenning: '1.0' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
-export const ANSVARLIG = { navn: 'SkogIQ.ai', orgnr: '', epost: '', adresse: '' };
+export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
 
 // Behandlingsgrunnlag etter personvernforordningen (GDPR) artikkel 6 nr. 1.
 export const GRUNNLAG = {

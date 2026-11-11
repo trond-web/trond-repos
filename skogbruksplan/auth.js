@@ -35,6 +35,9 @@ export const BRUKERROLLER = { skogeier: 'Skogeier', entreprenor: 'Entreprenør',
 export const rensRoller = (r) => [...new Set((Array.isArray(r) ? r : r == null ? [] : [r]).map((x) => String(x || '').trim().toLowerCase()).filter((x) => BRUKERROLLER[x]))];
 // Versjoner som «1.10» sammenlignes tall for tall. Brukeren må godta på nytt når godtatt versjon er eldre enn kreverGodkjenning.
 export const sammenlignVersjon = (a, b) => { const x = String(a || '0').split('.').map(Number); const y = String(b || '0').split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return Math.sign(d); } return 0; };
+// En godkjent versjon er gyldig fra og med kreverGodkjenning til og med gjeldende versjon (små endringer krever ikke ny
+// godkjenning, og en nettleser med eldre side kan fortsatt registrere seg).
+export const gyldigVilkarVersjon = (v) => typeof v === 'string' && sammenlignVersjon(v, VILKAR.kreverGodkjenning) >= 0 && sammenlignVersjon(v, VILKAR.versjon) <= 0;
 export const maaGodta = (b) => !!b && (!b.vilkar?.versjon || sammenlignVersjon(b.vilkar.versjon, VILKAR.kreverGodkjenning) < 0);
 const dagNokkel = (t) => new Date(t).toISOString().slice(0, 10);
 const tekst = (v, n) => String(v ?? '').trim().slice(0, n);
@@ -132,9 +135,9 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       // Administratornavnene (APP_ADMIN) er reservert: ellers kunne hvem som helst registrere dem først og bli admin.
       if (admins.has(u)) return { feil: 'Brukernavnet er reservert', status: 403 };
       const rr = rensRoller(roller); if (!rr.length) return { feil: 'Velg minst én rolle (skogeier, entreprenør, innkjøper eller offentlig)', status: 400 };
-      if (vilkar !== VILKAR.versjon) return { feil: 'Du må godta brukervilkårene og personvernerklæringen for å registrere deg', status: 400 };
+      if (!gyldigVilkarVersjon(vilkar)) return { feil: 'Du må godta brukervilkårene og personvernerklæringen for å registrere deg', status: 400 };
       l.push(t);
-      const ny = store.lagre({ navn: u, visning: tekst(navn, 80) || u.split('@')[0], epost: u, ...hashPassord(p), pv: 0, rolle: 'bruker', sperret: false, opprettet: t, sistInnlogget: t, innlogginger: 1, profil: { roller: rr }, ...godkjenning({}, VILKAR.versjon, 'registrering') });
+      const ny = store.lagre({ navn: u, visning: tekst(navn, 80) || u.split('@')[0], epost: u, ...hashPassord(p), pv: 0, rolle: 'bruker', sperret: false, opprettet: t, sistInnlogget: t, innlogginger: 1, profil: { roller: rr }, ...godkjenning({}, vilkar, 'registrering') });
       return { ok: true, bruker: ny.navn };
     },
     // Bytt passord og/eller e-post (e-posten brukes til «glemt passord»). Krever nåværende passord.
@@ -182,7 +185,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
     // Godta gjeldende vilkår (ved neste innlogging etter en vesentlig endring, eller for eldre brukere).
     godtaVilkar(u, versjon) {
       const b = store?.hent(u); if (!b) return { feil: 'Krever registrering', status: 400 };
-      if (versjon !== VILKAR.versjon) return { feil: 'Vilkårene er oppdatert – last siden på nytt', status: 409 };
+      if (!gyldigVilkarVersjon(versjon)) return { feil: 'Vilkårene er oppdatert – last siden på nytt', status: 409 };
       store.lagre({ ...b, ...godkjenning(b, versjon, 'innlogging') }); return { ok: true, vilkar: offentlig(store.hent(u)).vilkar };
     },
     // Personverninnstillinger: statistikk = false slår av bruksstatistikken for brukeren (protest, GDPR art. 21).
