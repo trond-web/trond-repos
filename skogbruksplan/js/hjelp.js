@@ -173,7 +173,8 @@ export const KAPITLER = [
   },
   {
     id: 'data', ikon: '💾', tittel: 'Data, lagring og deling',
-    tekst: `<ul><li><b>Lagring:</b> alt lagres automatisk på enheten, og i skyen når du er logget inn (Min profil).</li>
+    tekst: `<h4>Roller</h4><p>Hver bruker har én eller flere roller: <b>Skogeier</b>, <b>Entreprenør</b>, <b>Innkjøper</b> eller <b>Offentlig</b>. Rollen velges når du registrerer deg, og kan endres i <b>Min profil</b> (navnet ditt nederst i menyen). Har du ikke valgt rolle, blir du bedt om det ved neste innlogging.</p>
+      <ul><li><b>Lagring:</b> alt lagres automatisk på enheten, og i skyen når du er logget inn (Min profil).</li>
       <li><b>Data</b>-fanen viser datagrunnlaget (kilder og hvor gamle de er), import av hogstmaskindata og eksport.</li>
       <li><b>Sikkerhetskopi:</b> søk «sikkerhetskopi» i kommandolinjen for å laste ned hele planen.</li>
       <li><b>Spør AI</b> svarer på spørsmål om planen din.</li></ul>`,

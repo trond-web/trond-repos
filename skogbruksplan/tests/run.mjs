@@ -2617,11 +2617,18 @@ test('Registrering: e-post som brukernavn, hashet passord, innlogging, konto, sp
   assert.match(inn.registrer('1', { bruker: 'kari', passord: 'langtpassord' }).feil, /e-postadressen/);
   assert.equal(inn.registrer('1', { bruker: 'kari@example.no', passord: 'kort' }).status, 400);
   assert.equal(inn.registrer('1', { bruker: 'kari@example.no', passord: 'kari2026!!' }).status, 400, 'passord med e-postnavnet');
-  assert.ok(inn.registrer('1', { bruker: 'Kari@Example.no', passord: 'skogen-2026', navn: 'Kari Skog' }).ok);
+  assert.equal(inn.registrer('1', { bruker: 'Kari@Example.no', passord: 'skogen-2026', navn: 'Kari Skog' }).status, 400, 'rolle er obligatorisk');
+  assert.equal(inn.registrer('1', { bruker: 'Kari@Example.no', passord: 'skogen-2026', roller: ['tulling'] }).status, 400, 'ukjent rolle');
+  assert.ok(inn.registrer('1', { bruker: 'Kari@Example.no', passord: 'skogen-2026', navn: 'Kari Skog', roller: ['skogeier', 'Innkjoper', 'skogeier'] }).ok);
+  assert.deepEqual(inn.lager.hent('kari@example.no').profil.roller, ['skogeier', 'innkjoper'], 'roller renses og lagres i profilen');
+  assert.deepEqual(inn.meg('kari@example.no').roller, ['skogeier', 'innkjoper']);
+  assert.equal(inn.lagreProfil('kari@example.no', { navn: 'Kari Skog', roller: [] }).status, 400, 'kan ikke fjerne alle roller');
+  assert.deepEqual(inn.lagreProfil('kari@example.no', { navn: 'Kari Skog', roller: ['entreprenor', 'offentlig'] }).profil.roller, ['entreprenor', 'offentlig']);
+  assert.deepEqual(inn.lagreProfil('kari@example.no', { navn: 'Kari Skog', telefon: '900 00 000' }).profil.roller, ['entreprenor', 'offentlig'], 'andre profilendringer beholder rollene');
   assert.equal(inn.registrer('2', { bruker: 'kari@example.no', passord: 'annet-passord' }).status, 409, 'opptatt');
   assert.equal(inn.registrer('1', { bruker: 'sjef@example.no', passord: 'noe-passord-1' }).status, 403, 'administratornavn er reservert');
   const kari = inn.lager.hent('kari@example.no'); assert.equal(kari.visning, 'Kari Skog'); assert.equal(kari.epost, 'kari@example.no'); assert.ok(kari.hash && kari.salt && !JSON.stringify(kari).includes('skogen-2026'));
-  assert.equal(inn.lager.hent(inn.registrer('3', { bruker: 'ola.nordmann@example.no', passord: 'granskog-11' }).bruker).visning, 'ola.nordmann');
+  assert.equal(inn.lager.hent(inn.registrer('3', { bruker: 'ola.nordmann@example.no', passord: 'granskog-11', roller: ['skogeier'] }).bruker).visning, 'ola.nordmann');
   // Innlogging med e-post (store/små bokstaver) og med eldre brukernavn
   assert.ok(inn.sjekk('1', 'KARI@example.no', 'skogen-2026').ok); assert.ok(!inn.sjekk('1', 'kari@example.no', 'feil').ok);
   assert.ok(inn.erAdmin('trond') && !inn.erAdmin('kari@example.no')); assert.ok(inn.sjekk('1', 'trond', 'skog-og-mark').ok);
@@ -2649,15 +2656,15 @@ test('Registrering: e-post som brukernavn, hashet passord, innlogging, konto, sp
   inn.lager.flush(); assert.ok(JSON.parse(les(fil, 'utf8')).brukere['kari@example.no']);
   const inn2 = lagInnlogging({ registrering: true, fil, admin: 'trond', naa: () => tid }); assert.ok(inn2.sjekk('1', 'kari@example.no', 'nytt-passord1').ok); assert.equal(inn2.lesToken(inn.lagToken('trond')).u, 'trond');
   // Grenser og kode
-  for (let i = 0; i < 5; i++) inn.registrer('7.7.7.7', { bruker: `spam${i}@example.no`, passord: 'passord-123' });
-  assert.equal(inn.registrer('7.7.7.7', { bruker: 'spam9@example.no', passord: 'passord-123' }).status, 429);
+  for (let i = 0; i < 5; i++) inn.registrer('7.7.7.7', { bruker: `spam${i}@example.no`, passord: 'passord-123', roller: ['skogeier'] });
+  assert.equal(inn.registrer('7.7.7.7', { bruker: 'spam9@example.no', passord: 'passord-123', roller: ['skogeier'] }).status, 429);
   const medKode = lagInnlogging({ registrering: true, kode: 'SKOG2026', naa: () => tid }); assert.ok(medKode.kodeKreves && !medKode.permanent);
-  assert.equal(medKode.registrer('1', { bruker: 'ola@example.no', passord: 'passord-123' }).status, 403); assert.ok(medKode.registrer('1', { bruker: 'ola@example.no', passord: 'passord-123', kode: 'SKOG2026' }).ok);
+  assert.equal(medKode.registrer('1', { bruker: 'ola@example.no', passord: 'passord-123' }).status, 403); assert.ok(medKode.registrer('1', { bruker: 'ola@example.no', passord: 'passord-123', kode: 'SKOG2026', roller: ['offentlig'] }).ok);
   // HTTP
   const res = () => { const r = { status: 0, hoder: {}, kropp: '', writeHead(st, hd = {}) { r.status = st; r.hoder = hd; }, end(b = '') { r.kropp = String(b); r.ferdig?.(); } }; return r; };
   const req = (metode, url, { hoder = {}, kropp = null } = {}) => { const h = {}; return { method: metode, url, headers: { host: 'skogiq.test', ...hoder }, socket: { remoteAddress: '3.3.3.3' }, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(kropp)); f(); }, 0); }, destroy() {} }; };
   const api = (q, i = inn) => new Promise((ok) => { const r = res(); r.ferdig = () => ok(r); if (!innloggingApi(i, q, r, new URL(q.url, 'http://x').pathname)) ok(null); });
-  const ny = await api(req('POST', '/api/registrer', { kropp: JSON.stringify({ bruker: 'per@example.no', passord: 'granskog-77', navn: 'Per' }) })); assert.equal(ny.status, 201);
+  const ny = await api(req('POST', '/api/registrer', { kropp: JSON.stringify({ bruker: 'per@example.no', passord: 'granskog-77', navn: 'Per', roller: ['entreprenor'] }) })); assert.equal(ny.status, 201);
   const { token, admin } = JSON.parse(ny.kropp); assert.ok(token); assert.equal(admin, false);
   const meg = JSON.parse((await api(req('GET', '/api/meg', { hoder: { authorization: `Bearer ${token}` } }))).kropp); assert.equal(meg.navn, 'Per'); assert.equal(meg.epost, 'per@example.no'); assert.equal(meg.epost === 'per@example.no' && meg.registrering, true);
   assert.equal((await api(req('POST', '/api/bruk', { hoder: { authorization: `Bearer ${token}` }, kropp: JSON.stringify({ type: 'fane', detalj: 'karbon' }) }))).status, 200);
@@ -2680,7 +2687,7 @@ test('Registrering: e-post som brukernavn, hashet passord, innlogging, konto, sp
   assert.equal((await api(req('POST', '/api/tilbakestill', { kropp: JSON.stringify({ token: rt, passord: 'enda-et-pw-1' }) }))).status, 400, 'lenken kan brukes én gang');
   // Glemt passord med e-posttjeneste: lenke sendes til e-posten, gyldig én time
   const sendt = []; const medEpost = lagInnlogging({ registrering: true, naa: () => tid, sendEpost: async (m) => { sendt.push(m); } });
-  medEpost.registrer('1', { bruker: 'lise@example.no', passord: 'bjorkeskog-1', navn: 'Lise' });
+  medEpost.registrer('1', { bruker: 'lise@example.no', passord: 'bjorkeskog-1', navn: 'Lise', roller: ['skogeier'] });
   const g3 = JSON.parse((await api(req('POST', '/api/glemt', { kropp: JSON.stringify({ epost: 'LISE@example.no' }) }), medEpost)).kropp); assert.deepEqual(g3, { ok: true, epost: true });
   assert.equal(sendt.length, 1); assert.equal(sendt[0].til, 'lise@example.no'); assert.match(sendt[0].tekst, /Hei Lise![\s\S]*logginn\.html#tilbakestill=/);
   await api(req('POST', '/api/glemt', { kropp: JSON.stringify({ epost: 'ukjent@example.no' }) }), medEpost); assert.equal(sendt.length, 1, 'ingen e-post til ukjente');
@@ -2896,8 +2903,8 @@ test('Skylagring: synkronisering mellom to enheter – opplasting, nye planer, f
 test('Profil på serveren: felt, validering og navn', async () => {
   const { lagInnlogging } = await import('../auth.js');
   const inn = lagInnlogging({ registrering: true });
-  const r = inn.registrer('1.1.1.1', { bruker: 'per@gard.no', passord: 'langtpassord1', navn: 'Per' }); assert.ok(r.ok);
-  assert.deepEqual(inn.hentProfil('per@gard.no'), { navn: 'Per', epost: 'per@gard.no' });
+  const r = inn.registrer('1.1.1.1', { bruker: 'per@gard.no', passord: 'langtpassord1', navn: 'Per', roller: ['skogeier'] }); assert.ok(r.ok);
+  assert.deepEqual(inn.hentProfil('per@gard.no'), { navn: 'Per', epost: 'per@gard.no', roller: ['skogeier'] });
   assert.equal(inn.lagreProfil('per@gard.no', { navn: '' }).status, 400);
   assert.equal(inn.lagreProfil('per@gard.no', { navn: 'Per', rolle: 'konge' }).status, 400);
   assert.equal(inn.lagreProfil('per@gard.no', { navn: 'Per', postnr: '12' }).status, 400);
@@ -2906,7 +2913,7 @@ test('Profil på serveren: felt, validering og navn', async () => {
   assert.ok(ok.ok); assert.equal(ok.profil.navn, 'Per Hansen'); assert.equal(ok.profil.om.length, 600); assert.equal(ok.profil.ukjent, undefined);
   assert.equal(inn.meg('per@gard.no').navn, 'Per Hansen'); assert.equal(inn.meg('per@gard.no').profil.kommune, 'Ullensaker');
   const sett = []; const inn2 = lagInnlogging({ registrering: true, bruker: 'admin', passord: 'adminpassord9', ekstraBruker: (u) => ({ sky: { antall: u.length } }), vedSlett: (u) => sett.push(u) });
-  inn2.registrer('1.1.1.2', { bruker: 'ola@x.no', passord: 'langtpassord2' });
+  inn2.registrer('1.1.1.2', { bruker: 'ola@x.no', passord: 'langtpassord2', roller: ['skogeier'] });
   assert.equal(inn2.oversikt().brukere.find((b) => b.bruker === 'ola@x.no').sky.antall, 8);
   inn2.endreBruker('admin', 'ola@x.no', 'slett'); assert.deepEqual(sett, ['ola@x.no'], 'skydata slettes med brukeren');
   // AI-konteksten tar med profilen

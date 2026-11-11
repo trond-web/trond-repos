@@ -29,6 +29,15 @@
   .ok { color: var(--accent); font-size: 14px; font-weight: 600; margin: 6px 0 0; }
   .lenker { margin: 8px 0 0; text-align: center; font-size: 14px; } .lenker a { color: var(--accent); }
   footer { margin-top: 18px; font-size: 12px; color: var(--text-2); text-align: center; }
+  .roller { border: 0; padding: 0; margin: 0 0 12px; }
+  .roller legend { font-size: 14px; font-weight: 600; margin-bottom: 6px; } .roller legend small { font-weight: 400; color: var(--text-2); }
+  .roller > small { display: block; font-size: 12px; color: var(--text-2); margin-top: 6px; }
+  .rolle-valg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .rolle-valg label { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 12px; cursor: pointer; font-weight: 400; background: var(--bg); }
+  .rolle-valg label:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+  .rolle-valg input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); flex: none; }
+  .rolle-valg span { display: grid; gap: 1px; font-size: 14px; } .rolle-valg small { font-size: 11.5px; color: var(--text-2); font-weight: 400; }
+  .roller.mangler .rolle-valg label { border-color: var(--danger); }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -72,6 +81,16 @@
     <label>E-post <small>brukes som brukernavn</small><input name="bruker" type="email" autocomplete="username email" autocapitalize="none" spellcheck="false" maxlength="120" required></label>
     <label>Passord <small>minst 8 tegn</small><input name="passord" type="password" autocomplete="new-password" minlength="8" required></label>
     <label>Gjenta passordet <input name="passord2" type="password" autocomplete="new-password" minlength="8" required></label>
+    <fieldset class="roller" aria-describedby="rolleHjelp">
+      <legend>Hvilken rolle har du? <small>velg én eller flere</small></legend>
+      <div class="rolle-valg">
+        <label><input type="checkbox" name="roller" value="skogeier"><span><b>🌲 Skogeier</b><small>Eier eller forvalter skog</small></span></label>
+        <label><input type="checkbox" name="roller" value="entreprenor"><span><b>🚜 Entreprenør</b><small>Hogst, skogkultur, vei</small></span></label>
+        <label><input type="checkbox" name="roller" value="innkjoper"><span><b>🪵 Innkjøper</b><small>Kjøper tømmer</small></span></label>
+        <label><input type="checkbox" name="roller" value="offentlig"><span><b>🏛 Offentlig</b><small>Kommune, statsforvalter, etat</small></span></label>
+      </div>
+      <small id="rolleHjelp">Rollen tilpasser SkogIQ.ai til deg. Du kan endre den i Min profil.</small>
+    </fieldset>
     <label id="kodeFelt" hidden>Registreringskode <small>fra administrator</small><input name="kode" autocomplete="off"></label>
     <button type="submit">Registrer og logg inn</button>
     <div class="feil" role="alert"></div>
@@ -112,10 +131,13 @@
     } catch { feil.textContent = 'Ingen kontakt med SkogIQ-serveren. Sjekk nettet.'; } finally { knapp.disabled = false; }
   }
   inn.addEventListener('submit', (e) => { e.preventDefault(); send(inn, '/api/logginn', { bruker: inn.bruker.value.trim(), passord: inn.passord.value }); });
+  reg.addEventListener('change', (e) => { if (e.target.name === 'roller') { reg.querySelector('.roller').classList.remove('mangler'); reg.querySelector('.feil').textContent = ''; } });
   reg.addEventListener('submit', (e) => {
     e.preventDefault();
     if (reg.passord.value !== reg.passord2.value) { reg.querySelector('.feil').textContent = 'Passordene er ikke like'; return; }
-    send(reg, '/api/registrer', { navn: reg.navn.value.trim(), bruker: reg.bruker.value.trim().toLowerCase(), passord: reg.passord.value, kode: reg.kode.value.trim() });
+    const roller = [...reg.querySelectorAll('input[name="roller"]:checked')].map((x) => x.value);
+    if (!roller.length) { reg.querySelector('.feil').textContent = 'Velg minst én rolle.'; reg.querySelector('.roller').classList.add('mangler'); reg.querySelector('input[name="roller"]').focus(); return; }
+    send(reg, '/api/registrer', { navn: reg.navn.value.trim(), bruker: reg.bruker.value.trim().toLowerCase(), passord: reg.passord.value, kode: reg.kode.value.trim(), roller });
   });
   glemt.addEventListener('submit', async (e) => {
     e.preventDefault(); const f = glemt.querySelector('.feil'); const ok = glemt.querySelector('.ok'); f.textContent = ''; ok.textContent = ''; const knapp = glemt.querySelector('button'); knapp.disabled = true;

@@ -39,7 +39,7 @@ if (typeof window !== 'undefined' && !window.__skogiqInnlogging && !/logginn\.ht
       const r = await opprinnelig(`${API}/api/meg`, { headers: t ? { Authorization: `Bearer ${t}` } : {}, credentials: 'same-origin', cache: 'no-store' });
       if (r.status === 401) { ls.del(LS_OKT); tilInnlogging(); return; }
       const d = await r.json().catch(() => ({})); if (d.bruker) ls.set(LS_SETT, '1');
-      if (d.aktiv && d.bruker) { meg = d; visBruker(); startBruk(opprinnelig); window.dispatchEvent(new CustomEvent('skogiq-innlogget', { detail: d })); }
+      if (d.aktiv && d.bruker) { meg = d; visBruker(); startBruk(opprinnelig); window.dispatchEvent(new CustomEvent('skogiq-innlogget', { detail: d })); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => sporRoller(), { once: true }); else sporRoller(); }
     } catch {
       // Uten nett: slipp inn en enhet som har vært innlogget før.
       if (erPages && !ls.get(LS_SETT)) { tilInnlogging(); return; }
@@ -74,6 +74,39 @@ function startBruk(f) {
 // Min profil: navn, kontaktinformasjon, rolle og gård/foretak (lagres på serveren, /api/konto/profil), og kontoen:
 // e-post (for «glemt passord») og nytt passord, som krever nåværende passord. Viser også bruken av skylagringen.
 export const ROLLER = { skogeier: 'Skogeier', bonde: 'Bonde / gårdbruker', radgiver: 'Rådgiver / skogbruksleder', entreprenor: 'Entreprenør', annet: 'Annet' };
+// Brukerroller (én eller flere, obligatorisk). Samme nøkler som BRUKERROLLER i auth.js.
+export const BRUKERROLLER = { skogeier: { navn: 'Skogeier', ikon: '🌲', tekst: 'Eier eller forvalter skog' }, entreprenor: { navn: 'Entreprenør', ikon: '🚜', tekst: 'Hogst, skogkultur, vei' }, innkjoper: { navn: 'Innkjøper', ikon: '🪵', tekst: 'Kjøper tømmer' }, offentlig: { navn: 'Offentlig', ikon: '🏛', tekst: 'Kommune, statsforvalter, etat' } };
+// Forslag ut fra den eldre enkeltrollen i profilen.
+const FRA_GAMMEL = { skogeier: 'skogeier', bonde: 'skogeier', entreprenor: 'entreprenor' };
+const rolleValg = (valgt, navn = 'roller') => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${Object.entries(BRUKERROLLER).map(([k, r]) => `<label style="display:flex;gap:8px;align-items:flex-start;padding:9px 10px;border:1.5px solid ${valgt.includes(k) ? '#1f6b4a' : '#cfd6d1'};border-radius:12px;cursor:pointer;background:${valgt.includes(k) ? '#e6f0ea' : '#fff'};font-size:14px" data-rolle-kort><input type="checkbox" name="${navn}" value="${k}" ${valgt.includes(k) ? 'checked' : ''} style="width:18px;height:18px;margin-top:2px;accent-color:#1f6b4a;flex:none"><span style="display:grid;gap:1px"><b>${r.ikon} ${r.navn}</b><small style="color:#555;font-size:11.5px">${r.tekst}</small></span></label>`).join('')}</div>`;
+const merkKort = (d) => d.addEventListener('change', (e) => { const l = e.target.closest('[data-rolle-kort]'); if (!l) return; const p = e.target.checked; l.style.borderColor = p ? '#1f6b4a' : '#cfd6d1'; l.style.background = p ? '#e6f0ea' : '#fff'; });
+// Brukere uten rolle får en enkel dialog ved innlogging: kryss av og lagre (kan ikke lukkes uten å velge).
+export async function sporRoller() {
+  if (typeof document === 'undefined' || !meg?.bruker || !meg.registrering || (meg.roller || []).length || document.querySelector('.rolle-dialog')) return;
+  const f0 = brukFetch || window.fetch.bind(window);
+  const forslag = FRA_GAMMEL[meg.profil?.rolle] ? [FRA_GAMMEL[meg.profil.rolle]] : [];
+  const d = document.createElement('dialog'); d.className = 'rolle-dialog';
+  d.style.cssText = 'border:0;border-radius:18px;padding:0;max-width:460px;width:calc(100% - 24px);font:15px/1.4 system-ui,sans-serif;color:#10241c;background:#fbfcfa;box-shadow:0 20px 60px rgba(0,0,0,.3)';
+  d.innerHTML = `<form method="dialog" style="display:grid;gap:12px;padding:20px">
+    <div><b style="font-size:19px">Hvilken rolle har du?</b><p style="margin:4px 0 0;color:#43544b;font-size:14px">Hei ${rens(String(meg.navn || '').split(' ')[0] || '')}! Vi har lagt til roller i SkogIQ.ai. Velg én eller flere – det tar bare et øyeblikk, og du kan endre det senere i Min profil.</p></div>
+    ${rolleValg(forslag)}
+    <div data-f style="color:#b4302f;min-height:18px;font-size:13px"></div>
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center"><button type="button" data-logg-ut style="padding:9px 12px;border-radius:9px;border:0;background:none;color:#555;text-decoration:underline;cursor:pointer">Logg ut</button><button value="ok" style="padding:11px 18px;border-radius:10px;border:0;background:#1f6b4a;color:#fff;font-weight:700;cursor:pointer">Lagre</button></div></form>`;
+  document.body.appendChild(d); merkKort(d);
+  d.addEventListener('cancel', (e) => e.preventDefault()); // Esc lukker ikke – rollen er obligatorisk
+  d.showModal();
+  d.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault(); const roller = [...d.querySelectorAll('input[name="roller"]:checked')].map((x) => x.value);
+    const vis = (t) => { d.querySelector('[data-f]').textContent = t; };
+    if (!roller.length) { vis('Velg minst én rolle.'); return; }
+    try {
+      const r = await f0(`${API}/api/konto/profil`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...autHode() }, credentials: 'same-origin', body: JSON.stringify({ profil: { navn: meg.navn || meg.bruker, roller } }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok) { vis(j.feil || 'Klarte ikke å lagre'); return; }
+      meg = { ...meg, roller: j.profil?.roller || roller, profil: j.profil || meg.profil }; visBruker(); window.dispatchEvent(new CustomEvent('skogiq-profil', { detail: meg }));
+      d.close(); d.remove();
+    } catch { vis('Ingen kontakt med serveren. Prøv igjen.'); }
+  });
+}
 const rens = (v) => String(v ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 const autHode = () => (gyldigToken() ? { Authorization: `Bearer ${gyldigToken()}` } : {});
 export async function minProfil() {
@@ -92,7 +125,8 @@ export async function minProfil() {
       <legend style="font-weight:700;margin-bottom:6px">Om deg</legend>
       <div style="grid-column:1/-1">${inp('navn', 'Navn', 'text', 'required autocomplete="name"')}</div>
       ${inp('telefon', 'Telefon', 'tel', 'autocomplete="tel"')}
-      <label style="display:grid;gap:3px;font-size:13px">Rolle<select name="rolle" style="${felt}"><option value="">Velg …</option>${Object.entries(ROLLER).map(([k, v]) => `<option value="${k}" ${p.rolle === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+      <div></div>
+      <div style="grid-column:1/-1;display:grid;gap:4px"><span style="font-size:13px">Roller <small style="color:#555">(minst én)</small></span>${rolleValg(p.roller || meg?.roller || [])}</div>
       ${inp('foretak', 'Gård / foretak', 'text', 'autocomplete="organization"')}${inp('orgnr', 'Organisasjonsnummer', 'text', 'inputmode="numeric"')}
       <div style="grid-column:1/-1">${inp('adresse', 'Adresse', 'text', 'autocomplete="street-address"')}</div>
       ${inp('postnr', 'Postnummer', 'text', 'inputmode="numeric" maxlength="4" autocomplete="postal-code"')}${inp('poststed', 'Poststed', 'text', 'autocomplete="address-level2"')}
@@ -109,15 +143,17 @@ export async function minProfil() {
     </details>
     <div data-f style="color:#b4302f;min-height:18px;font-size:13px"></div>
     <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button value="ut" formnovalidate data-logg-ut style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff">Logg ut</button><span style="display:flex;gap:8px"><button value="avbryt" formnovalidate style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff">Avbryt</button><button value="ok" style="padding:9px 14px;border-radius:9px;border:0;background:#1f6b4a;color:#fff;font-weight:700">Lagre</button></span></div></form>`;
-  document.body.appendChild(d); d.showModal();
+  document.body.appendChild(d); merkKort(d); d.showModal();
   d.querySelector('form').addEventListener('submit', async (e) => {
     if (e.submitter?.value !== 'ok') { d.close(); d.remove(); return; }
     e.preventDefault(); const f = e.target; const vis = (t) => { d.querySelector('[data-f]').textContent = t; };
-    const profil = Object.fromEntries(['navn', 'telefon', 'rolle', 'foretak', 'orgnr', 'adresse', 'postnr', 'poststed', 'kommune', 'andelslag', 'om'].map((k) => [k, f[k].value.trim()]));
+    const profil = Object.fromEntries(['navn', 'telefon', 'foretak', 'orgnr', 'adresse', 'postnr', 'poststed', 'kommune', 'andelslag', 'om'].map((k) => [k, f[k].value.trim()]));
+    profil.roller = [...f.querySelectorAll('input[name="roller"]:checked')].map((x) => x.value);
+    if (!profil.roller.length) { vis('Velg minst én rolle.'); return; }
     const post = (sti, metode, kropp) => f0(`${API}${sti}`, { method: metode, headers: { 'Content-Type': 'application/json', ...autHode() }, credentials: 'same-origin', body: JSON.stringify(kropp) }).then(async (r) => ({ ok: r.ok, j: await r.json().catch(() => ({})) }), () => ({ ok: false, j: { feil: 'Ingen kontakt med serveren' } }));
     const pr = await post('/api/konto/profil', 'PUT', { profil });
     if (!pr.ok) { vis(pr.j.feil || 'Klarte ikke å lagre profilen'); return; }
-    meg = { ...meg, navn: pr.j.profil?.navn || profil.navn, profil: pr.j.profil };
+    meg = { ...meg, navn: pr.j.profil?.navn || profil.navn, profil: pr.j.profil, roller: pr.j.profil?.roller || profil.roller };
     const nyEpost = f.e.value.trim(); const endreKonto = f.n.value || nyEpost !== (meg?.epost || '');
     if (endreKonto) {
       if (!f.g.value) { vis('Skriv nåværende passord for å endre e-post eller passord.'); f.querySelector('details').open = true; f.g.focus(); return; }
