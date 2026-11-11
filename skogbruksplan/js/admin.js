@@ -67,7 +67,48 @@ function vis(d) {
       <p class="hint">Bruken telles per bruker og dag: sidevisninger, aktiv tid (minutter med klikk eller tastetrykk) og hvilke moduler som åpnes. Planene til brukerne lagres i skyen per bruker (antall og plass vises over), men innholdet vises ikke her. Sletter du en bruker, slettes også planene i skyen.</p></div>`;
 }
 
-async function last() { try { const d = await hent(); if (d) vis(d); } catch (e) { $('#innhold').innerHTML = `<div class="kort feil">${esc(e.message)}</div>`; } }
+async function last() { try { const d = await hent(); if (d) { vis(d); visBackup(); } } catch (e) { $('#innhold').innerHTML = `<div class="kort feil">${esc(e.message)}</div>`; } }
+
+// Sikkerhetskopi (backup.js): status, ta kopi nå og last ned en lokal kopi.
+let backupData = null;
+async function visBackup(ny = null) {
+  let el = $('#backupKort'); if (!el) { el = document.createElement('div'); el.id = 'backupKort'; el.className = 'kort'; $('#innhold').prepend(el); }
+  try { backupData = ny || await (await fetch(`${API}/api/admin/backup`, { headers: hode(), credentials: 'same-origin', cache: 'no-store' })).json(); } catch { el.innerHTML = '<h2>Sikkerhetskopi</h2><p class="feil">Fikk ikke kontakt med serveren.</p>'; return; }
+  const b = backupData;
+  if (!b.aktiv) { el.innerHTML = '<h2>Sikkerhetskopi</h2><p class="hint">Ikke aktiv – BRUKER_FIL (datamappen) er ikke satt.</p>'; return; }
+  const gammel = !b.siste || Date.now() - b.siste > (b.intervallTimer + 6) * 3600000;
+  const varsler = [
+    b.feil ? `⚠ Siste forsøk feilet: ${esc(b.feil)}` : '',
+    gammel ? '⚠ Ingen sikkerhetskopi det siste døgnet.' : '',
+    !b.kryptert ? '⚠ Kopiene er ikke kryptert. Sett BACKUP_NOKKEL på Railway (og ta vare på nøkkelen utenfor Railway).' : '',
+    !b.s3 ? '⚠ Kopiene ligger bare på Railway-volumet. Sett opp lagring utenfor Railway (BACKUP_S3_*), ellers går de tapt sammen med volumet.' : '',
+    b.s3Feil ? `⚠ Opplasting utenfor Railway: ${esc(b.s3Feil)}` : '',
+  ].filter(Boolean);
+  el.innerHTML = `<h2>Sikkerhetskopi</h2>
+    ${varsler.map((v) => `<div class="varsel">${v}</div>`).join('')}
+    <div class="tall">
+      <div><b>${tid(b.siste)}</b><span>siste kopi</span></div>
+      <div><b>${b.s3 ? tid(b.s3Siste) : '–'}</b><span>siste kopi utenfor Railway</span></div>
+      <div><b>${b.kryptert ? '🔒 Ja' : 'Nei'}</b><span>kryptert (AES-256)</span></div>
+      <div><b>${b.lokale.length}</b><span>kopier på volumet (beholder ${b.beholdLokalt})</span></div>
+    </div>
+    <p style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 6px"><button type="button" data-backup-na>Ta sikkerhetskopi nå</button><span class="hint">Automatisk hver ${b.intervallTimer}. time${b.s3 ? `, og ${b.beholdS3} kopier beholdes utenfor Railway` : ''}.</span></p>
+    ${b.historikk?.length ? `<div class="tabell"><table><thead><tr><th>Tid</th><th class="t">Filer</th><th class="t">Data</th><th class="t">Kopi</th><th>Utenfor Railway</th><th></th></tr></thead><tbody>
+      ${b.historikk.slice(0, 7).map((h) => `<tr><td>${new Date(h.tid).toLocaleString('nb-NO')}${h.kilde === 'manuell' ? ' <span class="pille">manuell</span>' : ''}</td><td class="t">${tall(h.filer)}</td><td class="t">${mb(h.bytes)}</td><td class="t">${mb(h.storrelse)}</td><td>${{ ok: '✓ lastet opp', feil: '⚠ feilet', ukryptert: 'ikke sendt (ukryptert)' }[h.s3] || '–'}</td><td>${b.lokale.some((l) => l.navn === h.navn) ? `<button type="button" data-backup-fil="${esc(h.navn)}">Last ned</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : '<p class="hint">Ingen kopier ennå.</p>'}
+    <p class="hint">Kopien inneholder alt på volumet: brukere, skylagrede planer, nettverk og chat, tilbud, tømmerdeling, PC↔mobil-synk og John Deere-koblinger. Gjenopprett med <code>verktoy/gjenopprett-backup.mjs</code> (se README).</p>`;
+}
+document.addEventListener('click', async (e) => {
+  if (e.target.closest('[data-backup-na]')) {
+    const k = e.target.closest('[data-backup-na]'); k.disabled = true; k.textContent = 'Tar kopi …';
+    try { const r = await fetch(`${API}/api/admin/backup`, { method: 'POST', headers: hode(), credentials: 'same-origin' }); const j = await r.json(); if (!r.ok) alert(j.feil || 'Sikkerhetskopien feilet'); visBackup(j.status); } catch { alert('Ingen kontakt med serveren'); visBackup(); }
+  }
+  const f = e.target.closest('[data-backup-fil]');
+  if (f) {
+    const r = await fetch(`${API}/api/admin/backup/fil?navn=${encodeURIComponent(f.dataset.backupFil)}`, { headers: hode(), credentials: 'same-origin' });
+    if (!r.ok) { alert('Klarte ikke å hente kopien'); return; }
+    const url = URL.createObjectURL(await r.blob()); const a = document.createElement('a'); a.href = url; a.download = f.dataset.backupFil; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+});
 $('#dager').addEventListener('change', last);
 document.addEventListener('change', async (e) => {
   const s = e.target.closest('[data-bruker]'); if (!s || !s.value) return;

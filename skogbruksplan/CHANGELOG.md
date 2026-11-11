@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.73.0 – Sikkerhetskopi (2026-11-11)
+
+*Nytt.* Alle data på serveren kopieres kryptert hver natt, på serveren og utenfor Railway i EU. Tilbudsforespørsler, synk mellom PC og mobil, droneoppdrag og John Deere-koblinger lagres nå permanent og forsvinner ikke lenger ved oppdateringer.
+
 ## 1.72.1 – Kontakt for personvern (2026-11-11)
 
 *Forbedret.* Personvernerklæringen (versjon 1.1) oppgir nå behandlingsansvarlig og e-post for spørsmål om personvern.

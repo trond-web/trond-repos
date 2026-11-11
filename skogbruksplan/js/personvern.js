@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.1', dato: '2026-11-11', kreverGodkjenning: '1.0' };
+export const VILKAR = { versjon: '1.2', dato: '2026-11-11', kreverGodkjenning: '1.0' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -72,6 +72,7 @@ export const BEHANDLINGER = [
 // Leverandører som behandler data på vegne av SkogIQ.ai (databehandlere), eller som nettleseren henter innhold fra.
 export const TREDJEPARTER = [
   { navn: 'Railway Corporation', rolle: 'Drift av serveren og lagring av data (databehandler)', land: 'Serveren og lagringen er i Railway sin region i Amsterdam (EU). Selskapet er amerikansk, og overføring er sikret med EUs standardavtaler (SCC).' },
+  { navn: 'Lagring av sikkerhetskopier', rolle: 'Krypterte sikkerhetskopier av dataene på serveren, utenfor Railway (databehandler). Kopiene krypteres med en nøkkel bare SkogIQ.ai har, før de sendes ut', land: 'S3-kompatibel lagring i EU/EØS.' },
   { navn: 'GitHub (Microsoft)', rolle: 'Leverer selve appen (filene) fra github.io', land: 'USA/EU. Ser IP-adressen din. Data om skogen din sendes ikke dit.' },
   { navn: 'Resend', rolle: 'Sender e-post for glemt passord, når e-post er slått på (databehandler)', land: 'USA, EUs standardavtaler (SCC).' },
   { navn: 'jsDelivr, unpkg og Google Fonts', rolle: 'Programbiblioteker og skrifttyper som nettleseren henter', land: 'Globale nettverk. Ser IP-adressen din.' },
@@ -83,7 +84,7 @@ export const TREDJEPARTER = [
 export const RETTIGHETER = [
   ['Innsyn og dataportabilitet', 'Under Min profil → Personvern kan du laste ned alle opplysningene SkogIQ.ai har om deg som en JSON-fil. Planene eksporterer du fra appen.'],
   ['Retting', 'Endre navn, kontaktinformasjon og roller under Min profil.'],
-  ['Sletting', 'Under Min profil → Personvern kan du slette kontoen. Da slettes profilen, skylagrede planer, koblinger og chatmeldinger og bruksstatistikken din med en gang.'],
+  ['Sletting', 'Under Min profil → Personvern kan du slette kontoen. Da slettes profilen, skylagrede planer, koblinger og chatmeldinger og bruksstatistikken din med en gang. Krypterte sikkerhetskopier slettes fortløpende og er borte etter høyst 30 dager.'],
   ['Protest', 'Under Min profil → Personvern kan du slå av bruksstatistikken for kontoen din. Da slettes også statistikken som er samlet inn.'],
   ['Klage', 'Du kan klage til Datatilsynet (datatilsynet.no) hvis du mener vi behandler opplysningene dine i strid med regelverket.'],
 ];
@@ -128,7 +129,7 @@ ${VILKAAR.map(([t, x]) => `<h3>${e(t)}</h3><p>${e(x)}</p>`).join('')}
 <dt>Opplysninger</dt><dd>${e(b.opplysninger)}</dd><dt>Grunnlag</dt><dd>${e(GRUNNLAG[b.grunnlag])}</dd><dt>Lagringstid</dt><dd>${e(b.lagring)}</dd><dt>Mottakere</dt><dd>${e(b.mottakere)}</dd></dl></details>`).join('')}</div>
 <h3>Leverandører og overføring</h3>
 <table class="pv-tabell"><thead><tr><th>Leverandør</th><th>Rolle</th><th>Hvor</th></tr></thead><tbody>${TREDJEPARTER.map((t) => `<tr><td>${e(t.navn)}</td><td>${e(t.rolle)}</td><td>${e(t.land)}</td></tr>`).join('')}</tbody></table>
-<h3>Sikkerhet</h3><p>All trafikk er kryptert (HTTPS). Passord lagres bare som hash. Delingslenker har tilfeldige, hemmelige koder, og innloggingen er beskyttet mot gjentatte gjetteforsøk. Bare administrator har tilgang til brukeroversikten.</p>
+<h3>Sikkerhet</h3><p>All trafikk er kryptert (HTTPS). Passord lagres bare som hash. Det tas daglig kryptert sikkerhetskopi (AES-256), som oppbevares i høyst 30 dager. Delingslenker har tilfeldige, hemmelige koder, og innloggingen er beskyttet mot gjentatte gjetteforsøk. Bare administrator har tilgang til brukeroversikten.</p>
 <h3>Dine rettigheter</h3>
 <dl class="pv-rett">${RETTIGHETER.map(([t, x]) => `<dt>${e(t)}</dt><dd>${e(x)}</dd>`).join('')}</dl>`;
 }

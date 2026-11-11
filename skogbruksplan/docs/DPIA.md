@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Utkast til godkjenning hos behandlingsansvarlig |
 | **Dato** | 2026-11-11 |
-| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.1 (`js/personvern.js`) |
+| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.2 (`js/personvern.js`) |
 | **Behandlingsansvarlig** | Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no. Organisasjonsnummer legges inn når foretak er etablert |
 | **Neste gjennomgang** | Ved endringene i kapittel 8, og senest 2027-11-11 |
 
@@ -70,6 +70,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 - Serveren lagrer data i JSON-filer på et Railway-volum.
 - Nettleseren henter kart og fagdata direkte fra offentlige kilder.
 - Valgfrie integrasjoner: Anthropic (fra nettleseren), John Deere (via serveren) og Resend (e-post for glemt passord, via serveren).
+- **Sikkerhetskopi** (`backup.js`): hele datamappen pakkes, komprimeres og krypteres (AES-256-GCM) én gang i døgnet. Kopiene ligger på volumet (7 stykker) og, når det er satt opp, i S3-kompatibel lagring i EU utenfor Railway (30 stykker). Nøkkelen (`BACKUP_NOKKEL`) oppbevares utenfor Railway, og kopier sendes aldri ut ukryptert.
 
 ## 3. Nødvendighet og proporsjonalitet
 
@@ -83,6 +84,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 - **Lagringsbegrensning:**
   - Faste lagringstider for delingslenker, mellomlagre og statistikk.
   - Sletting av konto sletter skylagring, nettverk og chat med en gang.
+  - Sikkerhetskopier roteres. Slettede data er borte fra dem etter høyst 30 dager.
 - **Riktighet:** Brukeren retter selv profil og roller, og kan registrere målte verdier.
 - **Åpenhet:** Personvernerklæringen godtas ved registrering, og på nytt ved vesentlige endringer. Godkjenningene logges.
 - **Rettigheter** under Min profil:
@@ -107,23 +109,23 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | R3 | Lekkasje av skogdata via delingslenker (`tilbud`, `tommer`) | Lange tilfeldige koder; hver mottaker ser bare sitt; sluttdato; sletting etter 180 dager uten bruk; delingen skjer bare på brukerens initiativ | L | M | **Lav**. Lenker kan videresendes. Forespørsler er ikke knyttet til kontoen og slettes ikke ved kontosletting (T4). |
 | R4 | Kartlegging av skogeiere, for eksempel innkjøpere som finner hvem som har hogstmoden skog (`nettverk`, `tommer`) | Skogeiere vises ikke i katalogen; aktører når bare skogeiere som har bedt om kobling eller som de kjenner e-posten til; skogeieren styrer all deling | L | M | **Lav**. Se trigger 8.2. |
 | R5 | Trakassering eller spam i chat (`nettverk`) | Den andre parten må godta koblingen; høyst 30 meldinger/min og 2000 tegn; koblingen kan avsluttes; administrator kan sperre kontoer | L | M | **Lav**. Mangler «Rapporter»-knapp (T5). |
-| R6 | Tap av data eller manglende tilgjengelighet (`sky`) | Versjonshistorikk (10), papirkurv (30 dager), lokal kopi på enhetene, eksport av planer | M | M | **Middels**. Volumet har ikke kopi utenfor Railway (T2). |
+| R6 | Tap av data eller manglende tilgjengelighet (`sky`) | Versjonshistorikk (10), papirkurv (30 dager), lokal kopi på enhetene, eksport av planer; daglig kryptert sikkerhetskopi på volumet og utenfor Railway (`backup.js`), gjenoppretting testet med `verktoy/gjenopprett-backup.mjs`; alle mellomlagre lagres på volumet (ikke bare i minnet) | L | M | **Lav** når lagring utenfor Railway og `BACKUP_NOKKEL` er satt. **Middels** til da (T2). Mistes nøkkelen, kan kopiene ikke leses, så den må oppbevares sikkert utenfor Railway. |
 | R7 | Overføring til tredjeland og leverandørtilgang (alle) | Lagring i EU (Amsterdam); Anthropic bare med brukerens egen nøkkel; e-post bare når slått på | L | M | **Lav–middels** til databehandleravtaler er inngått (T3). Google Fonts og CDN-er ser IP-adressen (T7). |
 | R8 | Plandata til KI-leverandør (`ai`) | Skjer bare når brukeren stiller et spørsmål, med egen nøkkel og etter Anthropics vilkår; opplyst i erklæringen | L | L | **Lav** |
 | R9 | Overvåking av ansatte via GPS og sporlogg i Felt (`sky`, `lokal`) | Sporlogg startes og stoppes av brukeren, knyttes til ett tiltak, og er ingen kontinuerlig sporing | L | M | **Lav**. Arbeidsgivere som bruker Felt på ansatte, er selv ansvarlige og må informere (T8). |
 | R10 | Kobling av maskindata (HPR, John Deere) til fører (`jd`) | Importen bruker ikke førerfeltene; John Deere-nøkler bare på serveren | L | M | **Lav**. Endres dette, kreves ny DPIA (8.1). |
 | R11 | Injeksjon eller XSS som lekker data (alle) | Escaping av all brukertekst; `nosniff`, `X-Frame-Options`, `Referrer-Policy`; CORS begrenset til egne adresser | L | H | **Lav–middels**. Mangler Content-Security-Policy (T9). |
-| R12 | Ufullstendig sletting (`synk`, `tilbud`, `tommer`) | Kontosletting fjerner skylagring, nettverk og chat; mellomlagre har faste lagringstider | M | L | **Lav** (T4) |
+| R12 | Ufullstendig sletting (`synk`, `tilbud`, `tommer`) | Kontosletting fjerner skylagring, nettverk og chat; mellomlagre har faste lagringstider; sikkerhetskopier roteres etter høyst 30 dager | M | L | **Lav** (T4) |
 | R13 | Feil i modeller gir feil beslutninger (ikke personvern, men tillit) | Vilkårene sier at beregninger er veiledende; kilder og «beregnet/registrert» vises | M | M | Håndteres i vilkårene |
 
-**Samlet restrisiko:** lav, bortsett fra **R6** (middels) og **R7/R11** (lav–middels) inntil tiltakene under er gjennomført. Ingen restrisiko er høy, så forhåndsdrøfting med Datatilsynet (art. 36) er ikke nødvendig.
+**Samlet restrisiko:** lav, bortsett fra **R6** (middels til lagring utenfor Railway er satt opp) og **R7/R11** (lav–middels) inntil tiltakene under er gjennomført. Ingen restrisiko er høy, så forhåndsdrøfting med Datatilsynet (art. 36) er ikke nødvendig.
 
 ## 5. Tiltak og handlingsplan
 
 | # | Tiltak | Risiko | Prioritet | Status |
 |---|---|---|---|---|
 | T1 | Tofaktor (TOTP) for administratorkontoer | R1 | Middels | Åpen |
-| T2 | Automatisk sikkerhetskopi av Railway-volumet til lagring utenfor Railway i EU, med test av gjenoppretting | R6 | Høy | Åpen |
+| T2 | Automatisk sikkerhetskopi av Railway-volumet til lagring utenfor Railway i EU, med test av gjenoppretting | R6 | Høy | Bygget (versjon 1.73.0): daglig kryptert kopi lokalt og til S3 i EU, gjenopprettingsverktøy og test. Gjenstår: opprette lagring i EU, sette `BACKUP_NOKKEL` og `BACKUP_S3_*` på Railway, og prøve en gjenoppretting |
 | T3 | Inngå databehandleravtale (DPA) med Railway, og med Resend når e-post slås på | R7 | Høy | Åpen |
 | T4 | Knytte tilbuds- og tømmerforespørsler til kontoen, slik at de slettes ved kontosletting og tas med i innsyn | R3, R12 | Middels | Åpen |
 | T5 | «Rapporter»-knapp i chat og varsel til administrator | R5 | Lav | Åpen |
