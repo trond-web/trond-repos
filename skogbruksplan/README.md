@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.72.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.72.1** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -632,7 +632,7 @@ Behandlingsgrunnlaget er i hovedsak **avtale** (art. 6 nr. 1 b), ikke samtykke. 
 
 **DPIA:** `docs/DPIA.md` vurderer om det trengs en vurdering av personvernkonsekvenser. Den trolig ikke påkrevd i dag, men gjøres frivillig. Dokumentet inneholder beskrivelse, nødvendighet og proporsjonalitet, risikovurdering per behandling (R1–R13), handlingsplan (T1–T10) og endringer som gjør den påkrevd. Testene sjekker at den følger versjonen av erklæringen og har med alle behandlingene.
 
-**Må fylles ut av eier:** behandlingsansvarlig (`ANSVARLIG` i `js/personvern.js`: navn, organisasjonsnummer og e-post for personvern).
+**Behandlingsansvarlig:** Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no (`ANSVARLIG` i `js/personvern.js`). Organisasjonsnummer legges inn når foretak er etablert.
 
 ## Nettverk og chat (💬 Nettverk, `nettverk.js` og `js/nettverk-ui.js`)
 

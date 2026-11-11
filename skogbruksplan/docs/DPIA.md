@@ -4,8 +4,8 @@
 |---|---|
 | **Status** | Utkast til godkjenning hos behandlingsansvarlig |
 | **Dato** | 2026-11-11 |
-| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.0 (`js/personvern.js`) |
-| **Behandlingsansvarlig** | SkogIQ.ai. Navn, organisasjonsnummer og kontakt fylles ut i `ANSVARLIG` i `js/personvern.js` |
+| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.1 (`js/personvern.js`) |
+| **Behandlingsansvarlig** | Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no. Organisasjonsnummer legges inn når foretak er etablert |
 | **Neste gjennomgang** | Ved endringene i kapittel 8, og senest 2027-11-11 |
 
 Dokumentet følger strukturen i GDPR artikkel 35 nr. 7 og Datatilsynets veiledning: beskrivelse, nødvendighet og proporsjonalitet, risikovurdering og tiltak. Det er et faglig utkast og ikke juridisk rådgivning. Behandlingsansvarlig må gå gjennom, justere og godkjenne det (kapittel 9).
@@ -131,7 +131,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | T7 | Levere skrifttyper og biblioteker fra egen server (ikke Google Fonts eller CDN) | R7 | Lav | Åpen |
 | T8 | Tekst i brukerveiledningen: arbeidsgiver må informere ansatte som bruker sporlogg | R9 | Lav | Åpen |
 | T9 | Content-Security-Policy på serveren | R11 | Middels | Åpen |
-| T10 | Fylle ut behandlingsansvarlig (`ANSVARLIG`) med navn, organisasjonsnummer og e-post | Åpenhet | Høy | Åpen |
+| T10 | Fylle ut behandlingsansvarlig (`ANSVARLIG`) med navn, organisasjonsnummer og e-post | Åpenhet | Høy | Navn og e-post er gjennomført (versjon 1.72.1); organisasjonsnummer legges inn når foretak er etablert |
 
 ## 6. Rådføring
 
@@ -140,7 +140,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 
 ## 7. Konklusjon
 
-Behandlingen gir ikke høy risiko for de registrertes rettigheter og friheter. Det forutsetter at dagens tiltak opprettholdes og at handlingsplanen følges. Høyest prioritet har T2, T3 og T10. Behandlingen kan fortsette.
+Behandlingen gir ikke høy risiko for de registrertes rettigheter og friheter. Det forutsetter at dagens tiltak opprettholdes og at handlingsplanen følges. Høyest prioritet har T2 og T3. Behandlingen kan fortsette.
 
 ## 8. Når DPIA-en må gjøres på nytt
 
@@ -161,5 +161,5 @@ Endres erklæringen (`VILKAR.versjon`), skal tabellen øverst oppdateres. Testen
 
 | Rolle | Navn | Dato | Signatur |
 |---|---|---|---|
-| Behandlingsansvarlig | | | |
+| Behandlingsansvarlig | Trond Harald Sand | | |
 | Utarbeidet av | Utviklingsteamet (utkast) | 2026-11-11 | |
