@@ -1259,3 +1259,10 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .ht-tom { padding: 10px 0; }
 .ht-start { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); margin-bottom: 8px; flex-wrap: wrap; } .ht-start > div { display: grid; gap: 2px; }
 .tr-handlinger .tr-tilbud { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); color: var(--accent); font-weight: 600; }
+
+/* Mine tilbudsforespørsler (oppdrag-ui.js) */
+.tb-oversikt { border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); border-radius: 12px; padding: 10px 12px; margin: 0 0 12px; background: color-mix(in srgb, var(--accent) 4%, var(--surface)); }
+.tb-rad { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 9px 11px; margin-top: 6px; cursor: pointer; font: 13.5px/1.35 inherit; font-family: inherit; color: var(--text); }
+.tb-rad:hover { border-color: var(--accent); } .tb-rad-hoved { display: grid; gap: 1px; min-width: 0; } .tb-rad-hoyre { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.tb-ny { font: 700 10.5px/1 var(--font-mono); background: #d03b3b; color: #fff; padding: 3px 7px; border-radius: 99px; white-space: nowrap; }
+.oppdrag-merker { display: flex; gap: 6px; align-items: center; } .tb-merke { font: 600 11px/1 var(--font-mono); color: var(--text-2); white-space: nowrap; } .tb-merke b { color: #d03b3b; }
