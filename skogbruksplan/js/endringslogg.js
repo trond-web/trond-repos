@@ -2,6 +2,7 @@
 // Nyeste først. Første oppføring skal ha samme versjon som js/versjon.js (sjekkes i testene).
 // type: ny = ny funksjon, forbedret = bedre eller utvidet funksjon, rettet = feilretting.
 export const ENDRINGER = [
+  { versjon: '1.70.0', dato: '2026-11-11', type: 'ny', tittel: 'Treslag og volum i bestandsinfoen', tekst: 'Bestandsinfoen viser treslagsfordeling (gran, furu, lauv) med kilde og volum per treslag, og andelene kan skrives inn. I hogstklasse II vises treantall per treslag før og etter regulering, beregnet eller registrert i felt.' },
   { versjon: '1.69.0', dato: '2026-11-11', type: 'ny', tittel: 'Vilkår og personvern', tekst: 'Brukervilkår og personvernerklæring som godtas ved registrering, og ved neste innlogging for eksisterende brukere. Under Min profil kan du laste ned alle dataene dine, slå av bruksstatistikken og slette kontoen.' },
   { versjon: '1.68.0', dato: '2026-11-11', type: 'ny', tittel: 'Nettverk og chat', tekst: 'Skogeiere kobler seg til innkjøpere og entreprenører under Nettverk, og partene chatter direkte i SkogIQ.ai. Ved innlogging ser skogeieren hvor mange innkjøpere og entreprenører som er med.' },
   { versjon: '1.67.0', dato: '2026-11-11', type: 'ny', tittel: 'Roller', tekst: 'Velg én eller flere roller – skogeier, entreprenør, innkjøper eller offentlig – når du registrerer deg. Har du ikke valgt, blir du bedt om det ved neste innlogging. Endres i Min profil.' },

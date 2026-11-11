@@ -243,6 +243,8 @@ export function settUngskog(b, felt, verdi, { idag = new Date().toISOString().sl
   const n = verdi === '' || verdi == null ? null : Number(String(verdi).replace(',', '.'));
   if (n != null && (!Number.isFinite(n) || n < 0 || (felt.startsWith('treantall') && n > 20000) || (felt.startsWith('hoyde') && n > 40))) return false;
   b.ungskog = { ...(b.ungskog || {}) }; delete b.ungskog.kilde;
+  // En ny total gjelder i stedet for treantallet per treslag (js/treslag.js).
+  if (felt === 'treantallFor') delete b.ungskog.treslagFor; if (felt === 'treantallEtter') delete b.ungskog.treslagEtter;
   if (n == null) delete b.ungskog[felt]; else b.ungskog[felt] = felt.startsWith('treantall') ? Math.round(n) : Math.round(n * 10) / 10;
   b.ungskog.dato = idag;
   // Registrerte høyder er riktige: middelhøyden i bestandsdataene følger snittet av bar og lauv.
