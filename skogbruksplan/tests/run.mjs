@@ -3361,11 +3361,75 @@ test('Treslag: fordeling med kilde, volum per treslag, registrering og treantall
   assert.ok(T.settTreantallTreslag(u, 'etter', { G: '', F: '', L: '' })); assert.equal(u.ungskog.treantallEtter, undefined);
 });
 
+test('Sikkerhetskopi: tar, kryptering, S3-signatur, kopi med opprydding, opplasting og gjenoppretting', async () => {
+  const B = await import('../backup.js');
+  const { mkdtempSync, mkdirSync, writeFileSync, readFileSync: les, readdirSync, rmSync } = await import('node:fs'); const { tmpdir } = await import('node:os'); const { join } = await import('node:path');
+  // tar fram og tilbake (også lange stier og binærdata)
+  const lang = `sky/${'a'.repeat(60)}/${'b'.repeat(70)}.json`;
+  const filer = [{ navn: 'brukere.json', data: Buffer.from('{"x":1}') }, { navn: lang, data: Buffer.from([0, 1, 2, 255]) }, { navn: 'tom.txt', data: Buffer.alloc(0) }, { navn: `sky/x/${'p'.repeat(150)}.json`, data: Buffer.from('langt navn (GNU LongLink)') }];
+  assert.deepEqual(B.lesTar(B.lagTar(filer)).map((f) => [f.navn, f.data.toString('hex')]), filer.map((f) => [f.navn, f.data.toString('hex')]));
+  // kryptering
+  const k = B.krypter(Buffer.from('hemmelig innhold'), 'riktig-nøkkel'); assert.ok(k.subarray(0, 8).equals(B.MAGI)); assert.ok(!k.includes(Buffer.from('hemmelig')));
+  assert.equal(B.dekrypter(k, 'riktig-nøkkel').toString(), 'hemmelig innhold'); assert.throws(() => B.dekrypter(k, 'feil'), /Feil nøkkel/);
+  // AWS signatur v4: eksempelet «GET Object» fra AWS-dokumentasjonen
+  assert.equal(B.signerS3({ metode: 'GET', sti: '/test.txt', headers: { host: 'examplebucket.s3.amazonaws.com', range: 'bytes=0-9', 'x-amz-content-sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'x-amz-date': '20130524T000000Z' }, payloadHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', amzDato: '20130524T000000Z', region: 'us-east-1', id: 'AKIAIOSFODNN7EXAMPLE', hemmelig: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY' }),
+    'AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/20130524/us-east-1/s3/aws4_request, SignedHeaders=host;range;x-amz-content-sha256;x-amz-date, Signature=f0e8bdb87c964420e857bd35b5d6ed310bd44f0170aba48dd91039c6036bdb41');
+  // Falsk S3 i minnet
+  const lager = new Map(); const kall = [];
+  const hent = async (url, o) => { const u = new URL(url); kall.push({ metode: o.method, url, auth: o.headers.Authorization });
+    const svar = (status, body = '') => ({ ok: status < 300, status, text: async () => String(body), arrayBuffer: async () => body });
+    if (o.method === 'PUT') { lager.set(decodeURIComponent(u.pathname), Buffer.from(o.body)); return svar(200); }
+    if (o.method === 'DELETE') { lager.delete(decodeURIComponent(u.pathname)); return svar(204); }
+    if (u.searchParams.get('list-type')) { const pre = `/bøtte/${u.searchParams.get('prefix')}`; return svar(200, `<ListBucketResult>${[...lager.keys()].filter((x) => x.startsWith(pre)).map((x) => `<Contents><Key>${x.slice('/bøtte/'.length)}</Key><Size>${lager.get(x).length}</Size></Contents>`).join('')}<IsTruncated>false</IsTruncated></ListBucketResult>`); }
+    const d = lager.get(decodeURIComponent(u.pathname)); return d ? svar(200, d.buffer.slice(d.byteOffset, d.byteOffset + d.length)) : svar(404, '<Code>NoSuchKey</Code>'); };
+  let tid = Date.UTC(2026, 10, 11, 3, 0);
+  const s3 = B.lagS3({ endpoint: 'https://s3.eu.example', bucket: 'bøtte', id: 'ID', hemmelig: 'HEM', hent, naa: () => tid });
+  // Datamappe med filer, backup-mappe og midlertidige filer
+  const mappe = mkdtempSync(join(tmpdir(), 'skogiq-bk-')); mkdirSync(join(mappe, 'sky', 'abc', 'h'), { recursive: true });
+  writeFileSync(join(mappe, 'brukere.json'), '{"brukere":{"ola":{}}}'); writeFileSync(join(mappe, 'nettverk.json'), '{"koblinger":{}}');
+  writeFileSync(join(mappe, 'sky', 'abc', 'p1.json'), 'plan'); writeFileSync(join(mappe, 'sky', 'abc', 'h', '1.json'), 'historikk'); writeFileSync(join(mappe, 'brukere.json.tmp'), 'halv');
+  let flushet = 0; const stille = { error() {} };
+  const bk = B.lagBackup({ mappe, nokkel: 'test-nøkkel', s3, beholdLokalt: 2, beholdS3: 3, naa: () => tid, forKopi: () => { flushet++; }, logg: stille });
+  assert.ok(bk.status().forfalt);
+  const r1 = await bk.kjor(); assert.ok(r1.ok, r1.feil); assert.equal(r1.filer, 4, 'backup-mappen og .tmp er ikke med'); assert.equal(r1.s3, 'ok'); assert.ok(r1.kryptert); assert.equal(flushet, 1);
+  assert.ok(kall.every((c) => /^AWS4-HMAC-SHA256 Credential=ID\/20261111\/eu-central-1\/s3\/aws4_request/.test(c.auth)), 'alle kall er signert');
+  assert.ok(!bk.status().forfalt);
+  for (let i = 1; i <= 4; i++) { tid += 24 * 3600 * 1000; writeFileSync(join(mappe, 'nettverk.json'), `{"versjon":${i}}`); assert.ok((await bk.kjor()).ok); }
+  assert.equal(bk.lokaleFiler().length, 2, 'beholder 2 lokalt'); assert.equal([...lager.keys()].length, 3, 'beholder 3 i S3');
+  assert.equal(bk.status().historikk.length, 5); assert.equal(bk.status().s3Siste, tid);
+  // Status overlever omstart
+  assert.equal(B.lagBackup({ mappe, nokkel: 'x', logg: stille }).status().siste, tid);
+  // Gjenoppretting fra S3 og fra lokal fil gir samme innhold som datamappen
+  const siste = (await s3.liste()).at(-1).navn; assert.equal(siste, bk.lokaleFiler().at(-1));
+  const ut = B.pakkUt(await s3.hent(siste), 'test-nøkkel'); assert.deepEqual(ut.map((f) => f.navn), ['brukere.json', 'nettverk.json', 'sky/abc/h/1.json', 'sky/abc/p1.json']);
+  assert.equal(ut.find((f) => f.navn === 'nettverk.json').data.toString(), '{"versjon":4}');
+  assert.throws(() => B.pakkUt(bk.hentLokal(siste), ''), /kryptert/);
+  // Kommandolinjeverktøyet
+  const { execFileSync } = await import('node:child_process'); const fil = join(mappe, 'backup', siste); const til = join(mappe, '..', `gjenopprettet-${Date.now()}`);
+  const o = execFileSync(process.execPath, [new URL('../verktoy/gjenopprett-backup.mjs', import.meta.url).pathname, fil, '--til', til], { env: { ...process.env, BACKUP_NOKKEL: 'test-nøkkel' } }).toString();
+  assert.match(o, /4 filer/); assert.equal(les(join(til, 'sky', 'abc', 'p1.json'), 'utf8'), 'plan'); assert.equal(les(join(til, 'brukere.json'), 'utf8'), '{"brukere":{"ola":{}}}');
+  // Uten nøkkel: bare lokalt, aldri ukryptert ut
+  const n0 = lager.size; const bk2 = B.lagBackup({ mappe: mkdtempSync(join(tmpdir(), 'skogiq-bk2-')), s3, naa: () => tid, logg: stille });
+  const r2 = await bk2.kjor(); assert.ok(r2.ok && !r2.kryptert); assert.equal(r2.s3, 'ukryptert'); assert.equal(lager.size, n0); assert.match(bk2.status().s3Feil, /BACKUP_NOKKEL/);
+  // Feil i S3 stopper ikke den lokale kopien
+  const bk3 = B.lagBackup({ mappe, nokkel: 'k', s3: B.lagS3({ endpoint: 'https://x', bucket: 'b', id: 'i', hemmelig: 'h', hent: async () => ({ ok: false, status: 403, text: async () => '<Code>AccessDenied</Code>' }) }), naa: () => tid + 1, logg: stille });
+  const r3 = await bk3.kjor(); assert.ok(r3.ok); assert.equal(r3.s3, 'feil'); assert.match(bk3.status().s3Feil, /403 \(AccessDenied\)/);
+  // HTTP: bare administrator
+  const res = () => { const r = { writeHead(st, h = {}) { r.st = st; r.h = h; }, end(b) { r.b = b; r.ferdig?.(); } }; return r; };
+  const api = (metode, url, adm) => new Promise((ok) => { const r = res(); r.ferdig = () => ok(r); B.backupApi(bk, { erAdmin: () => adm }, { method: metode, url, headers: {} }, r, new URL(url, 'http://x').pathname); });
+  assert.equal((await api('GET', '/api/admin/backup', null)).st, 401); assert.equal((await api('GET', '/api/admin/backup', false)).st, 403);
+  const st = JSON.parse((await api('GET', '/api/admin/backup', true)).b); assert.ok(st.aktiv && st.kryptert && st.s3); assert.equal(st.lokale.length, 2);
+  const dl = await api('GET', `/api/admin/backup/fil?navn=${st.lokale[0].navn}`, true); assert.equal(dl.st, 200); assert.ok(Buffer.from(dl.b).subarray(0, 8).equals(B.MAGI));
+  assert.equal((await api('GET', '/api/admin/backup/fil?navn=../brukere.json', true)).st, 404, 'bare kopifiler kan lastes ned');
+  rmSync(mappe, { recursive: true, force: true }); rmSync(til, { recursive: true, force: true });
+});
+
 // Sjekksum for innholdet i vilkår og personvernerklæring per versjon (js/personvern.js). Endres teksten, må
 // VILKAR.versjon økes og en ny linje legges til her. Gamle linjer blir stående som historikk.
 const PERSONVERN_SJEKKSUM = {
   '1.0': '16a230b34f20c608',
   '1.1': 'e0995a4ed43e36bc', // behandlingsansvarlig og kontakt fylt ut
+  '1.2': '11b0ad685a83bd45', // krypterte sikkerhetskopier (30 dager) og leverandør for lagring
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {

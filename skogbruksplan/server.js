@@ -14,6 +14,7 @@ import { lagTilbudRelay, tilbudApi, erMottakerKall } from './tilbud-relay.js';
 import { rensSvar as rensTommerSvar, sjekkSvar as sjekkTommerSvar } from './js/tommer-felles.js';
 import { lagSkyLager, skyApi } from './sky-lager.js';
 import { lagNettverk, nettverkApi } from './nettverk.js';
+import { lagBackup, lagS3, backupApi } from './backup.js';
 
 const ROT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8080;
@@ -33,7 +34,7 @@ const TYPER = {
   '.sos': 'text/plain; charset=utf-8',
 };
 // Mapper og filer som ikke skal publiseres.
-const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|package(-lock)?\.json|railway\.json)$|\/\./;
+const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|backup\.js|package(-lock)?\.json|railway\.json)$|\/\./;
 const KOMPRIMER = /^(text\/|application\/(json|geo\+json|manifest\+json)|image\/svg)/;
 
 const SIKKERHET = {
@@ -69,11 +70,15 @@ async function nve(sti, res, req) {
 }
 
 // Overføring av droneoppdrag til fjernkontrollen (se kontroller-relay.js).
-const relay = lagRelay({ fil: process.env.KONTROLLER_FIL || null });
+// Datamappen (Railway-volumet): mappen til BRUKER_FIL. Alle mellomlagre lagres der, så de overlever omstart og utrulling
+// og blir med i sikkerhetskopien (backup.js). Egen *_FIL-variabel overstyrer.
+const DATA = process.env.BRUKER_FIL ? path.dirname(process.env.BRUKER_FIL) : null;
+const iData = (navn) => (DATA ? path.join(DATA, navn) : null);
+const relay = lagRelay({ fil: process.env.KONTROLLER_FIL || iData('kontroller.json') });
 // Overføring og synkronisering av planer mellom PC og mobil (se plan-relay.js).
-const planRelay = lagPlanRelay({ fil: process.env.PLAN_FIL || null });
+const planRelay = lagPlanRelay({ fil: process.env.PLAN_FIL || iData('plan-synk.json') });
 // Tilbudsforespørsler til utførere (tilbud-relay.js). Mottakerne svarer via lenke uten innlogging.
-const tilbudRelay = lagTilbudRelay({ fil: process.env.TILBUD_FIL || null });
+const tilbudRelay = lagTilbudRelay({ fil: process.env.TILBUD_FIL || iData('tilbud.json') });
 // Deling med tømmerkjøpere (js/tommerkjoper.js). Lagres ved siden av BRUKER_FIL (Railway-volumet) når TOMMER_FIL ikke er satt.
 const tommerRelay = lagTilbudRelay({ fil: process.env.TOMMER_FIL || (process.env.BRUKER_FIL ? path.join(path.dirname(process.env.BRUKER_FIL), 'tommer.json') : null), rens: rensTommerSvar, sjekk: sjekkTommerSvar });
 // Innlogging (auth.js): brukernavn og passord settes som miljøvariabler på serveren, aldri i koden.
@@ -101,7 +106,19 @@ const skyOppsett = {
 const nettverk = innlogging.registrering ? lagNettverk({ fil: process.env.NETTVERK_FIL || (process.env.BRUKER_FIL ? path.join(path.dirname(process.env.BRUKER_FIL), 'nettverk.json') : null), brukere: { hent: (u) => innlogging.lager.hent(u), alle: () => innlogging.lager.alle() } }) : null;
 if (innlogging.registrering && !innlogging.permanent) console.warn('BRUKER_FIL er ikke satt – registrerte brukere forsvinner når serveren startes på nytt.');
 // John Deere Operations Center (se jd-relay.js). Uten JD_CLIENT_ID/JD_CLIENT_SECRET svarer /api/jd/status at det ikke er satt opp.
-const jdRelay = lagJdRelay({ klientId: process.env.JD_CLIENT_ID || '', hemmelighet: process.env.JD_CLIENT_SECRET || '', tilbakeUrl: process.env.JD_REDIRECT || '', api: process.env.JD_API || JD_SANDKASSE, fil: process.env.JD_FIL || null });
+const jdRelay = lagJdRelay({ klientId: process.env.JD_CLIENT_ID || '', hemmelighet: process.env.JD_CLIENT_SECRET || '', tilbakeUrl: process.env.JD_REDIRECT || '', api: process.env.JD_API || JD_SANDKASSE, fil: process.env.JD_FIL || iData('jd.json') });
+
+// Sikkerhetskopi av datamappen (backup.js): lokalt på volumet, og kryptert til S3-kompatibel lagring i EU når den er satt opp.
+const s3Oppsett = process.env.BACKUP_S3_ENDPOINT && process.env.BACKUP_S3_BUCKET && process.env.BACKUP_S3_NOKKEL_ID && process.env.BACKUP_S3_HEMMELIG;
+const backup = lagBackup({
+  mappe: DATA, nokkel: process.env.BACKUP_NOKKEL || '',
+  s3: s3Oppsett ? lagS3({ endpoint: process.env.BACKUP_S3_ENDPOINT, bucket: process.env.BACKUP_S3_BUCKET, region: process.env.BACKUP_S3_REGION || 'eu-central-1', id: process.env.BACKUP_S3_NOKKEL_ID, hemmelig: process.env.BACKUP_S3_HEMMELIG, prefiks: process.env.BACKUP_S3_PREFIKS || 'skogiq/' }) : null,
+  beholdLokalt: Number(process.env.BACKUP_BEHOLD_LOKALT) || 7, beholdS3: Number(process.env.BACKUP_BEHOLD_S3) || 30, intervallTimer: Number(process.env.BACKUP_INTERVALL_TIMER) || 24,
+  forKopi: () => innlogging.lager?.flush?.(),
+});
+backup.start();
+if (DATA && !process.env.BACKUP_NOKKEL) console.warn('BACKUP_NOKKEL er ikke satt – sikkerhetskopiene lagres ukryptert og bare på volumet.');
+else if (DATA && !s3Oppsett) console.warn('BACKUP_S3_* er ikke satt – sikkerhetskopiene lagres bare på volumet, ikke utenfor Railway.');
 
 function svar(res, status, tekst) {
   res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', ...SIKKERHET });
@@ -114,6 +131,7 @@ const server = http.createServer(async (req, res) => {
   // Forhåndssjekk (CORS) fra appen på GitHub Pages: Authorization-hodet bærer innloggingen.
   if (req.method === 'OPTIONS' && sti.startsWith('/api/')) { const c = corsFor(req); res.writeHead(204, { ...c, ...(c['Access-Control-Allow-Origin'] ? { 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Max-Age': '600' } : {}) }); return res.end(); }
   if (innloggingApi(innlogging, req, res, sti, SIKKERHET)) return;
+  if (backupApi(backup, { erAdmin: (q) => { const o = innlogging.fraForesporsel(q); return o ? innlogging.erAdmin(o.u) : null; }, cors: corsFor }, req, res, sti, SIKKERHET)) return;
   // Utførernes visning og svar er åpne (personlig kode i lenken). Oppdragsgiverens kall (opprette, hente svar, tildele)
   // krever innlogging når den er slått på, og eiernøkkelen.
   if (erMottakerKall(req.method, sti) && tilbudApi(tilbudRelay, req, res, sti, SIKKERHET)) return;

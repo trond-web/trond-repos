@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.72.1** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.73.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -592,6 +592,34 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## Sikkerhetskopi (`backup.js`, admin.html, `verktoy/gjenopprett-backup.mjs`)
+
+Hele datamappen på Railway-volumet (mappen til `BRUKER_FIL`, `/data`) kopieres én gang i døgnet. Mappen inneholder brukere, skylagrede planer, nettverk og chat, tømmerdeling, tilbudsforespørsler, PC↔mobil-synk, droneoppdrag og John Deere-koblinger. Tilbud, synk, droneoppdrag og John Deere lagres nå også på volumet (`tilbud.json`, `plan-synk.json`, `kontroller.json`, `jd.json`), og forsvinner ikke lenger ved utrulling.
+
+- **Format:** tar + gzip. Med `BACKUP_NOKKEL` krypteres kopien med AES-256-GCM, og nøkkelen avledes med scrypt og et tilfeldig salt.
+- **Lokalt:** `/data/backup`, de 7 siste kopiene (`BACKUP_BEHOLD_LOKALT`). Dette beskytter mot feil og sletting, men ikke mot tap av volumet.
+- **Utenfor Railway:** S3-kompatibel lagring i EU, de 30 siste kopiene (`BACKUP_BEHOLD_S3`). Kopier sendes aldri ut ukryptert, så `BACKUP_NOKKEL` må være satt.
+- **Når:** ved oppstart hvis forrige kopi er eldre enn intervallet, deretter hver time så lenge siste kopi er eldre enn `BACKUP_INTERVALL_TIMER` (24).
+- **Admin:** status, varsler, «Ta sikkerhetskopi nå», historikk og nedlasting av lokale kopier.
+
+**Oppsett på Railway (Variables):**
+
+| Variabel | Verdi |
+|---|---|
+| `BACKUP_NOKKEL` | Lang tilfeldig nøkkel, for eksempel 40 tegn fra en passordbehandler. **Ta vare på den utenfor Railway.** Uten den kan kopiene ikke leses. |
+| `BACKUP_S3_ENDPOINT` | Leverandørens S3-adresse, for eksempel `https://fsn1.your-objectstorage.com` (Hetzner) eller `https://s3.fr-par.scw.cloud` (Scaleway) |
+| `BACKUP_S3_REGION` | For eksempel `fsn1` eller `fr-par` |
+| `BACKUP_S3_BUCKET` | Navnet på bøtten (privat) |
+| `BACKUP_S3_NOKKEL_ID` / `BACKUP_S3_HEMMELIG` | Tilgangsnøkkel med rettighet til å lese, skrive, liste og slette i bøtten |
+
+**Gjenoppretting:**
+```
+BACKUP_NOKKEL=… node verktoy/gjenopprett-backup.mjs <fil> --liste
+BACKUP_NOKKEL=… node verktoy/gjenopprett-backup.mjs <fil> --til ./gjenopprettet
+BACKUP_NOKKEL=… BACKUP_S3_…=… node verktoy/gjenopprett-backup.mjs --s3 siste --til ./gjenopprettet
+```
+Etter dekryptering er kopien en vanlig `.tar.gz`. Lange filnavn bruker GNU-formatet LongLink. Testene tar en kopi, laster den opp til en falsk S3, rydder bort gamle kopier og gjenoppretter den med verktøyet. S3-signaturen er sjekket mot AWS sitt referanseeksempel.
 
 ## Vilkår og personvern (🔒 `js/personvern.js`, `personvern.html`)
 
