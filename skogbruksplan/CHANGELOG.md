@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.73.2 – Røde eiendomsgrenser (2026-11-11)
+
+*Forbedret.* Alle eiendomsgrenser i kartet er nå røde: planens egen grense, andre eiendommer og Kartverkets kartlag for eiendomsgrenser.
+
 ## 1.73.1 – E-post fra ditt eget e-postprogram (2026-11-11)
 
 *Forbedret.* Ved «Glemt passord» kan du sende en ferdig e-post til administrator. Når innkjøpere og entreprenører inviterer en skogeier i Nettverk, får de en ferdig e-post med beskjed om forespørselen, eller en invitasjon til å registrere seg.

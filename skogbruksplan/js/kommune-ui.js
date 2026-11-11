@@ -1,4 +1,5 @@
 // Fanen «Kommune»: analyse av en hel kommune med kart, liste, kriterier og kobling til planlaging for eiendommen.
+import { eiendomGrenseLag } from './eiendomslag.js';
 import { hentKommunedata, hentMis, klassifiser, oppsummer, eiendomIPunkt, STANDARD_KRITERIER } from './kommuneanalyse.js';
 import { TRESLAG } from './model.js';
 import { lagreVerdi, hentVerdi } from './store.js';
@@ -50,7 +51,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
   let utenNatur = false; let utenKultur = false; let naturStatus = ''; let naturHenter = false;
   let sortering = 'poeng'; let veiStatus = ''; let veiHenter = false; let eiendomGen = 0;
   // Eiendomsgrenser med gårds- og bruksnummer (Kartverket matrikkel, vises fra ca. 1:40 000).
-  const eiendomLag = L.tileLayer.wms('https://wms.geonorge.no/skwms1/wms.matrikkel', { layers: 'eiendomsgrense,eiendoms_id', format: 'image/png', transparent: true, opacity: 0.85, minZoom: 13, maxZoom: 20, attribution: 'Eiendomsgrenser © Kartverket' });
+  const eiendomLag = eiendomGrenseLag(L); // røde grenser (js/eiendomslag.js)
   const renderer = L.canvas({ padding: 0.3 });
   // Egen rute og SVG-renderer for nøkkelbiotopene (skravur krever SVG), over hogstflatene.
   kart.createPane('komMisPane'); kart.getPane('komMisPane').style.zIndex = 450; kart.getPane('komMisPane').style.pointerEvents = 'none';
