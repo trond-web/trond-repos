@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.71.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.72.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -93,7 +93,7 @@ Andelene skrives inn direkte i tabellen og lagres når du forlater feltene eller
 
 Jordverdi og ungskogeffekten regner fortsatt per treslag (framtidig bestand).
 
-**SkogIQ Felt** viser «Treslag og volum» (stolpe og tabell med andel, m³ og rotnetto) i bestandskortet. I hogstklasse II vises treantall per treslag før og etter regulering. Under «Registrer målte verdier» kan treantallet skrives inn, og det lagres med «Ferdig».
+**SkogIQ Felt** viser «Treslag og volum» (stolpe og tabell med andel, m³ og rotnetto) i bestandskortet. Med «✎ Endre fordeling» kan du endre andelene for gran, furu og lauv i prosent. Det går med −/+ 5 %-knapper som er lette å treffe med hansker, og summen vises underveis. «Lagre» gjør fordelingen registrert og synkroniserer den til fullversjonen, og «Nullstill» fjerner den. I hogstklasse II vises treantall per treslag før og etter regulering. Under «Registrer målte verdier» kan treantallet skrives inn, og det lagres med «Ferdig».
 
 **Treantall per treslag i hogstklasse II**, under Ungskog: gran, furu og lauv før og etter regulering, i trær/daa.
 - **Beregnet:**
