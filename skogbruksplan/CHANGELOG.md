@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.65.1 – Finn igjen tilbudene du har bedt om (2026-11-11)
+
+*Forbedret.* «Mine tilbudsforespørsler» øverst under Tiltak › Oppdrag viser hvem som har åpnet og svart, og nye svar merkes. «Ferdig» etter sending åpner forespørselen direkte.
+
 ## 1.65.0 – Be om tilbud i tre enkle steg (2026-11-10)
 
 *Nytt.* Trykk «📨 Be om tilbud»: velg hva som skal gjøres, hvem som skal gi pris, og send. Oppdraget lages automatisk, og du sender lenken på e-post eller SMS.

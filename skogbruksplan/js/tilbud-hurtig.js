@@ -102,7 +102,7 @@ export function lagHurtigTilbud({ hentPlan, endret, melding, okonomi, tiltakNavn
     }
     // Steg 4: sendt – lenkene.
     const o = st.o; const f = o.tilbud; const pub = offentligForesporsel(S(), o, f, { okonomi, tiltakNavn });
-    return `<div class="ht-ferdig"><div class="ht-ok">✓</div><h3>Forespørselen er klar</h3><p class="hint">Send lenken til hver mottaker. Svarene kommer inn i oppdrag <b>${esc(o.nr)}</b>, der du sammenligner og velger utfører.</p></div>
+    return `<div class="ht-ferdig"><div class="ht-ok">✓</div><h3>Forespørselen er klar</h3><p class="hint">Send lenken til hver mottaker. Du finner forespørselen og svarene under <b>Tiltak › Oppdrag › Mine tilbudsforespørsler</b> (oppdrag ${esc(o.nr)}), der du sammenligner og velger utfører.</p></div>
       <div class="ht-mottakere">${f.mottakere.map((m) => { const t = foresporselTekst(pub, m, lenke(o, m)); return `<div class="ht-mottaker"><span><b>${esc(m.firma || m.navn)}</b><span class="hint">${esc([m.epost, m.telefon].filter(Boolean).join(' · ')) || 'ingen e-post eller mobil'}</span></span>
         <span class="knapperad" style="margin:0">${m.epost ? `<a class="knapp liten primar" href="${esc(mailto(m.epost, t))}" data-ht="sendt" data-id="${m.id}">✉ E-post</a>` : ''}${m.telefon ? `<a class="knapp liten${m.epost ? '' : ' primar'}" href="${esc(smsLenke(m.telefon, `${t.emne}: ${lenke(o, m)}`))}" data-ht="sendt" data-id="${m.id}">💬 SMS</a>` : ''}<button type="button" class="knapp liten" data-ht="kopier" data-id="${m.id}">📋 Kopier lenke</button></span></div>`; }).join('')}</div>`;
   }
@@ -112,7 +112,7 @@ export function lagHurtigTilbud({ hentPlan, endret, melding, okonomi, tiltakNavn
   function oppdaterKnapp() { const el = d(); const k = el?.querySelector('[data-ht="neste"], [data-ht="send"]'); const m = el?.querySelector('.ht-mangel'); const tekst = manglerNa(); if (k) k.disabled = !!tekst || !!st.sender; if (m) m.textContent = tekst; }
   function knapper() {
     if (st.steg === 0) return '<button type="button" class="knapp" data-ht="lukk">Avbryt</button>';
-    if (st.steg >= 4) return `<button type="button" class="knapp" data-ht="apne">Åpne oppdraget</button><button type="button" class="knapp primar" data-ht="lukk">Ferdig</button>`;
+    if (st.steg >= 4) return `<button type="button" class="knapp" data-ht="apne">Åpne oppdraget</button><button type="button" class="knapp primar" data-ht="lukk">Ferdig – se forespørselen</button>`;
     const mangel = manglerNa();
     return `<button type="button" class="knapp" data-ht="${st.steg === 1 ? 'tilbake-type' : 'tilbake'}">← Tilbake</button><span class="hint ht-mangel">${esc(mangel)}</span><button type="button" class="knapp primar" data-ht="${st.steg === 3 ? 'send' : 'neste'}" ${mangel || st.sender ? 'disabled' : ''}>${st.steg === 3 ? (st.sender ? 'Sender …' : '📨 Send forespørsel') : 'Neste →'}</button>`;
   }
@@ -154,7 +154,7 @@ export function lagHurtigTilbud({ hentPlan, endret, melding, okonomi, tiltakNavn
 
   document.addEventListener('click', async (e) => {
     const k = e.target.closest('#hurtigTilbud [data-ht]'); if (!k || !st) return; const h = k.dataset.ht;
-    if (h === 'lukk') { d().close(); st = null; return; }
+    if (h === 'lukk') { const o = st.steg >= 4 ? st.o : null; d().close(); st = null; if (o) apneOppdrag(o.id, 'utforer'); return; }
     if (h === 'type') { st.type = k.dataset.type; st.valgt = new Set((grupper(S(), iAar).find((g) => g.type === st.type)?.liste || []).filter((x, i) => i === 0 || (x.tiltak.aar || iAar) <= iAar + 1).map((x) => x.tiltak.id)); st.steg = 1; tegn(); return; }
     if (h === 'tilbake-type') { st.steg = 0; tegn(); return; }
     if (h === 'tilbake') { st.steg = Math.max(0, st.steg - 1); tegn(); return; }

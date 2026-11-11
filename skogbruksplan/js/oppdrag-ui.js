@@ -9,6 +9,7 @@ import { lagSkiltplanUi } from './skiltplan-ui.js';
 import { signatur } from './versjon.js';
 import { fmt } from './charts.js';
 import { lagTilbudUi } from './tilbud-ui.js';
+import { STATUS as TILBUD_STATUS } from './tilbud.js';
 import { lagStanfordUi } from './stanford-ui.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -37,21 +38,47 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
   }
   function statusPille(o) { const st = OPPDRAGSSTATUS[o.status] || OPPDRAGSSTATUS.utkast; return `<span class="pille" style="--farge:${st.farge}">${st.navn}</span>`; }
 
+  // Tilbud: nye svar = svar som ikke er sett i oppdragets Utfører-fane.
+  const nyeSvar = (o) => Math.max(0, (o.tilbud?.svar?.length || 0) - (o.tilbud?.sett || 0));
+  const harTilbud = (o) => o.tilbud && o.tilbud.status !== 'utkast';
+  const kortDato = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' }) : '');
+  function tilbudHtml() {
+    const liste = alle().filter(harTilbud).sort((a, b) => (b.tilbud.sendt || '').localeCompare(a.tilbud.sendt || ''));
+    if (!liste.length) return '';
+    return `<div class="tb-oversikt"><div class="detalj-topp"><h4 class="undertittel" style="margin:0">📨 Mine tilbudsforespørsler</h4><button type="button" class="knapp liten" data-oh="hent-tilbud" ${henterTilbud ? 'disabled' : ''}>${henterTilbud ? 'Henter …' : '🔄 Hent svar'}</button></div>
+      ${liste.map((o) => { const f = o.tilbud; const st = TILBUD_STATUS[f.status] || TILBUD_STATUS.sendt; const apnet = f.mottakere.filter((m) => m.apnet).length; const ny = nyeSvar(o); const ute = f.status === 'sendt' && f.svarfrist && f.svarfrist < new Date().toISOString().slice(0, 10);
+        return `<button type="button" class="tb-rad" data-oh="se-tilbud" data-id="${o.id}">
+          <span class="tb-rad-hoved"><b>${esc(o.tittel || typeFor(o.type).kort)}</b><span class="hint">${esc(o.nr)} · til ${esc(f.mottakere.map((m) => m.firma || m.navn).join(', '))}</span>
+          <span class="hint">${f.status === 'tildelt' ? `Tildelt ${esc(o.utforer?.navn || '')}` : `${f.svar.length} av ${f.mottakere.length} har svart · ${apnet} har åpnet${f.svarfrist ? ` · svarfrist ${esc(kortDato(f.svarfrist))}${ute ? ' (passert)' : ''}` : ''}`}</span></span>
+          <span class="tb-rad-hoyre">${ny ? `<span class="tb-ny">${ny} nytt${ny > 1 ? 'e' : ''}</span>` : ''}<span class="pille" style="--farge:${st.farge}">${f.status === 'sendt' ? (f.svar.length ? 'Svar mottatt' : 'Venter på svar') : esc(st.navn)}</span></span>
+        </button>`; }).join('')}
+      <p class="hint" style="margin:6px 0 0">Trykk på en forespørsel for å se og sammenligne tilbudene og velge utfører.</p></div>`;
+  }
+  let henterTilbud = false; let sistHentetTilbud = 0;
+  async function hentAlleTilbud({ stille = true } = {}) {
+    const liste = alle().filter((o) => o.tilbud?.status === 'sendt' && o.tilbud.relay); if (!liste.length || henterTilbud) return;
+    henterTilbud = true; if (!stille) tegn(); let nye = 0; let feil = null;
+    for (const o of liste) { try { nye += await tilbudUi.hentStille(o); } catch (e) { feil = e; } }
+    henterTilbud = false; sistHentetTilbud = Date.now(); endret({ kart: false }); tegn();
+    if (nye) melding(`${nye} nytt tilbud${nye > 1 ? '' : ''} mottatt. Se under «Mine tilbudsforespørsler».`); else if (!stille) melding(feil ? feil.message : 'Ingen nye tilbud.');
+  }
   function listeHtml() {
+    if (Date.now() - sistHentetTilbud > 120000) setTimeout(() => hentAlleTilbud(), 0);
     const liste = alle().filter((o) => filter === 'alle' || AKTIVE_STATUS.includes(o.status)).sort((a, b) => String(b.nr).localeCompare(String(a.nr), 'nb', { numeric: true }));
     const rader = liste.map((o) => {
       const s = sammendrag(S(), o, okonomi);
       return `<button type="button" class="oppdrag-rad" data-oppdrag="${o.id}">
         <span class="oppdrag-nr">${esc(o.nr)}</span>
         <span class="oppdrag-hoved"><b>${esc(o.tittel || typeFor(o.type).navn)}</b><span class="hint">${esc(typeFor(o.type).navn)}${o.utforer?.navn ? ` · ${esc(o.utforer.navn)}` : ''}</span><span class="hint">${mengdeTekst(o, s)}${o.periode?.til ? ` · frist ${esc(o.periode.til)}` : ''} · sjekkliste ${s.sjekk}/${s.sjekkTotalt}</span></span>
-        ${statusPille(o)}
+        <span class="oppdrag-merker">${harTilbud(o) ? `<span class="tb-merke" title="Tilbud">📨 ${o.tilbud.svar.length}/${o.tilbud.mottakere.length}${nyeSvar(o) ? ' <b>ny</b>' : ''}</span>` : ''}${statusPille(o)}</span>
       </button>`;
     }).join('');
     return `<div class="kort">
       <div class="detalj-topp"><h3>Oppdrag</h3><select id="oppdragFilter" aria-label="Vis oppdrag">${opsj([['aktive', 'Aktive'], ['alle', 'Alle']], filter)}</select></div>
       <div class="ht-start"><div><b>Vil du ha pris på en jobb?</b><span class="hint">Velg hva som skal gjøres og hvem som skal gi tilbud – oppdraget lages automatisk.</span></div><button type="button" class="knapp primar" data-be-om-tilbud>📨 Be om tilbud</button></div>
       <p class="hint">Du kan også lage oppdrag uten tilbud: «＋ Oppdrag» på et tiltak, eller «Nytt oppdrag» under Tiltaksplan for flere tiltak.</p>
-      ${rader || '<div class="tom">Ingen oppdrag ennå.</div>'}
+      ${tilbudHtml()}
+      ${rader ? `${alle().some(harTilbud) ? '<h4 class="undertittel">Alle oppdrag</h4>' : ''}${rader}` : '<div class="tom">Ingen oppdrag ennå.</div>'}
       <details class="ekstra" style="margin-top:10px"><summary>Oppdragstyper (${Object.keys(OPPDRAGSTYPER).length})</summary>${Object.entries(OPPDRAGSTYPER).map(([k, t]) => `<div><b>${esc(t.navn)}</b> <span class="hint">for ${esc(tiltakNavn(k))} · ${esc(t.utforer)} · ${t.felt.length} felt, ${t.sjekk.length} punkter i sjekklisten</span></div>`).join('')}</details>
     </div>`;
   }
@@ -127,7 +154,9 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     if (valgt && !o) valgt = null;
     panel.innerHTML = o ? detaljHtml(o) : listeHtml();
     const n = alle().filter((x) => AKTIVE_STATUS.includes(x.status)).length;
-    const el = $('#oppdragAntall'); if (el) el.textContent = n ? `(${n})` : '';
+    if (o && (faneFor.get(o.id) === 'utforer') && o.tilbud && o.tilbud.sett !== o.tilbud.svar.length) { o.tilbud.sett = o.tilbud.svar.length; endret({ kart: false }); }
+    const nyeTotalt = alle().reduce((s, x) => s + nyeSvar(x), 0);
+    const el = $('#oppdragAntall'); if (el) el.innerHTML = `${n ? `(${n})` : ''}${nyeTotalt ? ` <span class="tb-ny">${nyeTotalt} nytt tilbud</span>` : ''}`;
     uthev(o ? linjer(S(), o).map((l) => l.bestand.id) : []);
     if (o) stanfordUi.kart(o); else stanfordUi.lukk();
     if (o?.driftsveg) driftsvegUi.kart(o); else driftsvegUi.lukk();
@@ -195,6 +224,8 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     const h = e.target.closest('[data-oh]'); if (!h) return;
     const o = finn(valgt);
     if (h.dataset.oh === 'tilbake') { valgt = null; tegn(); return; }
+    if (h.dataset.oh === 'hent-tilbud') { hentAlleTilbud({ stille: false }); return; }
+    if (h.dataset.oh === 'se-tilbud') { apne(h.dataset.id, 'utforer'); return; }
     if (!o) return;
     if (h.dataset.oh === 'fane' || h.dataset.oh === 'steg') { faneFor.set(o.id, h.dataset.fane); tegn(); $('#oppdragPanel')?.scrollIntoView?.({ block: 'start' }); return; }
     if (h.dataset.oh === 'zoom') visBestander(linjer(S(), o).map((l) => l.bestand.id));

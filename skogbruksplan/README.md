@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.65.0** (2026-11-10) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.65.1** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -577,6 +577,11 @@ En veiviser i tre steg lar skogeieren få pris på en jobb uten å sette seg inn
 - Svarene kommer inn i oppdraget under Utfører, med sammenligning og tildeling som før.
 
 **Hvor den åpnes:** Tiltak-fanen («📨 Be om tilbud» øverst og på hvert tiltak), oppdragslisten og kommandolinjen («tilbud»). Starter man fra et tiltak som allerede ligger i et oppdrag, åpnes det oppdragets Utfører-fane.
+
+**Mine tilbudsforespørsler** står øverst i Tiltak › Oppdrag og i kommandolinjen («mine tilbud»):
+- **Hver forespørsel viser:** mottakerne, hvor mange som har åpnet og svart, svarfristen (merket hvis den er passert) og status.
+- **Nye svar:** Svarene hentes automatisk når listen vises (høyst hvert andre minutt), eller med «Hent svar». Svar du ikke har sett i oppdragets Utfører-fane, merkes «nytt», også på fanen Oppdrag.
+- **Ferdig:** «Ferdig – se forespørselen» i veiviseren åpner oppdraget i Utfører-fanen.
 
 ## Ajourføring av planen fra hogstmaskindata (Data › 🔄 og Oppdrag › Maskin)
 

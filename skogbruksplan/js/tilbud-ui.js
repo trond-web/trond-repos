@@ -132,11 +132,21 @@ export function lagTilbudUi({ hentPlan, endret, melding, nyId, okonomi, tiltakNa
       endret({ kart: false }); if (!stille || nye) melding(nye ? `${nye} nytt tilbud${nye > 1 ? '' : ''} hentet.` : 'Ingen nye tilbud.');
     } catch (e) { if (!stille) melding(e.message); } finally { henter = false; tegn(); }
   }
+  // Henter svar uten å vise noe (oppdragslisten henter for alle sendte forespørsler). Gir antall nye svar.
+  async function hentStille(o) {
+    const f = o.tilbud; if (!f?.relay || f.status !== 'sendt') return 0;
+    const d = await kall(`/api/tilbud/${f.relay.id}/svar?e=${f.relay.eier}`);
+    const manuelle = f.svar.filter((x) => x.manuelt && !d.svar.some((s) => s.mottakerId === x.mottakerId));
+    const nye = d.svar.filter((s) => !f.svar.some((x) => x.mottakerId === s.mottakerId && x.mottatt === s.mottatt)).length;
+    f.svar = [...d.svar, ...manuelle]; for (const m of f.mottakere) m.apnet = d.apnet?.[m.id] || m.apnet || null;
+    f.hentet = new Date().toISOString();
+    return nye;
+  }
   async function oppdaterServer(o, kropp) { const f = o.tilbud; if (!f.relay) return {}; return kall(`/api/tilbud/${f.relay.id}?e=${f.relay.eier}`, { metode: 'PUT', kropp }); }
   function nyMottaker(felt) { return { id: nyId('m'), navn: felt.navn?.trim() || '', firma: felt.firma?.trim() || '', epost: felt.epost?.trim() || '', telefon: felt.telefon?.trim() || '' }; }
 
   return {
-    html,
+    html, hentStille,
     // Henter svar i bakgrunnen når et oppdrag med en sendt forespørsel åpnes.
     apnet(o, tegn) { steg = o.tilbud?.status === 'utkast' ? steg : 1; manuelt = false; if (o.tilbud?.status === 'sendt') hent(o, tegn, { stille: true }); },
     async klikk(e, o, tegn) {
