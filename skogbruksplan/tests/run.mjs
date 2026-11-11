@@ -3322,6 +3322,37 @@ test('Måleverktøy: lengde, areal, omkrets og volum per bestand og treslag', as
   assert.equal(MA.volum(S, [g(0, 0), g(10, 0)], PC), null, 'for få punkter');
 });
 
+test('Treslag: fordeling med kilde, volum per treslag, registrering og treantall per treslag i hogstklasse II', async () => {
+  const T = await import('../js/treslag.js'); const { normaliserBestand } = await import('../js/model.js');
+  // Bare hovedtreslag → alt på det
+  const b = { id: 'b1', nr: '1', treslag: 'G', bonitet: 17, areal: 10, alder: 70, volumDaa: 30, hogstklasse: 5, tiltak: [] };
+  let v = T.volumPerTreslag(b); assert.equal(v.kilde, 'hovedtreslag'); assert.equal(v.rader[0].m3, 300); assert.equal(v.rader[2].m3, 0);
+  // Registrert fordeling (prosent, skaleres til 100 %)
+  assert.ok(T.settTreslagAndel(b, { G: '60', F: '30', L: '10' })); v = T.volumPerTreslag(b);
+  assert.equal(v.kilde, 'registrert'); assert.deepEqual(v.rader.map((r) => Math.round(r.m3)), [180, 90, 30]); assert.equal(Math.round(v.rader[1].daa), 9);
+  assert.ok(T.settTreslagAndel(b, { G: '2', F: '1', L: '1' })); assert.deepEqual(b.treslagAndel, { G: 0.5, F: 0.25, L: 0.25 });
+  assert.equal(T.settTreslagAndel(b, { G: 'x' }), false); assert.equal(T.settTreslagAndel(b, { G: '120' }), false);
+  assert.ok(T.settTreslagAndel(b, { F: '80', G: '20' })); assert.equal(T.avvikHovedtreslag(b), 'F', 'furu dominerer, men hovedtreslaget er gran');
+  assert.ok(T.settTreslagAndel(b, {})); assert.equal(b.treslagAndel, undefined); assert.equal(T.fordeling(b).kilde, 'hovedtreslag');
+  // Import fra plan og fra SR16
+  const imp = normaliserBestand({ BESTNR: '2', TRESLAG: 'G', AREAL: 5, GRAN_PST: 70, FURU_PST: 20, LAUV_PST: 10, VOLUM_DAA: 20 }); assert.equal(T.fordeling(imp).kilde, 'import'); assert.equal(T.fordeling(imp).andel.G, 0.7);
+  const sr = normaliserBestand({ BESTNR: '3', TRESLAG: 'G', AREAL: 5, GRAN_PST: 50, FURU_PST: 50, KILDE: 'SR16' }); assert.equal(T.fordeling(sr).kilde, 'sr16');
+  // Hogstklasse II: treantall per treslag
+  const u = { id: 'u', nr: '4', treslag: 'G', bonitet: 17, areal: 8, alder: 12, hogstklasse: 2, treslagAndel: { G: 0.8, F: 0.2 }, tiltak: [] };
+  assert.ok(T.visTreantallTreslag(u)); assert.ok(!T.visTreantallTreslag(b));
+  let d = T.treantallPerTreslag(u); assert.equal(d.for.kilde, 'beregnet'); assert.ok(d.for.L > 0 && d.for.G > d.for.F, 'gran mer enn furu etter fordelingen');
+  assert.ok(Math.abs(d.for.sum - (await import('../js/ungskog.js')).ungskogData(u).treantallFor.verdi) <= 2, 'summen er treantallet før regulering');
+  assert.ok(d.etter.sum <= d.maal + 1 && d.etter.G + d.etter.F >= d.etter.L, 'etter regulering: bartrærne spares');
+  assert.ok(T.settTreantallTreslag(u, 'for', { G: '900', F: '100', L: '1 400' }, { idag: '2026-11-11' }));
+  d = T.treantallPerTreslag(u); assert.deepEqual([d.for.G, d.for.F, d.for.L, d.for.sum, d.for.kilde], [900, 100, 1400, 2400, 'registrert']); assert.equal(u.ungskog.treantallFor, 2400);
+  assert.equal(d.etter.kilde, 'beregnet'); assert.ok(d.etter.G > d.etter.F);
+  assert.ok(T.settTreantallTreslag(u, 'etter', { G: 180, F: 20, L: 20 })); assert.equal(T.treantallPerTreslag(u).etter.sum, 220); assert.equal(u.ungskog.treantallEtter, 220);
+  assert.equal(T.settTreantallTreslag(u, 'for', { G: '-1' }), false); assert.equal(T.settTreantallTreslag(u, 'feil', {}), false);
+  // Ny total via ungskogfeltet erstatter fordelingen per treslag
+  const { settUngskog } = await import('../js/ungskog.js'); settUngskog(u, 'treantallFor', '1500'); assert.equal(u.ungskog.treslagFor, undefined); assert.equal(T.treantallPerTreslag(u).for.kilde, 'fordelt'); assert.equal(T.treantallPerTreslag(u).for.sum, 1500);
+  assert.ok(T.settTreantallTreslag(u, 'etter', { G: '', F: '', L: '' })); assert.equal(u.ungskog.treantallEtter, undefined);
+});
+
 // Sjekksum for innholdet i vilkår og personvernerklæring per versjon (js/personvern.js). Endres teksten, må
 // VILKAR.versjon økes og en ny linje legges til her. Gamle linjer blir stående som historikk.
 const PERSONVERN_SJEKKSUM = {

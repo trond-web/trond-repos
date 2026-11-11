@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.70.0 – Treslag og volum i bestandsinfoen (2026-11-11)
+
+*Nytt.* Bestandsinfoen viser treslagsfordeling (gran, furu, lauv) med kilde og volum per treslag, og andelene kan skrives inn. I hogstklasse II vises treantall per treslag før og etter regulering, beregnet eller registrert i felt.
+
 ## 1.69.0 – Vilkår og personvern (2026-11-11)
 
 *Nytt.* Brukervilkår og personvernerklæring som godtas ved registrering, og ved neste innlogging for eksisterende brukere. Under Min profil kan du laste ned alle dataene dine, slå av bruksstatistikken og slette kontoen.

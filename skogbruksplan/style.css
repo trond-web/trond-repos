@@ -1315,3 +1315,24 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .nv-skriv { display: flex; gap: 8px; padding: 8px; border-top: 1px solid var(--border); background: var(--surface); } .nv-skriv textarea { flex: 1; resize: none; padding: 9px 12px; border-radius: 18px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; max-height: 140px; } .nv-skriv .knapp { border-radius: 99px; width: 42px; height: 42px; padding: 0; justify-content: center; }
 .velkomst-nettverk .knapp { margin-left: 4px; }
 @media (max-width: 760px) { .nv-chat { height: calc(100dvh - 260px); } }
+
+/* Treslag og volum i bestandsinfoen (js/treslag.js) */
+.treslag-seksjon { background: var(--surface-2); border-radius: 14px; padding: 10px 12px; margin: 10px 0; display: grid; gap: 8px; }
+.treslag-topp { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.treslag-topp h3 { margin: 0; font-size: 15px; }
+.treslag-stolpe { display: flex; height: 22px; border-radius: 7px; overflow: hidden; background: var(--border); }
+.treslag-stolpe span { display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-shadow: 0 1px 2px rgba(0,0,0,.35); min-width: 0; }
+.treslag-tabell { width: 100%; border-collapse: collapse; font-size: 13px; }
+.treslag-tabell th { text-align: left; font-size: 11px; font-weight: 600; color: var(--text-2); padding: 2px 4px; }
+.treslag-tabell td { padding: 3px 4px; border-top: 1px solid var(--border); vertical-align: middle; }
+.treslag-tabell .t { text-align: right; font-variant-numeric: tabular-nums; }
+.treslag-tabell tr.sum td { font-weight: 700; }
+.treslag-tabell i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.treslag-tabell input { width: 4.2em; padding: 3px 6px; font: inherit; text-align: right; }
+.treslag-tabell .pst-felt { display: inline-flex; align-items: center; gap: 3px; font-weight: 400; margin: 0; }
+.treslag-tabell.tt input { width: 100%; min-width: 3.5em; }
+.treslag-tabell.tt td:first-child { font-size: 12px; white-space: nowrap; }
+.treslag-tabell.tt td:first-child .ungskog-kilde { display: block; width: fit-content; margin-top: 2px; }
+.treantall-treslag { margin: 8px 0; }
+.treantall-treslag h4 { margin: 0 0 4px; font-size: 14px; } .treantall-treslag h4 small { font-weight: 400; color: var(--text-2); }
+.treslag-tabell tr.sum td.avvik { color: var(--danger, #b4302f); }

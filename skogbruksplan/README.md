@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.69.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.70.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -68,6 +68,24 @@ Store eiendommer støttes:
 - **Rask geometri:** polygonklipping gjøres med `polygon-clipping`, med Turf som reserve.
 - **Delte bestand:** bestand som NIBIO har lagret som flere flater med samme nummer, slås sammen. Har delene ulike data, får de bokstav etter nummeret (f.eks. 1-45a og 1-45b).
 - **Eksempel:** Flå 22/1 (12 teiger, 11 455 daa) gir 563 bestand på 9 822 daa skog.
+
+## Treslag og volum i bestandsinfoen (`js/treslag.js`)
+
+**Treslagsfordeling** for hvert bestand vises som en fargestolpe (gran, furu, lauv) med kilde:
+- **registrert:** skrevet inn i prosent
+- **fra planen:** import
+- **SR16-anslag:** fra skogtypen, andel av arealet
+- **bare hovedtreslag:** fordelingen mangler
+
+Andelene skrives inn direkte i tabellen og lagres når du forlater feltene eller trykker Enter. Summen vises mens du skriver, og verdier som ikke blir 100 %, skaleres. Dominerer et annet treslag enn hovedtreslaget, foreslås det å endre hovedtreslaget.
+
+**Volum per treslag:** stående volum i dag fordelt etter andelene, i m³/daa og m³ for bestandet.
+
+**Treantall per treslag i hogstklasse II**, under Ungskog: gran, furu og lauv før og etter regulering, i trær/daa.
+- **Beregnet:**
+  - Lauvandelen kommer fra ungskogmodellen, og bartrærne fordeles på gran og furu etter treslagsfordelingen.
+  - Etter regulering spares bartrærne først. Ca. 10 % lauv beholdes, ned mot anbefalt treantall.
+- **Registrert:** en hel rad lagres. Tomme felt får den beregnede verdien, og summen blir treantallet før eller etter regulering, som brukes av tiltaksmotoren og effektberegningen. En tom rad fjerner registreringen.
 
 ## Ungskog (HK I–II) og effekt av tiltak
 

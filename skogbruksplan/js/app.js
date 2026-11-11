@@ -58,6 +58,7 @@ import { nyttUtvalg, kanLageTiltak, kandidater as utvalgKandidater, bestandStatu
 import { mpTilUtm, mpTilGeo, fordelPaaBestand } from './sporlogg.js';
 import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
+import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, settTreslagAndel, avvikHovedtreslag, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag } from './treslag.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
 const VEIKLASSER_NAVN = (k) => (VEIKLASSER[k] || VEIKLASSER[0]).navn;
@@ -838,6 +839,7 @@ function visDetalj() {
       <div><b>${fmt(s.volumDaa * (b.areal || 0) * rotnettoPerM3(b.treslag, inn()) / 1000)} k</b><span>kr rotnetto ved hogst nå</span></div>
       ${(() => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? `<div><b>${fmt(a.meter)} m</b><span>til nærmeste bilvei${a.meter > veiVisning.maks() ? ' – lang terrengtransport' : ''}</span></div>` : ''; })()}
     </div>
+    ${treslagSeksjonHtml(b)}
     ${b.markfukt ? (() => { const v = fuktVurdering(b.markfukt); return `<div class="bratt-linje fukt-${v.niva}"><div class="bratt-stolpe">${FUKT_KLASSER.map((k) => (b.markfukt.andeler[k.id] ? `<span style="flex:${b.markfukt.andeler[k.id]};background:${k.farge}" title="${esc(k.leg)}: ${Math.round(b.markfukt.andeler[k.id] * 100)} %"></span>` : '')).join('')}${b.markfukt.andeler.torr ? `<span style="flex:${b.markfukt.andeler.torr};background:#e6e1c8" title="Tørt: ${Math.round(b.markfukt.andeler.torr * 100)} %"></span>` : ''}</div><span>💧 ${esc(v.tekst)}</span></div>`; })() : ''}
     ${(() => { const nv = (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade', 'kulturminne'].includes(o.type) && o.geometri && b.geometri && overlapper(b.geometri, o.geometri)); return nv.length ? `<div class="bratt-linje plan-2"><span>${nv.slice(0, 4).map((o) => `${o.type === 'artsomrade' ? '🦉' : o.type === 'kulturminne' ? '🏛' : '🌿'} ${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : esc(o.navn)}`).join('<br>')}${nv.length > 4 ? `<br><small>+ ${nv.length - 4} til</small>` : ''}<br><small>${nv.some((o) => o.type === 'kulturminne') ? 'Kulturminne: ikke kjør over eller skad det, og hold sikringssonen fri (PEFC krav 30). ' : ''}${nv.some((o) => o.type !== 'kulturminne') ? 'Naturtype eller art – vurderes av skogbiologisk kompetanse før hogst (PEFC krav 22).' : ''}</small></span></div>` : ''; })()}
     ${S.arealplan?.bestand?.[b.id] ? (() => { const t = planBestandTekst(S.arealplan.bestand[b.id]); return t?.tekst ? `<div class="bratt-linje plan-${t.alvor}"><div class="bratt-stolpe">${S.arealplan.bestand[b.id].formal.map((f) => `<span style="flex:${f.andel};background:${formalInfo(f.kode).farge}" title="${esc(formalInfo(f.kode).navn)}: ${Math.round(f.andel * 100)} %"></span>`).join('')}</div><span>🏘 ${esc(t.tekst)}${t.raad ? `<br><small>${esc(t.raad)}</small>` : ''}</span></div>` : ''; })() : ''}
@@ -896,7 +898,7 @@ function visDetalj() {
       if (!!us !== !!ny) visDetalj(); else if (us && !us.contains(document.activeElement)) us.outerHTML = ny, kobleUngskog(b);
     }, 500);
   });
-  kobleUngskog(b);
+  kobleUngskog(b); kobleTreslag(b);
   $('#nyttTiltakSkjema').addEventListener('submit', (e) => {
     e.preventDefault();
     const d = new FormData(e.target);
@@ -933,6 +935,57 @@ function tetthetFeltHtml(b) {
 }
 
 // Ungskogfelt (HK I–II) og økonomisk effekt av å gjennomføre eller ikke gjennomføre ungskogpleie/planting.
+// Treslagsfordeling og volum per treslag i bestandsinfoen. Andelene kan skrives inn (prosent).
+const TS_KILDE = { registrert: 'Registrert', import: 'Fra planen', sr16: 'SR16-anslag', hovedtreslag: 'Bare hovedtreslag' };
+function treslagSeksjonHtml(b) {
+  const v = volumPerTreslag(b); const avvik = avvikHovedtreslag(b);
+  const pst = (x) => Math.round(x * 100);
+  return `<div id="treslagSeksjon" class="treslag-seksjon">
+    <div class="treslag-topp"><h3>Treslag og volum</h3><span class="ungskog-kilde ${v.kilde === 'registrert' ? 'registrert' : v.kilde === 'hovedtreslag' ? 'beregnet' : 'data'}" title="${esc(v.forklaring)}">${TS_KILDE[v.kilde]}</span></div>
+    <div class="treslag-stolpe" role="img" aria-label="Treslagsfordeling: ${TRESLAG_REKKE.map((t) => `${TRESLAG_NAVN[t]} ${pst(v.rader.find((r) => r.t === t).andel)} %`).join(', ')}">${v.rader.filter((r) => r.andel > 0).map((r) => `<span style="flex:${r.andel};background:${TRESLAG_FARGE[r.t]}">${r.andel >= 0.12 ? `${TRESLAG_NAVN[r.t]} ${pst(r.andel)} %` : ''}</span>`).join('')}</div>
+    <table class="treslag-tabell"><thead><tr><th>Treslag</th><th>Andel</th><th class="t">m³/daa</th><th class="t">m³</th></tr></thead><tbody>
+      ${v.rader.map((r) => `<tr><td><i style="background:${TRESLAG_FARGE[r.t]}"></i>${TRESLAG_NAVN[r.t]}</td><td><label class="pst-felt"><input type="text" inputmode="decimal" data-andel="${r.t}" value="${v.kilde === 'hovedtreslag' ? '' : pst(r.andel)}" placeholder="${pst(r.andel)}" aria-label="Andel ${TRESLAG_NAVN[r.t].toLowerCase()} i prosent"> %</label></td><td class="t">${fmt(r.daa, 1)}</td><td class="t"><b>${fmt(r.m3)}</b></td></tr>`).join('')}
+      <tr class="sum"><td>Sum</td><td>100 %</td><td class="t">${fmt(v.volumDaa, 1)}</td><td class="t"><b>${fmt(v.m3)}</b></td></tr></tbody></table>
+    <small class="hint">${esc(v.forklaring)}. Volumet er stående volum i dag fordelt etter andelene.${avvik ? ` <b>${TRESLAG_NAVN[avvik]} dominerer, men hovedtreslaget er ${esc(TRESLAG[b.treslag] || 'gran').toLowerCase()}.</b> <button class="lenkeknapp" type="button" data-hovedtreslag="${avvik}">Sett hovedtreslag til ${TRESLAG_NAVN[avvik].toLowerCase()}</button>` : ''}${v.kilde !== 'hovedtreslag' ? ' <button class="lenkeknapp" type="button" data-andel-nullstill>Nullstill</button>' : ''}</small>
+  </div>`;
+}
+function kobleTreslag(b) {
+  const el = $('#treslagSeksjon'); if (!el) return;
+  // Lagres når du forlater andelsfeltene (eller trykker Enter), så du kan skrive inn alle tre først. Summen vises mens du skriver.
+  const les = () => Object.fromEntries(TRESLAG_REKKE.map((t) => [t, el.querySelector(`[data-andel="${t}"]`).value.trim()]));
+  const start = JSON.stringify(les()); const sumCelle = el.querySelector('tr.sum td:nth-child(2)');
+  const summer = (v) => TRESLAG_REKKE.reduce((s, t) => s + (Number(String(v[t]).replace(',', '.')) || 0), 0);
+  const lagre = () => {
+    const verdier = les(); if (JSON.stringify(verdier) === start || TRESLAG_REKKE.every((t) => verdier[t] === '')) return;
+    if (!settTreslagAndel(b, verdier)) { melding('Andelen må være et tall mellom 0 og 100.'); return; }
+    const sum = summer(verdier); if (Math.abs(sum - 100) > 0.5) melding(`Andelene summerte seg til ${fmt(sum)} % – skalert til 100 %.`);
+    endret({ kart: false }); visDetalj();
+  };
+  el.addEventListener('input', (e) => { if (!e.target.closest('[data-andel]')) return; const s = summer(les()); sumCelle.textContent = `${fmt(s)} %`; sumCelle.classList.toggle('avvik', Math.abs(s - 100) > 0.5); });
+  el.addEventListener('focusout', (e) => { if (e.target.closest('[data-andel]') && !e.relatedTarget?.closest?.('[data-andel]')) lagre(); });
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.closest('[data-andel]')) { e.preventDefault(); lagre(); } });
+  el.addEventListener('click', (e) => {
+    if (e.target.closest('[data-andel-nullstill]')) { settTreslagAndel(b, {}); endret({ kart: false }); visDetalj(); }
+    const h = e.target.closest('[data-hovedtreslag]'); if (h) { b.treslag = h.dataset.hovedtreslag; endret({ kart: true }); visDetalj(); }
+  });
+}
+
+// Treantall per treslag i hogstklasse II, før og etter regulering.
+function treantallTreslagHtml(b) {
+  if (!visTreantallTreslag(b, inn())) return '';
+  const d = treantallPerTreslag(b, { inn: inn() });
+  const kol = (fase) => { const x = d[fase]; return TRESLAG_REKKE.map((t) => `<td><input type="text" inputmode="numeric" data-tt-fase="${fase}" data-tt="${t}" value="${x.kilde === 'registrert' ? x[t] : ''}" placeholder="${fmt(x[t])}" aria-label="${TRESLAG_NAVN[t]} ${fase === 'for' ? 'før' : 'etter'} regulering, trær per daa"></td>`); };
+  const f = kol('for'); const e = kol('etter');
+  const merke = (x) => `<span class="ungskog-kilde ${x.kilde === 'registrert' ? 'registrert' : 'beregnet'}">${x.kilde === 'registrert' ? 'Registrert' : x.kilde === 'fordelt' ? 'Fordelt' : 'Beregnet'}</span>`;
+  return `<div class="treantall-treslag">
+    <h4>Treantall per treslag <small>(trær/daa)</small></h4>
+    <table class="treslag-tabell tt"><thead><tr><th></th>${TRESLAG_REKKE.map((t) => `<th><i style="background:${TRESLAG_FARGE[t]}"></i>${TRESLAG_NAVN[t]}</th>`).join('')}<th class="t">Sum</th></tr></thead><tbody>
+      <tr><td>Før regulering ${merke(d.for)}</td>${f.join('')}<td class="t"><b>${fmt(d.for.sum)}</b></td></tr>
+      <tr><td>Etter regulering ${merke(d.etter)}</td>${e.join('')}<td class="t"><b>${fmt(d.etter.sum)}</b></td></tr></tbody></table>
+    <small class="hint">${d.for.kilde === 'registrert' && d.etter.kilde === 'registrert' ? 'Registrert i felt. Tøm feltene i en rad for å bruke beregnede verdier.' : esc(d.forklaring)} Anbefalt etter regulering: ca. ${fmt(d.maal)} trær/daa.</small>
+  </div>`;
+}
+
 function ungskogSeksjonHtml(b) {
   if (!erUngskog(b, inn())) return '';
   const e = effektFor(b, { inn: inn(), vInn: { ...STANDARD_VERDI, ...S.verdi }, iAar: IAAR });
@@ -941,6 +994,7 @@ function ungskogSeksjonHtml(b) {
     <h3 style="margin-top:14px">Ungskog (hogstklasse ${HK_ROMERTALL[hk(b)]})</h3>
     <p class="hint" style="margin:0">Tomme felt viser beregnet verdi. Skriv inn målte verdier for å overstyre – de brukes av tiltaksmotoren og effektberegningen.</p>
     ${ungskogHtml(ungskogData(b, { inn: inn() }), { inputs: true })}
+    ${treantallTreslagHtml(b)}
     ${e ? `<h3 style="margin-top:10px">Effekt av ${e.type === 'ungskogpleie' ? 'ungskogpleie' : 'planting'}</h3>${effektHtml(e)}
       ${planlagt ? '' : `<div class="knapperad"><button class="knapp liten primar" type="button" data-handling="effekt-tiltak" data-type="${e.type}">Legg til ${e.type === 'ungskogpleie' ? 'ungskogpleie' : 'planting'} ${IAAR}</button></div>`}` : ''}
   </div>`;
@@ -948,7 +1002,20 @@ function ungskogSeksjonHtml(b) {
 
 function kobleUngskog(b) {
   const us = $('#ungskogSeksjon'); if (!us) return;
+  // Treantall per treslag: hele raden lagres når du forlater den (eller trykker Enter). Tomme felt får den beregnede
+  // verdien, og en helt tom rad fjerner registreringen.
+  const startTt = Object.fromEntries(['for', 'etter'].map((fz) => [fz, [...us.querySelectorAll(`[data-tt-fase="${fz}"]`)].map((x) => x.value).join('|')]));
+  const lagreTt = (fase) => {
+    const felt = [...us.querySelectorAll(`[data-tt-fase="${fase}"]`)]; if (!felt.length || felt.map((x) => x.value).join('|') === startTt[fase]) return;
+    const tom = felt.every((x) => x.value.trim() === '');
+    const verdier = Object.fromEntries(felt.map((x) => [x.dataset.tt, tom ? '' : (x.value.trim() || x.placeholder.replace(/\s/g, ''))]));
+    if (!settTreantallTreslag(b, fase, verdier)) { melding('Ugyldig treantall.'); return; }
+    endret(); visDetalj();
+  };
+  us.addEventListener('focusout', (e) => { const tt = e.target.closest('[data-tt]'); if (tt && e.relatedTarget?.closest?.('[data-tt]')?.dataset.ttFase !== tt.dataset.ttFase) lagreTt(tt.dataset.ttFase); });
+  us.addEventListener('keydown', (e) => { const tt = e.target.closest('[data-tt]'); if (tt && e.key === 'Enter') { e.preventDefault(); lagreTt(tt.dataset.ttFase); } });
   us.addEventListener('change', (e) => {
+    if (e.target.closest('[data-tt]')) return;
     const f = e.target.closest('[data-ungskog]'); if (!f) return;
     if (!settUngskog(b, f.dataset.ungskog, f.value.trim())) { melding('Ugyldig verdi.'); f.focus(); return; }
     endret(); visDetalj();
