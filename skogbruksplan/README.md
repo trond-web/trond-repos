@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.73.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.73.1** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -592,6 +592,19 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## E-post (via eget e-postprogram)
+
+Serveren sender ikke e-post så lenge Resend (`EPOST_NOKKEL` og `EPOST_FRA`) ikke er satt opp. I stedet lager løsningen en ferdig utfylt e-post som brukeren sender fra sitt eget e-postprogram (`mailto:`, `js/epost.js`). Dette gjelder:
+- **tilbudsforespørsler og deling med tømmerkjøper:** lenken til mottakeren, og svar tilbake
+- **lenke for nytt passord på admin-siden**
+- **«Glemt passord»:** etter forespørselen kommer knappen «Send e-post til administrator». Den går til adressen i `ANSVARLIG` og inneholder e-postadressen som ba om nytt passord.
+- **Nettverk:**
+  - Når en innkjøper eller entreprenør inviterer en registrert skogeier, kommer knappen «Gi beskjed på e-post».
+  - Er skogeieren ikke registrert, kommer «Inviter på e-post» med lenke til registreringen.
+  - Chat og katalog viser aldri e-postadresser, så der finnes det ingen e-postknapp.
+
+Settes `EPOST_NOKKEL` og `EPOST_FRA` senere, sendes «Glemt passord» automatisk.
 
 ## Sikkerhetskopi (`backup.js`, admin.html, `verktoy/gjenopprett-backup.mjs`)
 

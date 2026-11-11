@@ -3,6 +3,8 @@
 // Innkjøper/entreprenør: «Mine skogeiere», forespørsler og invitasjon av skogeiere med e-post.
 // Uleste meldinger og nye forespørsler vises som merke på fanen. Serveren: nettverk.js (/api/nettverk).
 import { API } from './plan-synk.js';
+import { mailto, appAdresse } from './epost.js';
+import { innloggetBruker } from './innlogging.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nb = (v) => Number(v || 0).toLocaleString('nb-NO');
@@ -12,10 +14,10 @@ const tid = (ms) => { const d = new Date(ms); const idag = new Date(); return d.
 const initialer = (n) => String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('');
 
 export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
-  let data = null; let feil = ''; let laster = false; let sok = { q: '', rolle: '', liste: null, laster: false }; let chat = null; let poll = null; let bakgrunn = null; let sistUlest = 0; let synlig = false;
+  let data = null; let feil = ''; let laster = false; let sok = { q: '', rolle: '', liste: null, laster: false }; let chat = null; let poll = null; let bakgrunn = null; let sistUlest = 0; let synlig = false; let epostForslag = null; // ferdig e-post etter invitasjon (mailto)
   async function kall(sti, { metode = 'GET', kropp } = {}) {
     const r = await fetch(`${API}${sti}`, { method: metode, headers: kropp ? { 'Content-Type': 'application/json' } : {}, credentials: 'same-origin', body: kropp ? JSON.stringify(kropp) : undefined });
-    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.feil || `Serveren svarte ${r.status}`); return j;
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.feil || `Serveren svarte ${r.status}`), { status: r.status }); return j;
   }
   const harRolle = (r) => (data?.roller || []).includes(r);
   const erAktor = () => harRolle('innkjoper') || harRolle('entreprenor');
@@ -87,6 +89,7 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
       <h4 class="undertittel">Inviter en skogeier</h4>
       <p class="hint" style="margin-top:0">Skriv e-postadressen skogeieren bruker i SkogIQ.ai. Skogeieren får forespørselen og godtar den.</p>
       <div class="nv-sok"><input type="email" data-nv-inviter placeholder="skogeier@epost.no" aria-label="Skogeierens e-post">${mineRoller.length > 1 ? `<select data-nv-inviter-rolle aria-label="Som">${mineRoller.map((r) => `<option value="${r}">som ${ROLLE[r].navn.toLowerCase()}</option>`).join('')}</select>` : ''}<button type="button" class="knapp" data-nv="inviter">Send forespørsel</button></div>
+      ${epostForslag ? `<div class="nv-epost"><span>${esc(epostForslag.hint)}</span><a class="knapp primar" href="${esc(mailto(epostForslag))}" data-nv-epost>✉ ${esc(epostForslag.knapp)}</a></div>` : ''}
     </section>`;
   }
   function chatHtml() {
@@ -147,7 +150,22 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
       if (h === 'oppdater') await hent();
       if (h === 'sok') { sok.q = rot().querySelector('[data-nv-sok]')?.value || ''; sok.rolle = rot().querySelector('[data-nv-rolle]')?.value || ''; await sokAktorer(); }
       if (h === 'be') { const r = await kall('/api/nettverk/koblinger', { metode: 'POST', kropp: { til: k.dataset.til, rolle: k.dataset.rolle } }); melding(r.status === 'aktiv' ? 'Dere er nå koblet sammen.' : 'Forespørselen er sendt. Du får beskjed når den er godtatt.'); await hent({ stille: true }); await sokAktorer(); }
-      if (h === 'inviter') { const epost = rot().querySelector('[data-nv-inviter]')?.value.trim(); if (!epost) { melding('Skriv skogeierens e-postadresse.', 'feil'); return; } const rolle = rot().querySelector('[data-nv-inviter-rolle]')?.value || ['innkjoper', 'entreprenor'].find(harRolle); const r = await kall('/api/nettverk/koblinger', { metode: 'POST', kropp: { til: epost, rolle } }); melding(r.status === 'aktiv' ? 'Dere er nå koblet sammen.' : 'Forespørselen er sendt til skogeieren.'); await hent(); }
+      if (h === 'inviter') {
+        const epost = rot().querySelector('[data-nv-inviter]')?.value.trim(); if (!epost) { melding('Skriv skogeierens e-postadresse.', 'feil'); return; }
+        const rolle = rot().querySelector('[data-nv-inviter-rolle]')?.value || ['innkjoper', 'entreprenor'].find(harRolle);
+        // Serveren sender ikke e-post: tilby en ferdig e-post fra brukerens eget e-postprogram.
+        const meg = innloggetBruker() || {}; const fra = [meg.navn, meg.profil?.foretak].filter(Boolean).join(', ') || 'En aktør';
+        try {
+          const r = await kall('/api/nettverk/koblinger', { metode: 'POST', kropp: { til: epost, rolle } });
+          melding(r.status === 'aktiv' ? 'Dere er nå koblet sammen.' : 'Forespørselen er sendt til skogeieren.');
+          epostForslag = r.status === 'aktiv' ? null : { til: epost, knapp: 'Gi beskjed på e-post', hint: 'Skogeieren ser forespørselen neste gang hen logger inn. Vil du gi beskjed nå?', emne: `${fra} vil koble seg til deg i SkogIQ.ai`, tekst: `Hei!\n\n${fra} (${ROLLE[rolle].entall}) har bedt om å bli koblet til deg i SkogIQ.ai. Da kan vi skrive sammen og dele planer og tilbud direkte i løsningen.\n\nLogg inn og godta forespørselen under Nettverk:\n${appAdresse()}\n\nHilsen ${meg.navn || ''}` };
+        } catch (err) {
+          if (err.status !== 404) throw err;
+          melding('Skogeieren er ikke registrert i SkogIQ.ai ennå. Send en invitasjon på e-post.', 'feil');
+          epostForslag = { til: epost, knapp: 'Inviter på e-post', hint: 'Ikke registrert ennå. Når skogeieren har registrert seg, sender du forespørselen på nytt.', emne: `Invitasjon til SkogIQ.ai fra ${fra}`, tekst: `Hei!\n\n${fra} bruker SkogIQ.ai til skogbruksplan, tiltak og samarbeid med skogeiere, og vil gjerne koble seg til deg der.\n\nRegistrer deg gratis med denne e-postadressen:\n${appAdresse('logginn.html#registrer')}\n\nHilsen ${meg.navn || ''}` };
+        }
+        await hent();
+      }
       if (['godta', 'avsla', 'trekk'].includes(h)) { await kall(`/api/nettverk/koblinger/${k.dataset.id}`, { metode: 'PUT', kropp: { handling: h } }); melding(h === 'godta' ? 'Koblingen er godtatt – dere kan nå chatte.' : h === 'avsla' ? 'Forespørselen er avslått.' : 'Forespørselen er trukket.'); await hent(); if (h === 'godta') apneChat(k.dataset.id); }
       if (h === 'avslutt') { if (!confirm('Avslutte koblingen? Chatten stenges for begge.')) return; await kall(`/api/nettverk/koblinger/${k.dataset.id}`, { metode: 'PUT', kropp: { handling: 'avslutt' } }); chat = null; clearInterval(poll); await hent(); }
       if (h === 'chat') apneChat(k.dataset.id);

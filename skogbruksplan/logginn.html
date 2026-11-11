@@ -31,6 +31,7 @@
   .godta { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; font-size: 13.5px; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface-2); }
   .godta input { width: 20px; height: 20px; flex: none; margin: 1px 0 0; accent-color: var(--accent); }
   .godta a, footer a { color: var(--accent); } .godta.mangler { border-color: var(--danger); }
+  .epost-knapp { display: block; text-align: center; margin-top: 10px; padding: 11px; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 700; text-decoration: none; }
   footer { margin-top: 18px; font-size: 12px; color: var(--text-2); text-align: center; }
   .roller { border: 0; padding: 0; margin: 0 0 12px; }
   .roller legend { font-size: 14px; font-weight: 600; margin-bottom: 6px; } .roller legend small { font-weight: 400; color: var(--text-2); }
@@ -103,7 +104,8 @@
 </main>
 <script type="module">
   import { RAILWAY, LS_OKT } from './js/innlogging.js';
-  import { VILKAR } from './js/personvern.js';
+  import { VILKAR, ANSVARLIG } from './js/personvern.js';
+  import { mailto } from './js/epost.js';
   const API = /github\.io$/.test(location.hostname) ? RAILWAY : '';
   // Bare adresser i appen selv (ingen videresending til andre nettsteder).
   // «?full» og «#…» gjelder appen i samme mappe (./), ikke innloggingssiden.
@@ -151,6 +153,8 @@
       const r = await fetch(`${API}/api/glemt`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ epost: glemt.epost.value.trim() }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { f.textContent = d.feil || `Serveren svarte ${r.status}`; return; }
+      glemt.querySelector('.epost-knapp')?.remove();
+      if (!d.epost && ANSVARLIG.epost) { const a = document.createElement('a'); a.className = 'epost-knapp'; a.href = mailto({ til: ANSVARLIG.epost, emne: 'Glemt passord – SkogIQ.ai', tekst: `Hei!\n\nJeg har bedt om nytt passord til SkogIQ.ai for ${glemt.epost.value.trim()}. Kan du sende meg en lenke for å velge nytt passord?\n\nHilsen` }); a.textContent = '✉ Send e-post til administrator'; ok.after(a); }
       ok.textContent = d.epost ? 'Er e-postadressen registrert, får du en e-post med lenke om litt. Lenken gjelder i én time – sjekk også søppelpost.' : 'Forespørselen er sendt til administrator, som sender deg en lenke for å velge nytt passord.';
     } catch { f.textContent = 'Ingen kontakt med SkogIQ-serveren. Sjekk nettet.'; } finally { knapp.disabled = false; }
   });

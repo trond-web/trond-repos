@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.73.1 – E-post fra ditt eget e-postprogram (2026-11-11)
+
+*Forbedret.* Ved «Glemt passord» kan du sende en ferdig e-post til administrator. Når innkjøpere og entreprenører inviterer en skogeier i Nettverk, får de en ferdig e-post med beskjed om forespørselen, eller en invitasjon til å registrere seg.
+
 ## 1.73.0 – Sikkerhetskopi (2026-11-11)
 
 *Nytt.* Alle data på serveren kopieres kryptert hver natt, på serveren og utenfor Railway i EU. Tilbudsforespørsler, synk mellom PC og mobil, droneoppdrag og John Deere-koblinger lagres nå permanent og forsvinner ikke lenger ved oppdateringer.

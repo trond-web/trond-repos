@@ -2,6 +2,7 @@
 // Nyeste først. Første oppføring skal ha samme versjon som js/versjon.js (sjekkes i testene).
 // type: ny = ny funksjon, forbedret = bedre eller utvidet funksjon, rettet = feilretting.
 export const ENDRINGER = [
+  { versjon: '1.73.1', dato: '2026-11-11', type: 'forbedret', tittel: 'E-post fra ditt eget e-postprogram', tekst: 'Ved «Glemt passord» kan du sende en ferdig e-post til administrator. Når innkjøpere og entreprenører inviterer en skogeier i Nettverk, får de en ferdig e-post med beskjed om forespørselen, eller en invitasjon til å registrere seg.' },
   { versjon: '1.73.0', dato: '2026-11-11', type: 'ny', tittel: 'Sikkerhetskopi', tekst: 'Alle data på serveren kopieres kryptert hver natt, på serveren og utenfor Railway i EU. Tilbudsforespørsler, synk mellom PC og mobil, droneoppdrag og John Deere-koblinger lagres nå permanent og forsvinner ikke lenger ved oppdateringer.' },
   { versjon: '1.72.1', dato: '2026-11-11', type: 'forbedret', tittel: 'Kontakt for personvern', tekst: 'Personvernerklæringen (versjon 1.1) oppgir nå behandlingsansvarlig og e-post for spørsmål om personvern.' },
   { versjon: '1.72.0', dato: '2026-11-11', type: 'forbedret', tittel: 'Endre treslagsfordeling i SkogIQ Felt', tekst: 'I bestandskortet i SkogIQ Felt kan du endre andelene for gran, furu og lauv med «✎ Endre fordeling». Store −/+ 5 %-knapper gjør det lett med hansker, og summen vises underveis. Fordelingen synkroniseres til fullversjonen og brukes i volum og verdi.' },
