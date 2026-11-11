@@ -2,6 +2,7 @@
 // Nyeste først. Første oppføring skal ha samme versjon som js/versjon.js (sjekkes i testene).
 // type: ny = ny funksjon, forbedret = bedre eller utvidet funksjon, rettet = feilretting.
 export const ENDRINGER = [
+  { versjon: '1.66.0', dato: '2026-11-11', type: 'ny', tittel: 'Måleverktøy i kartet', tekst: 'Trykk «Mål» over kartet: mål lengde, eller tegn en flate og få areal, omkrets og stående volum – totalt og fordelt på gran, furu og lauv – med bestandene flaten dekker.' },
   { versjon: '1.65.1', dato: '2026-11-11', type: 'forbedret', tittel: 'Finn igjen tilbudene du har bedt om', tekst: '«Mine tilbudsforespørsler» øverst under Tiltak › Oppdrag viser hvem som har åpnet og svart, og nye svar merkes. «Ferdig» etter sending åpner forespørselen direkte.' },
   { versjon: '1.65.0', dato: '2026-11-10', type: 'ny', tittel: 'Be om tilbud i tre enkle steg', tekst: 'Trykk «📨 Be om tilbud»: velg hva som skal gjøres, hvem som skal gi pris, og send. Oppdraget lages automatisk, og du sender lenken på e-post eller SMS.' },
   { versjon: '1.64.0', dato: '2026-11-10', type: 'ny', tittel: 'Ajourfør planen fra hogstmaskindata', tekst: 'Les inn hpr-fila: SkogIQ finner hogd flate og foreslår deling av bestand, nye egenskaper, utførte og nye tiltak og rydding i tiltak som ikke er aktuelle. Du velger hva som brukes, ser alt i kartet og kan angre.' },

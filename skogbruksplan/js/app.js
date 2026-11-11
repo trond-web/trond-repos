@@ -46,6 +46,7 @@ import { initKarbon } from './karbon-ui.js';
 import { initHprSr16 } from './hpr-sr16-ui.js';
 import { lagAjourforingUi } from './ajourforing-ui.js';
 import { lagHurtigTilbud } from './tilbud-hurtig.js';
+import { lagMaaling } from './maaling-ui.js';
 import { WMS as FUKT_WMS, LAG as FUKT_LAG, KLASSER as FUKT_KLASSER, perBestand as fuktPerBestand, vurdering as fuktVurdering, dekodPng as fuktDekod } from './markfukt.js';
 import { hentBratthet, flater as brattFlater, statistikk as brattStat, vurdering as brattVurdering, KLASSER as BRATT_KLASSER } from './bratthet.js';
 import { lagOppdrag, leggTil as leggTilOppdrag, ledig as tiltakLedig, OPPDRAGSSTATUS, OPPDRAGSTYPER, typeFor as oppdragstype } from './oppdrag.js';
@@ -605,7 +606,7 @@ function angreDeling() {
 let kommuneVisning = null;
 let veiVisning = null;
 let pefcVisning = null;
-let verdiVisning = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null;
+let verdiVisning = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null; let maaling = null;
 let aiVisning = null;
 let skogbrandVisning = null;
 let skifteplanVisning = null;
@@ -2422,6 +2423,8 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag rapport / PDF', sok: 'skriv ut print', utfor: () => eksporter('rapport') },
     ...Object.entries(RAPPORTER).map(([k, r]) => ({ gruppe: 'Rapporter', ikon: '▦', tittel: `Rapport: ${r.navn}`, under: r.beskrivelse, sok: 'rapport pdf utskrift skriv ut', utfor: () => visRapport(k) })),
     { gruppe: 'Handlinger', ikon: '🤝', tittel: 'Del med tømmerkjøper', under: 'Del bestand, volumer og kart og få prisforslag', sok: 'tømmerkjøper tommerkjoper del dele tømmer salg selge hogst pris tilbud andelslag kjøper', utfor: () => { visFane('verdi'); tommerVisning?.apne(null); setTimeout(() => $('#tommerDeling')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
+    { gruppe: 'Kart', ikon: '📏', tittel: 'Mål i kartet', under: 'Lengde, areal, omkrets og volum per treslag', sok: 'mål måle måleverktøy lengde areal avstand omkrets volum treslag kubikk daa linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('areal'); } },
+    { gruppe: 'Kart', ikon: '📏', tittel: 'Mål avstand (lengde)', sok: 'mål avstand lengde meter linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('lengde'); } },
     { gruppe: 'Handlinger', ikon: '📬', tittel: 'Mine tilbudsforespørsler', under: 'Se sendte forespørsler og tilbudene du har fått', sok: 'tilbud svar mine forespørsler mottatt sendt anbud', utfor: () => { visFane('tiltak'); visTiltakVisning('oppdrag'); oppdragVisning?.lukk(); oppdragVisning?.tegn(); } },
     { gruppe: 'Handlinger', ikon: '📨', tittel: 'Be om tilbud', under: 'Få pris fra entreprenør, tømmerkjøper eller planteleverandør – i tre steg', sok: 'tilbud pris entreprenør tømmerkjøper anbud forespørsel bestille jobb oppdrag hogst planting', utfor: () => hurtigTilbud?.start() },
     { gruppe: 'Handlinger', ikon: '🔄', tittel: 'Ajourfør planen fra hogstmaskindata (HPR)', under: 'Les inn hpr-fil: del bestand, oppdater egenskaper og tiltak', sok: 'hpr hogstmaskin ajourfør ajourføring stanford produksjonsfil hogd flate bestandsgrense oppdater plan', utfor: () => { visFane('data'); setTimeout(() => $('#ajourPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
@@ -2622,7 +2625,14 @@ function kobleHendelser() {
   L.DomEvent.disableClickPropagation($('#kartLegend'));
   L.DomEvent.disableClickPropagation($('.kartverktoy'));
   L.DomEvent.disableClickPropagation($('#tegnHjelp'));
-  $('#tegnBtn').addEventListener('click', startTegning);
+  $('#tegnBtn').addEventListener('click', () => { maaling?.stopp(); startTegning(); });
+  // Måleverktøy (maaling-ui.js): lengde, areal og volum per treslag i kartet.
+  maaling = lagMaaling({
+    L, kart, rot: () => $('#maalePanel'), hentPlan: () => S, lastPC: lastKlipping, melding,
+    settKartKlikk: (fn) => { kartKlikk = fn; },
+    visBestand: (id) => { if (S.bestand.some((b) => b.id === id)) { velgBestand(id); visFane('bestand'); } },
+  });
+  $('#maalBtn').addEventListener('click', () => { if (maaling.aktiv()) { maaling.stopp(); return; } if (tegning) stoppTegning(); if (deling) stoppDeling(); avsluttGrenseRedigering(); maaling.start('areal'); if (erMobil()) settArk('lav'); });
   document.addEventListener('click', (e) => {
     const k = e.target.closest('[data-r-handling]'); if (!k) return;
     const type = k.dataset.rapport; const h = k.dataset.rHandling;

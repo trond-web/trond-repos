@@ -75,8 +75,10 @@
         </select>
       </label>
       <button id="tegnBtn" class="knapp" type="button" title="Tegn nytt bestand i kartet"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></svg>Tegn bestand</button>
+      <button id="maalBtn" class="knapp" type="button" title="Mål lengde, areal og volum per treslag i kartet"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 17 3l4 4L7 21Z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>Mål</button>
       <button id="posBtn" class="knapp" type="button" title="Vis min posisjon" aria-label="Vis min posisjon"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7.5"/></svg></button>
     </div>
+    <div id="maalePanel" class="maale-panel" hidden aria-live="polite"></div>
     <div id="tegnHjelp" class="tegn-hjelp" hidden>
       Klikk i kartet for å sette hjørnepunkter. <button id="tegnFerdig" class="knapp primar" type="button">Fullfør</button> <button id="tegnAvbryt" class="knapp" type="button">Avbryt</button>
     </div>

@@ -2,7 +2,7 @@
 //   Kartverket eiendom-API (grense), NIBIO «skogbruksplan/hogstklasser» (bestand fra tidligere plan),
 //   NIBIO SR16 vektor (volum, høyde, treantall, treslag, alder) og NIBIO MiS (nøkkelbiotoper).
 // Geometrioperasjoner gjøres med Turf (sendes inn, slik at modulen også kan kjøres i Node).
-import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST, nyId, vurderLiteVolum, framskrivTilAar, alderFraHoyde } from './model.js';
+import { normaliserBestand, treslagFraSR16, SR16_TRESLAG_TEKST, nyId, vurderLiteVolum, framskrivTilAar, alderFraHoyde, SR16_ANDEL } from './model.js';
 import { hentAr5, lagFigurer, MARKSLAG, OVERSTYRBAR, begrens } from './markslag.js';
 import { tomSkifteplan, lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
 import { geoTilUtm, utmTilGeo, punktIGeometri, etikettPunkt } from './proj.js';
@@ -568,7 +568,9 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     const dekning = deler.reduce((s, d) => s + d[0], 0) / areal;
     const tsAreal = {};
     const typeAreal = {};
+    const andelAreal = { G: 0, F: 0, L: 0 };
     for (const [a, attr] of deler) {
+      for (const [t, x] of Object.entries(SR16_ANDEL[parseInt(attr.srtreslag, 10)] || {})) andelAreal[t] += a * x;
       const t = treslagFraSR16(attr.srtreslag); if (t) tsAreal[t] = (tsAreal[t] || 0) + a;
       const tekst = SR16_TRESLAG_TEKST[parseInt(attr.srtreslag, 10)]; if (tekst) typeAreal[tekst] = (typeAreal[tekst] || 0) + a;
     }
@@ -654,6 +656,7 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
       TEIG: String(nr).includes('-') ? String(nr).split('-')[0] : null,
       AREAL_DAA: r1(areal / 1000),
       TRESLAG: treslag,
+      ...(andelAreal.G + andelAreal.F + andelAreal.L > 0 && dekning > 0.5 ? { GRAN_PST: Math.round((andelAreal.G / (andelAreal.G + andelAreal.F + andelAreal.L)) * 100), FURU_PST: Math.round((andelAreal.F / (andelAreal.G + andelAreal.F + andelAreal.L)) * 100), LAUV_PST: Math.round((andelAreal.L / (andelAreal.G + andelAreal.F + andelAreal.L)) * 100) } : {}),
       BONITET: bonitet ? Math.round(bonitet) : null,
       ALDER: alder !== null && alder !== undefined ? Math.round(alder) : null,
       VOLUM_DAA: r1(volub),
