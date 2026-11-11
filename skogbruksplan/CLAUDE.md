@@ -20,10 +20,22 @@ Gjør den noe av dette:
 3. Er endringen vesentlig, settes `VILKAR.kreverGodkjenning` til den nye versjonen. Da må alle brukere godta på nytt ved neste innlogging. Vesentlig betyr nytt formål, ny mottaker eller tredjepart, eller lengre lagring.
 4. Data som hører til en bruker, skal slettes ved `vedSlett` og være med i `eksport` (`server.js`).
 5. Nevn endringen i endringsloggen (`js/endringslogg.js`).
+6. Oppdater `docs/DPIA.md`:
+   - **Ny versjon av erklæringen:** sett versjonen i toppen av DPIA-en til den nye versjonen. En ny behandling får en linje i kapittel 2 og en risikovurdering i kapittel 4.
+   - **Endringer som kan gjøre DPIA påkrevd** (se kapittel 8 i `docs/DPIA.md`): si det til eieren *før* du bygger, og oppdater DPIA-en med ny vurdering. Dette gjelder:
+     - maskindata knyttet til fører
+     - profilering eller rangering av skogeiere
+     - KI på serveren
+     - kontinuerlig posisjonssporing
+     - stor skala
+     - nye tredjeparter eller lagring utenfor EU/EØS
+     - særlige kategorier
+   - **Tiltak i handlingsplanen** (kapittel 5): sett status til «Gjennomført (versjon X)».
 
 Testene stopper:
 - en ny `/api`-sti som ikke er ført inn i `BEHANDLINGER`
 - tekstendringer i erklæringen uten ny versjon
+- en DPIA (`docs/DPIA.md`) som ikke viser gjeldende versjon av erklæringen, eller som mangler en behandling
 
 ## Utgivelse
 
