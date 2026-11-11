@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.65.1** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.66.0** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -560,6 +560,34 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## Måleverktøy i kartet (📏 Mål, `js/maaling.js` og `js/maaling-ui.js`)
+
+«Mål» i verktøylinjen over kartet, eller «mål» i kommandolinjen.
+- **Lengde:** total lengde og lengden på hvert strekk, vist i kartet.
+- **Areal og volum:** areal (daa, m² og ha) og omkrets. Når flaten lukkes, vises også:
+  - **stående volum** innenfor flaten, totalt og per daa skog
+  - fordeling på **gran, furu og lauv**, som søyle og tabell
+  - areal utenfor bestandene
+  - volum i miljøfigurer
+  - bestandene flaten dekker, med areal, andel av bestandet og m³; et trykk åpner bestandet
+
+**Slik brukes det:**
+- Verdiene oppdateres mens du tegner (strikk og verdi ved markøren).
+- Flaten lukkes ved trykk på første punkt, med dobbeltklikk eller med «Ferdig».
+- Punktene kan dras etterpå.
+- «Kopier» legger resultatet som tekst på utklippstavlen.
+- Hurtigtaster: Enter fullfører, Backspace angrer siste punkt, Esc avslutter.
+- På mobil er panelet kompakt under verktøylinjen, og arket senkes.
+
+**Volum:**
+- Volumet er bestandets volum i dag (`volumDaa`, framskrevet) ganget med overlappet. Overlappet beregnes nøyaktig med polygon-clipping i UTM33.
+- Fordelingen på treslag følger bestandets `treslagAndel` når den finnes, ellers hovedtreslaget. Panelet sier hvilken fordeling som er brukt.
+
+**Treslagsandeler (`treslagAndel`):**
+- Importerte planer: tas vare på fra GRAN_PST, FURU_PST og LAUV_PST.
+- Planer laget fra SR16: arealvektet etter SR16-skogtype (barblanding 50/50, blanding bar/lauv 25/25/50).
+- Eldre planer har bare hovedtreslag, til de lages på nytt.
 
 ## Be om tilbud – den enkle veien (📨, `js/tilbud-hurtig.js`)
 

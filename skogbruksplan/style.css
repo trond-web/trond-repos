@@ -1266,3 +1266,25 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .tb-rad:hover { border-color: var(--accent); } .tb-rad-hoved { display: grid; gap: 1px; min-width: 0; } .tb-rad-hoyre { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .tb-ny { font: 700 10.5px/1 var(--font-mono); background: #d03b3b; color: #fff; padding: 3px 7px; border-radius: 99px; white-space: nowrap; }
 .oppdrag-merker { display: flex; gap: 6px; align-items: center; } .tb-merke { font: 600 11px/1 var(--font-mono); color: var(--text-2); white-space: nowrap; } .tb-merke b { color: #d03b3b; }
+
+/* Måleverktøy (maaling-ui.js) */
+.maale-panel { position: absolute; z-index: 650; top: 126px; left: 64px; width: 310px; max-height: calc(100% - 150px); overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.18); padding: 10px 12px; font-size: 13.5px; }
+.maal-topp { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.maal-modus { display: flex; gap: 4px; padding: 3px; background: var(--surface-2); border-radius: 10px; }
+.maal-modus button { flex: 1; border: 0; background: none; padding: 6px 4px; border-radius: 8px; font: 600 12.5px var(--font-body, system-ui); color: var(--text-2); cursor: pointer; }
+.maal-modus button.aktiv { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.maal-hjelp { margin: 8px 0; }
+.maal-rad { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.maal-stor { display: grid; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); margin-bottom: 6px; } .maal-stor b { font-size: 20px; font-variant-numeric: tabular-nums; } .maal-stor span { font-size: 12px; color: var(--text-2); }
+.maal-vol { margin-top: 4px; }
+.maal-stolpe { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 2px 0 6px; background: var(--surface-2); } .maal-stolpe span { min-width: 2px; }
+.maal-tabell { width: 100%; border-collapse: collapse; font-size: 13px; } .maal-tabell td, .maal-tabell th { padding: 3px 4px; text-align: left; } .maal-tabell .t { text-align: right; font-variant-numeric: tabular-nums; } .maal-tabell th { color: var(--text-2); font-weight: 600; font-size: 12px; }
+.maal-tabell i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.maal-best { margin-top: 6px; } .maal-best summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.maal-kilde, .maal-taster { font-size: 11.5px; margin: 6px 0 0; } .maal-knapper { margin: 8px 0 0; }
+.maal-punkt { width: 14px; height: 14px; border-radius: 99px; background: #fff; border: 3px solid #111; box-shadow: 0 0 0 2px #ffd400; cursor: move; }
+.maal-punkt.forste { background: #ffd400; transform: scale(1.25); cursor: pointer; }
+.maal-strekk span { display: inline-block; transform: translate(-50%, -50%); background: rgba(17,17,17,.78); color: #fff; font: 600 11px/1 var(--font-mono, monospace); padding: 3px 6px; border-radius: 6px; white-space: nowrap; }
+.maal-tips { background: rgba(17,17,17,.85); color: #fff; border: 0; font: 600 12px/1.3 var(--font-mono, monospace); box-shadow: none; } .maal-tips::before { display: none; } .maal-tips small { opacity: .8; }
+.leaflet-container.maaler { cursor: crosshair; }
+@media (max-width: 760px) { .maale-panel { top: 158px; left: 58px; right: 8px; width: auto; max-height: 40vh; padding: 6px 8px; font-size: 12.5px; } .maal-taster, .maal-hjelp { display: none; } .maal-topp { margin-bottom: 4px; } .maal-modus button { padding: 4px 2px; font-size: 12px; } .maal-stor { padding: 5px 8px; margin: 4px 0; } .maal-stor b { font-size: 16px; } .maal-stor span { font-size: 11px; } .maal-knapper { margin-top: 4px; } }

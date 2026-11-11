@@ -58,6 +58,15 @@ export const STANDARD_INNSTILLINGER = {
   },
 };
 
+// Treslagsfordeling (andel av volumet) som brøker { G, F, L } med sum 1. Tar prosent (0–100) eller brøk (0–1).
+// Gir null når ingen andeler er oppgitt.
+export function treslagAndel(a) {
+  const v = Object.fromEntries(['G', 'F', 'L'].map((k) => [k, Number.isFinite(a?.[k]) && a[k] > 0 ? a[k] : 0]));
+  const sum = v.G + v.F + v.L; if (!(sum > 0)) return null;
+  return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, Math.round((x / sum) * 1000) / 1000]));
+}
+// SR16-skogtypen omregnet til omtrentlig treslagsfordeling (brukes når planen lages fra SR16).
+export const SR16_ANDEL = { 1: { G: 1 }, 2: { F: 1 }, 3: { G: 0.5, F: 0.5 }, 4: { G: 0.25, F: 0.25, L: 0.5 }, 5: { L: 1 } };
 // SR16 treslagskode: 1 grandominert, 2 furudominert, 3 barblanding, 4 blanding (bar/lauv), 5 lauvdominert.
 export const SR16_TRESLAG_TEKST = { 1: 'grandominert', 2: 'furudominert', 3: 'barblanding', 4: 'blanding', 5: 'lauvdominert' };
 // Gir G/F/L. Bruker andel per treslag når den finnes (størst andel vinner), ellers koden.
@@ -231,6 +240,7 @@ export function normaliserBestand(props, geometri, arealGeomDaa, iAar = new Date
     miljo: Boolean(hent('miljo')) && !['0', 'NEI', 'N', 'FALSE'].includes(String(hent('miljo')).toUpperCase()),
     merknad: hent('merknad') ? String(hent('merknad')) : '',
     vegetasjon: tolkVegetasjon(hent('vegetasjon')),
+    ...(() => { const a = treslagAndel({ G: tall(hent('gran')), F: tall(hent('furu')), L: tall(hent('lauv')) }); return a ? { treslagAndel: a } : {}; })(),
     ...(() => { const u = Object.fromEntries(['treantallFor', 'treantallEtter', 'hoydeBar', 'hoydeLauv'].map((k) => [k, tall(hent(k))]).filter(([, v]) => v !== null && v >= 0)); return Object.keys(u).length ? { ungskog: { ...u, kilde: 'import' } } : {}; })(),
     tiltak,
     ekstra,

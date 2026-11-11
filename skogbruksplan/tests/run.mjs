@@ -3288,6 +3288,32 @@ test('Be om tilbud (enkel veiviser): kandidater per type, tiltak i aktive oppdra
   S.oppdrag[0].status = 'utfort'; assert.equal(HT.grupper(S, 2026)[0].liste.length, 3, 'avsluttet oppdrag binder ikke tiltaket');
 });
 
+test('Måleverktøy: lengde, areal, omkrets og volum per bestand og treslag', async () => {
+  const MA = await import('../js/maaling.js'); const MO = await import('../js/model.js');
+  const X = 600000; const Y = 6700000; const g = (x, y) => utmTilGeo(X + x, Y + y, 33);
+  const kv = (x0, y0, x1, y1) => ({ type: 'Polygon', coordinates: [[g(x0, y0), g(x1, y0), g(x1, y1), g(x0, y1), g(x0, y0)]] });
+  const l = MA.lengde([g(0, 0), g(300, 0), g(300, 400)]); assert.ok(Math.abs(l.total - 700) < 0.5); assert.equal(l.deler.length, 2);
+  const f = MA.flate([g(0, 0), g(100, 0), g(100, 100), g(0, 100)]); assert.ok(Math.abs(f.areal - 10000) < 5); assert.ok(Math.abs(f.omkrets - 400) < 0.5, 'flaten lukkes automatisk');
+  assert.equal(MA.lengdeTekst(1234), '1,23 km'); assert.match(MA.arealTekst(2500), /2,5 daa/); assert.match(MA.arealTekst(150000), /15,0 ha/);
+  // Treslagsandeler fra importfelt (prosent) og fra SR16-skogtype.
+  assert.deepEqual(MO.treslagAndel({ G: 60, F: 30, L: 10 }), { G: 0.6, F: 0.3, L: 0.1 }); assert.equal(MO.treslagAndel({}), null);
+  const nb = MO.normaliserBestand({ BESTANDNR: '1', GRAN_PST: 70, FURU_PST: 30 }, null, 10); assert.deepEqual(nb.treslagAndel, { G: 0.7, F: 0.3, L: 0 });
+  let PC = null; try { PC = (await import('polygon-clipping')).default; } catch { return; /* valgfritt i testmiljøet */ }
+  const S = { bestand: [
+    { id: 'a', nr: '1', treslag: 'G', areal: 20, volumDaa: 20, treslagAndel: { G: 0.6, F: 0.4, L: 0 }, geometri: kv(0, 0, 200, 100) },
+    { id: 'b', nr: '2', treslag: 'L', areal: 20, volumDaa: 10, geometri: kv(200, 0, 400, 100) },
+    { id: 'c', nr: '3', treslag: 'F', areal: 20, volumDaa: 30, geometri: kv(0, 500, 200, 600) },
+  ] };
+  // Flate over halve bestand 1 (10 daa) og halve bestand 2 (10 daa), og 5 daa utenfor bestandene.
+  const v = MA.volum(S, [g(100, -50), g(300, -50), g(300, 100), g(100, 100)], PC);
+  assert.equal(v.rader.length, 2); assert.ok(Math.abs(v.m3 - 300) < 1, `200 + 100 m³ (${v.m3})`);
+  assert.ok(Math.abs(v.perTreslag.G - 120) < 1 && Math.abs(v.perTreslag.F - 80) < 1 && Math.abs(v.perTreslag.L - 100) < 1, JSON.stringify(v.perTreslag));
+  assert.ok(Math.abs(v.utenfor - 10000) < 20, 'arealet utenfor bestandene'); assert.ok(Math.abs(v.m3Daa - 15) < 0.1, 'm³/daa på skogarealet');
+  assert.equal(v.fordelingKilde, 'blandet'); assert.ok(Math.abs(v.rader.find((r) => r.nr === '1').andelAvBestand - 0.5) < 0.01);
+  assert.match(MA.sammendrag({ modus: 'areal', len: MA.lengde([]), fl: MA.flate([g(100, -50), g(300, -50), g(300, 100), g(100, 100)]), vol: v }), /Gran: 120 m³/);
+  assert.equal(MA.volum(S, [g(0, 0), g(10, 0)], PC), null, 'for få punkter');
+});
+
 test('Versjonslogg: følger versjonsnummeret, er sortert, «nytt siden sist» og CHANGELOG.md er oppdatert', () => {
   assert.equal(LOGG.ENDRINGER[0].versjon, VERSJON, 'første oppføring er gjeldende versjon');
   for (let i = 1; i < LOGG.ENDRINGER.length; i++) { const a = LOGG.ENDRINGER[i - 1]; const b = LOGG.ENDRINGER[i]; assert.ok(LOGG.nyere(a.versjon, b.versjon), `${a.versjon} før ${b.versjon}`); assert.ok(a.dato >= b.dato, `dato ${a.dato} ≥ ${b.dato}`); }

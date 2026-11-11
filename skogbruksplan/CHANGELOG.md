@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.66.0 – Måleverktøy i kartet (2026-11-11)
+
+*Nytt.* Trykk «Mål» over kartet: mål lengde, eller tegn en flate og få areal, omkrets og stående volum – totalt og fordelt på gran, furu og lauv – med bestandene flaten dekker.
+
 ## 1.65.1 – Finn igjen tilbudene du har bedt om (2026-11-11)
 
 *Forbedret.* «Mine tilbudsforespørsler» øverst under Tiltak › Oppdrag viser hvem som har åpnet og svart, og nye svar merkes. «Ferdig» etter sending åpner forespørselen direkte.

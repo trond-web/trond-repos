@@ -26,6 +26,10 @@ export const KAPITLER = [
       <li><b>Trykk i kartet</b> på et bestand for detaljer, eller på et naturtype-, arts- eller kulturminneområde for faktaark.</li>
       <li><b>Tegnforklaringen</b> nede til venstre forklarer fargene. Den kan felles sammen.</li>
       <li><b>Tegn bestand</b> lar deg tegne et nytt bestand; i bestandsvisningen kan du endre grensen eller dele bestandet i to.</li></ul>
+      <h4>📏 Mål i kartet</h4>
+      ${steg(['Trykk <b>Mål</b> i verktøylinjen over kartet (eller søk «mål»).', 'Velg <b>Lengde</b> (avstand langs en linje) eller <b>Areal og volum</b> (en flate).', 'Trykk punkter i kartet. Tallene oppdateres mens du tegner. Trykk på første punkt, dobbeltklikk eller <b>Ferdig</b> for å lukke flaten.', 'For en flate ser du areal (daa, m² og ha), omkrets og <b>stående volum</b> – totalt, per daa og fordelt på <b>gran, furu og lauv</b> – og hvilke bestand flaten dekker.', 'Dra punktene for å justere – alt regnes ut på nytt. <b>Kopier</b> legger resultatet på utklippstavlen.'])}
+      ${tips('Hurtigtaster: <kbd>Enter</kbd> ferdig, <kbd>Backspace</kbd> angre siste punkt, <kbd>Esc</kbd> avslutt.')}
+      <p>Volumet er planens volum i dag (framskrevet) for den delen av hvert bestand som ligger i flaten. Det fordeles på treslag etter bestandets treslagsandeler (fra planen eller SR16) når de finnes, ellers etter hovedtreslaget.</p>
       ${tips('Knappen med sikte-ikonet viser hvor du står (GPS) – nyttig ute i skogen.')}`,
   },
   {
