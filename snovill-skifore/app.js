@@ -569,7 +569,7 @@ const SNOW_MODEL = {
   rainHeat: 0.0126, // varme fra regn: mm smelting per mm regn per °C
   groundMelt: 0.3, // varm bakke tidlig i sesongen, mm per døgn
   sublimation: 0.1, // fordamping i vind, mm per døgn
-  drift: 0.05, // snøfokk fra løs snø, mm per time per m/s over 7 m/s
+  drift: 0.02, // snøfokk fra løs snø, mm per time per m/s over 7 m/s
   defaultDensity: 250, // eldre snø uten målt tetthet
 };
 
@@ -640,8 +640,9 @@ function simulate(dayBlocks, start, offsets, pscale) {
 
       // Setning: snøen pakker seg, raskest når den er våt og i sterk vind
       const wet = t > 0 || pr > 0.2;
-      let k = wet ? 0.35 : t > -5 ? 0.12 : 0.06;
-      if (wind > 8) k += 0.15;
+      // Tørr snø setter seg langsomt (kalibrert mot NVE/seNorge, ca. 5 % per døgn for nysnø)
+      let k = wet ? 0.2 : t > -5 ? 0.05 : 0.03;
+      if (wind > 8) k += 0.05;
       const rhoMax = wet ? 450 : 350;
       rho = (swe * 100) / depth;
       rho += (rhoMax - rho) * (1 - Math.exp((-k * h) / 24));
@@ -662,8 +663,39 @@ const PRECIP_SCALES = [0.6, 1, 1.4];
 // men oppkjørte spor gjør dagen perfekt.
 const INDEX_WEIGHTS = { self: 0.75, groom: 0.25 };
 
-function snovillIndex(probSelf, probGroom) {
-  return Math.round(INDEX_WEIGHTS.self * probSelf + INDEX_WEIGHTS.groom * probGroom);
+function snovillIndex(probSelf, probGroom, condition = 1) {
+  return Math.round((INDEX_WEIGHTS.self * probSelf + INDEX_WEIGHTS.groom * probGroom) * condition);
+}
+
+/* Føret: snø som ligger blir liggende fint så lenge det er kuldegrader. Plussgrader gjør den
+ * våt og tung, og regn på snø er verst. Gir en faktor fra 0,4 (regn og mildvær) til 1 (kaldt). */
+const CONDITION = {
+  meltFull: 48, // plussgradtimer i døgnet før smeltingen gir full nedtrekk (≈ +2 °C hele døgnet)
+  meltWeight: 0.35,
+  rainFull: 8, // mm regn i døgnet før regnet gir full nedtrekk
+  rainWeight: 0.25,
+  min: 0.4,
+};
+
+function dayCondition(blocks) {
+  if (!blocks?.length) return { factor: 1, melt: 0, rain: 0 };
+  let melt = 0;
+  let rain = 0;
+  for (const b of blocks) {
+    melt += degreeHours(b, 0);
+    rain += b.precip * (1 - snowFraction(b.temp));
+  }
+  const factor =
+    1 -
+    CONDITION.meltWeight * Math.min(1, melt / CONDITION.meltFull) -
+    CONDITION.rainWeight * Math.min(1, rain / CONDITION.rainFull);
+  return { factor: Math.max(CONDITION.min, factor), melt, rain };
+}
+
+function conditionText(c) {
+  if (c.factor >= 0.95) return "Kaldt føre, snøen holder seg";
+  if (c.rain >= 2) return "Regn på snøen gir vått og tungt føre";
+  return "Plussgrader gir vått føre";
 }
 
 /** thresholds: { groom: cm for oppkjørte spor, self: cm for å tråkke spor selv } */
@@ -674,7 +706,8 @@ function runEnsemble(sourceDays, days, start, thresholds) {
 
   // Bygg per-kilde lister over blokker per dag, med fallback til den andre kilden
   const perSource = sourceIds.map((sid) =>
-    days.map((d) => {
+    days.map((d, i) => {
+      if (i === 0 && start.skipToday) return [];
       const own = sourceDays[sid][d.key];
       if (own?.length) return own;
       for (const other of sourceIds) if (sourceDays[other][d.key]?.length) return sourceDays[other][d.key];
@@ -706,11 +739,19 @@ function runEnsemble(sourceDays, days, start, thresholds) {
       summaries[sid] = daySummary(sourceDays[sid][d.key]);
     });
     const sums = Object.values(summaries).filter(Boolean);
+    // Føret regnes ut fra været i kildene, og teller bare når det ligger snø
+    const conds = sourceIds.map((sid) => dayCondition(sourceDays[sid][d.key]));
+    const cond = {
+      factor: conds.reduce((a, c) => a + c.factor, 0) / conds.length,
+      melt: conds.reduce((a, c) => a + c.melt, 0) / conds.length,
+      rain: conds.reduce((a, c) => a + c.rain, 0) / conds.length,
+    };
     const avg = (f) => (sums.length ? sums.reduce((a, s) => a + s[f], 0) / sums.length : null);
     return {
       key: d.key,
       date: d.date,
-      prob: snovillIndex(probSelf, probGroom),
+      prob: snovillIndex(probSelf, probGroom, cond.factor),
+      condition: cond,
       probGroom,
       probSelf,
       probNewSnow: Math.round((fresh / scenarios.length) * 100),
@@ -911,7 +952,7 @@ function renderResorts() {
               : st
                 ? `Storm ${fmt1(st.snow)} mm snøfall (vann)`
                 : "";
-        const title = `${weekdayLongFmt.format(d.date)}: Snøvill-indeks ${d.prob}. Oppkjørte spor (≥ ${state.settings.threshold} cm): ${d.probGroom} %. Tråkke selv (≥ ${state.settings.selfThreshold} cm): ${d.probSelf} %. Beregnet snødybde ${fmt0(d.depth)} cm (${fmt0(d.depthLo)}–${fmt0(d.depthHi)}). ${fight}. Nedbør ${fmt1(d.precip)} mm. ${wax.name}.`;
+        const title = `${weekdayLongFmt.format(d.date)}: Snøvill-indeks ${d.prob}. ${conditionText(d.condition)}. Oppkjørte spor (≥ ${state.settings.threshold} cm): ${d.probGroom} %. Tråkke selv (≥ ${state.settings.selfThreshold} cm): ${d.probSelf} %. Beregnet snødybde ${fmt0(d.depth)} cm (${fmt0(d.depthLo)}–${fmt0(d.depthHi)}). ${fight}. Nedbør ${fmt1(d.precip)} mm. ${wax.name}.`;
         return `
           <li class="day ${l.cls}" title="${escapeHtml(title)}" tabindex="0">
             <span class="day-name">${escapeHtml(label)}</span>
@@ -1601,13 +1642,20 @@ function startState(loc, sporet) {
   const nve = nveFor(loc);
   if (nve) {
     const today = dateKey(new Date());
+    const tomorrow = dateKey(new Date(Date.now() + 86400000));
     const yesterday = dateKey(new Date(Date.now() - 86400000));
-    const row = nve.find((r) => r.date === today && r.sd != null) || nve.find((r) => r.date === yesterday && r.sd != null);
-    if (row) {
+    const toState = (row) => {
       const depth = row.sd || 0;
       const swe = row.swe != null ? row.swe : (depth * SNOW_MODEL.defaultDensity) / 100;
-      return { depth, swe: depth > 0 ? swe : 0, why: `NVE/seNorge ${row.date === today ? "i dag" : "i går"}` };
-    }
+      return { depth, swe: depth > 0 ? swe : 0 };
+    };
+    // NVE gjelder kl. 06. Varselet fra Yr dekker bare timene som er igjen av dagen, så snø som
+    // falt tidligere i dag ville gått tapt. NVEs anslag for i morgen tidlig har den med, og
+    // brukes som snøen ved slutten av i dag.
+    const night = nve.find((r) => r.date === tomorrow && r.sd != null);
+    if (night) return { ...toState(night), why: "NVE/seNorge, anslag for i natt", skipToday: true };
+    const row = nve.find((r) => r.date === today && r.sd != null) || nve.find((r) => r.date === yesterday && r.sd != null);
+    if (row) return { ...toState(row), why: `NVE/seNorge ${row.date === today ? "i dag" : "i går"}` };
   }
   const auto = autoBaseDepth(sporet);
   return { depth: auto.depth, swe: (auto.depth * SNOW_MODEL.defaultDensity) / 100, why: auto.why };

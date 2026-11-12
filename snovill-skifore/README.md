@@ -44,7 +44,8 @@ Alle fire tillater kall fra nettleseren (CORS). Svarene mellomlagres i 20 minutt
    øker med tiden × nedbør 60/100/140 %). Andelen varianter med snødybde over grensen gir to sjanser:
    - 🎿 **oppkjørte spor**: snødybde ≥ 25 cm (kan justeres 10–50 cm)
    - 👣 **tråkke spor selv**: snødybde ≥ 2 cm (kan justeres 1–20 cm)
-5. **Snøvill-indeks** (0–100) = 0,75 × sjansen for å tråkke selv + 0,25 × sjansen for oppkjørte spor.
+5. **Snøvill-indeks** (0–100) = (0,75 × sjansen for å tråkke selv + 0,25 × sjansen for oppkjørte spor) × føre. Føret er 1 så lenge det er kuldegrader, og trekkes ned av plussgrader (smelting, opptil 35 %) og regn på snøen (opptil 25 %). Snø som ligger, holder altså indeksen oppe i kulde selv om det ikke kommer nysnø.
+   Startpunktet er NVE/seNorge sitt anslag for snødybden kl. 06 neste morgen, så snø som har falt tidligere i dag er med.
    Snøvill blir glad bare det er snø å tråkke i, og oppkjørte spor gir full pott.
 6. **Startpunkt:** manuell dybde fra innstillingene, ellers **NVE/seNorge** sin snødybde og snømengde
    for i dag (eller i går), ellers et anslag fra Sporet (kjørt siste 2 døgn → 35 cm, siste uke → 25 cm,
