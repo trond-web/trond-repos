@@ -60,6 +60,7 @@ import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } 
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { eiendomGrenseLag as eiendomGrenseLagRod } from './eiendomslag.js';
 import { apneTilbakemelding } from './tilbakemelding-ui.js';
+import * as AF from './artsfilter.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, settTreslagAndel, avvikHovedtreslag, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag } from './treslag.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
@@ -140,7 +141,7 @@ function filnavn(ending) {
 
 // ---------------------------------------------------------------- kart
 let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks. veier)
-let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let kpLag = null; let rpLag = null; let eiendomGrenseLag = null; let naboLag = null; let ninLag = null; let artLag = null; let kulturLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
+let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let kpLag = null; let rpLag = null; let eiendomGrenseLag = null; let naboLag = null; let ninLag = null; let artLag = null; let artsfunnLag = null; let kulturLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
 let etikettLag; let flyfotoAktiv = false; let lagKontroll = null; let andreVisning = null;
@@ -181,6 +182,7 @@ function initKart() {
   // NiN-naturtyper og arter av nasjonal forvaltningsinteresse (Miljødirektoratet). Klikk i kartet viser detaljer.
   ninLag = NATUR.lagKartlag(L, 'nin', { pane: 'analysePane' });
   artLag = NATUR.lagKartlag(L, 'art', { pane: 'analysePane' });
+  artsfunnLag = L.layerGroup(); // rødlistede artsfunn fra Artskart (js/artsfilter.js)
   // Kulturminner (Riksantikvaren): lokaliteter, sikringssoner og ikoner. Klikk viser navn, vernestatus og lenker.
   kulturLag = L.tileLayer.wms(KULTUR.KART.url, { layers: KULTUR.KART.lag, format: 'image/png', transparent: true, opacity: 0.85, pane: 'analysePane', maxZoom: 20, attribution: 'Kulturminner © Riksantikvaren' });
   eiendomGrenseLag = eiendomGrenseLagRod(L, { pane: 'analysePane' }); // røde grenser (js/eiendomslag.js)
@@ -198,7 +200,7 @@ function initKart() {
   document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, '🌿 Naturtyper (NiN, Miljødirektoratet)': ninLag, '🦉 Arter av nasjonal forvaltningsinteresse': artLag, '🏛 Kulturminner (Riksantikvaren)': kulturLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, '🌿 Naturtyper (NiN, Miljødirektoratet)': ninLag, '🦉 Arter av nasjonal forvaltningsinteresse': artLag, '🦋 Rødlistede artsfunn (Artskart)': artsfunnLag, '🏛 Kulturminner (Riksantikvaren)': kulturLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
   // NiN-naturtyper og arter vises som standard i kartet i alle faner (som nøkkelbiotopene). Valget huskes.
   const NATUR_LS = 'skogiq-natur-lag';
@@ -218,7 +220,8 @@ function initKart() {
   });
   kart.on('zoomend', () => { oppdaterEtiketter(); visMisMerker(); oppdaterNaboEtiketter(); });
   kart.on('overlayadd overlayremove', () => { oppdaterEtiketter(); visMisMerker(); tegnLegend(); });
-  kart.on('overlayadd', (e) => { if (e.layer === bratthetLag) visBratthet(); if (e.layer === fuktLag) beregnFukt(); if ((e.layer === kpLag || e.layer === rpLag) && !S.arealplan) hentPlaner({ stille: true }); if (e.layer === naboLag) visNaboer(); });
+  kart.on('overlayadd overlayremove', (e) => { if (e.layer === artsfunnLag) kart.attributionControl[e.type === 'overlayadd' ? 'addAttribution' : 'removeAttribution']('Artsfunn © Artsdatabanken (CC BY 4.0)'); });
+  kart.on('overlayadd', (e) => { if (e.layer === artsfunnLag) { if (S.artsfunn) tegnArtsfunn(); else hentArtsfunnForPlan(); } if (e.layer === bratthetLag) visBratthet(); if (e.layer === fuktLag) beregnFukt(); if ((e.layer === kpLag || e.layer === rpLag) && !S.arealplan) hentPlaner({ stille: true }); if (e.layer === naboLag) visNaboer(); });
   // På flyfoto tegnes bestandene som i skogbruksplankart: gule grenser og hvit tekst.
   kart.on('baselayerchange', (e) => {
     flyfotoAktiv = e.layer === flyfoto || e.layer === satellitt.lag;
@@ -309,6 +312,7 @@ function tegnLegend() {
   }
   const vr = S.veier || {};
   if (fuktLag && kart.hasLayer(fuktLag)) html += `<b style="display:block;margin-top:6px">💧 Markfuktighet (dybde til grunnvann)</b>${FUKT_KLASSER.map((k) => rad(k.farge, k.leg)).join('')}<div class="hint" style="font-size:11px">Over 1 m: tørt (ikke farget). Våt mark gir sporskader.</div>`;
+  if (artsfunnLag && kart.hasLayer(artsfunnLag) && S.artsfunn) html += `<b style="display:block;margin-top:6px">Rødlistede artsfunn</b>${Object.entries(AF.KATEGORI).map(([k, v]) => rad(v.farge, `${k} – ${v.navn}`)).join('')}<div class="hint" style="font-size:11px">Artskart, Artsdatabanken. Ingen funn ≠ ingen arter.</div>`;
   if ((ninLag && kart.hasLayer(ninLag)) || (artLag && kart.hasLayer(artLag)) || (kulturLag && kart.hasLayer(kulturLag))) html += `<b style="display:block;margin-top:6px">Natur og kulturminner</b>${kart.hasLayer(ninLag) ? rad(NATUR.FARGE.nin, 'Naturtyper (NiN) – mørkere = høyere kvalitet') : ''}${kart.hasLayer(artLag) ? rad(NATUR.FARGE.art, 'Arter – funksjonsområder') : ''}${kart.hasLayer(kulturLag) ? rad(KULTUR.FARGE, 'Kulturminner (Riksantikvaren)') : ''}<div class="hint" style="font-size:11px">Klikk i kartet for naturtype, art og faktaark.</div>`;
   if (naboLag && kart.hasLayer(naboLag)) {
     const o = naboData?.oppsummert;
@@ -422,7 +426,7 @@ function tegnMarkslag() {
 }
 
 function tegnBestandKart(zoom = false) {
-  tegnMarkslag();
+  tegnMarkslag(); tegnArtsfunn();
   bestandLag.clearLayers(); lagPerBestand.clear(); etikettLag.clearLayers(); etikettPerBestand.clear();
   if (bratthetLag && kart.hasLayer(bratthetLag) && bratthetFor !== S) visBratthet(); // annen plan lastet: tegn bratthet på nytt
   terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null;
@@ -846,6 +850,7 @@ function visDetalj() {
       ${(() => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? `<div><b>${fmt(a.meter)} m</b><span>til nærmeste bilvei${a.meter > veiVisning.maks() ? ' – lang terrengtransport' : ''}</span></div>` : ''; })()}
     </div>
     ${treslagSeksjonHtml(b)}
+    ${artsSeksjonHtml(b)}
     ${b.markfukt ? (() => { const v = fuktVurdering(b.markfukt); return `<div class="bratt-linje fukt-${v.niva}"><div class="bratt-stolpe">${FUKT_KLASSER.map((k) => (b.markfukt.andeler[k.id] ? `<span style="flex:${b.markfukt.andeler[k.id]};background:${k.farge}" title="${esc(k.leg)}: ${Math.round(b.markfukt.andeler[k.id] * 100)} %"></span>` : '')).join('')}${b.markfukt.andeler.torr ? `<span style="flex:${b.markfukt.andeler.torr};background:#e6e1c8" title="Tørt: ${Math.round(b.markfukt.andeler.torr * 100)} %"></span>` : ''}</div><span>💧 ${esc(v.tekst)}</span></div>`; })() : ''}
     ${(() => { const nv = (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade', 'kulturminne'].includes(o.type) && o.geometri && b.geometri && overlapper(b.geometri, o.geometri)); return nv.length ? `<div class="bratt-linje plan-2"><span>${nv.slice(0, 4).map((o) => `${o.type === 'artsomrade' ? '🦉' : o.type === 'kulturminne' ? '🏛' : '🌿'} ${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : esc(o.navn)}`).join('<br>')}${nv.length > 4 ? `<br><small>+ ${nv.length - 4} til</small>` : ''}<br><small>${nv.some((o) => o.type === 'kulturminne') ? 'Kulturminne: ikke kjør over eller skad det, og hold sikringssonen fri (PEFC krav 30). ' : ''}${nv.some((o) => o.type !== 'kulturminne') ? 'Naturtype eller art – vurderes av skogbiologisk kompetanse før hogst (PEFC krav 22).' : ''}</small></span></div>` : ''; })()}
     ${S.arealplan?.bestand?.[b.id] ? (() => { const t = planBestandTekst(S.arealplan.bestand[b.id]); return t?.tekst ? `<div class="bratt-linje plan-${t.alvor}"><div class="bratt-stolpe">${S.arealplan.bestand[b.id].formal.map((f) => `<span style="flex:${f.andel};background:${formalInfo(f.kode).farge}" title="${esc(formalInfo(f.kode).navn)}: ${Math.round(f.andel * 100)} %"></span>`).join('')}</div><span>🏘 ${esc(t.tekst)}${t.raad ? `<br><small>${esc(t.raad)}</small>` : ''}</span></div>` : ''; })() : ''}
@@ -904,7 +909,7 @@ function visDetalj() {
       if (!!us !== !!ny) visDetalj(); else if (us && !us.contains(document.activeElement)) us.outerHTML = ny, kobleUngskog(b);
     }, 500);
   });
-  kobleUngskog(b); kobleTreslag(b);
+  kobleUngskog(b); kobleTreslag(b); kobleArter();
   $('#nyttTiltakSkjema').addEventListener('submit', (e) => {
     e.preventDefault();
     const d = new FormData(e.target);
@@ -990,6 +995,54 @@ function treantallTreslagHtml(b) {
       <tr><td>Etter regulering ${merke(d.etter)}</td>${e.join('')}<td class="t"><b>${fmt(d.etter.sum)}</b></td></tr></tbody></table>
     <small class="hint">${d.for.kilde === 'registrert' && d.etter.kilde === 'registrert' ? 'Registrert i felt. Tøm feltene i en rad for å bruke beregnede verdier.' : esc(d.forklaring)} Anbefalt etter regulering: ca. ${fmt(d.maal)} trær/daa.</small>
   </div>`;
+}
+
+// ---------- Rødlistede arter og tiltak (js/artsfilter.js) ----------
+// Funn fra Artskart og livsmiljø fra Rødlista 2021 lagres i planen (S.artsfunn) og vurderes per bestand og tiltak.
+let artsHenter = false;
+async function hentArtsfunnForPlan() {
+  const geom = eiendomGeom(); if (!geom) { melding('Planen har ingen eiendomsgrense eller bestand med kart – kan ikke hente artsfunn.'); return; }
+  if (artsHenter) return; artsHenter = true; melding('Henter rødlistede artsfunn fra Artskart og livsmiljø fra Rødlista …', 15000);
+  try {
+    S.artsfunn = await AF.hentForEiendom(geom); lagreSnart();
+    const n = new Set(S.artsfunn.funn.map((f) => f.sciId)).size;
+    melding(`${S.artsfunn.funn.length} rødlistede funn av ${n} arter i og rundt eiendommen.${S.artsfunn.avkortet ? ' (Mange funn – bare de 5000 første er med.)' : ''}`, 6000);
+  } catch (e) { melding(`Kunne ikke hente artsfunn: ${e.message}`, 6000); }
+  artsHenter = false; tegnArtsfunn(); tegnLegend(); if (valgtId) visDetalj();
+}
+function tegnArtsfunn() {
+  if (!artsfunnLag) return; artsfunnLag.clearLayers(); if (!S.artsfunn?.funn?.length) return;
+  const r = tegnArtsfunn.r || (tegnArtsfunn.r = L.canvas({ padding: 0.3 }));
+  for (const f of S.artsfunn.funn) {
+    const art = S.artsfunn.arter?.[f.sciId]; const kat = String(art?.kategori || f.status || '').replace(/[^A-Z]/g, '').slice(0, 2); const k = AF.KATEGORI[kat] || { farge: '#888', navn: kat };
+    L.circleMarker([f.lat, f.lon], { renderer: r, radius: 5, color: '#fff', weight: 1, fillColor: k.farge, fillOpacity: 0.9 }).bindPopup(() => `<b>${esc(art?.navn || f.navn)}</b> <i>${esc(f.vit)}</i><br><span style="color:${k.farge};font-weight:700">${esc(kat)} – ${esc(k.navn)}</span>${art?.gruppe ? ` · ${esc(art.gruppe)}` : ''}<br>${esc(f.dato || 'ukjent dato')}${f.presisjon ? ` · ±${Math.round(f.presisjon)} m` : ''}${f.hekking ? ' · hekking/yngling' : ''}${f.habitat ? `<br><small>Habitat: ${esc(f.habitat)}</small>` : ''}${art ? `<br><small>${esc(AF.profil(art).forklaring)}</small>` : ''}<br>${[f.lenke ? `<a href="${esc(f.lenke)}" target="_blank" rel="noopener">Funnet i Artskart</a>` : '', art?.url ? `<a href="${esc(art.url)}" target="_blank" rel="noopener">Rødlistevurdering</a>` : ''].filter(Boolean).join(' · ')}`, { maxWidth: 300 }).addTo(artsfunnLag);
+  }
+}
+const AS_KAT = (k) => `<span class="as-kat" style="background:${(AF.KATEGORI[k] || {}).farge || '#888'}">${esc(k || '?')}</span>`;
+function artRadHtml(a, kompakt = false) {
+  return `<div class="as-rad ${a.niva.toLowerCase()}"><span class="as-niva">${a.niva}</span><div><b>${esc(a.navn)}</b> <i>${esc(a.vit)}</i> ${AS_KAT(a.kategori)}${kompakt ? '' : `<small>${esc(a.grunner.join(' · '))}</small><small class="as-lenker">${AF.lenker(a).map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.navn)}</a>`).join(' · ')}${a.funn[0]?.lenke ? ` · <a href="${esc(a.funn[0].lenke)}" target="_blank" rel="noopener">Funnet (${a.funn.length})</a>` : ''}</small>`}</div></div>`;
+}
+function artsSeksjonHtml(b) {
+  const d = S.artsfunn; const aapen = visDetalj.artsAapen ? 'open' : '';
+  if (!b.geometri) return '';
+  if (!d) return `<details class="arts-seksjon" id="artsSeksjon" ${aapen}><summary><b>🦋 Rødlistede arter og tiltak</b> <span class="hint">ikke hentet</span></summary>
+    <p class="hint">Henter rødlistede artsfunn fra Artskart i og rundt eiendommen, og hva artene trenger av livsmiljø fra Rødlista 2021. Hver art vurderes mot de planlagte tiltakene i bestandet: <b>S1</b> direkte relevant, <b>S2</b> betinget, <b>S3</b> ikke påvirket.</p>
+    <div class="knapperad"><button class="knapp liten primar" type="button" data-arter="hent">${artsHenter ? 'Henter …' : 'Hent artsfunn fra Artskart'}</button></div></details>`;
+  const v = AF.vurderBestand(d, b, { inn: inn(), iAar: IAAR });
+  const pille = (n, k) => (n ? `<span class="as-pille ${k.toLowerCase()}">${k} ${n}</span>` : '');
+  const maks = (t) => ({ S1: t.arter.filter((a) => a.niva === 'S1').length, S2: t.arter.filter((a) => a.niva === 'S2').length });
+  const sum = v.tiltak.reduce((x, t) => { const m = maks(t); return { S1: Math.max(x.S1, m.S1), S2: Math.max(x.S2, m.S2) }; }, { S1: 0, S2: 0 });
+  return `<details class="arts-seksjon" id="artsSeksjon" ${aapen}><summary><b>🦋 Rødlistede arter og tiltak</b> ${pille(sum.S1, 'S1')}${pille(sum.S2, 'S2')}${!sum.S1 && !sum.S2 ? '<span class="hint">ingen relevante funn</span>' : ''}</summary>
+    ${v.tiltak.length ? v.tiltak.map((t) => { const s3 = t.arter.filter((a) => a.niva === 'S3'); const rel = t.arter.filter((a) => a.niva !== 'S3'); return `<h4>${esc(TILTAKSTYPER[t.type]?.navn || t.type)}${t.aar ? ` ${t.aar}` : ''}${t.antatt ? ' <span class="hint">(ingen planlagte tiltak – vurdert mot sluttavvirkning)</span>' : ''}</h4>
+      ${rel.length ? rel.map((a) => artRadHtml(a)).join('') : '<p class="hint">Ingen kjente rødlistede arter som påvirkes av tiltaket.</p>'}
+      ${s3.length ? `<details class="as-s3"><summary>S3 – ikke påvirket av tiltaket (${s3.length})</summary>${s3.map((a) => `<div class="as-rad s3"><span class="as-niva">S3</span><div><b>${esc(a.navn)}</b> ${AS_KAT(a.kategori)}<small>${esc(a.grunner.join(' · '))}</small></div></div>`).join('')}</details>` : ''}`; }).join('') : '<p class="hint">Ingen rødlistede funn innen 1 km fra bestandet.</p>'}
+    <p class="hint as-fot">⚠ Ingen kjente funn betyr ikke at arter mangler – Artskart viser bare det som er registrert, og sensitive arter vises grovt eller ikke. Reglene (S1–S3) er et første utkast og skal kvalitetssikres faglig. ${esc(d.kilde || AF.KILDE)} Hentet ${new Date(d.hentet).toLocaleDateString('nb-NO')}. <button class="lenkeknapp" type="button" data-arter="hent">Oppdater</button> · <button class="lenkeknapp" type="button" data-arter="kart">Vis i kartet</button></p>
+  </details>`;
+}
+function kobleArter() {
+  const el = $('#artsSeksjon'); if (!el) return;
+  el.addEventListener('toggle', () => { visDetalj.artsAapen = el.open; });
+  el.addEventListener('click', (e) => { const h = e.target.closest('[data-arter]')?.dataset.arter; if (h === 'hent') { visDetalj.artsAapen = true; hentArtsfunnForPlan(); } if (h === 'kart') { if (!kart.hasLayer(artsfunnLag)) artsfunnLag.addTo(kart); else tegnArtsfunn(); } });
 }
 
 function ungskogSeksjonHtml(b) {
@@ -2501,6 +2554,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '💬', tittel: 'Nettverk og chat', under: 'Innkjøpere, entreprenører og skogeiere du er koblet til', sok: 'nettverk chat melding innkjøper entreprenør skogeier kobling koble kontakt', utfor: () => visFane('nettverk') },
     { gruppe: 'Handlinger', ikon: '🔒', tittel: 'Vilkår og personvern', under: 'Les erklæringen, last ned dataene dine eller slett kontoen', sok: 'personvern vilkår gdpr samtykke mine data innsyn slett konto eksport', utfor: () => window.open('personvern.html', '_blank', 'noopener') },
     { gruppe: 'Handlinger', ikon: '📣', tittel: 'Gi tilbakemelding', under: 'Stjerner, ros, barkbiller (feil) og forbedringsforslag', sok: 'tilbakemelding forslag forbedring feil ros klage idé ide stjerner fornøyd', utfor: () => apneTilbakemelding({ fane: aktivFaneNavn() }) },
+    { gruppe: 'Handlinger', ikon: '🦋', tittel: 'Rødlistede artsfunn (Artskart)', under: 'Vis funn i kartet og vurder dem mot tiltakene (S1–S3)', sok: 'arter rødliste rødlistet artskart artsdatabanken artsfunn truet sårbar artsfilter hensyn', utfor: () => { if (!kart.hasLayer(artsfunnLag)) artsfunnLag.addTo(kart); else if (!S.artsfunn) hentArtsfunnForPlan(); } },
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål i kartet', under: 'Lengde, areal, omkrets og volum per treslag', sok: 'mål måle måleverktøy lengde areal avstand omkrets volum treslag kubikk daa linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('areal'); } },
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål avstand (lengde)', sok: 'mål avstand lengde meter linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('lengde'); } },
     { gruppe: 'Handlinger', ikon: '📬', tittel: 'Mine tilbudsforespørsler', under: 'Se sendte forespørsler og tilbudene du har fått', sok: 'tilbud svar mine forespørsler mottatt sendt anbud', utfor: () => { visFane('tiltak'); visTiltakVisning('oppdrag'); oppdragVisning?.lukk(); oppdragVisning?.tegn(); } },

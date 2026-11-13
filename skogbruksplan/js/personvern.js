@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.3', dato: '2026-11-13', kreverGodkjenning: '1.0' };
+export const VILKAR = { versjon: '1.4', dato: '2026-11-13', kreverGodkjenning: '1.0' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -61,7 +61,7 @@ export const BEHANDLINGER = [
   { id: 'offentlig', navn: 'Kart og offentlige data', formaal: 'Vise kart, eiendomsgrenser, skogdata, vær, flom og andre fagdata for eiendommen din.',
     opplysninger: 'Kartutsnitt, koordinater og eiendomsnummer som slås opp. Nettleseren sender IP-adressen din til leverandørene, slik den gjør for alle nettsider.',
     grunnlag: 'avtale', lagring: 'SkogIQ.ai lagrer ikke oppslagene. Leverandørene har egne regler for logger.',
-    mottakere: 'Offentlige kilder som Kartverket, NIBIO, Meteorologisk institutt, NVE, Miljødirektoratet, Statens vegvesen og Riksantikvaren. Vær- og flomdata fra NVE hentes via SkogIQ-serveren.', api: ['/api/nve'] },
+    mottakere: 'Offentlige kilder som Kartverket, NIBIO, Meteorologisk institutt, NVE, Miljødirektoratet, Artsdatabanken (artsfunn og rødliste), Statens vegvesen og Riksantikvaren. Vær- og flomdata fra NVE hentes via SkogIQ-serveren.', api: ['/api/nve'] },
   { id: 'ai', navn: 'Spør AI', formaal: 'Svare på spørsmål om skogbruksplanen din.',
     opplysninger: 'Spørsmålet ditt og et sammendrag av planen (eiendom, bestand, tiltak, økonomi og profilteksten om gården).',
     grunnlag: 'initiativ', lagring: 'SkogIQ.ai lagrer ikke samtalen på serveren. Nøkkelen din lagres bare i nettleseren.',
@@ -81,7 +81,7 @@ export const TREDJEPARTER = [
   { navn: 'jsDelivr, unpkg og Google Fonts', rolle: 'Programbiblioteker og skrifttyper som nettleseren henter', land: 'Globale nettverk. Ser IP-adressen din.' },
   { navn: 'Anthropic', rolle: 'Spør AI, bare med din egen API-nøkkel', land: 'USA.' },
   { navn: 'Deere & Company', rolle: 'John Deere Operations Center, bare når du kobler til', land: 'USA.' },
-  { navn: 'Offentlige kartkilder', rolle: 'Kartverket, NIBIO, MET, NVE, Miljødirektoratet, Statens vegvesen, Riksantikvaren m.fl.', land: 'Norge.' },
+  { navn: 'Offentlige kartkilder', rolle: 'Kartverket, NIBIO, MET, NVE, Miljødirektoratet, Artsdatabanken, Statens vegvesen, Riksantikvaren m.fl.', land: 'Norge.' },
 ];
 
 export const RETTIGHETER = [

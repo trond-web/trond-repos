@@ -1338,3 +1338,17 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .treslag-tabell tr.sum td.avvik { color: var(--danger, #b4302f); }
 .nv-epost { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 13px; }
 .nv-epost a.knapp { text-decoration: none; }
+/* Rødlistede arter og tiltak (js/artsfilter.js) */
+.arts-seksjon { background: var(--surface-2); border-radius: 14px; padding: 10px 12px; margin: 10px 0; }
+.arts-seksjon > summary { cursor: pointer; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.arts-seksjon h4 { margin: 12px 0 6px; font-size: 14px; }
+.as-pille { font-size: 11.5px; font-weight: 800; padding: 1px 8px; border-radius: 99px; color: #fff; }
+.as-pille.s1 { background: #c62828; } .as-pille.s2 { background: #e0a100; color: #2a2100; }
+.as-rad { display: grid; grid-template-columns: 30px 1fr; gap: 8px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13.5px; }
+.as-rad small { display: block; color: var(--text-2); font-size: 12px; margin-top: 2px; }
+.as-rad .as-lenker a { color: var(--accent); }
+.as-niva { font: 800 11.5px/1 var(--font-mono, monospace); display: grid; place-items: center; height: 22px; border-radius: 6px; color: #fff; background: #6b8f71; }
+.as-rad.s1 .as-niva { background: #c62828; } .as-rad.s2 .as-niva { background: #e0a100; color: #2a2100; }
+.as-kat { font-size: 10.5px; font-weight: 800; padding: 0 6px; border-radius: 4px; color: #fff; vertical-align: 1px; }
+.as-s3 { margin-top: 6px; } .as-s3 > summary { cursor: pointer; font-size: 13px; color: var(--text-2); }
+.as-fot { margin-top: 10px; font-size: 12px; }

@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.75.0 – Rødlistede arter vurdert mot tiltak (2026-11-13)
+
+*Nytt.* Bestandsinfoen viser rødlistede artsfunn fra Artskart, og om de påvirkes av de planlagte tiltakene: S1 direkte relevant, S2 betinget eller S3 ikke påvirket, med forklaring og lenker til rødlistevurdering og forskning. Nytt kartlag med funnene. Takk til Frode Mohus for forslaget.
+
 ## 1.74.0 – Si det rett ut – tilbakemelding og forslag (2026-11-13)
 
 *Nytt.* Trykk 📣 i sidemenyen (eller Mer i SkogIQ Felt) for å gi inntil fem stjerner og sende ros, barkbiller (feil) eller forbedringsforslag. Gode forslag som lar seg gjennomføre, løses i løpet av noen dager. Under «Mine» ser du status og svar.
