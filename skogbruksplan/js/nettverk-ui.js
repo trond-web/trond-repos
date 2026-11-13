@@ -5,13 +5,13 @@
 import { API } from './plan-synk.js';
 import { mailto, appAdresse } from './epost.js';
 import { innloggetBruker } from './innlogging.js';
+import { avatar, fyllBilder } from './profilbilde-ui.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nb = (v) => Number(v || 0).toLocaleString('nb-NO');
 export const ROLLE = { skogeier: { navn: 'Skogeier', entall: 'skogeier', flertall: 'skogeiere', ikon: '🌲' }, innkjoper: { navn: 'Innkjøper', entall: 'innkjøper', flertall: 'innkjøpere', ikon: '🪵' }, entreprenor: { navn: 'Entreprenør', entall: 'entreprenør', flertall: 'entreprenører', ikon: '🚜' }, offentlig: { navn: 'Offentlig', entall: 'offentlig', flertall: 'offentlige', ikon: '🏛' } };
 export const antall = (n, r) => `${nb(n)} ${n === 1 ? ROLLE[r].entall : ROLLE[r].flertall}`;
 const tid = (ms) => { const d = new Date(ms); const idag = new Date(); return d.toDateString() === idag.toDateString() ? d.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' }) + (d.getFullYear() !== idag.getFullYear() ? ` ${d.getFullYear()}` : ''); };
-const initialer = (n) => String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('');
 
 export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
   let data = null; let feil = ''; let laster = false; let sok = { q: '', rolle: '', liste: null, laster: false }; let chat = null; let poll = null; let bakgrunn = null; let sistUlest = 0; let synlig = false; let epostForslag = null; // ferdig e-post etter invitasjon (mailto)
@@ -48,7 +48,7 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
     const m = k.motpart || k;
     const rolle = k.rolle ? ROLLE[k.rolle] : null;
     return `<div class="nv-person${k.ulest ? ' ulest' : ''}">
-      <span class="nv-avatar" aria-hidden="true">${esc(initialer(m.navn))}</span>
+      ${avatar(m)}
       <span class="nv-hoved"><b>${esc(m.navn)}</b><span class="hint">${esc([m.foretak, m.kommune].filter(Boolean).join(' · ') || (m.roller || []).map((r) => ROLLE[r]?.navn).filter(Boolean).join(', '))}${rolle && k.jegEr === 'skogeier' ? ` · ${rolle.navn.toLowerCase()}` : ''}</span>
         ${k.siste ? `<span class="nv-siste">${k.siste.fraMeg ? 'Du: ' : ''}${esc(k.siste.tekst)} <span class="hint">· ${tid(k.siste.tid)}</span></span>` : ''}</span>
       <span class="nv-knapper">${k.ulest ? `<span class="nv-ulest">${k.ulest}</span>` : ''}${knapper}</span>
@@ -96,7 +96,7 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
     const k = data?.koblinger.find((x) => x.id === chat.id); if (!k) return '<p class="hint">Koblingen finnes ikke lenger.</p>';
     const m = k.motpart;
     return `<div class="nv-chat">
-      <div class="nv-chat-topp"><button type="button" class="knapp liten" data-nv="tilbake">←</button><span class="nv-avatar" aria-hidden="true">${esc(initialer(m.navn))}</span><span class="nv-hoved"><b>${esc(m.navn)}</b><span class="hint">${esc([k.jegEr === 'skogeier' ? ROLLE[k.rolle].navn : 'Skogeier', m.foretak, m.kommune].filter(Boolean).join(' · '))}</span></span>
+      <div class="nv-chat-topp"><button type="button" class="knapp liten" data-nv="tilbake">←</button>${avatar(m)}<span class="nv-hoved"><b>${esc(m.navn)}</b><span class="hint">${esc([k.jegEr === 'skogeier' ? ROLLE[k.rolle].navn : 'Skogeier', m.foretak, m.kommune].filter(Boolean).join(' · '))}</span></span>
         <details class="nv-meny"><summary aria-label="Mer">⋯</summary><button type="button" class="knapp liten fare" data-nv="avslutt" data-id="${k.id}">Avslutt koblingen</button></details></div>
       <div class="nv-meldinger" id="nvMeldinger" role="log" aria-live="polite">${chat.meldinger.length ? chat.meldinger.map((x, i) => { const ny = i === 0 || new Date(x.tid).toDateString() !== new Date(chat.meldinger[i - 1].tid).toDateString(); return `${ny ? `<div class="nv-dag">${new Date(x.tid).toLocaleDateString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long' })}</div>` : ''}<div class="nv-boble ${x.fraMeg ? 'meg' : ''}"><span>${esc(x.tekst).replace(/\n/g, '<br>')}</span><small>${new Date(x.tid).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}${x.fraMeg && x.lest && i === chat.meldinger.length - 1 ? ' · lest' : ''}</small></div>`; }).join('') : `<p class="hint nv-tom">Ingen meldinger ennå. Si hei til ${esc(m.navn.split(' ')[0])}!</p>`}</div>
       ${k.status === 'aktiv' ? `<form class="nv-skriv" data-nv-skjema><textarea data-nv-tekst rows="1" placeholder="Skriv en melding …" aria-label="Melding" maxlength="2000">${esc(chat.utkast || '')}</textarea><button type="submit" class="knapp primar" aria-label="Send">➤</button></form>` : '<p class="hint">Koblingen er avsluttet – chatten er stengt.</p>'}
@@ -105,7 +105,7 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
   function tegn() {
     const el = rot(); if (!el) return;
     if (!innlogget()) { el.innerHTML = '<div class="kort"><p>Logg inn for å bruke nettverket.</p></div>'; return; }
-    if (chat) { el.innerHTML = chatHtml(); const l = el.querySelector('#nvMeldinger'); if (l) l.scrollTop = l.scrollHeight; return; }
+    if (chat) { el.innerHTML = chatHtml(); fyllBilder(el); const l = el.querySelector('#nvMeldinger'); if (l) l.scrollTop = l.scrollHeight; return; }
     if (laster && !data) { el.innerHTML = '<div class="kort"><p class="hint">Henter nettverket …</p></div>'; return; }
     if (!data) { el.innerHTML = `<div class="kort"><p>${esc(feil || 'Nettverket er ikke tilgjengelig.')}</p><button type="button" class="knapp liten" data-nv="oppdater">Prøv igjen</button></div>`; return; }
     const ingenRolle = !harRolle('skogeier') && !erAktor();
@@ -118,6 +118,7 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
       ${ingenRolle ? '<p class="hint">Nettverket er for skogeiere, innkjøpere og entreprenører. Endre rollene dine i Min profil.</p>' : ''}
       <div class="knapperad"><button type="button" class="knapp liten" data-nv="oppdater">🔄 Oppdater</button><button type="button" class="knapp liten" data-hjelp="nettverk">? Hjelp</button></div>
     </div>`;
+    fyllBilder(el);
   }
 
   // ---------- chat ----------

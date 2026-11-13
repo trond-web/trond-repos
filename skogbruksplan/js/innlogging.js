@@ -4,6 +4,7 @@
 //     kall til SkogIQ-serveren. Uten gyldig økt sendes brukeren til logginn.html.
 //   * Uten nett slipper en enhet som har vært innlogget før inn (planene ligger lokalt); serverkall krever ny innlogging.
 import { VILKAR, KORT } from './personvern.js';
+import { fyllBilder, lesBilde, lagreBilde } from './profilbilde-ui.js';
 export const RAILWAY = 'https://skogiq-production.up.railway.app';
 export const LS_OKT = 'skogiq-okt';
 const LS_SETT = 'skogiq-innlogget-for';
@@ -55,7 +56,8 @@ let meg = null; let brukFetch = null; let sistAktivitet = 0; let sistSendt = 0;
 // Fyller [data-bruker-info] (f.eks. i Om-boksen): «Innlogget som …», Admin-lenke og «Bytt passord».
 export function visBruker() {
   if (typeof document === 'undefined' || !meg?.bruker) return;
-  for (const el of document.querySelectorAll('[data-profil-knapp]')) { el.hidden = !meg.registrering; el.title = `Min profil – ${String(meg.navn || meg.bruker)}`; const s = el.querySelector('span'); if (s) s.textContent = String(meg.navn || meg.bruker || '?').trim().charAt(0).toUpperCase(); }
+  for (const el of document.querySelectorAll('[data-profil-knapp]')) { el.hidden = !meg.registrering; el.title = `Min profil – ${String(meg.navn || meg.bruker)}`; const s = el.querySelector('span'); if (s) { const id = meg.profil?.bilde || ''; if (s.dataset.bilde !== id) { s.removeAttribute('style'); s.classList.remove('med-bilde'); delete s.dataset.bildeLastet; } s.textContent = String(meg.navn || meg.bruker || '?').trim().charAt(0).toUpperCase(); if (id) { s.dataset.bilde = id; s.style.cssText = 'display:block;width:100%;height:100%;border-radius:50%'; } else delete s.dataset.bilde; } }
+  fyllBilder(document);
   for (const el of document.querySelectorAll('[data-bruker-info]')) el.innerHTML = `Innlogget som <b>${String(meg.navn || meg.bruker).replace(/[<>&"]/g, '')}</b>${meg.admin ? ' · <a href="admin.html">Admin</a>' : ''}${meg.registrering ? ' · <a href="#" data-bytt-passord>👤 Min profil</a>' : ''} · `;
 }
 export const innloggetBruker = () => meg;
@@ -151,7 +153,9 @@ export async function minProfil() {
   const inp = (navn, etikett, type = 'text', ekstra = '') => `<label style="display:grid;gap:3px;font-size:13px">${etikett}<input type="${type}" name="${navn}" value="${rens(p[navn])}" style="${felt}" ${ekstra}></label>`;
   const mbT = (b) => `${(b / 1048576).toLocaleString('nb-NO', { maximumFractionDigits: 1 })} MB`;
   d.innerHTML = `<form method="dialog" style="display:grid;gap:12px;padding:20px">
-    <div style="display:flex;gap:12px;align-items:center"><span style="width:48px;height:48px;border-radius:50%;background:#1f6b4a;color:#fff;display:grid;place-items:center;font-weight:800;font-size:20px;flex:none">${rens(String(p.navn || meg?.bruker || '?').trim().charAt(0).toUpperCase())}</span><div><b style="font-size:18px">Min profil</b><div style="font-size:13px;color:#555">${rens(meg?.bruker)}${meg?.admin ? ' · administrator' : ''}</div></div></div>
+    <div style="display:flex;gap:14px;align-items:center"><span data-pb-avatar ${p.bilde ? `data-bilde="${rens(p.bilde)}"` : ''} style="width:72px;height:72px;border-radius:50%;background:#1f6b4a;color:#fff;display:grid;place-items:center;font-weight:800;font-size:26px;flex:none">${rens(String(p.navn || meg?.bruker || '?').trim().charAt(0).toUpperCase())}</span><div style="display:grid;gap:4px"><b style="font-size:18px">Min profil</b><div style="font-size:13px;color:#555">${rens(meg?.bruker)}${meg?.admin ? ' · administrator' : ''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><label style="padding:6px 10px;border-radius:8px;border:1px solid #bbb;background:#fff;font-size:13px;cursor:pointer">📷 ${p.bilde ? 'Bytt bilde' : 'Last opp bilde'}<input type="file" accept="image/*" data-pb-fil hidden></label><button type="button" data-pb-fjern ${p.bilde ? '' : 'hidden'} style="padding:6px 10px;border-radius:8px;border:1px solid #bbb;background:#fff;font-size:13px;cursor:pointer">Fjern</button></div>
+      <small style="color:#555;font-size:11.5px">Vises i Nettverk for dem du samhandler med. Valgfritt.</small></div></div>
     <fieldset style="border:0;padding:0;margin:0;display:grid;gap:8px;grid-template-columns:1fr 1fr">
       <legend style="font-weight:700;margin-bottom:6px">Om deg</legend>
       <div style="grid-column:1/-1">${inp('navn', 'Navn', 'text', 'required autocomplete="name"')}</div>
@@ -185,7 +189,15 @@ export async function minProfil() {
     </details>
     <div data-f style="color:#b4302f;min-height:18px;font-size:13px"></div>
     <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button value="ut" formnovalidate data-logg-ut style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff">Logg ut</button><span style="display:flex;gap:8px"><button value="avbryt" formnovalidate style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff">Avbryt</button><button value="ok" style="padding:9px 14px;border-radius:9px;border:0;background:#1f6b4a;color:#fff;font-weight:700">Lagre</button></span></div></form>`;
-  document.body.appendChild(d); merkKort(d); d.showModal();
+  document.body.appendChild(d); merkKort(d); d.showModal(); fyllBilder(d);
+  // Profilbilde: velg, beskjær og last opp med en gang (profilbilde-ui.js), eller fjern.
+  const settAvatar = (id) => { const a = d.querySelector('[data-pb-avatar]'); a.removeAttribute('style'); a.classList.remove('med-bilde'); a.style.cssText = 'width:72px;height:72px;border-radius:50%;background:#1f6b4a;color:#fff;display:grid;place-items:center;font-weight:800;font-size:26px;flex:none'; delete a.dataset.bildeLastet; a.textContent = String(p.navn || meg?.bruker || '?').trim().charAt(0).toUpperCase(); if (id) a.dataset.bilde = id; else delete a.dataset.bilde; fyllBilder(d); meg = { ...meg, profil: { ...(meg.profil || {}), bilde: id || undefined } }; d.querySelector('[data-pb-fjern]').hidden = !id; d.querySelector('[data-pb-fil]').closest('label').firstChild.textContent = id ? '📷 Bytt bilde' : '📷 Last opp bilde'; visBruker(); window.dispatchEvent(new CustomEvent('skogiq-profil', { detail: meg })); };
+  d.querySelector('[data-pb-fil]').addEventListener('change', async (e) => {
+    const f = e.target.files?.[0]; if (!f) return; const vis = (t) => { d.querySelector('[data-f]').textContent = t; }; vis('Laster opp bildet …');
+    try { const id = await lagreBilde(await lesBilde(f)); settAvatar(id); vis(''); } catch (x) { vis(x.message || 'Klarte ikke å laste opp bildet'); }
+    e.target.value = '';
+  });
+  d.querySelector('[data-pb-fjern]').addEventListener('click', async () => { try { await lagreBilde(null); settAvatar(null); } catch (x) { d.querySelector('[data-f]').textContent = x.message; } });
   // Personvern: statistikk av/på, last ned mine data og slett kontoen.
   const pvVis = (t) => { d.querySelector('[data-f]').textContent = t; };
   d.querySelector('[data-pv-statistikk]').addEventListener('change', async (e) => {

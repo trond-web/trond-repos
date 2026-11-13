@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.76.0 – Profilbilde (2026-11-13)
+
+*Nytt.* Last opp et bilde av deg selv under Min profil. Bildet vises i Nettverk – i katalogen, blant koblingene og i chatten – så du ser hvem du samhandler med. Du kan bytte eller fjerne det når som helst.
+
 ## 1.75.1 – Tetthet (a/b) fra treantall før regulering (2026-11-13)
 
 *Forbedret.* «Rydding» heter nå «Tetthet» i hogstklasse I også. Der klassen mangler, beregnes a eller b fra treantall før regulering mot minste lovlige plantetall i forskriften (150, 100 eller 50 per daa etter bonitet). I barskog teller bare bartrærne.

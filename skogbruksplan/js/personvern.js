@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.4', dato: '2026-11-13', kreverGodkjenning: '1.0' };
+export const VILKAR = { versjon: '1.5', dato: '2026-11-13', kreverGodkjenning: '1.0' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -30,8 +30,8 @@ export const BEHANDLINGER = [
     mottakere: 'Ingen. Driftsleverandøren lagrer dataene (se Tredjeparter). E-post for glemt passord sendes via Resend når e-post er slått på.',
     api: ['/api/logginn', '/api/loggut', '/api/meg', '/api/registrer', '/api/glemt', '/api/tilbakestill', '/api/passord', '/api/samtykke', '/api/konto'] },
   { id: 'profil', navn: 'Profil', formaal: 'Tilpasse løsningen til rollen din, fylle ut skjemaer og rapporter, og gi «Spør AI» bakgrunn.',
-    opplysninger: 'Det du selv fyller ut: telefon, gård eller foretak, organisasjonsnummer, adresse, kommune, skogeierandelslag og en kort tekst om gården.',
-    grunnlag: 'avtale', lagring: 'Til du endrer det, eller kontoen slettes.', mottakere: 'Ingen. Navn, foretak, kommune og roller vises i Nettverk-katalogen for innkjøpere og entreprenører (se Nettverk).', api: [] },
+    opplysninger: 'Det du selv fyller ut: telefon, gård eller foretak, organisasjonsnummer, adresse, kommune, skogeierandelslag, en kort tekst om gården og eventuelt et profilbilde (beskåret og nedskalert i nettleseren).',
+    grunnlag: 'avtale', lagring: 'Til du endrer det, eller kontoen slettes. Et byttet eller fjernet profilbilde slettes med en gang.', mottakere: 'Ingen. Navn, foretak, kommune, roller og profilbilde vises i Nettverk for dem du er koblet til, og i katalogen for innkjøpere og entreprenører. Profilbildet kan bare hentes av innloggede brukere.', api: ['/api/bilde'] },
   { id: 'bruk', navn: 'Bruksstatistikk', formaal: 'Se hvilke deler av løsningen som brukes, rette feil og prioritere videre utvikling. Administrator ser statistikken.',
     opplysninger: 'Per dag: antall sidevisninger og serverkall, aktive minutter og hvilke faner du har åpnet. Ingen sporing på tvers av nettsteder og ingen reklame.',
     grunnlag: 'interesse', lagring: '400 dager.', mottakere: 'Ingen.', api: ['/api/bruk', '/api/admin'] },

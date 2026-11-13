@@ -207,7 +207,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       const b = store?.hent(u); if (!b) return { feil: 'Krever registrering', status: 400 };
       if (!riktigPassord(String(passord || ''), b)) return { feil: 'Feil passord', status: 401 };
       if (erAdmin(b.navn)) return { feil: 'Administratorer kan ikke slette seg selv. Be en annen administrator om å gjøre det.', status: 400 };
-      store.slett(b.navn); try { vedSlett?.(b.navn); } catch (e) { console.error('Sletting av brukerdata feilet:', e.message); }
+      store.slett(b.navn); try { vedSlett?.(b.navn, b); } catch (e) { console.error('Sletting av brukerdata feilet:', e.message); }
       return { ok: true };
     },
     bruk(u, type, detalj) { if (store?.hent(u)) store.bruk(store.hent(u).navn, type, tekst(detalj, 40)); },
@@ -251,7 +251,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       else if (handling === 'aapne') store.lagre({ ...b, sperret: false });
       else if (handling === 'admin') store.lagre({ ...b, rolle: 'admin' });
       else if (handling === 'fjern-admin') { if (admins.has(b.navn)) return { feil: 'Brukeren er admin via APP_ADMIN på serveren', status: 400 }; store.lagre({ ...b, rolle: 'bruker' }); }
-      else if (handling === 'slett') { store.slett(b.navn); try { vedSlett?.(b.navn); } catch (e) { console.error('Sletting av brukerdata feilet:', e.message); } }
+      else if (handling === 'slett') { store.slett(b.navn); try { vedSlett?.(b.navn, b); } catch (e) { console.error('Sletting av brukerdata feilet:', e.message); } }
       else return { feil: 'Ukjent handling', status: 400 };
       return { ok: true };
     },
@@ -265,7 +265,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
 
 // Det som kan hentes uten innlogging: innloggingssiden, helsesjekken, ikoner og manifester (lastes uten
 // informasjonskapsel når appen installeres).
-const APENT = /^\/(logginn\.html|personvern\.html|js\/personvern\.js|js\/epost\.js|tilbud\.html|js\/tilbud-svar\.js|tommer\.html|js\/tommer-svar\.js|js\/tommer-felles\.js|js\/innlogging\.js|healthz|api\/logginn|api\/registrer|api\/glemt|api\/tilbakestill|api\/meg|icon\.svg|ikon-[\w-]+\.png|manifest\.webmanifest|felt\.webmanifest|favicon\.ico)$/;
+const APENT = /^\/(logginn\.html|personvern\.html|js\/personvern\.js|js\/epost\.js|js\/profilbilde-ui\.js|tilbud\.html|js\/tilbud-svar\.js|tommer\.html|js\/tommer-svar\.js|js\/tommer-felles\.js|js\/innlogging\.js|healthz|api\/logginn|api\/registrer|api\/glemt|api\/tilbakestill|api\/meg|icon\.svg|ikon-[\w-]+\.png|manifest\.webmanifest|felt\.webmanifest|favicon\.ico)$/;
 const TILLATT_OPPHAV = /^(https:\/\/(skogiq-production\.up\.railway\.app|trond-web\.github\.io)|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/;
 export const corsFor = (req) => { const o = req.headers.origin; return o && TILLATT_OPPHAV.test(o) ? { 'Access-Control-Allow-Origin': o, Vary: 'Origin' } : {}; };
 const ip = (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '?';

@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.75.1** (2026-11-13) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.76.0** (2026-11-13) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -738,6 +738,32 @@ Behandlingsgrunnlaget er i hovedsak **avtale** (art. 6 nr. 1 b), ikke samtykke. 
 **DPIA:** `docs/DPIA.md` vurderer om det trengs en vurdering av personvernkonsekvenser. Den trolig ikke påkrevd i dag, men gjøres frivillig. Dokumentet inneholder beskrivelse, nødvendighet og proporsjonalitet, risikovurdering per behandling (R1–R13), handlingsplan (T1–T10) og endringer som gjør den påkrevd. Testene sjekker at den følger versjonen av erklæringen og har med alle behandlingene.
 
 **Behandlingsansvarlig:** Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no (`ANSVARLIG` i `js/personvern.js`). Organisasjonsnummer legges inn når foretak er etablert.
+
+## Profilbilde (`profilbilde.js`, `js/profilbilde-ui.js`)
+
+Under **Min profil** kan brukeren velge et bilde («📷 Last opp bilde», på mobil også med kameraet), bytte det eller fjerne det. Bildet er valgfritt.
+
+**Hvor bildet vises:**
+- i Nettverk: katalogen, «Mine innkjøpere/entreprenører/skogeiere», forespørsler og chat
+- i Min profil og på profilknappen i sidemenyen
+
+**I nettleseren:** bildet beskjæres til et kvadrat (midten) og skaleres til 320 px JPEG før opplasting, typisk 5–30 kB.
+
+**På serveren:**
+- Bare JPEG, PNG og WebP godtas, og typen avgjøres av filhodet. SVG og andre filer avvises.
+- Høyst 400 kB.
+- Bildet lagres som `/data/profilbilder/<tilfeldig id>.bin`, og id-en ligger i profilen (`profil.bilde`).
+- Ved bytte eller fjerning slettes det gamle bildet med en gang.
+
+**Tilgang:**
+- `GET /api/bilde/<id>` krever innlogging, og id-en er tilfeldig.
+- Bildene hentes med `fetch` og vises som blob-URL, så det virker også på GitHub Pages.
+- Svaret har `nosniff`, en streng CSP og `Cache-Control: private`.
+
+**Personvern:**
+- Bildet slettes sammen med kontoen.
+- Det er med i «Last ned mine data» og i sikkerhetskopien.
+- Det er tatt inn i personvernerklæringen (versjon 1.5) og DPIA-en.
 
 ## Nettverk og chat (💬 Nettverk, `nettverk.js` og `js/nettverk-ui.js`)
 
