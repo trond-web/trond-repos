@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.75.0** (2026-11-13) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.75.1** (2026-11-13) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -1813,8 +1813,20 @@ Eldre genererte planer rettes automatisk når de åpnes. Alderen settes da til S
 
 Hogstklassen har en underklasse a/b, som i SOSI-standarden «Skogbruksplan – bestand» (`SP_HKL`: 11, 12, 21 … 52).
 
-- **HK I:** a = tilfredsstillende ryddet, b = ikke tilfredsstillende ryddet.
-- **HK II–V:** a = tilfredsstillende tetthet, b = mindre tilfredsstillende tetthet.
+Feltet heter **Tetthet** i alle hogstklasser: a = tilfredsstillende tetthet, b = mindre tilfredsstillende tetthet. «Rydding» for HK I er byttet ut.
+
+**Beregning når klassen ikke er registrert (HK I og II):** treantall før regulering sammenlignes med minste lovlige plantetall i forskrift om bærekraftig skogbruk § 7. Treantallet tas fra ungskogfeltene, takst eller treantallsmodellen.
+
+| Bonitet | Minst per daa |
+|---|---|
+| G26–G20, F20–F17 | 150 |
+| G17–G14, F14–F11 | 100 |
+| G11–G6, F8–F6 | 50 |
+
+- I barskog, der bar er over halvparten, teller bare bartrærne (endringen i forskriften fra 2023). Det gjelder når treantallet per treslag er registrert eller modellert. Er bare totalen kjent, brukes totalen, med beskjed om å registrere per treslag.
+- Lauvbestand teller alle treslag.
+- Registrert klasse (fra import eller valgt i felt) går alltid foran.
+- HK III–V beregnes ikke, men får et hint ut fra volum mot vekstmodellen.
 
 Visning:
 - Klassen vises som «II a» i bestandet, bestandstabellen og rapportene, og som «2a/ G20» i kartetikettene.

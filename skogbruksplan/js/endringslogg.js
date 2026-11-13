@@ -2,6 +2,7 @@
 // Nyeste først. Første oppføring skal ha samme versjon som js/versjon.js (sjekkes i testene).
 // type: ny = ny funksjon, forbedret = bedre eller utvidet funksjon, rettet = feilretting.
 export const ENDRINGER = [
+  { versjon: '1.75.1', dato: '2026-11-13', type: 'forbedret', tittel: 'Tetthet (a/b) fra treantall før regulering', tekst: '«Rydding» heter nå «Tetthet» i hogstklasse I også. Der klassen mangler, beregnes a eller b fra treantall før regulering mot minste lovlige plantetall i forskriften (150, 100 eller 50 per daa etter bonitet). I barskog teller bare bartrærne.' },
   { versjon: '1.75.0', dato: '2026-11-13', type: 'ny', tittel: 'Rødlistede arter vurdert mot tiltak', tekst: 'Bestandsinfoen viser rødlistede artsfunn fra Artskart, og om de påvirkes av de planlagte tiltakene: S1 direkte relevant, S2 betinget eller S3 ikke påvirket, med forklaring og lenker til rødlistevurdering og forskning. Nytt kartlag med funnene. Takk til Frode Mohus for forslaget.' },
   { versjon: '1.74.0', dato: '2026-11-13', type: 'ny', tittel: 'Si det rett ut – tilbakemelding og forslag', tekst: 'Trykk 📣 i sidemenyen (eller Mer i SkogIQ Felt) for å gi inntil fem stjerner og sende ros, barkbiller (feil) eller forbedringsforslag. Gode forslag som lar seg gjennomføre, løses i løpet av noen dager. Under «Mine» ser du status og svar.' },
   { versjon: '1.73.2', dato: '2026-11-11', type: 'forbedret', tittel: 'Røde eiendomsgrenser', tekst: 'Alle eiendomsgrenser i kartet er nå røde: planens egen grense, andre eiendommer og Kartverkets kartlag for eiendomsgrenser.' },

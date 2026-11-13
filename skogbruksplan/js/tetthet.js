@@ -1,20 +1,21 @@
 // Tetthetsklasse (a/b) i hogstklassen, som i SOSI-standarden «Skogbruksplan – bestand» (SP_HKL 21 = II a, 22 = II b):
-//   HK I:      a = tilfredsstillende ryddet, b = ikke tilfredsstillende ryddet
-//   HK II–V:   a = tilfredsstillende tetthet, b = mindre tilfredsstillende tetthet
+//   a = tilfredsstillende tetthet, b = mindre tilfredsstillende tetthet (samme for alle hogstklasser)
 // Registrert klasse (import eller manuelt) brukes alltid. Ellers beregnes den der dataene holder:
-//   HK II:     treantall (etter regulering, før regulering, takst eller treantallsmodellen) mot minste plantetall i
-//              forskriften § 7
+//   HK I–II:   treantall før regulering (registrert, takst eller treantallsmodellen) mot minste lovlige plantetall i
+//              forskrift om bærekraftig skogbruk § 7: 150/daa (G26–G20, F20–F17), 100 (G17–G14, F14–F11) og
+//              50 (G11–G6, F8–F6). Der bartrær er mer enn halvparten (treslagsfordelingen, ellers hovedtreslaget),
+//              teller bare bartrærne (endringen i forskriften fra 2023).
 //   HK III–V:  beregnes ikke – volum mot vekstmodellen er for usikkert (SR16 i fjellskog ligger ofte på 30–40 % av
 //              modellen). Andelen vises som et hint, og klassen registreres fra planen eller i felt.
 // Ingen DOM – kan testes i Node.
 import { STANDARD_INNSTILLINGER, HK_ROMERTALL, startTilstand, volumKurve, beregnetHogstklasse, hogstklasseFor, laavesteHogstalder, hkGrenser } from './model.js';
 import { plantetall } from './tiltaksmotor.js';
-import { fraSr16, treantallModell } from './ungskog.js';
+import { treantallPerTreslag } from './treslag.js';
+import { ungskogData } from './ungskog.js';
 
 export const TETTHET_NAVN = { a: 'tilfredsstillende tetthet', b: 'mindre tilfredsstillende tetthet' };
-export const RYDDING_NAVN = { a: 'tilfredsstillende ryddet', b: 'ikke tilfredsstillende ryddet' };
 export const VOLUM_HINT = 0.5;
-export const tetthetNavn = (hk, k) => (hk === 1 ? RYDDING_NAVN : TETTHET_NAVN)[k] || '';
+export const tetthetNavn = (hk, k) => TETTHET_NAVN[k] || '';
 
 const hkFor = (b, inn) => hogstklasseFor(b, inn);
 const minTreantall = (ts, bo) => (ts === 'L' ? 100 : plantetall(ts, bo).min);
@@ -25,15 +26,23 @@ const minTreantall = (ts, bo) => (ts === 'L' ? 100 : plantetall(ts, bo).min);
 export function tetthet(b, { inn = STANDARD_INNSTILLINGER, hk = null } = {}) {
   const h = hk ?? hkFor(b, inn);
   if (b.tetthetsklasse === 'a' || b.tetthetsklasse === 'b') return { klasse: b.tetthetsklasse, kilde: 'registrert', forklaring: tetthetNavn(h, b.tetthetsklasse) };
-  if (h === 1) return { klasse: null, kilde: null, forklaring: 'Rydding vurderes i felt' };
   const s = startTilstand(b); const ts = b.treslag || 'G'; const bo = s.h40;
-  if (h === 2) {
-    const u = b.ungskog || {};
-    const [N, hva, grunnlag] = u.treantallEtter != null ? [u.treantallEtter, 'etter regulering', 'ungskog'] : u.treantallFor != null ? [u.treantallFor, 'før regulering', 'ungskog'] : fraSr16(b) || b.treantall == null ? [Math.max(treantallModell(b).verdi, b.treantall || 0), 'beregnet (modell for alle stammer)', 'modell'] : [b.treantall, 'i bestandsdataene', 'data'];
-    if (N == null) return { klasse: null, kilde: null, forklaring: 'Mangler treantall' };
+  if (h === 1 || h === 2) {
+    // Treantall før regulering per treslag (js/treslag.js): registrert i felt, fra takst eller treantallsmodellen.
+    const d = treantallPerTreslag(b, { inn }).for;
+    const kilde = d.kilde === 'registrert' ? 'registrert' : ungskogData(b, { inn }).treantallFor.kilde;
+    const grunnlag = { registrert: 'ungskog', data: 'data' }[kilde] || 'modell';
+    const hva = grunnlag === 'ungskog' ? 'før regulering (registrert)' : grunnlag === 'data' ? 'før regulering (bestandsdataene)' : 'før regulering (beregnet)';
+    if (!(d.sum >= 0)) return { klasse: null, kilde: null, forklaring: 'Mangler treantall' };
+    const a = b.treslagAndel ? { G: b.treslagAndel.G || 0, F: b.treslagAndel.F || 0 } : { G: ts === 'G' ? 1 : 0, F: ts === 'F' ? 1 : 0 };
+    // Bartrærne kan bare telles alene når treantallet per treslag er kjent (registrert) eller modellert; er bare
+    // totalen målt eller i takst, brukes den.
+    const barskog = a.G + a.F > 0.5 && ts !== 'L';
+    const perTreslag = d.kilde === 'registrert' || kilde === 'beregnet';
+    const N = barskog && perTreslag ? d.G + d.F : d.sum;
     const min = minTreantall(ts, bo);
     const k = N >= min ? 'a' : 'b';
-    return { klasse: k, kilde: 'beregnet', grunnlag, forklaring: `${Math.round(N)} trær/daa ${hva} – minst ${min} for ${ts}${bo} (forskriften § 7)` };
+    return { klasse: k, kilde: 'beregnet', grunnlag, tellende: N, min, forklaring: `${Math.round(N)} ${barskog && perTreslag ? 'bartrær' : 'trær'}/daa ${hva} – minst ${min} for ${ts}${bo} (forskriften § 7)${barskog && perTreslag && d.L ? `. Bare bartrær teller i barskog (${Math.round(d.L)} lauv/daa er ikke med)` : barskog && !perTreslag ? '. Registrer treantall per treslag for å telle bare bartrærne' : ''}` };
   }
   if (h >= 3 && b.volumDaa != null && s.alder > 0 && bo) {
     const normal = volumKurve(s.alder, bo, ts);
