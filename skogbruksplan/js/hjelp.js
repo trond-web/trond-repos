@@ -143,6 +143,13 @@ export const KAPITLER = [
       ${obs('Andre brukere ser navnet ditt, firma og kommune – aldri e-postadressen. Begge kan avslutte en kobling; da stenges chatten.')}`,
   },
   {
+    id: 'arter', ikon: '🦋', tittel: 'Rødlistede arter og tiltak',
+    tekst: `<p>For hvert bestand kan du se rødlistede arter som er funnet i og rundt bestandet (Artskart), og om de påvirkes av tiltakene du planlegger.</p>
+      ${steg(['Åpne et bestand og <b>🦋 Rødlistede arter og tiltak</b>. Trykk <b>Hent artsfunn fra Artskart</b> (én gang per plan – funnene lagres i planen).', 'Hver art vurderes mot hvert planlagt tiltak: <b>S1</b> direkte relevant (må vurderes før tiltaket), <b>S2</b> betinget (sjekk forholdene) og <b>S3</b> ikke påvirket. Uten planlagte tiltak vurderes sluttavvirkning.', 'Under hver art står <i>hvorfor</i>: hvor funnet er, hva arten trenger (gammel skog, død ved, på trær, fuktig …) og hva tiltaket påvirker. Lenkene går til rødlistevurderingen med kilder, Artsdatabanken, forskning og GBIF.', 'Kartlaget <b>🦋 Rødlistede artsfunn (Artskart)</b> viser funnene farget etter rødlistekategori.'])}
+      ${obs('Ingen kjente funn betyr ikke at arter mangler. Artskart viser bare det som er registrert, og sensitive arter vises grovt eller ikke. Reglene er et første utkast og skal kvalitetssikres faglig.')}
+      ${tips('Fugler og pattedyr beveger seg: de blir bare S1 når hekking eller yngling er registrert i bestandet.')}`,
+  },
+  {
     id: 'tilbakemelding', ikon: '📣', tittel: 'Tilbakemelding og forslag',
     tekst: `<p>Trykk <b>📣</b> nederst i sidemenyen (eller søk «tilbakemelding» med <kbd>Ctrl</kbd> + <kbd>K</kbd>). I SkogIQ Felt ligger det under <b>Mer</b>.</p>
       ${steg(['Gi inntil fem stjerner for hvor fornøyd du er – fra 🪲 «Barkbille-nivå» til ✨ «Hogstmoden genialitet».', 'Velg <b>💡 Forbedringsforslag</b>, <b>🪲 Barkbille (feil)</b>, <b>🌸 Ros</b> eller <b>🦉 Annet</b>, og skriv noen ord.', 'Under <b>Mine</b> ser du status – 🌱 Spirer, 🔍 På befaring, 🪓 På hogstplanen, ✅ Hogd og levert – og svar fra oss.'])}

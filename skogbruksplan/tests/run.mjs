@@ -3361,6 +3361,61 @@ test('Treslag: fordeling med kilde, volum per treslag, registrering og treantall
   assert.ok(T.settTreantallTreslag(u, 'etter', { G: '', F: '', L: '' })); assert.equal(u.ungskog.treantallEtter, undefined);
 });
 
+test('Artsfilter: Artskart og Rødlista, livsmiljøprofil, plassering og S1–S3 per tiltak', async () => {
+  const A = await import('../js/artsfilter.js');
+  const grense = { type: 'Polygon', coordinates: [[[11.30, 60.80], [11.32, 60.80], [11.32, 60.81], [11.30, 60.81], [11.30, 60.80]]] };
+  const b = A.boks(grense, 200); assert.ok(b[0] < 11.30 && b[1] < 60.80 && b[2] > 11.32 && b[3] > 60.81); assert.match(A.wkt(b), /^POLYGON\(\(/);
+  // Falske tjenester: Artskart (2 sider) og Rødlista (id, og norsk navn for arter med nytt vitenskapelig navn)
+  const obs = (id, navn, vit, sci, status, lon, lat, ekstra = {}) => ({ Id: id, Name: navn, ScientificName: vit, ScientificNameId: sci, Status: status, klass: ekstra.klass || 'Lecanoromycetes', kingdom: ekstra.kingdom || 'Fungi', East: lon, North: lat, Precision: ekstra.pres ?? '25', CollectedDate: ekstra.dato || '12.06.2021', Habitat: 'gammel granskog', ObsUrl: `https://artskart/${id}`, Behavior: ekstra.atferd || [], Collector: 'Hemmelig Person', PropertyUrls: [{ Type: 'Norsk Rødliste 2021', Url: `https://rl/${sci}` }] });
+  const side0 = [obs('a', 'gubbeskjegg', 'Alectoria sarmentosa', 1, 'NT', 11.31, 60.805), obs('b', 'hønsehauk', 'Astur gentilis', 2, 'VUº', 11.311, 60.805, { klass: 'Aves', kingdom: 'Animalia' }), obs('c', 'gråmåke', 'Larus argentatus', 3, 'VU', 11.315, 60.806, { klass: 'Aves', kingdom: 'Animalia' })];
+  const side1 = [obs('d', 'rynkeskinn', 'Phlebia centrifuga', 4, 'VU', 11.36, 60.84, { dato: '03.1950' }), obs('e', 'kjempebarkbille', 'Dendroctonus micans', 5, 'NT', 11.3105, 60.8051, { pres: '900' }), obs('f', 'storfugl', 'Tetrao urogallus', 6, 'NT', 11.312, 60.805, { klass: 'Aves', kingdom: 'Animalia', atferd: ['reproductive'] })];
+  const RL = { 1: { id: 11, scientificNameId: 1, scientificName: 'Alectoria sarmentosa', popularName: 'gubbeskjegg', category: 'NT', speciesGroup: 'Lav', mainHabitat: ['Fastmarksskogsmark'], expertStatement: '<i>Gubbeskjegg</i> vokser på greiner av gran i gammel skog med lang kontinuitet og høy luftfuktighet.' },
+    3: { id: 13, scientificNameId: 3, scientificName: 'Larus argentatus', popularName: 'gråmåke', category: 'VU', speciesGroup: 'Fugler', mainHabitat: ['Saltvannssystemer', 'Ferskvannssystemer'], expertStatement: 'Hekker ved kysten.' },
+    4: { id: 14, scientificNameId: 4, scientificName: 'Phlebia centrifuga', popularName: 'rynkeskinn', category: 'VU', speciesGroup: 'Sopper', mainHabitat: ['Fastmarksskogsmark'], expertStatement: 'Vokser på læger av gran i gammel skog.' },
+    5: { id: 15, scientificNameId: 5, scientificName: 'Dendroctonus micans', popularName: 'kjempebarkbille', category: 'NT', speciesGroup: 'Biller', mainHabitat: ['Fastmarksskogsmark'], expertStatement: 'Lever under barken på gamle graner.' },
+    6: { id: 16, scientificNameId: 6, scientificName: 'Tetrao urogallus', popularName: 'storfugl', category: 'NT', speciesGroup: 'Fugler', mainHabitat: ['Fastmarksskogsmark', 'Våtmarkssystemer'], expertStatement: 'Storfugl hekker i eldre barskog.' } };
+  const hauk = { id: 12, scientificNameId: 3853, scientificName: 'Accipiter gentilis', popularName: 'hønsehauk', category: 'VU', speciesGroup: 'Fugler', mainHabitat: ['Fastmarksskogsmark'], expertStatement: 'Hekker i eldre skog.' };
+  const kall = [];
+  const hent = async (url) => { kall.push(url); const u = new URL(url);
+    if (url.startsWith(A.ARTSKART)) { const s = Number(u.searchParams.get('pageIndex')); assert.equal(u.searchParams.get('filter.status'), 'CR,EN,VU,NT,DD'); return { ok: true, json: async () => ({ TotalCount: 6, TotalPages: 2, Observations: s === 0 ? side0 : side1 }) }; }
+    const f = u.searchParams.get('$filter'); assert.match(f, /assessmentArea eq 'N'/);
+    if (/scientificNameId in/.test(f)) { const ider = f.match(/in \(([^)]+)\)/)[1].split(',').map(Number); return { ok: true, json: async () => ({ value: ider.map((i) => RL[i]).filter(Boolean) }) }; }
+    if (/popularName in/.test(f)) return { ok: true, json: async () => ({ value: /hønsehauk/.test(f) ? [hauk] : [] }) };
+    return { ok: false, status: 400 }; };
+  const d = await A.hentForEiendom(grense, { hent, naa: () => new Date('2026-11-13T10:00:00Z') });
+  assert.equal(d.funn.length, 6); assert.ok(!JSON.stringify(d).includes('Hemmelig Person'), 'innsamlerens navn lagres ikke');
+  assert.equal(d.funn[1].status, 'VU', 'tegn bak kategorien fjernes'); assert.equal(d.funn[5].hekking, true); assert.equal(d.funn[3].aar, 1950);
+  assert.equal(d.arter[2].navn, 'hønsehauk', 'nytt vitenskapelig navn → slått opp på norsk navn'); assert.ok(kall.some((k) => /popularName/.test(decodeURIComponent(k))));
+  assert.match(d.arter[1].tekst, /^Gubbeskjegg vokser/, 'HTML fjernet');
+  // Profil
+  const pg = A.profil(d.arter[1]); assert.ok(pg.skog && pg.skogHoved && pg.trekk.includes('gammel') && pg.trekk.includes('epifytt') && pg.treslag.includes('G'));
+  assert.ok(A.profil(d.arter[5]).trekk.includes('dodved') === false && A.profil(d.arter[4]).trekk.includes('dodved'));
+  assert.equal(A.profil(d.arter[3]).skog, false); assert.ok(A.profil(d.arter[6]).mobil && A.profil(d.arter[6]).trekk.includes('hekker'));
+  // Plassering
+  assert.equal(A.plassering({ lon: 11.31, lat: 60.805, presisjon: 25 }, grense).sted, 'i');
+  assert.equal(A.plassering({ lon: 11.31, lat: 60.805, presisjon: 900 }, grense).sted, 'kanskje');
+  const naer = A.plassering({ lon: 11.3215, lat: 60.805, presisjon: 10 }, grense); assert.equal(naer.sted, 'naer'); assert.ok(naer.avstand > 50 && naer.avstand < 120);
+  // Vurdering per tiltak
+  const best = { id: 'b', nr: '1', treslag: 'G', bonitet: 17, alder: 110, hogstklasse: 5, areal: 20, geometri: grense, tiltak: [{ type: 'sluttavvirkning', status: 'planlagt', aar: 2027 }, { type: 'groftrensk', status: 'planlagt', aar: 2027 }, { type: 'tynning', status: 'utfort', aar: 2010 }] };
+  const v = A.vurderBestand(d, best, { iAar: 2026 }); assert.deepEqual(v.tiltak.map((t) => t.type), ['sluttavvirkning', 'groftrensk'], 'bare planlagte tiltak');
+  const s = Object.fromEntries(v.tiltak[0].arter.map((a) => [a.navn, a]));
+  assert.equal(s.gubbeskjegg.niva, 'S1'); assert.match(s.gubbeskjegg.grunner.join(' '), /gammel skog.*sårbar for hogst/);
+  assert.equal(s.gråmåke.niva, 'S3'); assert.match(s.gråmåke.grunner.join(' '), /lever ikke i skog/);
+  assert.equal(s.hønsehauk.niva, 'S2', 'mobil art uten hekking i bestandet'); assert.match(s.hønsehauk.grunner.join(' '), /mobil art/);
+  assert.equal(s.storfugl.niva, 'S1', 'hekking registrert i bestandet'); assert.match(s.storfugl.grunner.join(' '), /hekketida/);
+  assert.equal(s.kjempebarkbille.funn[0].sted, 'kanskje');
+  assert.ok(!s.rynkeskinn, 'funn over 1 km unna tas ikke med');
+  assert.equal(v.tiltak[1].arter.find((a) => a.navn === 'gubbeskjegg').niva, 'S2', 'grøfting påvirker gubbeskjegg mindre enn hogst');
+  // Ungskog: arten trenger gammel skog, gammelt funn → ned ett nivå
+  const ung = { ...best, hogstklasse: 2, alder: 12, tiltak: [{ type: 'sluttavvirkning', status: 'planlagt' }] };
+  const dGammel = { ...d, funn: d.funn.map((f) => (f.sciId === 1 ? { ...f, aar: 1990 } : f)) };
+  assert.match(A.vurderBestand(dGammel, ung, { iAar: 2026 }).tiltak[0].arter.find((a) => a.navn === 'gubbeskjegg').grunner.join(' '), /hogstklasse 2/);
+  // Uten planlagte tiltak vurderes sluttavvirkning; lenker
+  assert.equal(A.vurderBestand(d, { ...best, tiltak: [] }).tiltak[0].antatt, true);
+  assert.ok(A.lenker(s.gubbeskjegg).some((l) => /scholar/.test(l.url)) && A.lenker(s.gubbeskjegg)[0].url === 'https://artsdatabanken.no/lister/rodlisteforarter/2021/11');
+  assert.deepEqual(A.vurderBestand(null, best).antall, { S1: 0, S2: 0, S3: 0 });
+});
+
 test('Tilbakemelding: stjerner, typer, spamgrense, mine, admin med status og svar, sletting og tilgang', async () => {
   const { lagTilbakemelding, tilbakemeldingApi } = await import('../tilbakemelding.js'); const U = await import('../js/tilbakemelding-ui.js');
   let tid = Date.UTC(2026, 10, 13, 9); const tb = lagTilbakemelding({ naa: () => tid });
@@ -3469,6 +3524,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.1': 'e0995a4ed43e36bc', // behandlingsansvarlig og kontakt fylt ut
   '1.2': '11b0ad685a83bd45', // krypterte sikkerhetskopier (30 dager) og leverandør for lagring
   '1.3': '43615e4bebe0642f', // tilbakemeldinger og forbedringsforslag
+  '1.4': '1d48addaab85b157', // Artsdatabanken (artsfunn og rødliste) som offentlig kilde
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {

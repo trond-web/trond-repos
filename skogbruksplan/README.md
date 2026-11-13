@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.74.0** (2026-11-13) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.75.0** (2026-11-13) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -592,6 +592,41 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## Rødlistede arter og tiltak (🦋 `js/artsfilter.js`)
+
+Forslag fra Frode Mohus (Skogfilter). Rødlistede artsfunn vurderes mot de planlagte tiltakene i hvert bestand, slik at man ikke drukner i funn som ikke er relevante.
+
+**Henting** («Hent artsfunn fra Artskart» i bestandsinfoen, eller kartlaget «🦋 Rødlistede artsfunn»):
+- **Artskart** (Artsdatabankens åpne API) gir funn med status CR, EN, VU, NT og DD i en boks rundt eiendommen (200 m buffer, høyst 5000 funn). Innsamlerens navn lagres ikke.
+- **Norsk rødliste 2021** (OData) gir hovedhabitat, fagtekst og lenke til vurderingen. Arter som har fått nytt vitenskapelig navn, slås opp på norsk navn, for eksempel hønsehauk.
+- Alt lagres i planen (`S.artsfunn`).
+
+**Livsmiljøprofil** fra habitat og fagtekst:
+- skogart, og om skog er hovedhabitat (første habitat i listen)
+- gammel skog, død ved, på trær, i marka, fuktig og rik mark
+- treslag
+- hekkende fugl
+- mobil art (fugler og pattedyr)
+
+**Tiltaksfilter:** hvert tiltak har en profil for hva det påvirker (hogst, lysåpning, mark, vann og kjemi). Sårbarheten kobles mot tiltaket og mot plasseringen av funnet: i bestandet, kan ligge i (unøyaktig posisjon), nær (under 200 m) eller lenger unna. Resultatet er:
+- **S1** direkte relevant
+- **S2** betinget
+- **S3** ikke påvirket
+
+Hver vurdering har en forklaring. Disse reglene justerer nivået:
+- skog er ikke hovedhabitat → høyst S2
+- fugler og pattedyr → høyst S2, med mindre hekking eller yngling er registrert i bestandet
+- bestandet mangler treslaget arten trenger, eller arten trenger gammel skog i ungskog → ett nivå ned
+- funn eldre enn 40 år → høyst S2
+- uten planlagte tiltak vurderes sluttavvirkning
+
+**Lenker per art:** rødlistevurdering med kilder, Artsdatabanken, Google Scholar (forskning) og GBIF.
+
+**Forbehold** (vises i appen):
+- Ingen funn betyr ikke ingen arter.
+- Sensitive arter vises grovt eller ikke.
+- Reglene er et første utkast og skal kvalitetssikres faglig.
 
 ## Tilbakemelding og forbedringsforslag (📣, `tilbakemelding.js`, `js/tilbakemelding-ui.js`)
 
