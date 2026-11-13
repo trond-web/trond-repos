@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.75.1 – Tetthet (a/b) fra treantall før regulering (2026-11-13)
+
+*Forbedret.* «Rydding» heter nå «Tetthet» i hogstklasse I også. Der klassen mangler, beregnes a eller b fra treantall før regulering mot minste lovlige plantetall i forskriften (150, 100 eller 50 per daa etter bonitet). I barskog teller bare bartrærne.
+
 ## 1.75.0 – Rødlistede arter vurdert mot tiltak (2026-11-13)
 
 *Nytt.* Bestandsinfoen viser rødlistede artsfunn fra Artskart, og om de påvirkes av de planlagte tiltakene: S1 direkte relevant, S2 betinget eller S3 ikke påvirket, med forklaring og lenker til rødlistevurdering og forskning. Nytt kartlag med funnene. Takk til Frode Mohus for forslaget.

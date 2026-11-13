@@ -1468,19 +1468,29 @@ test('Tetthetsklasse: SOSI SP_HKL og SP_-felt, «2A»/«II b», beregning for HK
   assert.equal(TT.tetthet(b).kilde, 'registrert');
   // Motoren foreslår supplering i II b (registrert)
   assert.ok(motorTiltak({ bestand: [b] }, { iAar: 2026, balanser: false }).some((f) => f.type === 'suppleringsplanting'));
-  // Beregnet for HK II fra målt treantall; ikke supplering når treantallet bare er fra SR16/takst
-  const c = { id: 'c', nr: '8', treslag: 'G', bonitet: 17, alder: 6, hogstklasse: 2, areal: 3, tiltak: [], ungskog: { treantallEtter: 70 } };
+  // Beregnet for HK I–II fra treantall før regulering; ikke supplering når treantallet bare er fra SR16/takst
+  const c = { id: 'c', nr: '8', treslag: 'G', bonitet: 17, alder: 6, hogstklasse: 2, areal: 3, tiltak: [], ungskog: { treantallFor: 70 } };
   assert.deepEqual([TT.tetthet(c).klasse, TT.tetthet(c).kilde, TT.tetthet(c).grunnlag], ['b', 'beregnet', 'ungskog']);
   assert.ok(motorTiltak({ bestand: [c] }, { iAar: 2026, balanser: false }).some((f) => f.type === 'suppleringsplanting'));
   const d = { ...c, ungskog: undefined, treantall: 70 };
   assert.equal(TT.tetthet(d).grunnlag, 'data');
   assert.ok(!motorTiltak({ bestand: [d] }, { iAar: 2026, balanser: false }).some((f) => f.type === 'suppleringsplanting'));
-  assert.equal(TT.tetthet({ ...c, ungskog: { treantallEtter: 200 } }).klasse, 'a');
+  assert.equal(TT.tetthet({ ...c, ungskog: { treantallFor: 200 } }).klasse, 'a');
+  assert.equal(TT.tetthet({ ...c, ungskog: { treantallEtter: 40, treantallFor: 300 } }).klasse, 'a', 'før regulering avgjør');
+  assert.match(TT.tetthet(c).forklaring, /70 trær\/daa før regulering \(registrert\) – minst 100 for G17.*per treslag/);
+  // Barskog: bare bartrærne teller (lauv er ikke med)
+  const lauvrik = { ...c, ungskog: { treslagFor: { G: 60, F: 0, L: 400 }, treantallFor: 460 } };
+  assert.equal(TT.tetthet(lauvrik).klasse, 'b'); assert.match(TT.tetthet(lauvrik).forklaring, /Bare bartrær teller i barskog \(400 lauv\/daa/);
+  assert.equal(TT.tetthet({ ...lauvrik, treslag: 'L', treslagAndel: { L: 0.8, G: 0.2 } }).klasse, 'a', 'lauvbestand: alle treslag teller');
+  // HK I beregnes også (ikke lenger «rydding»): ikke plantet ennå → b, nok planter → a
+  const hk1 = { id: 'h1', nr: '10', treslag: 'G', bonitet: 17, alder: 0, hogstklasse: 1, areal: 4, tiltak: [] };
+  assert.deepEqual([TT.tetthet(hk1).klasse, TT.tetthet(hk1).kilde], ['b', 'beregnet']); assert.equal(TT.hkTekst(hk1), 'I b');
+  assert.equal(TT.tetthet({ ...hk1, ungskog: { treantallFor: 180 } }).klasse, 'a');
   // HK III–V: ikke beregnet, men hint
   const e = { id: 'e', nr: '9', treslag: 'G', bonitet: 14, alder: 80, volumDaa: 9, hogstklasse: 4, areal: 5, tiltak: [] };
   const te = TT.tetthet(e); assert.equal(te.klasse, null); assert.match(te.hint, /kan tyde på mindre tilfredsstillende/);
   assert.equal(TT.hkTekst(e), 'IV');
-  assert.equal(TT.tetthetNavn(1, 'b'), 'ikke tilfredsstillende ryddet');
+  assert.equal(TT.tetthetNavn(1, 'b'), 'mindre tilfredsstillende tetthet');
 });
 
 test('Ungskog: treantallsmodell for alle stammer – SR16 (bare trær over 5 cm) er bare en nedre grense', () => {

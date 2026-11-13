@@ -305,7 +305,7 @@ function ungskogSeksjon(b) {
 // Tetthetsklasse a/b: velges med ett trykk i felt (registrert), ellers beregnet (HK II) eller hint (HK III–V).
 function tetthetRad(b, h) {
   const t = tetthet(b, { inn: inn(), hk: h });
-  return `<div class="tetthet-rad"><div><span>${h === 1 ? 'Rydding' : 'Tetthet'}</span> <b>${t.klasse ? `${t.klasse} – ${esc(tetthetNavn(h, t.klasse))}` : 'ikke vurdert'}</b>${t.kilde ? ` <small>${t.kilde === 'registrert' ? 'registrert' : 'beregnet'}</small>` : ''}</div>
+  return `<div class="tetthet-rad"><div><span>Tetthet</span> <b>${t.klasse ? `${t.klasse} – ${esc(tetthetNavn(h, t.klasse))}` : 'ikke vurdert'}</b>${t.kilde ? ` <small>${t.kilde === 'registrert' ? 'registrert' : 'beregnet'}</small>` : ''}</div>
     <div class="chips">${['a', 'b'].map((k) => `<button type="button" class="chip" data-tetthet="${k}" aria-pressed="${b.tetthetsklasse === k}" title="${esc(tetthetNavn(h, k))}">${k}</button>`).join('')}${b.tetthetsklasse ? '<button type="button" class="chip" data-tetthet="">Tøm</button>' : ''}</div></div>
     ${t.kilde !== 'registrert' && (t.hint || t.forklaring) ? `<p class="hint" style="margin-top:2px">${esc(t.hint || t.forklaring)}</p>` : ''}`;
 }

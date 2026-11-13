@@ -937,10 +937,10 @@ function visDetalj() {
   };
 }
 
-// Tetthetsklasse a/b (SOSI SP_HKL): registrert, beregnet for HK II, hint for HK III–V.
+// Tetthet a/b (SOSI SP_HKL): registrert, beregnet fra treantall før regulering for HK I–II, hint for HK III–V.
 function tetthetFeltHtml(b) {
   const h = hk(b); const t = tetthet(b, { inn: inn(), hk: h });
-  const navn = h === 1 ? 'Rydding' : 'Tetthetsklasse';
+  const navn = 'Tetthet';
   const tom = t.kilde === 'beregnet' ? `Beregn (${t.klasse} – ${tetthetNavn(h, t.klasse)})` : 'Ikke vurdert';
   return `<label>${navn} <select name="tetthetsklasse"><option value="">${esc(tom)}</option>${['a', 'b'].map((k) => `<option value="${k}" ${b.tetthetsklasse === k ? 'selected' : ''}>${k} – ${esc(tetthetNavn(h, k))}</option>`).join('')}</select><span class="hint" style="font-weight:400">${esc(t.kilde === 'registrert' ? 'Registrert' : t.hint || t.forklaring)}</span></label>`;
 }
