@@ -2,6 +2,7 @@
 // Nyeste først. Første oppføring skal ha samme versjon som js/versjon.js (sjekkes i testene).
 // type: ny = ny funksjon, forbedret = bedre eller utvidet funksjon, rettet = feilretting.
 export const ENDRINGER = [
+  { versjon: '1.74.0', dato: '2026-11-13', type: 'ny', tittel: 'Si det rett ut – tilbakemelding og forslag', tekst: 'Trykk 📣 i sidemenyen (eller Mer i SkogIQ Felt) for å gi inntil fem stjerner og sende ros, barkbiller (feil) eller forbedringsforslag. Gode forslag som lar seg gjennomføre, løses i løpet av noen dager. Under «Mine» ser du status og svar.' },
   { versjon: '1.73.2', dato: '2026-11-11', type: 'forbedret', tittel: 'Røde eiendomsgrenser', tekst: 'Alle eiendomsgrenser i kartet er nå røde: planens egen grense, andre eiendommer og Kartverkets kartlag for eiendomsgrenser.' },
   { versjon: '1.73.1', dato: '2026-11-11', type: 'forbedret', tittel: 'E-post fra ditt eget e-postprogram', tekst: 'Ved «Glemt passord» kan du sende en ferdig e-post til administrator. Når innkjøpere og entreprenører inviterer en skogeier i Nettverk, får de en ferdig e-post med beskjed om forespørselen, eller en invitasjon til å registrere seg.' },
   { versjon: '1.73.0', dato: '2026-11-11', type: 'ny', tittel: 'Sikkerhetskopi', tekst: 'Alle data på serveren kopieres kryptert hver natt, på serveren og utenfor Railway i EU. Tilbudsforespørsler, synk mellom PC og mobil, droneoppdrag og John Deere-koblinger lagres nå permanent og forsvinner ikke lenger ved oppdateringer.' },

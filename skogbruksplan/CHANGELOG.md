@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.74.0 – Si det rett ut – tilbakemelding og forslag (2026-11-13)
+
+*Nytt.* Trykk 📣 i sidemenyen (eller Mer i SkogIQ Felt) for å gi inntil fem stjerner og sende ros, barkbiller (feil) eller forbedringsforslag. Gode forslag som lar seg gjennomføre, løses i løpet av noen dager. Under «Mine» ser du status og svar.
+
 ## 1.73.2 – Røde eiendomsgrenser (2026-11-11)
 
 *Forbedret.* Alle eiendomsgrenser i kartet er nå røde: planens egen grense, andre eiendommer og Kartverkets kartlag for eiendomsgrenser.

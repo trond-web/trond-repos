@@ -143,6 +143,13 @@ export const KAPITLER = [
       ${obs('Andre brukere ser navnet ditt, firma og kommune – aldri e-postadressen. Begge kan avslutte en kobling; da stenges chatten.')}`,
   },
   {
+    id: 'tilbakemelding', ikon: '📣', tittel: 'Tilbakemelding og forslag',
+    tekst: `<p>Trykk <b>📣</b> nederst i sidemenyen (eller søk «tilbakemelding» med <kbd>Ctrl</kbd> + <kbd>K</kbd>). I SkogIQ Felt ligger det under <b>Mer</b>.</p>
+      ${steg(['Gi inntil fem stjerner for hvor fornøyd du er – fra 🪲 «Barkbille-nivå» til ✨ «Hogstmoden genialitet».', 'Velg <b>💡 Forbedringsforslag</b>, <b>🪲 Barkbille (feil)</b>, <b>🌸 Ros</b> eller <b>🦉 Annet</b>, og skriv noen ord.', 'Under <b>Mine</b> ser du status – 🌱 Spirer, 🔍 På befaring, 🪓 På hogstplanen, ✅ Hogd og levert – og svar fra oss.'])}
+      ${tips('Gode forslag som lar seg gjennomføre, løses i løpet av noen dager.')}
+      <p><button type="button" class="knapp primar" data-tilbakemelding>📣 Gi tilbakemelding nå</button></p>`,
+  },
+  {
     id: 'personvern', ikon: '🔒', tittel: 'Vilkår, personvern og dine data',
     tekst: `<p>Du eier dataene dine. SkogIQ.ai bruker dem bare til å levere tjenesten, og selger dem aldri. Les hele <a href="personvern.html" target="_blank" rel="noopener">brukervilkårene og personvernerklæringen</a>.</p>
       <h4>Under Min profil → Personvern og dine data</h4>

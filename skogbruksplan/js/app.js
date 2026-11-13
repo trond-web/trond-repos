@@ -59,6 +59,7 @@ import { mpTilUtm, mpTilGeo, fordelPaaBestand } from './sporlogg.js';
 import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { eiendomGrenseLag as eiendomGrenseLagRod } from './eiendomslag.js';
+import { apneTilbakemelding } from './tilbakemelding-ui.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, settTreslagAndel, avvikHovedtreslag, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag } from './treslag.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
@@ -808,6 +809,10 @@ async function hentVegetasjonForPlan() {
     melding(r.kartlagt ? `Vegetasjonstype: ${r.kartlagt} bestand fra vegetasjonskartet, ${r.anslatt} anslått` : `Ikke vegetasjonskartlagt her – ${r.anslatt} bestand anslått fra treslag og bonitet${r.feil ? ` (${r.feil})` : ''}`);
   } catch (e) { melding(`Kunne ikke hente vegetasjonstype: ${e.message}`); }
 }
+
+// Tilbakemelding (📣 i sidemenyen): fanen brukeren står i følger med.
+function aktivFaneNavn() { return document.querySelector('.faner button.aktiv')?.dataset.fane || ''; }
+document.addEventListener('click', (e) => { if (e.target.closest('[data-tilbakemelding]')) apneTilbakemelding({ fane: aktivFaneNavn() }); });
 
 function visDetalj() {
   const boks = $('#bestandDetalj');
@@ -2495,6 +2500,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '🤝', tittel: 'Del med tømmerkjøper', under: 'Del bestand, volumer og kart og få prisforslag', sok: 'tømmerkjøper tommerkjoper del dele tømmer salg selge hogst pris tilbud andelslag kjøper', utfor: () => { visFane('verdi'); tommerVisning?.apne(null); setTimeout(() => $('#tommerDeling')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
     { gruppe: 'Handlinger', ikon: '💬', tittel: 'Nettverk og chat', under: 'Innkjøpere, entreprenører og skogeiere du er koblet til', sok: 'nettverk chat melding innkjøper entreprenør skogeier kobling koble kontakt', utfor: () => visFane('nettverk') },
     { gruppe: 'Handlinger', ikon: '🔒', tittel: 'Vilkår og personvern', under: 'Les erklæringen, last ned dataene dine eller slett kontoen', sok: 'personvern vilkår gdpr samtykke mine data innsyn slett konto eksport', utfor: () => window.open('personvern.html', '_blank', 'noopener') },
+    { gruppe: 'Handlinger', ikon: '📣', tittel: 'Gi tilbakemelding', under: 'Stjerner, ros, barkbiller (feil) og forbedringsforslag', sok: 'tilbakemelding forslag forbedring feil ros klage idé ide stjerner fornøyd', utfor: () => apneTilbakemelding({ fane: aktivFaneNavn() }) },
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål i kartet', under: 'Lengde, areal, omkrets og volum per treslag', sok: 'mål måle måleverktøy lengde areal avstand omkrets volum treslag kubikk daa linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('areal'); } },
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål avstand (lengde)', sok: 'mål avstand lengde meter linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('lengde'); } },
     { gruppe: 'Handlinger', ikon: '📬', tittel: 'Mine tilbudsforespørsler', under: 'Se sendte forespørsler og tilbudene du har fått', sok: 'tilbud svar mine forespørsler mottatt sendt anbud', utfor: () => { visFane('tiltak'); visTiltakVisning('oppdrag'); oppdragVisning?.lukk(); oppdragVisning?.tegn(); } },

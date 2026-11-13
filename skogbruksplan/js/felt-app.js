@@ -18,6 +18,7 @@ import { synligeTiltaksflater, treffVed, tiltakStil, tiltakNavn, tiltakLinje, ti
 import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from './tiltak-endring.js';
 import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
+import { apneTilbakemelding } from './tilbakemelding-ui.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, treslagKortHtml, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag, settTreslagAndel, fordeling as tsFordeling, avvikHovedtreslag } from './treslag.js';
 import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
@@ -650,6 +651,9 @@ function visMer() {
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
   const installert = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   aapneArk(`<h2>Mer</h2>
+    <h3>📣 Si det rett ut</h3>
+    <p class="hint">Ros, barkbiller (feil) eller en god idé? Gi stjerner og skriv noen ord. Gode forslag som lar seg gjennomføre, løses i løpet av noen dager.</p>
+    <div class="knapper"><button type="button" class="knapp primar" data-h="tilbakemelding">Gi tilbakemelding</button><button type="button" class="knapp" data-h="tilbakemelding-mine">Mine tilbakemeldinger</button></div>
     <h3>Offline</h3>
     <p>${navigator.onLine ? 'Du er på nett.' : '<b>Du er uten nett.</b> Planer, registreringer og tiltak lagres på telefonen.'} Appen og planene virker uten dekning. Kartet virker offline der du har lastet det ned.</p>
     <p class="hint">${P ? (offline ? `Topografisk kart for ${esc(P.eiendom?.navn)} ble lastet ned ${esc(offline)}.` : `Kartet for ${esc(P.eiendom?.navn)} er ikke lastet ned.`) : 'Velg en plan først.'} Flyfoto krever nett.</p>
@@ -756,6 +760,7 @@ function kobleHendelser() {
     const steg = e.target.closest('[data-ts-steg]');
     if (steg) { const [t, d] = steg.dataset.tsSteg.split('|'); const inp = document.querySelector(`[data-ts-andel="${t}"]`); inp.value = Math.max(0, Math.min(100, (Number(String(inp.value).replace(',', '.')) || 0) + Number(d))); tsSum(); return; }
     const h = e.target.closest('[data-h]')?.dataset.h; if (!h) return;
+    if (h === 'tilbakemelding' || h === 'tilbakemelding-mine') { apneTilbakemelding({ fane: 'felt', visning: h === 'tilbakemelding' ? 'ny' : 'mine' }); return; }
     if (h === 'hent-kode') { hentFraPc($('#hentKode')?.value); return; }
     if (h === 'synk') { await synkNaa({ stille: false }); if (!$('#ark').hidden) visPlaner(); return; }
     if (h === 'sky') { await skyAlle({ stille: false }); if (!$('#ark').hidden) visPlaner(); return; }

@@ -15,6 +15,7 @@ import { rensSvar as rensTommerSvar, sjekkSvar as sjekkTommerSvar } from './js/t
 import { lagSkyLager, skyApi } from './sky-lager.js';
 import { lagNettverk, nettverkApi } from './nettverk.js';
 import { lagBackup, lagS3, backupApi } from './backup.js';
+import { lagTilbakemelding, tilbakemeldingApi } from './tilbakemelding.js';
 
 const ROT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8080;
@@ -34,7 +35,7 @@ const TYPER = {
   '.sos': 'text/plain; charset=utf-8',
 };
 // Mapper og filer som ikke skal publiseres.
-const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|backup\.js|package(-lock)?\.json|railway\.json)$|\/\./;
+const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|backup\.js|tilbakemelding\.js|package(-lock)?\.json|railway\.json)$|\/\./;
 const KOMPRIMER = /^(text\/|application\/(json|geo\+json|manifest\+json)|image\/svg)/;
 
 const SIKKERHET = {
@@ -91,9 +92,9 @@ const innlogging = lagInnlogging({
   bruker: process.env.APP_BRUKER || '', passord: process.env.APP_PASSORD || '', hemmelighet: process.env.APP_HEMMELIGHET || '',
   registrering: process.env.APP_REGISTRERING === '1', fil: process.env.BRUKER_FIL || null, admin: process.env.APP_ADMIN || '', kode: process.env.APP_REGISTRERINGSKODE || '',
   sendEpost: lagEpostSender({ nokkel: process.env.EPOST_NOKKEL || '', fra: process.env.EPOST_FRA || '' }),
-  ekstraBruker: (u) => ({ sky: sky.bruk(u) }), vedSlett: (u) => { sky.slettBruker(u); nettverk?.slettBruker(u); },
+  ekstraBruker: (u) => ({ sky: sky.bruk(u) }), vedSlett: (u) => { sky.slettBruker(u); nettverk?.slettBruker(u); tilbakemelding?.slettBruker(u); },
   // Innsyn/dataportabilitet: planlisten i skyen (planene eksporteres fra appen) og nettverket med chat.
-  eksport: (u) => ({ skylagring: { ...sky.bruk(u), planer: [...sky.liste(u), ...sky.liste(u, { slettede: true })] }, nettverk: nettverk?.eksport(u) || null }),
+  eksport: (u) => ({ skylagring: { ...sky.bruk(u), planer: [...sky.liste(u), ...sky.liste(u, { slettede: true })] }, nettverk: nettverk?.eksport(u) || null, tilbakemeldinger: tilbakemelding?.eksport(u) || [] }),
 });
 // Uten innlogging (lokal utvikling) brukes én lokal bruker med profil i minnet.
 const lokalProfil = { navn: 'Lokal bruker', epost: '' };
@@ -104,6 +105,8 @@ const skyOppsett = {
 };
 // Nettverk mellom skogeiere, innkjøpere og entreprenører med chat (nettverk.js). Krever registrering av brukere.
 const nettverk = innlogging.registrering ? lagNettverk({ fil: process.env.NETTVERK_FIL || (process.env.BRUKER_FIL ? path.join(path.dirname(process.env.BRUKER_FIL), 'nettverk.json') : null), brukere: { hent: (u) => innlogging.lager.hent(u), alle: () => innlogging.lager.alle() } }) : null;
+// Tilbakemeldinger og forbedringsforslag (tilbakemelding.js), på volumet.
+const tilbakemelding = innlogging.registrering ? lagTilbakemelding({ fil: process.env.TILBAKEMELDING_FIL || iData('tilbakemeldinger.json') }) : null;
 if (innlogging.registrering && !innlogging.permanent) console.warn('BRUKER_FIL er ikke satt – registrerte brukere forsvinner når serveren startes på nytt.');
 // John Deere Operations Center (se jd-relay.js). Uten JD_CLIENT_ID/JD_CLIENT_SECRET svarer /api/jd/status at det ikke er satt opp.
 const jdRelay = lagJdRelay({ klientId: process.env.JD_CLIENT_ID || '', hemmelighet: process.env.JD_CLIENT_SECRET || '', tilbakeUrl: process.env.JD_REDIRECT || '', api: process.env.JD_API || JD_SANDKASSE, fil: process.env.JD_FIL || iData('jd.json') });
@@ -114,7 +117,7 @@ const backup = lagBackup({
   mappe: DATA, nokkel: process.env.BACKUP_NOKKEL || '',
   s3: s3Oppsett ? lagS3({ endpoint: process.env.BACKUP_S3_ENDPOINT, bucket: process.env.BACKUP_S3_BUCKET, region: process.env.BACKUP_S3_REGION || 'eu-central-1', id: process.env.BACKUP_S3_NOKKEL_ID, hemmelig: process.env.BACKUP_S3_HEMMELIG, prefiks: process.env.BACKUP_S3_PREFIKS || 'skogiq/' }) : null,
   beholdLokalt: Number(process.env.BACKUP_BEHOLD_LOKALT) || 7, beholdS3: Number(process.env.BACKUP_BEHOLD_S3) || 30, intervallTimer: Number(process.env.BACKUP_INTERVALL_TIMER) || 24,
-  forKopi: () => innlogging.lager?.flush?.(),
+  forKopi: () => { innlogging.lager?.flush?.(); tilbakemelding?.flush(); },
 });
 backup.start();
 if (DATA && !process.env.BACKUP_NOKKEL) console.warn('BACKUP_NOKKEL er ikke satt – sikkerhetskopiene lagres ukryptert og bare på volumet.');
@@ -142,6 +145,7 @@ const server = http.createServer(async (req, res) => {
   if (kontrollerApi(relay, req, res, sti, SIKKERHET)) return;
   if (skyApi(sky, skyOppsett, req, res, sti, SIKKERHET)) return;
   if (nettverkApi(nettverk, skyOppsett, req, res, sti, SIKKERHET)) return;
+  if (tilbakemeldingApi(tilbakemelding, { meg: (q) => { const o = innlogging.fraForesporsel(q); if (!o) return null; const m = innlogging.meg(o.u); return { bruker: o.u, navn: m?.navn || o.u, admin: innlogging.erAdmin(o.u) }; }, cors: corsFor }, req, res, sti, SIKKERHET)) return;
   if (planApi(planRelay, req, res, sti, SIKKERHET)) return;
   if (jdApi(jdRelay, req, res, sti, SIKKERHET)) return;
   if (req.method !== 'GET' && req.method !== 'HEAD') return svar(res, 405, 'Metoden er ikke tillatt');

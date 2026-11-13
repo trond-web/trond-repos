@@ -3361,6 +3361,37 @@ test('Treslag: fordeling med kilde, volum per treslag, registrering og treantall
   assert.ok(T.settTreantallTreslag(u, 'etter', { G: '', F: '', L: '' })); assert.equal(u.ungskog.treantallEtter, undefined);
 });
 
+test('Tilbakemelding: stjerner, typer, spamgrense, mine, admin med status og svar, sletting og tilgang', async () => {
+  const { lagTilbakemelding, tilbakemeldingApi } = await import('../tilbakemelding.js'); const U = await import('../js/tilbakemelding-ui.js');
+  let tid = Date.UTC(2026, 10, 13, 9); const tb = lagTilbakemelding({ naa: () => tid });
+  assert.equal(tb.send('ola', { stjerner: 6 }).status, 400); assert.equal(tb.send('ola', { stjerner: 2.5 }).status, 400);
+  assert.equal(tb.send('ola', {}).status, 400, 'tom'); assert.equal(tb.send('ola', { type: 'forslag', tekst: 'ja' }).status, 400, 'for kort forslag');
+  const a = tb.send('ola', { stjerner: 5, type: 'ros', tekst: '' }, { navn: 'Ola' }); assert.ok(a.ok); assert.equal(a.tilbakemelding.status, 'ny');
+  tid += 1000; const b = tb.send('ola', { stjerner: 3, type: 'forslag', tekst: '  Vis treslag i Felt  ', fane: 'bestand', versjon: '1.73.2' }); assert.equal(b.tilbakemelding.tekst, 'Vis treslag i Felt');
+  tb.send('kari', { stjerner: 1, type: 'feil', tekst: 'Kartet blinker', fane: 'planer' }); tb.send('kari', { type: 'ukjent', tekst: 'hei' });
+  assert.equal(tb.mine('ola').length, 2); assert.equal(tb.mine('ola')[0].tekst, 'Vis treslag i Felt', 'nyeste først');
+  const alle = tb.alle(); assert.equal(alle.antall, 4); assert.equal(alle.snitt, 3); assert.deepEqual(alle.fordeling, [1, 0, 1, 0, 1]); assert.equal(alle.status.ny, 4); assert.equal(alle.liste.find((x) => x.tekst === 'hei').type, 'annet');
+  assert.equal(tb.oppdater(b.tilbakemelding.id, { status: 'planlagt', svar: 'Kommer i neste versjon!' }).tilbakemelding.svar, 'Kommer i neste versjon!');
+  assert.equal(tb.mine('ola')[0].status, 'planlagt'); assert.equal(tb.mine('ola')[0].svarTid, tid); assert.equal(tb.oppdater('x', {}).status, 404); assert.equal(tb.oppdater(b.tilbakemelding.id, { status: 'tull' }).status, 400);
+  for (let i = 0; i < 12; i++) tb.send('spam', { stjerner: 4 }); assert.equal(tb.send('spam', { stjerner: 4 }).status, 429);
+  tb.slettBruker('ola'); assert.equal(tb.mine('ola').length, 0); assert.equal(tb.eksport('kari').length, 2);
+  // HTTP
+  const res = () => { const r = { writeHead(st) { r.st = st; }, end(x) { r.d = JSON.parse(x); r.ferdig?.(); } }; return r; };
+  const kjor = (metode, url, meg, kropp) => new Promise((ok) => { const h = {}; const r = res(); r.ferdig = () => ok(r); const req = { method: metode, url, headers: {}, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(JSON.stringify(kropp))); f(); }, 0); }, destroy() {} }; tilbakemeldingApi(tb, { meg: () => meg }, req, r, url.split('?')[0]); });
+  const per = { bruker: 'per', navn: 'Per', admin: false }; const sjef = { bruker: 'sjef', navn: 'Sjef', admin: true };
+  assert.equal((await kjor('POST', '/api/tilbakemelding', null, { stjerner: 4 })).st, 401);
+  const ny = await kjor('POST', '/api/tilbakemelding', per, { stjerner: 4, type: 'forslag', tekst: 'Mørk modus i Felt' }); assert.equal(ny.st, 201);
+  assert.equal((await kjor('GET', '/api/tilbakemelding/mine', per)).d.liste[0].tekst, 'Mørk modus i Felt');
+  assert.equal((await kjor('GET', '/api/admin/tilbakemelding', per)).st, 403, 'bare administrator ser alle');
+  const adm = await kjor('GET', '/api/admin/tilbakemelding', sjef); assert.equal(adm.d.liste[0].bruker, 'per');
+  assert.equal((await kjor('PUT', `/api/admin/tilbakemelding/${ny.d.tilbakemelding.id}`, sjef, { status: 'lost', svar: 'Ferdig!' })).d.tilbakemelding.status, 'lost');
+  assert.equal((await kjor('PUT', `/api/admin/tilbakemelding/${ny.d.tilbakemelding.id}`, per, { status: 'avvist' })).st, 403);
+  assert.equal((await kjor('DELETE', `/api/admin/tilbakemelding/${ny.d.tilbakemelding.id}`, sjef)).st, 200); assert.equal((await kjor('DELETE', '/api/admin/tilbakemelding/finnesikke', sjef)).st, 404);
+  // Humoren: stjernetekster og takk
+  assert.equal(Object.keys(U.STJERNE_TEKST).length, 5); assert.match(U.takkTekst({ stjerner: 5 }), /Fem stjerner/); assert.match(U.takkTekst({ stjerner: 1 }), /motorsagen/); assert.match(U.takkTekst({ stjerner: 3, type: 'feil' }), /Barkbillen/);
+  assert.equal(Object.keys(U.STATUS).join(), 'ny,vurderes,planlagt,lost,avvist');
+});
+
 test('E-post via eget e-postprogram: mailto med riktig koding', async () => {
   const { mailto } = await import('../js/epost.js');
   const u = mailto({ til: 'ola@x.no', emne: 'Glemt passord – SkogIQ.ai', tekst: 'Hei!\n\nLinje 2 & mer?' });
@@ -3437,6 +3468,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.0': '16a230b34f20c608',
   '1.1': 'e0995a4ed43e36bc', // behandlingsansvarlig og kontakt fylt ut
   '1.2': '11b0ad685a83bd45', // krypterte sikkerhetskopier (30 dager) og leverandør for lagring
+  '1.3': '43615e4bebe0642f', // tilbakemeldinger og forbedringsforslag
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
