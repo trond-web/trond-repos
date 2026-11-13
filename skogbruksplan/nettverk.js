@@ -23,7 +23,7 @@ export function lagNettverk({ fil = null, brukere, naa = () => Date.now() } = {}
   let t = null; const lagre = () => { if (!fil) return; clearTimeout(t); t = setTimeout(() => { try { writeFileSync(fil, JSON.stringify(data)); } catch { /* ignorer */ } }, 500); };
   const sendt = new Map(); // bruker → tidspunkter (spamgrense)
   const feil = (status, f) => ({ feil: f, status });
-  const kort = (b) => (b ? { bruker: b.navn, navn: b.visning || b.navn, foretak: b.profil?.foretak || '', kommune: b.profil?.kommune || '', roller: roller(b) } : null);
+  const kort = (b) => (b ? { bruker: b.navn, navn: b.visning || b.navn, foretak: b.profil?.foretak || '', kommune: b.profil?.kommune || '', roller: roller(b), bilde: b.profil?.bilde || null } : null);
   const mine = (u) => Object.values(data.koblinger).filter((k) => k.skogeier === u || k.aktor === u);
   const motpart = (k, u) => (k.skogeier === u ? k.aktor : k.skogeier);
   const ulest = (k, u) => { const sist = data.lest[`${k.id}|${u}`] || 0; return (data.meldinger[k.id] || []).filter((m) => m.fra !== u && m.tid > sist).length; };

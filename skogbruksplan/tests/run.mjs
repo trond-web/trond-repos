@@ -3426,6 +3426,40 @@ test('Artsfilter: Artskart og Rødlista, livsmiljøprofil, plassering og S1–S3
   assert.deepEqual(A.vurderBestand(null, best).antall, { S1: 0, S2: 0, S3: 0 });
 });
 
+test('Profilbilde: filtype fra filhodet, størrelse, lagring, bytte, tilgang og sletting med kontoen', async () => {
+  const { lagProfilbilder, profilbildeApi, bildetype, MAKS_BYTES } = await import('../profilbilde.js');
+  const { mkdtempSync, readdirSync, rmSync } = await import('node:fs'); const { tmpdir } = await import('node:os'); const { join } = await import('node:path');
+  const jpg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200, 7)]); const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(50)]);
+  const webp = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WEBP'), Buffer.alloc(20)]); const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+  assert.deepEqual([bildetype(jpg), bildetype(png), bildetype(webp), bildetype(svg)], ['image/jpeg', 'image/png', 'image/webp', null]);
+  const mappe = mkdtempSync(join(tmpdir(), 'skogiq-pb-')); const pb = lagProfilbilder({ mappe });
+  assert.equal(pb.lagre(`data:image/svg+xml;base64,${svg.toString('base64')}`).status, 415, 'SVG avvises (filhodet avgjør)');
+  assert.equal(pb.lagre(`data:image/jpeg;base64,${svg.toString('base64')}`).status, 415, 'feil type selv om data-URL sier jpeg');
+  assert.equal(pb.lagre(Buffer.concat([jpg, Buffer.alloc(MAKS_BYTES)])).status, 413); assert.equal(pb.lagre('tull').status, 400);
+  const r = pb.lagre(`data:image/jpeg;base64,${jpg.toString('base64')}`); assert.match(r.id, /^[a-f0-9]{24}$/);
+  assert.ok(pb.hent(r.id).data.equals(jpg)); assert.equal(pb.hent(r.id).type, 'image/jpeg'); assert.equal(pb.hent('../brukere'), null); assert.match(pb.dataUrl(r.id), /^data:image\/jpeg;base64,/);
+  // HTTP med en enkel konto
+  const profiler = { ola: {} }; const konto = { bruker: (q) => q.u || null, hentProfil: (u) => profiler[u], settBilde: (u, id) => { if (id) profiler[u].bilde = id; else delete profiler[u].bilde; } };
+  const kjor = (metode, url, u, kropp) => new Promise((ok) => { const h = {}; const res = { writeHead(st, hd) { res.st = st; res.h = hd; }, end(x) { res.b = x; ok(res); } }; const req = { method: metode, url, headers: {}, u, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(JSON.stringify(kropp))); f(); }, 0); }, destroy() {} }; profilbildeApi(pb, konto, req, res, url); });
+  assert.equal((await kjor('PUT', '/api/konto/bilde', null, { bilde: 'x' })).st, 401);
+  const opp = await kjor('PUT', '/api/konto/bilde', 'ola', { bilde: `data:image/png;base64,${png.toString('base64')}` }); assert.equal(opp.st, 200); const id1 = JSON.parse(opp.b).bilde; assert.equal(profiler.ola.bilde, id1);
+  const vis = await kjor('GET', `/api/bilde/${id1}`, 'kari'); assert.equal(vis.st, 200); assert.equal(vis.h['Content-Type'], 'image/png'); assert.match(vis.h['Cache-Control'], /private/); assert.equal(vis.h['X-Content-Type-Options'], 'nosniff');
+  assert.equal((await kjor('GET', `/api/bilde/${id1}`, null)).st, 401, 'bare innloggede');
+  const bytt = JSON.parse((await kjor('PUT', '/api/konto/bilde', 'ola', { bilde: `data:image/webp;base64,${webp.toString('base64')}` })).b).bilde;
+  assert.notEqual(bytt, id1); assert.equal(pb.hent(id1), null, 'gammelt bilde slettes ved bytte'); assert.equal((await kjor('GET', `/api/bilde/${id1}`, 'kari')).st, 404);
+  assert.equal((await kjor('DELETE', '/api/konto/bilde', 'ola')).st, 200); assert.equal(profiler.ola.bilde, undefined); assert.equal(pb.hent(bytt), null);
+  assert.equal(readdirSync(mappe).length, 1, 'bare bildet fra det første lagre-kallet ligger igjen'); rmSync(mappe, { recursive: true, force: true });
+  assert.match(pb.lagre(jpg).id, /^[a-f0-9]{24}$/, 'mappen opprettes på nytt hvis den er borte'); rmSync(mappe, { recursive: true, force: true });
+  // Kontosletting sender med brukeren, så bildet kan slettes (auth.js → vedSlett(u, b))
+  const { lagInnlogging } = await import('../auth.js'); const { VILKAR } = await import('../js/personvern.js'); let slettet = null;
+  const inn = lagInnlogging({ registrering: true, vedSlett: (u, b) => { slettet = b?.profil?.bilde; } });
+  inn.registrer('1', { bruker: 'per@x.no', passord: 'granskog-1', roller: ['skogeier'], vilkar: VILKAR.versjon }); inn.lager.lagre({ ...inn.lager.hent('per@x.no'), profil: { roller: ['skogeier'], bilde: 'abc' } });
+  inn.slettMeg('per@x.no', 'granskog-1'); assert.equal(slettet, 'abc');
+  // Nettverket viser bildet til motparten
+  const { lagNettverk } = await import('../nettverk.js'); const B = { 'o@x.no': { navn: 'o@x.no', visning: 'O', profil: { roller: ['skogeier'] } }, 'k@x.no': { navn: 'k@x.no', visning: 'K', profil: { roller: ['innkjoper'], bilde: 'b'.repeat(24) } } };
+  const n = lagNettverk({ brukere: { hent: (u) => B[u] || null, alle: () => Object.values(B) } }); assert.equal(n.aktorer('o@x.no')[0].bilde, 'b'.repeat(24));
+});
+
 test('Tilbakemelding: stjerner, typer, spamgrense, mine, admin med status og svar, sletting og tilgang', async () => {
   const { lagTilbakemelding, tilbakemeldingApi } = await import('../tilbakemelding.js'); const U = await import('../js/tilbakemelding-ui.js');
   let tid = Date.UTC(2026, 10, 13, 9); const tb = lagTilbakemelding({ naa: () => tid });
@@ -3535,6 +3569,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.2': '11b0ad685a83bd45', // krypterte sikkerhetskopier (30 dager) og leverandør for lagring
   '1.3': '43615e4bebe0642f', // tilbakemeldinger og forbedringsforslag
   '1.4': '1d48addaab85b157', // Artsdatabanken (artsfunn og rødliste) som offentlig kilde
+  '1.5': '1eee6ddd5e27e456', // profilbilde (valgfritt), vist i Nettverk
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {

@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Utkast til godkjenning hos behandlingsansvarlig |
 | **Dato** | 2026-11-11 |
-| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.4 (`js/personvern.js`) |
+| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.5 (`js/personvern.js`) |
 | **Behandlingsansvarlig** | Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no. Organisasjonsnummer legges inn når foretak er etablert |
 | **Neste gjennomgang** | Ved endringene i kapittel 8, og senest 2027-11-11 |
 
@@ -53,7 +53,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | Behandling (id) | Opplysninger | Grunnlag | Lagring |
 |---|---|---|---|
 | Konto og innlogging (`konto`) | E-post, navn, passord-hash, roller, godkjenninger | Avtale | Til kontoen slettes |
-| Profil (`profil`) | Kontakt, foretak, adresse, kommune, fritekst | Avtale | Til endret eller slettet |
+| Profil (`profil`) | Kontakt, foretak, adresse, kommune, fritekst, valgfritt profilbilde (vises i Nettverk, bare for innloggede) | Avtale | Til endret eller slettet |
 | Bruksstatistikk (`bruk`) | Sidevisninger, kall, aktive minutter og faner per dag | Berettiget interesse (kan slås av) | 400 dager |
 | Tilbakemeldinger og forslag (`tilbakemelding`) | Stjerner, type, fritekst, fane, versjon, navn og e-post; status og svar fra administrator | Brukerens initiativ | Til kontoen slettes, eller administrator sletter |
 | Skylagring (`sky`) | Skogbruksplaner med eiendom, notater, bilder og sporlogger | Avtale | Til brukeren sletter; 10 versjoner og 30 dager i papirkurv |

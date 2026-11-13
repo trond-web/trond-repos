@@ -16,6 +16,7 @@ import { lagSkyLager, skyApi } from './sky-lager.js';
 import { lagNettverk, nettverkApi } from './nettverk.js';
 import { lagBackup, lagS3, backupApi } from './backup.js';
 import { lagTilbakemelding, tilbakemeldingApi } from './tilbakemelding.js';
+import { lagProfilbilder, profilbildeApi } from './profilbilde.js';
 
 const ROT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8080;
@@ -35,7 +36,7 @@ const TYPER = {
   '.sos': 'text/plain; charset=utf-8',
 };
 // Mapper og filer som ikke skal publiseres.
-const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|backup\.js|tilbakemelding\.js|package(-lock)?\.json|railway\.json)$|\/\./;
+const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|backup\.js|tilbakemelding\.js|profilbilde\.js|package(-lock)?\.json|railway\.json)$|\/\./;
 const KOMPRIMER = /^(text\/|application\/(json|geo\+json|manifest\+json)|image\/svg)/;
 
 const SIKKERHET = {
@@ -92,9 +93,9 @@ const innlogging = lagInnlogging({
   bruker: process.env.APP_BRUKER || '', passord: process.env.APP_PASSORD || '', hemmelighet: process.env.APP_HEMMELIGHET || '',
   registrering: process.env.APP_REGISTRERING === '1', fil: process.env.BRUKER_FIL || null, admin: process.env.APP_ADMIN || '', kode: process.env.APP_REGISTRERINGSKODE || '',
   sendEpost: lagEpostSender({ nokkel: process.env.EPOST_NOKKEL || '', fra: process.env.EPOST_FRA || '' }),
-  ekstraBruker: (u) => ({ sky: sky.bruk(u) }), vedSlett: (u) => { sky.slettBruker(u); nettverk?.slettBruker(u); tilbakemelding?.slettBruker(u); },
+  ekstraBruker: (u) => ({ sky: sky.bruk(u) }), vedSlett: (u, b) => { sky.slettBruker(u); nettverk?.slettBruker(u); tilbakemelding?.slettBruker(u); if (b?.profil?.bilde) profilbilder.slett(b.profil.bilde); },
   // Innsyn/dataportabilitet: planlisten i skyen (planene eksporteres fra appen) og nettverket med chat.
-  eksport: (u) => ({ skylagring: { ...sky.bruk(u), planer: [...sky.liste(u), ...sky.liste(u, { slettede: true })] }, nettverk: nettverk?.eksport(u) || null, tilbakemeldinger: tilbakemelding?.eksport(u) || [] }),
+  eksport: (u) => ({ skylagring: { ...sky.bruk(u), planer: [...sky.liste(u), ...sky.liste(u, { slettede: true })] }, nettverk: nettverk?.eksport(u) || null, tilbakemeldinger: tilbakemelding?.eksport(u) || [], profilbilde: (() => { const id = innlogging.lager?.hent(u)?.profil?.bilde; return id ? profilbilder.dataUrl(id) : null; })() }),
 });
 // Uten innlogging (lokal utvikling) brukes én lokal bruker med profil i minnet.
 const lokalProfil = { navn: 'Lokal bruker', epost: '' };
@@ -105,6 +106,8 @@ const skyOppsett = {
 };
 // Nettverk mellom skogeiere, innkjøpere og entreprenører med chat (nettverk.js). Krever registrering av brukere.
 const nettverk = innlogging.registrering ? lagNettverk({ fil: process.env.NETTVERK_FIL || (process.env.BRUKER_FIL ? path.join(path.dirname(process.env.BRUKER_FIL), 'nettverk.json') : null), brukere: { hent: (u) => innlogging.lager.hent(u), alle: () => innlogging.lager.alle() } }) : null;
+// Profilbilder (profilbilde.js) i <datamappe>/profilbilder; id-en ligger i profilen.
+const profilbilder = lagProfilbilder({ mappe: iData('profilbilder') });
 // Tilbakemeldinger og forbedringsforslag (tilbakemelding.js), på volumet.
 const tilbakemelding = innlogging.registrering ? lagTilbakemelding({ fil: process.env.TILBAKEMELDING_FIL || iData('tilbakemeldinger.json') }) : null;
 if (innlogging.registrering && !innlogging.permanent) console.warn('BRUKER_FIL er ikke satt – registrerte brukere forsvinner når serveren startes på nytt.');
@@ -143,6 +146,11 @@ const server = http.createServer(async (req, res) => {
   if (tilbudApi(tilbudRelay, req, res, sti, SIKKERHET)) return;
   if (tilbudApi(tommerRelay, req, res, sti, SIKKERHET, '/api/tommer')) return;
   if (kontrollerApi(relay, req, res, sti, SIKKERHET)) return;
+  if (innlogging.registrering && profilbildeApi(profilbilder, {
+    bruker: (q) => innlogging.fraForesporsel(q)?.u || null,
+    hentProfil: (u) => innlogging.lager.hent(u)?.profil || null,
+    settBilde: (u, id) => { const b = innlogging.lager.hent(u); if (!b) return; const p = { ...(b.profil || {}) }; if (id) { p.bilde = id; p.bildeTid = Date.now(); } else { delete p.bilde; delete p.bildeTid; } innlogging.lager.lagre({ ...b, profil: p }); },
+  }, req, res, sti, { cors: corsFor, ekstraHoder: SIKKERHET })) return;
   if (skyApi(sky, skyOppsett, req, res, sti, SIKKERHET)) return;
   if (nettverkApi(nettverk, skyOppsett, req, res, sti, SIKKERHET)) return;
   if (tilbakemeldingApi(tilbakemelding, { meg: (q) => { const o = innlogging.fraForesporsel(q); if (!o) return null; const m = innlogging.meg(o.u); return { bruker: o.u, navn: m?.navn || o.u, admin: innlogging.erAdmin(o.u) }; }, cors: corsFor }, req, res, sti, SIKKERHET)) return;
