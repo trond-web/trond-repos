@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Utkast til godkjenning hos behandlingsansvarlig |
 | **Dato** | 2026-11-11 |
-| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.2 (`js/personvern.js`) |
+| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.3 (`js/personvern.js`) |
 | **Behandlingsansvarlig** | Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no. Organisasjonsnummer legges inn når foretak er etablert |
 | **Neste gjennomgang** | Ved endringene i kapittel 8, og senest 2027-11-11 |
 
@@ -55,6 +55,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | Konto og innlogging (`konto`) | E-post, navn, passord-hash, roller, godkjenninger | Avtale | Til kontoen slettes |
 | Profil (`profil`) | Kontakt, foretak, adresse, kommune, fritekst | Avtale | Til endret eller slettet |
 | Bruksstatistikk (`bruk`) | Sidevisninger, kall, aktive minutter og faner per dag | Berettiget interesse (kan slås av) | 400 dager |
+| Tilbakemeldinger og forslag (`tilbakemelding`) | Stjerner, type, fritekst, fane, versjon, navn og e-post; status og svar fra administrator | Brukerens initiativ | Til kontoen slettes, eller administrator sletter |
 | Skylagring (`sky`) | Skogbruksplaner med eiendom, notater, bilder og sporlogger | Avtale | Til brukeren sletter; 10 versjoner og 30 dager i papirkurv |
 | Overføring mellom enheter (`synk`) | Plan eller drone-rute med tilfeldig id | Brukerens initiativ | 90 dager (planer) og 14 dager (droneoppdrag) |
 | Tilbudsforespørsler (`tilbud`) | Oppdrag, kontakt, mottakere, svar | Brukerens initiativ | 180 dager uten bruk |
@@ -117,6 +118,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | R11 | Injeksjon eller XSS som lekker data (alle) | Escaping av all brukertekst; `nosniff`, `X-Frame-Options`, `Referrer-Policy`; CORS begrenset til egne adresser | L | H | **Lav–middels**. Mangler Content-Security-Policy (T9). |
 | R12 | Ufullstendig sletting (`synk`, `tilbud`, `tommer`) | Kontosletting fjerner skylagring, nettverk og chat; mellomlagre har faste lagringstider; sikkerhetskopier roteres etter høyst 30 dager | M | L | **Lav** (T4) |
 | R13 | Feil i modeller gir feil beslutninger (ikke personvern, men tillit) | Vilkårene sier at beregninger er veiledende; kilder og «beregnet/registrert» vises | M | M | Håndteres i vilkårene |
+| R14 | Fritekst i tilbakemeldinger kan inneholde personopplysninger om andre (`tilbakemelding`) | Bare administrator ser tilbakemeldingene; teksten er begrenset til 3000 tegn og 10 per time; slettes med kontoen; administrator kan slette enkeltmeldinger | L | L | **Lav** |
 
 **Samlet restrisiko:** lav, bortsett fra **R6** (middels til lagring utenfor Railway er satt opp) og **R7/R11** (lav–middels) inntil tiltakene under er gjennomført. Ingen restrisiko er høy, så forhåndsdrøfting med Datatilsynet (art. 36) er ikke nødvendig.
 

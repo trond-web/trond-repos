@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.2', dato: '2026-11-11', kreverGodkjenning: '1.0' };
+export const VILKAR = { versjon: '1.3', dato: '2026-11-13', kreverGodkjenning: '1.0' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -35,6 +35,9 @@ export const BEHANDLINGER = [
   { id: 'bruk', navn: 'Bruksstatistikk', formaal: 'Se hvilke deler av løsningen som brukes, rette feil og prioritere videre utvikling. Administrator ser statistikken.',
     opplysninger: 'Per dag: antall sidevisninger og serverkall, aktive minutter og hvilke faner du har åpnet. Ingen sporing på tvers av nettsteder og ingen reklame.',
     grunnlag: 'interesse', lagring: '400 dager.', mottakere: 'Ingen.', api: ['/api/bruk', '/api/admin'] },
+  { id: 'tilbakemelding', navn: 'Tilbakemeldinger og forslag', formaal: 'Ta imot ros, feilmeldinger og forbedringsforslag, svare deg og forbedre SkogIQ.ai.',
+    opplysninger: 'Stjerner (1–5), type, teksten du skriver, hvilken del av appen du var i, appversjon, navnet ditt og e-postadressen (brukernavnet), og status og svar fra administrator.',
+    grunnlag: 'initiativ', lagring: 'Til du sletter kontoen, eller administrator sletter tilbakemeldingen.', mottakere: 'Bare administrator.', api: ['/api/tilbakemelding'] },
   { id: 'sky', navn: 'Skylagring av skogbruksplaner', formaal: 'Lagre planene dine på serveren, slik at de er tilgjengelige på alle enhetene dine.',
     opplysninger: 'Skogbruksplanene med eiendom, bestand, tiltak, notater, bilder og sporlogger du har lagt inn.',
     grunnlag: 'avtale', lagring: 'Til du sletter planen. De 10 siste versjonene tas vare på, og slettede planer ligger 30 dager i papirkurven.',

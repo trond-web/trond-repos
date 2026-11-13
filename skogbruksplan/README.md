@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.73.2** (2026-11-11) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.74.0** (2026-11-13) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -592,6 +592,27 @@ Utføreren gir pris per enhet (summen regnes ut) eller fastpris. I tillegg fylle
 - **Svarene** renses: bare kjente felt tas vare på, med lengdegrenser.
 - **Innlogging:** Bare utførerens visning og svar er åpne. Oppdragsgiverens kall krever innlogging når den er slått på.
 - **Lagring:** Data slettes etter 180 dager uten bruk. `TILBUD_FIL` lagrer dem mellom omstarter.
+
+## Tilbakemelding og forbedringsforslag (📣, `tilbakemelding.js`, `js/tilbakemelding-ui.js`)
+
+Dialogen heter «Si det rett ut». Den åpnes med 📣 nederst i sidemenyen, med «Gi tilbakemelding» i kommandopaletten (Ctrl + K), fra brukerveiledningen, og under **Mer** i SkogIQ Felt. Tonen er lett, med skoghumor.
+
+- **Stjerner (valgfritt, 1–5)** for hvor fornøyd brukeren er. Hvert nivå har sin tekst, fra 🪲 «Barkbille-nivå. Au.» til ✨ «Hogstmoden genialitet!». Teksten vises når musen er over stjernen.
+- **Typer:** 💡 Forbedringsforslag, 🪲 Barkbille (feil), 🌸 Ros og 🦉 Annet, hver med sin egen hjelpetekst.
+- **Løftet ved forbedringsforslag:** gode forslag som lar seg gjennomføre, løses i løpet av noen dager.
+- **Takken** varierer med stjerner og type, for eksempel bålkaffe ved fem stjerner, motorsag ved én stjerne og lupe ved feil.
+- **«Mine»** viser status og svar fra administrator: 🌱 Spirer, 🔍 På befaring, 🪓 På hogstplanen, ✅ Hogd og levert og 🍂 Ble liggende i skogen.
+- **Admin:**
+  - snitt og fordeling av stjerner, og antall åpne og løste
+  - filter på status og type
+  - status og svar per tilbakemelding, og e-post via eget e-postprogram
+  - med hver tilbakemelding følger fanen brukeren var i, og appversjonen
+- **Server (`/api/tilbakemelding`, `/api/admin/tilbakemelding`):**
+  - krever innlogging
+  - høyst 3000 tegn og 10 per time
+  - lagres i `tilbakemeldinger.json` på volumet og er med i sikkerhetskopien
+  - slettes og eksporteres sammen med kontoen
+  - er med i personvernerklæringen (versjon 1.3) og DPIA-en
 
 ## Eiendomsgrenser er røde
 
