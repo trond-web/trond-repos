@@ -1,6 +1,10 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.77.0** (2026-11-15) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.77.1** (2026-11-15) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+
+> **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
+>
+> Teksten ligger i `OM` i `js/versjon.js`. Den vises på innloggingssiden, som kort med «Les mer» nederst i Planer og Innstillinger, i kommandopaletten («Om SkogIQ.ai»), under Mer i SkogIQ Felt og øverst på personvernsiden (`personvern.html#om`).
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan

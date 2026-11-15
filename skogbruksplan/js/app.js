@@ -26,7 +26,7 @@ import { initAssistent } from './assistent.js';
 import { initSkogbrand } from './skogbrand-ui.js';
 import { initSkifteplan } from './skifteplan-ui.js';
 import { misMonster, misFigurer, misKartlag, misLegendStil, miljoLegendStil } from './miljokart.js';
-import { VERSJON, UTGITT, UTVIKLER, APPNAVN, signatur } from './versjon.js';
+import { VERSJON, UTGITT, UTVIKLER, APPNAVN, signatur, OM, omHtml, kontaktHtml } from './versjon.js';
 import { ENDRINGER, html as endringsloggHtml, sidenSist, nyere } from './endringslogg.js';
 import { KAPITLER as HJELP, innholdHtml as hjelpInnhold, tocHtml as hjelpToc, sok as hjelpSok, heleHtml as hjelpHele } from './hjelp.js';
 import { lagSkifteinndeling, hentJordsmonnFlater, jordbruksBoks } from './skifteplan.js';
@@ -812,6 +812,16 @@ async function hentVegetasjonForPlan() {
     endret({ kart: true }); visDetalj();
     melding(r.kartlagt ? `Vegetasjonstype: ${r.kartlagt} bestand fra vegetasjonskartet, ${r.anslatt} anslått` : `Ikke vegetasjonskartlagt her – ${r.anslatt} bestand anslått fra treslag og bonitet${r.feil ? ` (${r.feil})` : ''}`);
   } catch (e) { melding(`Kunne ikke hente vegetasjonstype: ${e.message}`); }
+}
+
+// «Om SkogIQ.ai»: hvem som har laget løsningen, at den er ikke-kommersiell, og kontakt (js/versjon.js).
+function visOm() {
+  if (document.querySelector('.om-dialog')) return;
+  const d = document.createElement('dialog'); d.className = 'om-dialog';
+  d.innerHTML = `<div class="om-dialog-inn"><div class="om-topp"><h2>🌲 ${esc(OM.tittel)}</h2><button type="button" class="tb-lukk" data-om-lukk aria-label="Lukk">×</button></div>${omHtml()}<p class="hint">${esc(APPNAVN)} versjon ${esc(VERSJON)} (${esc(UTGITT)}) · <a href="personvern.html" target="_blank" rel="noopener">Vilkår og personvern</a></p></div>`;
+  document.body.appendChild(d); d.showModal();
+  d.addEventListener('click', (e) => { if (e.target === d || e.target.closest('[data-om-lukk]')) d.close(); });
+  d.addEventListener('close', () => d.parentNode?.removeChild(d));
 }
 
 // Tilbakemelding (📣 i sidemenyen): fanen brukeren står i følger med.
@@ -2564,7 +2574,7 @@ function kommandoValg(q) {
     { gruppe: 'Hjelp', ikon: '❓', tittel: 'Brukerveiledning', under: 'Slik bruker du SkogIQ.ai – steg for steg', sok: 'hjelp brukerveiledning veiledning manual hvordan bruke guide', utfor: () => visHjelp('kom-i-gang') },
     ...HJELP.map((k) => ({ gruppe: 'Hjelp', ikon: k.ikon, tittel: `Hjelp: ${k.tittel}`, sok: `hjelp veiledning hvordan ${k.tittel.toLowerCase()}`, utfor: () => visHjelp(k.id) })),
     { gruppe: 'Handlinger', ikon: '✨', tittel: 'Hva er nytt i SkogIQ.ai', under: `Versjonslogg – sist ${ENDRINGER[0].tittel}`, sok: 'hva er nytt versjonslogg endringer oppdatering nyheter changelog', utfor: () => visEndringslogg() },
-    { gruppe: 'Handlinger', ikon: 'ℹ', tittel: `Om ${APPNAVN} – versjon ${VERSJON}`, under: `Utviklet av ${UTVIKLER}`, sok: 'om versjon utvikler laget av trond harald sand', utfor: () => { visFane('planer'); setTimeout(() => $('#fane-planer [data-om-app]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); } },
+    { gruppe: 'Handlinger', ikon: 'ℹ', tittel: `Om ${APPNAVN} – versjon ${VERSJON}`, under: `Utviklet av ${UTVIKLER} · kontakt`, sok: 'om versjon utvikler laget av trond harald sand kontakt erfaring', utfor: () => visOm() },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Ta sikkerhetskopi', sok: 'backup eksport lagre', utfor: () => eksporter('backup') },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Bytt lyst/mørkt tema', sok: 'tema mørk lys dark', utfor: () => $('#temaBtn').click() },
   );
@@ -2609,7 +2619,8 @@ function kobleHendelser() {
     dra = null;
   });
   // Versjon og utvikler
-  for (const el of $$('[data-om-app]')) el.innerHTML = `<b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span> · <a href="#" data-hva-nytt>Hva er nytt?</a> · <a href="#" data-hjelp="kom-i-gang">Brukerveiledning</a><br>Utviklet av ${UTVIKLER}<br><span data-bruker-info></span><a href="#" data-logg-ut>Logg ut</a>`;
+  for (const el of $$('[data-om-app]')) el.innerHTML = `<div class="om-kort"><b>🌲 ${OM.tittel}</b><p>${OM.kort}</p><p><a href="#" data-om-vis>Les mer</a> · Kontakt: ${kontaktHtml()}</p></div><b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span> · <a href="#" data-hva-nytt>Hva er nytt?</a> · <a href="#" data-hjelp="kom-i-gang">Brukerveiledning</a><br>Utviklet av ${UTVIKLER}<br><span data-bruker-info></span><a href="#" data-logg-ut>Logg ut</a>`;
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-om-vis]')) { e.preventDefault(); visOm(); } });
   visBruker();
   $('#railVersjon').textContent = `v${VERSJON}`; $('#railVersjon').title = `${signatur()} – klikk for å se hva som er nytt`;
   visNyttSidenSist();

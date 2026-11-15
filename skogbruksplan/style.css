@@ -1359,3 +1359,12 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .nv-kv-red { display: grid; gap: 8px; border: 1.5px solid var(--accent); border-radius: 14px; padding: 12px; margin: 6px 0 12px; }
 .nv-kv-red > .hint { margin: -4px 0 0; }
 @media (prefers-color-scheme: dark) { .nv-kv-info.mangler { background: #3a2e14; color: #f2d79b; } }
+
+/* Om SkogIQ.ai (js/versjon.js OM) */
+.om-kort { text-align: left; background: var(--surface-2); border-radius: 14px; padding: 12px 14px; margin: 0 0 14px; color: var(--text-2); font-size: 12.5px; line-height: 1.5; }
+.om-kort b { color: var(--text); font-size: 13.5px; } .om-kort p { margin: 4px 0 0; }
+.om-dialog { border: 0; border-radius: 20px; padding: 0; width: min(520px, calc(100% - 24px)); background: var(--surface); color: var(--text); box-shadow: 0 24px 70px rgba(0,0,0,.35); }
+.om-dialog::backdrop { background: rgba(8,20,14,.45); }
+.om-dialog-inn { padding: 18px 22px 20px; font-size: 15px; line-height: 1.55; } .om-dialog-inn p { margin: 0 0 10px; }
+.om-topp { display: flex; justify-content: space-between; align-items: center; gap: 10px; } .om-topp h2 { margin: 0 0 8px; font-size: 20px; }
+.om-dialog .tb-lukk { border: 0; background: var(--surface-2); width: 34px; height: 34px; border-radius: 50%; font-size: 18px; cursor: pointer; color: var(--text); }

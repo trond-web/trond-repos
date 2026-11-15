@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.77.1 – Om SkogIQ.ai (2026-11-15)
+
+*Forbedret.* Informasjon om hvem som har utviklet løsningen, at den er laget på fritiden og uten kommersielle formål, og hvordan du kan ta kontakt. Står på innloggingssiden, i appen, i SkogIQ Felt og på personvernsiden.
+
 ## 1.77.0 – Kommuner i Nettverk (2026-11-15)
 
 *Nytt.* Innkjøpere og entreprenører velger kommunene de opererer i (spørres ved innlogging, kan endres i Min profil og Nettverk). Skogeiere ser bare aktører som opererer der de har skog – kommunene til planene teller automatisk, og flere kan legges til. Søk på navn eller velg et helt fylke.
