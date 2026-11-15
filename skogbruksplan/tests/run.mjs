@@ -3426,6 +3426,29 @@ test('Artsfilter: Artskart og Rødlista, livsmiljøprofil, plassering og S1–S3
   assert.deepEqual(A.vurderBestand(null, best).antall, { S1: 0, S2: 0, S3: 0 });
 });
 
+test('Juletresjekken: på 15. nov–23. des, av julaften; score etter høyde, gran, bonitet, tetthet, vei og miljø', async () => {
+  const J = await import('../js/juletre.js');
+  const d = (m, dag) => new Date(2026, m - 1, dag, 12);
+  assert.deepEqual([d(11, 14), d(11, 15), d(12, 1), d(12, 23), d(12, 24), d(12, 31), d(1, 10), d(7, 1)].map((x) => J.erJuletid(x)), [false, true, true, true, false, false, false, false]);
+  assert.equal(J.dagerTilJul(d(12, 23)), 1); assert.equal(J.dagerTilJul(d(12, 24)), 0); assert.equal(J.dagerTilJul(d(11, 24)), 30);
+  const base = { id: 'a', nr: '1', treslag: 'G', bonitet: 11, alder: 14, hogstklasse: 2, areal: 5, hoyde: 2.5, tiltak: [], ungskog: { treantallFor: 300 } };
+  const topp = J.juletreScore(base, { avstandVei: 80 });
+  assert.equal(topp.stjerner, 5); assert.ok(topp.score >= 95, `${topp.score}`); assert.ok(topp.grunner.some((g) => /juletrehøyde/.test(g)) && topp.grunner.some((g) => /80 m fra bilvei/.test(g)));
+  assert.ok(J.juletreScore({ ...base, treslag: 'F' }).score < topp.score, 'furu er nest best');
+  assert.equal(J.juletreScore({ ...base, treslag: 'L' }).score < 20, true, 'lauv gir ikke juletrær');
+  assert.ok(J.juletreScore({ ...base, bonitet: 23 }).score < topp.score, 'høy bonitet gir glisne trær');
+  assert.ok(J.juletreScore({ ...base, ungskog: { treantallFor: 1500 } }).score < topp.score, 'for tett');
+  assert.ok(J.juletreScore(base, { avstandVei: 900 }).score < J.juletreScore(base, { avstandVei: 100 }).score, 'langt å bære');
+  assert.match(J.juletreScore({ ...base, hogstklasse: 5, alder: 90, hoyde: 22 }).uegnet, /for store/);
+  assert.match(J.juletreScore({ ...base, hoyde: 0.4, ungskog: { hoydeBar: 0.4, treantallFor: 300 } }).uegnet, /for små/);
+  assert.equal(J.juletreScore({ ...base, miljo: true }).score, 0, 'miljøfigur');
+  const pleie = J.juletreScore({ ...base, bonitet: 20, tiltak: [{ type: 'ungskogpleie', status: 'planlagt' }] });
+  assert.ok(pleie.bonus && pleie.grunner.some((g) => /skulle uansett ut/.test(g)));
+  const liste = J.toppliste([{ ...base, id: 'x', treslag: 'L' }, { ...base, id: 'y' }, { ...base, id: 'z', hogstklasse: 5, alder: 90, hoyde: 22 }, { ...base, id: 'w', treslag: 'F' }], { avstand: () => 100 });
+  assert.deepEqual(liste.map((x) => x.b.id), ['y', 'w'], 'sortert; uegnede og svært svake (lauv) er ute');
+  assert.ok(J.KRITERIER.length >= 5 && J.KILDER.every((k) => /^https:/.test(k.url))); assert.match(J.nisseTips(1), /lys/);
+});
+
 test('Kommuner: velger (søk, rensing), profil, og skogeiere ser bare aktører i sine skogkommuner', async () => {
   const KV = await import('../js/kommunevelger.js');
   assert.deepEqual(KV.rensKommuner([{ nr: '3412', navn: 'Løten' }, { nr: '3412', navn: 'Løten' }, { nr: '34', navn: 'x' }, { nr: '3420', navn: 'Elverum' }, { nr: '3401', navn: '' }]), [{ nr: '3420', navn: 'Elverum' }, { nr: '3412', navn: 'Løten' }]);

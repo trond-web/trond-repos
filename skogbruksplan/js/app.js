@@ -61,6 +61,7 @@ import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { eiendomGrenseLag as eiendomGrenseLagRod } from './eiendomslag.js';
 import { apneTilbakemelding } from './tilbakemelding-ui.js';
 import * as AF from './artsfilter.js';
+import * as JUL from './juletre.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, settTreslagAndel, avvikHovedtreslag, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag } from './treslag.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
@@ -812,6 +813,43 @@ async function hentVegetasjonForPlan() {
     endret({ kart: true }); visDetalj();
     melding(r.kartlagt ? `Vegetasjonstype: ${r.kartlagt} bestand fra vegetasjonskartet, ${r.anslatt} anslått` : `Ikke vegetasjonskartlagt her – ${r.anslatt} bestand anslått fra treslag og bonitet${r.feil ? ` (${r.feil})` : ''}`);
   } catch (e) { melding(`Kunne ikke hente vegetasjonstype: ${e.message}`); }
+}
+
+// ---------- 🎄 Juletresjekken (js/juletre.js) – bare fra 15. november til og med 23. desember ----------
+let juletreLag = null;
+function startJuletid() {
+  if (!JUL.erJuletid() || $('#juletreBtn')) return;
+  const mal = $('#maalBtn'); if (!mal) return;
+  mal.insertAdjacentHTML('afterend', '<button id="juletreBtn" class="knapp juletre-knapp" type="button" title="Hvor finner du lettest et fint juletre?">🎄 Juletrær</button>');
+  $('#juletreBtn').addEventListener('click', () => ($('.juletre-panel') ? lukkJuletrær() : visJuletrær()));
+}
+function lukkJuletrær() { $('.juletre-panel')?.remove(); juletreLag?.clearLayers(); }
+function sno() {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || $('.sno')) return;
+  const el = document.createElement('div'); el.className = 'sno'; el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = Array.from({ length: 36 }, (_, i) => `<i style="left:${(i * 97) % 100}%;animation-delay:${((i * 37) % 50) / 10}s;animation-duration:${6 + ((i * 13) % 50) / 10}s;font-size:${10 + ((i * 7) % 14)}px">❄</i>`).join('');
+  document.body.appendChild(el); setTimeout(() => el.parentNode?.removeChild(el), 13000);
+}
+function visJuletrær() {
+  lukkJuletrær(); sno();
+  const avst = (b) => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? a.meter : null; };
+  const gode = JUL.toppliste(S.bestand, { inn: inn(), avstand: avst });
+  const liste = gode.length ? gode : JUL.toppliste(S.bestand, { inn: inn(), avstand: avst, min: 1, antall: 3 }); // ingen gode: vis det nærmeste
+  const dager = JUL.dagerTilJul();
+  const p = document.createElement('div'); p.className = 'juletre-panel'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'Juletresjekken');
+  p.innerHTML = `<div class="jt-topp"><b>🎄 Juletresjekken</b><button type="button" class="jt-lukk" data-jt="lukk" aria-label="Lukk">×</button></div>
+    <p class="jt-dager">${dager === 0 ? 'God jul! 🎅' : dager === 1 ? 'I morgen er det julaften!' : `${dager} dager til julaften`} – her finner du lettest et fint juletre på ${esc(S.eiendom?.navn || 'eiendommen')}.</p>
+    ${S.bestand.length ? (liste.length ? `${gode.length ? '' : '<p class="hint">Ingen ideelle juletresteder her – men dette er det nærmeste du kommer:</p>'}<ol class="jt-liste">${liste.map((x, i) => `<li data-jt-best="${esc(x.b.id)}"><span class="jt-nr">${i + 1}</span><div><b>Bestand ${esc(x.b.nr)}</b> <span class="jt-stj" aria-label="${x.stjerner} av 5">${'★'.repeat(x.stjerner)}${'☆'.repeat(5 - x.stjerner)}</span> <span class="hint">${fmt(x.b.areal, 1)} daa · ${x.score} poeng</span><small>${x.grunner.map(esc).join(' · ')}</small></div></li>`).join('')}</ol>` : '<p>Ingen ungskog med gran i juletrehøyde i denne planen. Kanskje naboen har? 😉</p>') : '<p>Åpne eller lag en skogbruksplan, så finner nissen de beste stedene.</p>'}
+    <details class="jt-def"><summary>Hva er et fint juletre?</summary><ul>${JUL.KRITERIER.map((k) => `<li>${esc(k)}</li>`).join('')}</ul><p class="hint">I skogen står de fineste i ungskog med gran på 1,5–5 m middelhøyde, moderat bonitet og lys rundt seg – gjerne langs vei, myr og åker. Kilder: ${JUL.KILDER.map((k) => `<a href="${esc(k.url)}" target="_blank" rel="noopener">${esc(k.navn)}</a>`).join(', ')}.</p></details>
+    <p class="jt-tips">🎅 ${esc(JUL.nisseTips())}</p>
+    <p class="hint jt-fot">Hogg bare på egen eiendom eller med grunneierens tillatelse – allemannsretten gir ikke rett til å ta juletre. Juletresjekken er på fra 15. november til julaften.</p>`;
+  $('#kart').parentElement.appendChild(p);
+  // Rett under verktøylinja (den kan bryte over to linjer)
+  const vl = $('.kartverktoy'); if (vl && innerWidth > 860) p.style.top = `${vl.offsetTop + vl.offsetHeight + 8}px`;
+  // 🎄 i kartet på de beste bestandene
+  if (!juletreLag) juletreLag = L.layerGroup().addTo(kart);
+  for (const [i, x] of liste.entries()) { const pt = etikettPunkt(x.b.geometri); if (pt) L.marker([pt[1], pt[0]], { icon: L.divIcon({ className: 'jt-markor', html: `<span>🎄<b>${i + 1}</b></span>`, iconSize: [34, 34], iconAnchor: [17, 30] }), keyboard: false, zIndexOffset: 1000 }).on('click', () => velgBestand(x.b.id)).addTo(juletreLag); }
+  p.addEventListener('click', (e) => { if (e.target.closest('[data-jt="lukk"]')) { lukkJuletrær(); return; } const r = e.target.closest('[data-jt-best]'); if (r && !e.target.closest('a')) { visFane('bestand'); velgBestand(r.dataset.jtBest); } });
 }
 
 // «Om SkogIQ.ai»: hvem som har laget løsningen, at den er ikke-kommersiell, og kontakt (js/versjon.js).
@@ -2565,6 +2603,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '🔒', tittel: 'Vilkår og personvern', under: 'Les erklæringen, last ned dataene dine eller slett kontoen', sok: 'personvern vilkår gdpr samtykke mine data innsyn slett konto eksport', utfor: () => window.open('personvern.html', '_blank', 'noopener') },
     { gruppe: 'Handlinger', ikon: '📣', tittel: 'Gi tilbakemelding', under: 'Stjerner, ros, barkbiller (feil) og forbedringsforslag', sok: 'tilbakemelding forslag forbedring feil ros klage idé ide stjerner fornøyd', utfor: () => apneTilbakemelding({ fane: aktivFaneNavn() }) },
     { gruppe: 'Handlinger', ikon: '🦋', tittel: 'Rødlistede artsfunn (Artskart)', under: 'Vis funn i kartet og vurder dem mot tiltakene (S1–S3)', sok: 'arter rødliste rødlistet artskart artsdatabanken artsfunn truet sårbar artsfilter hensyn', utfor: () => { if (!kart.hasLayer(artsfunnLag)) artsfunnLag.addTo(kart); else if (!S.artsfunn) hentArtsfunnForPlan(); } },
+    ...(JUL.erJuletid() ? [{ gruppe: 'Handlinger', ikon: '🎄', tittel: 'Juletresjekken', under: 'Hvor finner du lettest et fint juletre?', sok: 'jul juletre juletrær gran nissen desember', utfor: () => visJuletrær() }] : []),
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål i kartet', under: 'Lengde, areal, omkrets og volum per treslag', sok: 'mål måle måleverktøy lengde areal avstand omkrets volum treslag kubikk daa linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('areal'); } },
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål avstand (lengde)', sok: 'mål avstand lengde meter linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('lengde'); } },
     { gruppe: 'Handlinger', ikon: '📬', tittel: 'Mine tilbudsforespørsler', under: 'Se sendte forespørsler og tilbudene du har fått', sok: 'tilbud svar mine forespørsler mottatt sendt anbud', utfor: () => { visFane('tiltak'); visTiltakVisning('oppdrag'); oppdragVisning?.lukk(); oppdragVisning?.tegn(); } },
@@ -2898,7 +2937,7 @@ function kobleHendelser() {
 }
 
 async function start() {
-  initKart();
+  initKart(); startJuletid(); // 🎄 bare 15. november – 23. desember
   kobleHendelser();
   const lagret = await hent();
   if (lagret) { S = { ...S, ...lagret, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...lagret.innstillinger } }; framskrivPlanTilIAar(); rettHogdIPlan(); }

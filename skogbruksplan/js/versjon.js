@@ -1,5 +1,5 @@
 // Versjon og opphav for SkogIQ.ai – én kilde for appen, rapportene og package.json (sjekkes i testene).
-export const VERSJON = '1.77.1';
+export const VERSJON = '1.78.0';
 export const UTGITT = '2026-11-15';
 export const UTVIKLER = 'Trond Harald Sand';
 export const APPNAVN = 'SkogIQ.ai';
