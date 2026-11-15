@@ -268,3 +268,17 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .ts-steg { min-height: 44px; padding: 0; font-size: 20px; font-weight: 700; }
 .ts-red-sum { font-weight: 700; text-align: right; } .ts-red-sum.avvik { color: var(--danger, #b4302f); }
 .om-tekst p { margin: 0 0 8px; font-size: 14px; color: var(--muted); } .om-tekst a { color: var(--accent, #1f6b4a); }
+
+/* 🎄 Juletresjekken (js/juletre.js) */
+.rund.juletre-rund { background: linear-gradient(135deg, #b3202e, #1f6b4a); font-size: 21px; line-height: 1; }
+.jt-rad { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; cursor: pointer; }
+.jt-nr { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #b3202e; color: #fff; font-weight: 800; font-size: 12px; margin-top: 2px; }
+.jt-stj { color: #e0a100; letter-spacing: 1px; font-weight: 400; }
+.jt-def summary { cursor: pointer; font-weight: 700; margin: 10px 0 4px; } .jt-def ul { margin: 4px 0; padding-left: 18px; font-size: 14px; }
+.jt-tips { background: #fdf1f1; color: #6d1720; border-radius: 10px; padding: 8px 10px; font-size: 14px; }
+.jt-markor span { display: grid; place-items: center; font-size: 26px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); position: relative; }
+.jt-markor b { position: absolute; right: -6px; top: -4px; background: #b3202e; color: #fff; font: 800 10px/16px system-ui; width: 16px; height: 16px; border-radius: 50%; text-align: center; }
+.sno { position: fixed; inset: 0; pointer-events: none; z-index: 3000; overflow: hidden; }
+.sno i { position: absolute; top: -30px; color: #fff; text-shadow: 0 0 3px rgba(80,110,140,.8); font-style: normal; animation: sno-fall linear 2 forwards; }
+@keyframes sno-fall { to { transform: translateY(105vh) rotate(260deg); opacity: .2; } }
+@media (prefers-color-scheme: dark) { .jt-tips { background: #3a1c20; color: #f4c7cc; } }

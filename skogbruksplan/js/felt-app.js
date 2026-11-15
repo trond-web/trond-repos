@@ -19,6 +19,7 @@ import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from '.
 import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { apneTilbakemelding } from './tilbakemelding-ui.js';
+import * as JUL from './juletre.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, treslagKortHtml, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag, settTreslagAndel, fordeling as tsFordeling, avvikHovedtreslag } from './treslag.js';
 import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
@@ -213,6 +214,32 @@ function tegnRegistreringer() {
 // Et åpent ark har en oppføring i nettleserhistorikken, så tilbakeknappen (Android) og tilbakesveip lukker arket
 // i stedet for å forlate appen.
 let arkOppforing = false; let ignorerPop = false;
+// ---------- 🎄 Juletresjekken ----------
+let juletreLag = null;
+function sno() {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || document.querySelector('.sno')) return;
+  const el = document.createElement('div'); el.className = 'sno'; el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = Array.from({ length: 28 }, (_, i) => `<i style="left:${(i * 97) % 100}%;animation-delay:${((i * 37) % 50) / 10}s;animation-duration:${6 + ((i * 13) % 50) / 10}s;font-size:${10 + ((i * 7) % 14)}px">❄</i>`).join('');
+  document.body.appendChild(el); setTimeout(() => el.parentNode?.removeChild(el), 13000);
+}
+function visJuletrær() {
+  if (!P) { melding('Velg en plan først.'); return; }
+  sno();
+  const gode = JUL.toppliste(P.bestand, { inn: inn() });
+  const liste = gode.length ? gode : JUL.toppliste(P.bestand, { inn: inn(), min: 1, antall: 3 });
+  const dager = JUL.dagerTilJul();
+  if (!juletreLag) juletreLag = L.layerGroup().addTo(kart); juletreLag.clearLayers();
+  for (const [i, x] of liste.entries()) { const pt = etikettPunkt(x.b.geometri); if (pt) L.marker([pt[1], pt[0]], { icon: L.divIcon({ className: 'jt-markor', html: `<span>🎄<b>${i + 1}</b></span>`, iconSize: [34, 34], iconAnchor: [17, 30] }), keyboard: false, zIndexOffset: 1000 }).on('click', () => visBestand(x.b.id, { zoom: true })).addTo(juletreLag); }
+  aapneArk(`<h2>🎄 Juletresjekken</h2>
+    <p class="hint">${dager === 0 ? 'God jul! 🎅' : dager === 1 ? 'I morgen er det julaften!' : `${dager} dager til julaften`} – her finner du lettest et fint juletre på ${esc(P.eiendom?.navn || 'eiendommen')}.</p>
+    ${liste.length ? `${gode.length ? '' : '<p class="hint">Ingen ideelle juletresteder her – men dette er det nærmeste du kommer:</p>'}<div class="liste">${liste.map((x, i) => `<div class="rad jt-rad" data-jt-best="${esc(x.b.id)}" role="button" tabindex="0"><span class="jt-nr">${i + 1}</span><div class="rad-tekst"><div class="tittel">Bestand ${esc(x.b.nr)} <span class="jt-stj" aria-label="${x.stjerner} av 5">${'★'.repeat(x.stjerner)}${'☆'.repeat(5 - x.stjerner)}</span></div><div class="under">${fmt(x.b.areal, 1)} daa · ${x.grunner.map(esc).join(' · ')}</div></div></div>`).join('')}</div>` : '<p>Ingen ungskog med gran i juletrehøyde i denne planen. Kanskje naboen har? 😉</p>'}
+    <details class="jt-def"><summary>Hva er et fint juletre?</summary><ul>${JUL.KRITERIER.map((k) => `<li>${esc(k)}</li>`).join('')}</ul></details>
+    <p class="jt-tips">🎅 ${esc(JUL.nisseTips())}</p>
+    <p class="hint">Hogg bare på egen eiendom eller med grunneierens tillatelse – allemannsretten gir ikke rett til å ta juletre.</p>`);
+  const ark = $('#arkInnhold');
+  ark.querySelectorAll('[data-jt-best]').forEach((r) => r.addEventListener('click', () => visBestand(r.dataset.jtBest, { zoom: true })));
+}
+
 function aapneArk(html, { hoy = false, lav = false } = {}) {
   $('#arkInnhold').innerHTML = html; $('#ark').hidden = false; $('#ark').classList.toggle('hoy', hoy); $('#ark').classList.toggle('lav', lav);
   $('#ark').style.transform = '';
@@ -850,6 +877,11 @@ function kobleHendelser() {
 
 async function start() {
   initKart();
+  // 🎄 Juletresjekken (js/juletre.js): bare 15. november – 23. desember
+  if (JUL.erJuletid()) {
+    document.querySelector('.kartknapper')?.insertAdjacentHTML('afterbegin', '<button type="button" class="rund juletre-rund" id="juletreBtn" title="Juletresjekken – hvor finner du et fint juletre?" aria-label="Juletresjekken">🎄</button>');
+    $('#juletreBtn')?.addEventListener('click', visJuletrær);
+  }
   spor = initSporlogg({ L, kart, plan: () => P, lagrePlanen, aapneArk, lukkArk, melding, tegnPlan: () => tegnPlan(false), nyId, tegnFlater: () => tegnTiltaksflater(), settStatus: (paa) => document.body.classList.toggle('spor-aktiv', paa) });
   drone = initDroneFelt({ L, kart, plan: () => P, aapneArk, lagrePlanen, melding, nyId, tegnFlateGeo, iAar: IAAR });
   oppdrag = initOppdragFelt({
