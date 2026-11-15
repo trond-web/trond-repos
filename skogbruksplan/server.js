@@ -105,7 +105,7 @@ const skyOppsett = {
   cors: corsFor,
 };
 // Nettverk mellom skogeiere, innkjøpere og entreprenører med chat (nettverk.js). Krever registrering av brukere.
-const nettverk = innlogging.registrering ? lagNettverk({ fil: process.env.NETTVERK_FIL || (process.env.BRUKER_FIL ? path.join(path.dirname(process.env.BRUKER_FIL), 'nettverk.json') : null), brukere: { hent: (u) => innlogging.lager.hent(u), alle: () => innlogging.lager.alle() } }) : null;
+const nettverk = innlogging.registrering ? lagNettverk({ skogKommuner: (u) => sky.liste(u).map((p) => ({ nr: p.meta?.kommunenr || '', navn: p.meta?.kommune || '' })), fil: process.env.NETTVERK_FIL || (process.env.BRUKER_FIL ? path.join(path.dirname(process.env.BRUKER_FIL), 'nettverk.json') : null), brukere: { hent: (u) => innlogging.lager.hent(u), alle: () => innlogging.lager.alle() } }) : null;
 // Profilbilder (profilbilde.js) i <datamappe>/profilbilder; id-en ligger i profilen.
 const profilbilder = lagProfilbilder({ mappe: iData('profilbilder') });
 // Tilbakemeldinger og forbedringsforslag (tilbakemelding.js), på volumet.

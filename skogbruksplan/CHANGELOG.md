@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.77.0 – Kommuner i Nettverk (2026-11-15)
+
+*Nytt.* Innkjøpere og entreprenører velger kommunene de opererer i (spørres ved innlogging, kan endres i Min profil og Nettverk). Skogeiere ser bare aktører som opererer der de har skog – kommunene til planene teller automatisk, og flere kan legges til. Søk på navn eller velg et helt fylke.
+
 ## 1.76.0 – Profilbilde (2026-11-13)
 
 *Nytt.* Last opp et bilde av deg selv under Min profil. Bildet vises i Nettverk – i katalogen, blant koblingene og i chatten – så du ser hvem du samhandler med. Du kan bytte eller fjerne det når som helst.

@@ -22,7 +22,7 @@ const tekst = (v, n) => String(v ?? '').slice(0, n);
 // Små metadata om planen (vises i planlisten uten å laste ned planen).
 function rensMeta(m = {}) {
   const tall = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v) * 10) / 10 : null);
-  return { areal: tall(m.areal), antall: tall(m.antall), kommune: tekst(m.kommune, 60), gnrbnr: tekst(m.gnrbnr, 40) };
+  return { areal: tall(m.areal), antall: tall(m.antall), kommune: tekst(m.kommune, 60), kommunenr: /^\d{4}$/.test(String(m.kommunenr || '')) ? String(m.kommunenr) : '', gnrbnr: tekst(m.gnrbnr, 40) };
 }
 
 export function lagSkyLager({ mappe = null, naa = () => Date.now(), kvote = KVOTE, maksAntall = MAKS_ANTALL, historikk = HISTORIKK } = {}) {

@@ -16,6 +16,7 @@
 import { createHmac, createHash, timingSafeEqual, randomBytes, scryptSync } from 'node:crypto';
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { VILKAR } from './js/personvern.js';
+import { rensKommuner } from './js/kommunevelger.js';
 
 export const OKT_NAVN = 'skogiq_okt';
 const DAG = 24 * 3600 * 1000;
@@ -220,6 +221,8 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       for (const [k, n] of Object.entries(PROFILFELT)) if (data[k] != null) p[k] = tekst(data[k], n);
       if (p.rolle && !ROLLER.includes(p.rolle)) return { feil: 'Ukjent rolle', status: 400 };
       if (data.roller !== undefined) { const rr = rensRoller(data.roller); if (!rr.length) return { feil: 'Velg minst én rolle', status: 400 }; p.roller = rr; }
+      // Kommuner (innkjøpere og entreprenører: hvor de opererer; skogeiere: hvor de har skog). [{ nr, navn }].
+      if (data.kommuner !== undefined) p.kommuner = rensKommuner(data.kommuner);
       if (p.telefon && !/^[+\d\s()-]{5,30}$/.test(p.telefon)) return { feil: 'Ugyldig telefonnummer', status: 400 };
       if (p.orgnr && !/^\d{3}\s?\d{3}\s?\d{3}$/.test(p.orgnr)) return { feil: 'Organisasjonsnummer har 9 siffer', status: 400 };
       if (p.postnr && !/^\d{4}$/.test(p.postnr)) return { feil: 'Postnummer har 4 siffer', status: 400 };
@@ -265,7 +268,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
 
 // Det som kan hentes uten innlogging: innloggingssiden, helsesjekken, ikoner og manifester (lastes uten
 // informasjonskapsel når appen installeres).
-const APENT = /^\/(logginn\.html|personvern\.html|js\/personvern\.js|js\/epost\.js|js\/profilbilde-ui\.js|tilbud\.html|js\/tilbud-svar\.js|tommer\.html|js\/tommer-svar\.js|js\/tommer-felles\.js|js\/innlogging\.js|healthz|api\/logginn|api\/registrer|api\/glemt|api\/tilbakestill|api\/meg|icon\.svg|ikon-[\w-]+\.png|manifest\.webmanifest|felt\.webmanifest|favicon\.ico)$/;
+const APENT = /^\/(logginn\.html|personvern\.html|js\/personvern\.js|js\/epost\.js|js\/profilbilde-ui\.js|js\/kommunevelger\.js|tilbud\.html|js\/tilbud-svar\.js|tommer\.html|js\/tommer-svar\.js|js\/tommer-felles\.js|js\/innlogging\.js|healthz|api\/logginn|api\/registrer|api\/glemt|api\/tilbakestill|api\/meg|icon\.svg|ikon-[\w-]+\.png|manifest\.webmanifest|felt\.webmanifest|favicon\.ico)$/;
 const TILLATT_OPPHAV = /^(https:\/\/(skogiq-production\.up\.railway\.app|trond-web\.github\.io)|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/;
 export const corsFor = (req) => { const o = req.headers.origin; return o && TILLATT_OPPHAV.test(o) ? { 'Access-Control-Allow-Origin': o, Vary: 'Origin' } : {}; };
 const ip = (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '?';

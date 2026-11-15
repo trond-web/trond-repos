@@ -4,7 +4,8 @@
 // Uleste meldinger og nye forespørsler vises som merke på fanen. Serveren: nettverk.js (/api/nettverk).
 import { API } from './plan-synk.js';
 import { mailto, appAdresse } from './epost.js';
-import { innloggetBruker } from './innlogging.js';
+import { innloggetBruker, lagreKommuner } from './innlogging.js';
+import { lagKommunevelger, kommuneTekst } from './kommunevelger.js';
 import { avatar, fyllBilder } from './profilbilde-ui.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -13,8 +14,9 @@ export const ROLLE = { skogeier: { navn: 'Skogeier', entall: 'skogeier', flertal
 export const antall = (n, r) => `${nb(n)} ${n === 1 ? ROLLE[r].entall : ROLLE[r].flertall}`;
 const tid = (ms) => { const d = new Date(ms); const idag = new Date(); return d.toDateString() === idag.toDateString() ? d.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' }) + (d.getFullYear() !== idag.getFullYear() ? ` ${d.getFullYear()}` : ''); };
 
-export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
-  let data = null; let feil = ''; let laster = false; let sok = { q: '', rolle: '', liste: null, laster: false }; let chat = null; let poll = null; let bakgrunn = null; let sistUlest = 0; let synlig = false; let epostForslag = null; // ferdig e-post etter invitasjon (mailto)
+// skogKommuner() → [{ nr, navn }]: kommunene til planene på enheten (skogeiere ser aktører i disse kommunene).
+export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKommuner = async () => [] }) {
+  let data = null; let feil = ''; let laster = false; let sok = { q: '', rolle: '', liste: null, laster: false }; let chat = null; let poll = null; let bakgrunn = null; let sistUlest = 0; let synlig = false; let kvRed = null; let kvVelger = null; let epostForslag = null; // ferdig e-post etter invitasjon (mailto)
   async function kall(sti, { metode = 'GET', kropp } = {}) {
     const r = await fetch(`${API}${sti}`, { method: metode, headers: kropp ? { 'Content-Type': 'application/json' } : {}, credentials: 'same-origin', body: kropp ? JSON.stringify(kropp) : undefined });
     const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.feil || `Serveren svarte ${r.status}`), { status: r.status }); return j;
@@ -35,7 +37,13 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
   }
   async function sokAktorer() {
     sok.laster = true; tegn();
-    try { sok.liste = (await kall(`/api/nettverk/aktorer?q=${encodeURIComponent(sok.q)}&rolle=${encodeURIComponent(sok.rolle)}`)).aktorer; } catch (e) { melding(e.message, 'feil'); sok.liste = []; }
+    try {
+      // Kommunene til planene på enheten følger med; serveren legger til profilen og planene i skyen.
+      const lok = await skogKommuner().catch(() => []);
+      const nr = [...new Set(lok.map((k) => k.nr).filter((x) => /^\d{4}$/.test(String(x))))]; const navn = [...new Set(lok.filter((k) => !/^\d{4}$/.test(String(k.nr || ''))).map((k) => k.navn).filter(Boolean))];
+      const r = await kall(`/api/nettverk/aktorer?q=${encodeURIComponent(sok.q)}&rolle=${encodeURIComponent(sok.rolle)}&kommuner=${nr.join(',')}&kommunenavn=${encodeURIComponent(navn.join('|'))}`);
+      sok.liste = r.aktorer; sok.mineKommuner = r.mineKommuner || []; sok.mangler = !!r.manglerKommune;
+    } catch (e) { melding(e.message, 'feil'); sok.liste = []; }
     sok.laster = false; tegn();
   }
 
@@ -49,7 +57,7 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
     const rolle = k.rolle ? ROLLE[k.rolle] : null;
     return `<div class="nv-person${k.ulest ? ' ulest' : ''}">
       ${avatar(m)}
-      <span class="nv-hoved"><b>${esc(m.navn)}</b><span class="hint">${esc([m.foretak, m.kommune].filter(Boolean).join(' · ') || (m.roller || []).map((r) => ROLLE[r]?.navn).filter(Boolean).join(', '))}${rolle && k.jegEr === 'skogeier' ? ` · ${rolle.navn.toLowerCase()}` : ''}</span>
+      <span class="nv-hoved"><b>${esc(m.navn)}</b><span class="hint">${esc([m.foretak, (m.kommuner || []).length ? `📍 ${kommuneTekst((m.kommuner || []).map((navn) => ({ navn })))}` : m.kommune].filter(Boolean).join(' · ') || (m.roller || []).map((r) => ROLLE[r]?.navn).filter(Boolean).join(', '))}${rolle && k.jegEr === 'skogeier' ? ` · ${rolle.navn.toLowerCase()}` : ''}</span>
         ${k.siste ? `<span class="nv-siste">${k.siste.fraMeg ? 'Du: ' : ''}${esc(k.siste.tekst)} <span class="hint">· ${tid(k.siste.tid)}</span></span>` : ''}</span>
       <span class="nv-knapper">${k.ulest ? `<span class="nv-ulest">${k.ulest}</span>` : ''}${knapper}</span>
     </div>`;
@@ -76,15 +84,20 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
       ${liste('🪵 Mine innkjøpere', aktive.filter((k) => k.rolle === 'innkjoper'), 'Ingen ennå. Finn en innkjøper under og be om kobling.')}
       ${liste('🚜 Mine entreprenører', aktive.filter((k) => k.rolle === 'entreprenor'), 'Ingen ennå. Finn en entreprenør under og be om kobling.')}
       <h4 class="undertittel">Finn innkjøpere og entreprenører</h4>
+      ${kvRed === 'skog' ? kvRedHtml('Kommuner du har skog i', 'Kommunene til planene dine teller med automatisk. Legg til flere her.') : sok.mangler ? `<div class="nv-kv-info mangler">📍 Vi vet ikke hvilke kommuner du har skog i. Lag eller last opp en skogbruksplan, eller <button type="button" class="lenkeknapp" data-nv="kv-skog">legg til kommuner</button> – da ser du innkjøpere og entreprenører som opererer der.</div>` : sok.mineKommuner?.length ? `<div class="nv-kv-info">📍 Viser innkjøpere og entreprenører som opererer i <b>${esc(kommuneTekst(sok.mineKommuner, 4))}</b>. <button type="button" class="lenkeknapp" data-nv="kv-skog">Endre</button></div>` : ''}
       <div class="nv-sok"><input type="search" data-nv-sok placeholder="Søk navn, firma eller kommune" value="${esc(sok.q)}" aria-label="Søk etter aktører"><select data-nv-rolle aria-label="Rolle"><option value="">Alle</option><option value="innkjoper" ${sok.rolle === 'innkjoper' ? 'selected' : ''}>Innkjøpere</option><option value="entreprenor" ${sok.rolle === 'entreprenor' ? 'selected' : ''}>Entreprenører</option></select><button type="button" class="knapp" data-nv="sok">Søk</button></div>
       ${sok.laster ? '<p class="hint">Søker …</p>' : sok.liste ? (sok.liste.length ? sok.liste.map((a) => personHtml({ motpart: a }, { knapper: ['innkjoper', 'entreprenor'].filter((r) => a.roller.includes(r)).map((r) => (a.kobling ? `<span class="nv-merke">${a.kobling === 'aktiv' ? '✓ koblet' : 'venter'}</span>` : `<button type="button" class="knapp liten" data-nv="be" data-til="${esc(a.bruker)}" data-rolle="${r}">＋ ${ROLLE[r].navn}</button>`)).filter((x, i, l) => l.indexOf(x) === i).join('') })).join('') : '<p class="hint">Ingen treff.</p>') : ''}
     </section>`;
+  }
+  function kvRedHtml(tittel, hint) {
+    return `<div class="nv-kv-red"><b>📍 ${esc(tittel)}</b><span class="hint">${esc(hint)}</span><div data-nv-kv-plass></div><div class="knapperad"><button type="button" class="knapp liten primar" data-nv="kv-lagre">Lagre</button><button type="button" class="knapp liten" data-nv="kv-avbryt">Avbryt</button></div></div>`;
   }
   function aktorHtml() {
     const aktive = data.koblinger.filter((k) => k.status === 'aktiv' && k.jegEr === 'aktor');
     const mineRoller = ['innkjoper', 'entreprenor'].filter(harRolle);
     return `<section class="nv-del">
       <h3>${mineRoller.map((r) => ROLLE[r].ikon).join('')} Som ${mineRoller.map((r) => ROLLE[r].navn.toLowerCase()).join(' og ')}</h3>
+      ${kvRed === 'aktor' ? kvRedHtml('Kommuner du opererer i', 'Skogeiere med skog i disse kommunene finner deg i katalogen.') : `<div class="nv-kv-info${(innloggetBruker()?.profil?.kommuner || []).length ? '' : ' mangler'}">📍 ${(innloggetBruker()?.profil?.kommuner || []).length ? `Du opererer i <b>${esc(kommuneTekst(innloggetBruker().profil.kommuner, 5))}</b>` : 'Du har ikke valgt kommuner – skogeiere finner deg ikke ennå.'} <button type="button" class="lenkeknapp" data-nv="kv-aktor">${(innloggetBruker()?.profil?.kommuner || []).length ? 'Endre' : 'Velg kommuner'}</button></div>`}
       ${liste('🌲 Mine skogeiere', aktive, 'Ingen skogeiere ennå. Skogeiere kan finne deg og be om kobling, eller du kan invitere dem under.')}
       <h4 class="undertittel">Inviter en skogeier</h4>
       <p class="hint" style="margin-top:0">Skriv e-postadressen skogeieren bruker i SkogIQ.ai. Skogeieren får forespørselen og godtar den.</p>
@@ -103,6 +116,12 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
     </div>`;
   }
   function tegn() {
+    const el0 = rot(); const kvEl = kvRed && el0?.querySelector('[data-nv-kv-plass] > .kv'); // behold velgeren (og det som er valgt) ved ny tegning
+    tegnInnhold();
+    const plass = rot()?.querySelector('[data-nv-kv-plass]');
+    if (plass && kvRed) { if (kvEl) plass.appendChild(kvEl); else { const d = document.createElement('div'); plass.appendChild(d); const egne = innloggetBruker()?.profil?.kommuner || []; kvVelger = lagKommunevelger(d, { valgt: egne }); setTimeout(() => d.querySelector('[data-kv-sok]')?.focus(), 0); } }
+  }
+  function tegnInnhold() {
     const el = rot(); if (!el) return;
     if (!innlogget()) { el.innerHTML = '<div class="kort"><p>Logg inn for å bruke nettverket.</p></div>'; return; }
     if (chat) { el.innerHTML = chatHtml(); fyllBilder(el); const l = el.querySelector('#nvMeldinger'); if (l) l.scrollTop = l.scrollHeight; return; }
@@ -149,6 +168,12 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {} }) {
     const k = e.target.closest('[data-nv]'); if (!k || !rot()?.contains(k)) return; const h = k.dataset.nv;
     try {
       if (h === 'oppdater') await hent();
+      if (h === 'kv-skog' || h === 'kv-aktor') { kvRed = h === 'kv-skog' ? 'skog' : 'aktor'; kvVelger = null; tegn(); }
+      if (h === 'kv-avbryt') { kvRed = null; kvVelger = null; tegn(); }
+      if (h === 'kv-lagre' && kvVelger) {
+        const liste = kvVelger.verdi(); if (kvRed === 'aktor' && !liste.length) { melding('Velg minst én kommune du opererer i.', 'feil'); return; }
+        await lagreKommuner(liste); kvRed = null; kvVelger = null; melding('Kommunene er lagret.'); if (harRolle('skogeier')) await sokAktorer(); else tegn();
+      }
       if (h === 'sok') { sok.q = rot().querySelector('[data-nv-sok]')?.value || ''; sok.rolle = rot().querySelector('[data-nv-rolle]')?.value || ''; await sokAktorer(); }
       if (h === 'be') { const r = await kall('/api/nettverk/koblinger', { metode: 'POST', kropp: { til: k.dataset.til, rolle: k.dataset.rolle } }); melding(r.status === 'aktiv' ? 'Dere er nå koblet sammen.' : 'Forespørselen er sendt. Du får beskjed når den er godtatt.'); await hent({ stille: true }); await sokAktorer(); }
       if (h === 'inviter') {

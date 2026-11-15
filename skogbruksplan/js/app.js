@@ -2672,6 +2672,8 @@ function kobleHendelser() {
   // Nettverk (nettverk-ui.js): koblinger mellom skogeiere, innkjøpere og entreprenører, med chat.
   nettverk = lagNettverk({
     rot: () => $('#nettverkPanel'), melding, innlogget: () => !!innloggetBruker()?.registrering,
+    // Kommunene der brukeren har skog: åpen plan og planene på enheten (serveren legger til skyen og profilen).
+    skogKommuner: async () => [...(S?.eiendom?.kommune || S?.eiendom?.kommunenr ? [{ nr: S.eiendom.kommunenr || '', navn: S.eiendom.kommune || '' }] : []), ...(await listPlaner()).filter((p) => p.kommunenr).map((p) => ({ nr: p.kommunenr, navn: '' }))],
     merke: (n) => { const m = $('#nettverkMerke'); if (m) { m.hidden = !n; m.textContent = n > 9 ? '9+' : String(n || ''); } },
   });
   const startNettverk = (meg) => { if (meg?.registrering) nettverk.start(); };

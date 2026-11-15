@@ -16,14 +16,20 @@ export const MAKS_TEKST = 2000; export const MAKS_MELDINGER = 2000; export const
 const id = () => randomBytes(8).toString('hex');
 const tekst = (v, n) => String(v ?? '').trim().slice(0, n);
 const roller = (b) => b?.profil?.roller || [];
+// Kommuner: [{ nr, navn }]. Innkjøpere og entreprenører registrerer hvor de opererer; skogeiere ser bare aktører i
+// kommunene der de har skog (profil.kommuner, planene i skyen og planene på enheten).
+const kommunerFor = (b) => (Array.isArray(b?.profil?.kommuner) ? b.profil.kommuner : []);
+const nrm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+export function kommuneSett(lister) { const nr = new Set(); const navn = new Set(); const liste = []; for (const k of lister.flat()) { if (!k) continue; const n = String(k.nr || '').trim(); const v = nrm(k.navn); if (!/^\d{4}$/.test(n) && !v) continue; if ((n && nr.has(n)) || (!n && navn.has(v))) continue; if (/^\d{4}$/.test(n)) nr.add(n); else if (v) navn.add(v); /* navn brukes bare der nummer mangler (flere kommuner heter det samme, f.eks. Våler) */ liste.push({ ...(n ? { nr: n } : {}), navn: k.navn || '' }); } return { nr, navn, liste }; }
+const treffer = (aktor, sett) => kommunerFor(aktor).some((k) => sett.nr.has(k.nr) || sett.navn.has(nrm(k.navn)));
 
-export function lagNettverk({ fil = null, brukere, naa = () => Date.now() } = {}) {
+export function lagNettverk({ fil = null, brukere, naa = () => Date.now(), skogKommuner = () => [] } = {}) {
   let data = { koblinger: {}, meldinger: {}, lest: {} };
   if (fil) { try { data = { koblinger: {}, meldinger: {}, lest: {}, ...JSON.parse(readFileSync(fil, 'utf8')) }; } catch { /* ny */ } }
   let t = null; const lagre = () => { if (!fil) return; clearTimeout(t); t = setTimeout(() => { try { writeFileSync(fil, JSON.stringify(data)); } catch { /* ignorer */ } }, 500); };
   const sendt = new Map(); // bruker → tidspunkter (spamgrense)
   const feil = (status, f) => ({ feil: f, status });
-  const kort = (b) => (b ? { bruker: b.navn, navn: b.visning || b.navn, foretak: b.profil?.foretak || '', kommune: b.profil?.kommune || '', roller: roller(b), bilde: b.profil?.bilde || null } : null);
+  const kort = (b) => (b ? { bruker: b.navn, navn: b.visning || b.navn, foretak: b.profil?.foretak || '', kommune: b.profil?.kommune || '', roller: roller(b), bilde: b.profil?.bilde || null, kommuner: kommunerFor(b).map((k) => k.navn) } : null);
   const mine = (u) => Object.values(data.koblinger).filter((k) => k.skogeier === u || k.aktor === u);
   const motpart = (k, u) => (k.skogeier === u ? k.aktor : k.skogeier);
   const ulest = (k, u) => { const sist = data.lest[`${k.id}|${u}`] || 0; return (data.meldinger[k.id] || []).filter((m) => m.fra !== u && m.tid > sist).length; };
@@ -36,13 +42,16 @@ export function lagNettverk({ fil = null, brukere, naa = () => Date.now() } = {}
       return { skogeiere: n('skogeier'), innkjopere: n('innkjoper'), entreprenorer: n('entreprenor') };
     },
     // Aktørene i katalogen (for skogeiere). q søker i navn, foretak og kommune.
-    aktorer(u, { q = '', rolle = '' } = {}) {
+    // kommuner (valgfritt): kommuneSett – da vises bare aktører som opererer i minst én av kommunene.
+    aktorer(u, { q = '', rolle = '', kommuner = null } = {}) {
       const s = String(q || '').toLowerCase().trim();
-      return brukere.alle().filter((b) => !b.sperret && b.navn !== u && roller(b).some((r) => AKTOR_ROLLER.includes(r)) && (!rolle || roller(b).includes(rolle)))
-        .map(kort).filter((k) => !s || `${k.navn} ${k.foretak} ${k.kommune}`.toLowerCase().includes(s))
+      return brukere.alle().filter((b) => !b.sperret && b.navn !== u && roller(b).some((r) => AKTOR_ROLLER.includes(r)) && (!rolle || roller(b).includes(rolle)) && (!kommuner || treffer(b, kommuner)))
+        .map(kort).filter((k) => !s || `${k.navn} ${k.foretak} ${k.kommune} ${k.kommuner.join(' ')}`.toLowerCase().includes(s))
         .map((k) => ({ ...k, kobling: mine(u).find((x) => motpart(x, u) === k.bruker && x.status !== 'avsluttet' && x.status !== 'avslatt')?.status || null }))
         .sort((a, b) => a.navn.localeCompare(b.navn, 'nb')).slice(0, 200);
     },
+    // Kommunene der skogeieren har skog: profilen, planene i skyen og planene på enheten (klient = [{ nr, navn }]).
+    skogKommunerFor(u, klient = []) { const b = brukere.hent(u); return kommuneSett([kommunerFor(b), b?.profil?.kommune ? [{ navn: b.profil.kommune }] : [], skogKommuner(u) || [], klient]); },
     // Oversikten for en bruker: statistikk, koblingene med motpart og uleste meldinger.
     oversikt(u) {
       const k = mine(u).filter((x) => x.status !== 'avslatt' || x.fra !== u || naa() - (x.besvart || 0) < 7 * 864e5)
@@ -124,7 +133,12 @@ export function nettverkApi(nett, { bruker, cors = () => ({}) }, req, res, sti, 
   const kropp = () => new Promise((ok) => { let n = 0; const d = []; req.on('data', (b) => { n += b.length; if (n > 20000) { req.destroy(); ok(null); } else d.push(b); }); req.on('end', () => { try { ok(JSON.parse(Buffer.concat(d).toString('utf8') || '{}')); } catch { ok(null); } }); req.on('error', () => ok(null)); });
   (async () => {
     if (sti === '/api/nettverk' && req.method === 'GET') return json(200, nett.oversikt(u));
-    if (sti === '/api/nettverk/aktorer' && req.method === 'GET') return json(200, { aktorer: nett.aktorer(u, { q: q.get('q') || '', rolle: q.get('rolle') || '' }) });
+    if (sti === '/api/nettverk/aktorer' && req.method === 'GET') {
+      // Skogeieren ser bare aktører i kommunene der hen har skog. Klienten sender kommunene til planene på enheten.
+      const klient = [...(q.get('kommuner') || '').split(',').filter((x) => /^\d{4}$/.test(x)).map((nr) => ({ nr })), ...(q.get('kommunenavn') || '').split('|').map((x) => x.trim()).filter(Boolean).slice(0, 50).map((navn) => ({ navn: navn.slice(0, 60) }))];
+      const sett = nett.skogKommunerFor(u, klient);
+      return json(200, { aktorer: sett.liste.length ? nett.aktorer(u, { q: q.get('q') || '', rolle: q.get('rolle') || '', kommuner: sett }) : [], mineKommuner: sett.liste, manglerKommune: !sett.liste.length });
+    }
     if (sti === '/api/nettverk/koblinger' && req.method === 'POST') { const b = await kropp(); return b ? svar(nett.be(u, b)) : json(400, { feil: 'Ugyldig forespørsel' }); }
     const m = sti.match(/^\/api\/nettverk\/koblinger\/([a-f0-9]{16})(\/meldinger)?$/); if (!m) return json(404, { feil: 'Finnes ikke' });
     const [, kid, meld] = m;
