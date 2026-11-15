@@ -2830,7 +2830,7 @@ test('Skylagring på serveren: versjoner, konflikt, historikk, papirkurv, kvote 
     const L = lagSkyLager({ mappe, naa, kvote: 2000, historikk: 3 });
     assert.equal(L.permanent, !!mappe);
     const a = L.lagre('kari@x.no', 'plan1', { plan: 'QUJD', navn: 'Skogen', meta: { areal: 12.345, antall: 3, kommune: 'Ås' } });
-    assert.equal(a.versjon, 1); assert.deepEqual(a.meta, { areal: 12.3, antall: 3, kommune: 'Ås', gnrbnr: '' });
+    assert.equal(a.versjon, 1); assert.deepEqual(a.meta, { areal: 12.3, antall: 3, kommune: 'Ås', kommunenr: '', gnrbnr: '' });
     assert.equal(L.lagre('kari@x.no', 'plan1', { plan: 'QUJE' }).status, 409, 'ny plan med samme id uten grunnversjon');
     const k = L.lagre('kari@x.no', 'plan1', { plan: 'QUJE', grunnVersjon: 0 }); assert.equal(k.status, 409); assert.equal(k.gjeldende.versjon, 1);
     t = 2000; assert.equal(L.lagre('kari@x.no', 'plan1', { plan: 'QUJF', grunnVersjon: 1 }).versjon, 2);
@@ -3426,6 +3426,42 @@ test('Artsfilter: Artskart og Rødlista, livsmiljøprofil, plassering og S1–S3
   assert.deepEqual(A.vurderBestand(null, best).antall, { S1: 0, S2: 0, S3: 0 });
 });
 
+test('Kommuner: velger (søk, rensing), profil, og skogeiere ser bare aktører i sine skogkommuner', async () => {
+  const KV = await import('../js/kommunevelger.js');
+  assert.deepEqual(KV.rensKommuner([{ nr: '3412', navn: 'Løten' }, { nr: '3412', navn: 'Løten' }, { nr: '34', navn: 'x' }, { nr: '3420', navn: 'Elverum' }, { nr: '3401', navn: '' }]), [{ nr: '3420', navn: 'Elverum' }, { nr: '3412', navn: 'Løten' }]);
+  const alle = [{ nr: '3412', navn: 'Løten', fylke: '34' }, { nr: '3420', navn: 'Elverum', fylke: '34' }, { nr: '3419', navn: 'Våler', fylke: '34' }, { nr: '3114', navn: 'Våler', fylke: '31' }, { nr: '3403', navn: 'Hamar', fylke: '34' }, { nr: '1507', navn: 'Ålesund', fylke: '15' }];
+  assert.deepEqual(KV.sokKommuner(alle, 'vål').map((k) => k.nr).sort(), ['3114', '3419'], 'begge Våler (ulike fylker)');
+  assert.deepEqual(KV.sokKommuner(alle, 'el').map((k) => k.navn), ['Elverum'], 'starter med først'); assert.deepEqual(KV.sokKommuner(alle, 'alesund').map((k) => k.navn), ['Ålesund'], 'uten aksenter');
+  assert.deepEqual(KV.sokKommuner(alle, 'l', [{ nr: '3412' }]).map((k) => k.nr).includes('3412'), false, 'valgte vises ikke'); assert.equal(KV.sokKommuner(alle, '34').length, 4, 'søk på nummer');
+  assert.equal(KV.kommuneTekst([{ navn: 'A' }, { navn: 'B' }, { navn: 'C' }, { navn: 'D' }, { navn: 'E' }]), 'A, B, C og 2 til');
+  // Profil
+  const { lagInnlogging } = await import('../auth.js'); const { VILKAR } = await import('../js/personvern.js');
+  const inn = lagInnlogging({ registrering: true }); inn.registrer('1', { bruker: 'kari@x.no', passord: 'bjorkeskog-1', roller: ['innkjoper'], vilkar: VILKAR.versjon });
+  const r = inn.lagreProfil('kari@x.no', { navn: 'Kari', kommuner: [{ nr: '3420', navn: 'Elverum' }, { nr: 'tull', navn: 'X' }, { nr: '3412', navn: 'Løten' }] });
+  assert.deepEqual(r.profil.kommuner, [{ nr: '3420', navn: 'Elverum' }, { nr: '3412', navn: 'Løten' }]); assert.deepEqual(inn.lagreProfil('kari@x.no', { navn: 'Kari', telefon: '900 00 000' }).profil.kommuner.length, 2, 'andre endringer beholder kommunene');
+  // Nettverk: filter
+  const { lagNettverk, nettverkApi, kommuneSett } = await import('../nettverk.js');
+  const B = { 'ola@x.no': { navn: 'ola@x.no', visning: 'Ola', profil: { roller: ['skogeier'] } },
+    'liv@x.no': { navn: 'liv@x.no', visning: 'Liv', profil: { roller: ['skogeier'], kommuner: [{ nr: '3419', navn: 'Våler' }] } },
+    'kari@x.no': { navn: 'kari@x.no', visning: 'Kari', profil: { roller: ['innkjoper'], kommuner: [{ nr: '3420', navn: 'Elverum' }, { nr: '3412', navn: 'Løten' }] } },
+    'per@x.no': { navn: 'per@x.no', visning: 'Per', profil: { roller: ['entreprenor'], kommuner: [{ nr: '3114', navn: 'Våler' }] } },
+    'ny@x.no': { navn: 'ny@x.no', visning: 'Ny', profil: { roller: ['entreprenor'] } } };
+  const sky = { 'ola@x.no': [{ nr: '3412', navn: 'Løten' }] };
+  const n = lagNettverk({ brukere: { hent: (u) => B[u] || null, alle: () => Object.values(B) }, skogKommuner: (u) => sky[u] || [] });
+  assert.deepEqual(n.aktorer('ola@x.no', { kommuner: n.skogKommunerFor('ola@x.no') }).map((a) => a.bruker), ['kari@x.no'], 'plan i Løten (skyen) → Kari');
+  assert.deepEqual(n.aktorer('liv@x.no', { kommuner: n.skogKommunerFor('liv@x.no') }).map((a) => a.bruker), [], 'Våler i Innlandet ≠ Våler i Østfold (nummer avgjør)');
+  assert.deepEqual(n.aktorer('ola@x.no', { kommuner: n.skogKommunerFor('ola@x.no', [{ nr: '3114' }]) }).map((a) => a.bruker).sort(), ['kari@x.no', 'per@x.no'], 'plan på enheten legges til');
+  assert.ok(!n.aktorer('ola@x.no', { kommuner: kommuneSett([[{ nr: '3412' }, { nr: '3420' }, { nr: '3114' }]]) }).some((a) => a.bruker === 'ny@x.no'), 'aktører uten kommuner vises ikke');
+  assert.deepEqual(n.aktorer('ola@x.no', { kommuner: kommuneSett([[{ navn: 'løten' }]]) }).map((a) => a.bruker), ['kari@x.no'], 'kommunenavn uten nummer (eldre planer)');
+  assert.deepEqual(n.aktorer('ola@x.no').length, 3, 'uten filter: alle (brukes ikke i katalogen)');
+  assert.deepEqual(n.aktorer('ola@x.no', { kommuner: n.skogKommunerFor('ola@x.no') })[0].kommuner, ['Elverum', 'Løten']);
+  // HTTP
+  const kjor = (url, bruker) => new Promise((ok) => { const req = { method: 'GET', url, headers: {}, on() {}, destroy() {} }; const res = { writeHead(st) { this.s = st; }, end(b) { ok({ status: this.s, d: JSON.parse(b) }); } }; nettverkApi(n, { bruker: () => bruker }, req, res, new URL(url, 'http://x').pathname); });
+  const tom = await kjor('/api/nettverk/aktorer', 'liv@x.no'); assert.equal(tom.d.manglerKommune, false); assert.equal(tom.d.aktorer.length, 0);
+  sky['ola@x.no'] = []; const mangler = await kjor('/api/nettverk/aktorer', 'ola@x.no'); assert.equal(mangler.d.manglerKommune, true); assert.equal(mangler.d.aktorer.length, 0);
+  const med = await kjor('/api/nettverk/aktorer?kommuner=3114,abc&kommunenavn=L%C3%B8ten', 'ola@x.no'); assert.deepEqual(med.d.aktorer.map((a) => a.bruker).sort(), ['kari@x.no', 'per@x.no']); assert.equal(med.d.mineKommuner.length, 2);
+});
+
 test('Profilbilde: filtype fra filhodet, størrelse, lagring, bytte, tilgang og sletting med kontoen', async () => {
   const { lagProfilbilder, profilbildeApi, bildetype, MAKS_BYTES } = await import('../profilbilde.js');
   const { mkdtempSync, readdirSync, rmSync } = await import('node:fs'); const { tmpdir } = await import('node:os'); const { join } = await import('node:path');
@@ -3643,7 +3679,7 @@ test('Nettverk: statistikk, katalog uten e-post, koblinger begge veier, tilgang,
   const { lagNettverk, nettverkApi } = await import('../nettverk.js');
   const B = { 'ola@x.no': { navn: 'ola@x.no', visning: 'Ola Skog', epost: 'ola@x.no', profil: { roller: ['skogeier'], kommune: 'Løten' } },
     'kjop@x.no': { navn: 'kjop@x.no', visning: 'Kari Kjøper', epost: 'kjop@x.no', profil: { roller: ['innkjoper'], foretak: 'Tømmer AS', kommune: 'Elverum' } },
-    'ent@x.no': { navn: 'ent@x.no', visning: 'Per Entreprenør', epost: 'ent@x.no', profil: { roller: ['entreprenor', 'innkjoper'], foretak: 'Hogst AS' } },
+    'ent@x.no': { navn: 'ent@x.no', visning: 'Per Entreprenør', epost: 'ent@x.no', profil: { roller: ['entreprenor', 'innkjoper'], foretak: 'Hogst AS', kommuner: [{ nr: '3412', navn: 'Løten' }] } },
     'liv@x.no': { navn: 'liv@x.no', visning: 'Liv Skog', epost: 'liv@x.no', profil: { roller: ['skogeier'] } },
     'off@x.no': { navn: 'off@x.no', visning: 'Kommunen', profil: { roller: ['offentlig'] } },
     'sperret@x.no': { navn: 'sperret@x.no', visning: 'Sperret', sperret: true, profil: { roller: ['innkjoper'] } } };

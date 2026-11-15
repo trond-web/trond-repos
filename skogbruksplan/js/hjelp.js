@@ -140,6 +140,8 @@ export const KAPITLER = [
       <h4>Chat</h4>
       <p><kbd>Enter</kbd> sender, <kbd>Shift</kbd> + <kbd>Enter</kbd> gir ny linje. Nye meldinger vises som et tall på fanen Nettverk og som et varsel. «Lest» vises når mottakeren har sett meldingen.</p>
       ${tips('Rollene dine (skogeier, innkjøper, entreprenør) bestemmer hva du ser. Endre dem i Min profil.')}
+      <h4>Kommuner</h4>
+      <p>Innkjøpere og entreprenører velger hvilke kommuner de opererer i (påkrevd – du blir spurt ved innlogging, og kan endre under Nettverk eller Min profil). Skogeiere ser bare aktører som opererer i kommunene der de har skog: kommunene til planene dine teller automatisk, og du kan legge til flere. Søk på navn, eller legg til et helt fylke.</p>
       ${tips('Legg inn et profilbilde under Min profil (📷 Last opp bilde), så ser de du samhandler med hvem du er.')}
       ${obs('Andre brukere ser navnet ditt, firma, kommune og eventuelt profilbildet – aldri e-postadressen. Begge kan avslutte en kobling; da stenges chatten.')}`,
   },

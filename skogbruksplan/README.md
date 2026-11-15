@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.76.0** (2026-11-13) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.77.0** (2026-11-15) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 **Design:** Kartet fyller hele skjermen. Til venstre er en smal ikonliste, og til høyre en flytende arbeidsflate som kan
 felles inn. Kommandolinjen (⌘K / Ctrl K eller /) finner bestand, planer, veier og handlinger, og «Kommune 29/2» lager plan
@@ -738,6 +738,31 @@ Behandlingsgrunnlaget er i hovedsak **avtale** (art. 6 nr. 1 b), ikke samtykke. 
 **DPIA:** `docs/DPIA.md` vurderer om det trengs en vurdering av personvernkonsekvenser. Den trolig ikke påkrevd i dag, men gjøres frivillig. Dokumentet inneholder beskrivelse, nødvendighet og proporsjonalitet, risikovurdering per behandling (R1–R13), handlingsplan (T1–T10) og endringer som gjør den påkrevd. Testene sjekker at den følger versjonen av erklæringen og har med alle behandlingene.
 
 **Behandlingsansvarlig:** Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no (`ANSVARLIG` i `js/personvern.js`). Organisasjonsnummer legges inn når foretak er etablert.
+
+## Kommuner i Nettverk (`js/kommunevelger.js`)
+
+**Innkjøpere og entreprenører** oppgir hvilke kommuner de opererer i. Det er påkrevd:
+- Mangler kommuner, kommer dialogen «Hvor opererer du?» ved innlogging (etter vilkår og roller). Den kan ikke lukkes uten å lagre eller logge ut.
+- Kommunene kan endres i Min profil og direkte i Nettverk («📍 Du opererer i … Endre»).
+
+**Skogeiere** ser i katalogen bare innkjøpere og entreprenører som opererer i minst én av kommunene der skogeieren har skog. Skogkommunene samles fra:
+- planene i skyen (`meta.kommunenr`, eller navn for eldre planer)
+- planene på enheten og den åpne planen
+- profilen (`profil.kommuner` og kommunefeltet)
+
+Er ingen kommune kjent, ber Nettverk skogeieren lage en plan eller legge til kommuner. Eksisterende koblinger vises uansett.
+
+**Treff:** kommunenummeret avgjør, så Våler i Innlandet (3419) er ikke Våler i Østfold (3114). Navn brukes bare for eldre planer uten nummer. Aktører uten kommuner vises ikke i katalogen.
+
+**Velgeren:**
+- søk med forslag; uten aksenter og på nummer fungerer også
+- piltaster og Enter
+- «+ Hele fylket …»
+- valgte kommuner som brikker med ×, og «Fjern alle»
+- Kommunelisten (357 kommuner og 15 fylker) hentes fra Kartverkets åpne kommuneinfo og huskes i 30 dager.
+- Skriver brukeren før listen er hentet, søkes det når den kommer.
+
+**Lagring:** `profil.kommuner = [{ nr, navn }]`, renset på serveren (fire siffer, unike og sortert). Katalogkortene viser «📍 Elverum, Løten …».
 
 ## Profilbilde (`profilbilde.js`, `js/profilbilde-ui.js`)
 

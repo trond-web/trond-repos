@@ -13,7 +13,7 @@ export const RAILWAY = 'https://skogiq-production.up.railway.app';
 export const API = typeof location !== 'undefined' && /github\.io$/.test(location.hostname) ? RAILWAY : '';
 
 export function planMeta(plan) {
-  return { areal: (plan.bestand || []).reduce((s, b) => s + (b.areal || 0), 0), antall: (plan.bestand || []).length, kommune: plan.eiendom?.kommune || '', gnrbnr: plan.eiendom?.gnrbnr || '' };
+  return { areal: (plan.bestand || []).reduce((s, b) => s + (b.areal || 0), 0), antall: (plan.bestand || []).length, kommune: plan.eiendom?.kommune || '', kommunenr: plan.eiendom?.kommunenr || '', gnrbnr: plan.eiendom?.gnrbnr || '' };
 }
 
 export function lagSkyKlient({ hent = (u, o) => fetch(u, o), api = API, token = () => null, enhet = 'enhet' } = {}) {

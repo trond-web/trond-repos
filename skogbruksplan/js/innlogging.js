@@ -5,6 +5,7 @@
 //   * Uten nett slipper en enhet som har vært innlogget før inn (planene ligger lokalt); serverkall krever ny innlogging.
 import { VILKAR, KORT } from './personvern.js';
 import { fyllBilder, lesBilde, lagreBilde } from './profilbilde-ui.js';
+import { lagKommunevelger } from './kommunevelger.js';
 export const RAILWAY = 'https://skogiq-production.up.railway.app';
 export const LS_OKT = 'skogiq-okt';
 const LS_SETT = 'skogiq-innlogget-for';
@@ -41,7 +42,7 @@ if (typeof window !== 'undefined' && !window.__skogiqInnlogging && !/logginn\.ht
       const r = await opprinnelig(`${API}/api/meg`, { headers: t ? { Authorization: `Bearer ${t}` } : {}, credentials: 'same-origin', cache: 'no-store' });
       if (r.status === 401) { ls.del(LS_OKT); tilInnlogging(); return; }
       const d = await r.json().catch(() => ({})); if (d.bruker) ls.set(LS_SETT, '1');
-      if (d.aktiv && d.bruker) { meg = d; visBruker(); startBruk(opprinnelig); window.dispatchEvent(new CustomEvent('skogiq-innlogget', { detail: d })); const spor = () => sporVilkar().then(sporRoller); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', spor, { once: true }); else spor(); }
+      if (d.aktiv && d.bruker) { meg = d; visBruker(); startBruk(opprinnelig); window.dispatchEvent(new CustomEvent('skogiq-innlogget', { detail: d })); const spor = () => sporVilkar().then(() => { sporRoller(); sporKommuner(); }); window.addEventListener('skogiq-profil', () => sporKommuner()); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', spor, { once: true }); else spor(); }
     } catch {
       // Uten nett: slipp inn en enhet som har vært innlogget før.
       if (erPages && !ls.get(LS_SETT)) { tilInnlogging(); return; }
@@ -114,6 +115,37 @@ export function sporVilkar() {
   });
 }
 // Brukere uten rolle får en enkel dialog ved innlogging: kryss av og lagre (kan ikke lukkes uten å velge).
+// Innkjøpere og entreprenører må oppgi hvilke kommuner de opererer i (skogeiere ser bare aktører i sine
+// skogkommuner). Mangler det, kommer en dialog ved innlogging som ikke kan lukkes uten å lagre eller logge ut.
+export const erAktor = (m = meg) => (m?.roller || m?.profil?.roller || []).some((r) => r === 'innkjoper' || r === 'entreprenor');
+export async function lagreKommuner(kommuner) {
+  const f0 = brukFetch || window.fetch.bind(window);
+  const r = await f0(`${API}/api/konto/profil`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...autHode() }, credentials: 'same-origin', body: JSON.stringify({ profil: { navn: meg?.navn || meg?.bruker, kommuner } }) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.feil || 'Klarte ikke å lagre');
+  meg = { ...meg, profil: j.profil || { ...(meg?.profil || {}), kommuner } }; window.dispatchEvent(new CustomEvent('skogiq-profil', { detail: meg }));
+  return meg.profil.kommuner || [];
+}
+export function sporKommuner() {
+  if (typeof document === 'undefined' || !meg?.bruker || !meg.registrering || !erAktor() || (meg.profil?.kommuner || []).length) return;
+  if (document.querySelector('.kommune-dialog, .rolle-dialog, .vilkar-dialog')) return; // tas etter de andre dialogene
+  const roller = (meg.roller || meg.profil?.roller || []).filter((r) => r === 'innkjoper' || r === 'entreprenor').map((r) => (r === 'innkjoper' ? 'innkjøper' : 'entreprenør')).join(' og ');
+  const d = document.createElement('dialog'); d.className = 'kommune-dialog';
+  d.style.cssText = 'border:0;border-radius:18px;padding:0;max-width:520px;width:calc(100% - 24px);font:15px/1.4 system-ui,sans-serif;color:#10241c;background:#fbfcfa;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:visible';
+  d.innerHTML = `<form method="dialog" style="display:grid;gap:12px;padding:20px">
+    <div><b style="font-size:19px">Hvor opererer du?</b><p style="margin:4px 0 0;color:#43544b;font-size:14px">Som ${rens(roller)} vises du for skogeiere som har skog i kommunene du velger. Velg én eller flere – søk på navn, eller legg til et helt fylke. Du kan endre det senere i Min profil og under Nettverk.</p></div>
+    <div data-kv></div>
+    <div data-f style="color:#b4302f;min-height:18px;font-size:13px"></div>
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center"><button type="button" data-logg-ut style="padding:9px 12px;border-radius:9px;border:0;background:none;color:#555;text-decoration:underline;cursor:pointer">Logg ut</button><button value="ok" style="padding:11px 18px;border-radius:10px;border:0;background:#1f6b4a;color:#fff;font-weight:700;cursor:pointer">Lagre</button></div></form>`;
+  document.body.appendChild(d);
+  const velger = lagKommunevelger(d.querySelector('[data-kv]'), { valgt: [], vedEndring: () => { d.querySelector('[data-f]').textContent = ''; } });
+  d.addEventListener('cancel', (e) => e.preventDefault());
+  d.showModal(); setTimeout(() => d.querySelector('[data-kv-sok]')?.focus(), 50);
+  d.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault(); const vis = (t) => { d.querySelector('[data-f]').textContent = t; };
+    const k = velger.verdi(); if (!k.length) { vis('Velg minst én kommune.'); return; }
+    try { await lagreKommuner(k); d.close(); d.remove(); } catch (x) { vis(x.message || 'Ingen kontakt med serveren. Prøv igjen.'); }
+  });
+}
 export async function sporRoller() {
   if (typeof document === 'undefined' || !meg?.bruker || !meg.registrering || (meg.roller || []).length || document.querySelector('.rolle-dialog')) return;
   const f0 = brukFetch || window.fetch.bind(window);
@@ -162,6 +194,7 @@ export async function minProfil() {
       ${inp('telefon', 'Telefon', 'tel', 'autocomplete="tel"')}
       <div></div>
       <div style="grid-column:1/-1;display:grid;gap:4px"><span style="font-size:13px">Roller <small style="color:#555">(minst én)</small></span>${rolleValg(p.roller || meg?.roller || [])}</div>
+      <div style="grid-column:1/-1;display:grid;gap:4px"><span style="font-size:13px" data-kv-tittel></span><div data-kv-profil></div></div>
       ${inp('foretak', 'Gård / foretak', 'text', 'autocomplete="organization"')}${inp('orgnr', 'Organisasjonsnummer', 'text', 'inputmode="numeric"')}
       <div style="grid-column:1/-1">${inp('adresse', 'Adresse', 'text', 'autocomplete="street-address"')}</div>
       ${inp('postnr', 'Postnummer', 'text', 'inputmode="numeric" maxlength="4" autocomplete="postal-code"')}${inp('poststed', 'Poststed', 'text', 'autocomplete="address-level2"')}
@@ -190,6 +223,10 @@ export async function minProfil() {
     <div data-f style="color:#b4302f;min-height:18px;font-size:13px"></div>
     <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><button value="ut" formnovalidate data-logg-ut style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff">Logg ut</button><span style="display:flex;gap:8px"><button value="avbryt" formnovalidate style="padding:9px 14px;border-radius:9px;border:1px solid #bbb;background:#fff">Avbryt</button><button value="ok" style="padding:9px 14px;border-radius:9px;border:0;background:#1f6b4a;color:#fff;font-weight:700">Lagre</button></span></div></form>`;
   document.body.appendChild(d); merkKort(d); d.showModal(); fyllBilder(d);
+  // Kommuner: påkrevd for innkjøpere og entreprenører (hvor de opererer), valgfritt for skogeiere (hvor de har skog).
+  const kvVelger = lagKommunevelger(d.querySelector('[data-kv-profil]'), { valgt: p.kommuner || [] });
+  const kvTittel = () => { const r = [...d.querySelectorAll('input[name="roller"]:checked')].map((x) => x.value); const akt = r.includes('innkjoper') || r.includes('entreprenor'); d.querySelector('[data-kv-tittel]').innerHTML = akt ? 'Kommuner du opererer i <small style="color:#555">(minst én – skogeiere i disse kommunene finner deg i Nettverk)</small>' : 'Kommuner du har skog i <small style="color:#555">(valgfritt – kommunene til planene dine teller også)</small>'; };
+  kvTittel(); d.addEventListener('change', (e) => { if (e.target.name === 'roller') kvTittel(); });
   // Profilbilde: velg, beskjær og last opp med en gang (profilbilde-ui.js), eller fjern.
   const settAvatar = (id) => { const a = d.querySelector('[data-pb-avatar]'); a.removeAttribute('style'); a.classList.remove('med-bilde'); a.style.cssText = 'width:72px;height:72px;border-radius:50%;background:#1f6b4a;color:#fff;display:grid;place-items:center;font-weight:800;font-size:26px;flex:none'; delete a.dataset.bildeLastet; a.textContent = String(p.navn || meg?.bruker || '?').trim().charAt(0).toUpperCase(); if (id) a.dataset.bilde = id; else delete a.dataset.bilde; fyllBilder(d); meg = { ...meg, profil: { ...(meg.profil || {}), bilde: id || undefined } }; d.querySelector('[data-pb-fjern]').hidden = !id; d.querySelector('[data-pb-fil]').closest('label').firstChild.textContent = id ? '📷 Bytt bilde' : '📷 Last opp bilde'; visBruker(); window.dispatchEvent(new CustomEvent('skogiq-profil', { detail: meg })); };
   d.querySelector('[data-pb-fil]').addEventListener('change', async (e) => {
@@ -226,6 +263,8 @@ export async function minProfil() {
     const profil = Object.fromEntries(['navn', 'telefon', 'foretak', 'orgnr', 'adresse', 'postnr', 'poststed', 'kommune', 'andelslag', 'om'].map((k) => [k, f[k].value.trim()]));
     profil.roller = [...f.querySelectorAll('input[name="roller"]:checked')].map((x) => x.value);
     if (!profil.roller.length) { vis('Velg minst én rolle.'); return; }
+    profil.kommuner = kvVelger.verdi();
+    if (profil.roller.some((r) => r === 'innkjoper' || r === 'entreprenor') && !profil.kommuner.length) { vis('Velg minst én kommune du opererer i.'); d.querySelector('[data-kv-sok]')?.focus(); return; }
     const post = (sti, metode, kropp) => f0(`${API}${sti}`, { method: metode, headers: { 'Content-Type': 'application/json', ...autHode() }, credentials: 'same-origin', body: JSON.stringify(kropp) }).then(async (r) => ({ ok: r.ok, j: await r.json().catch(() => ({})) }), () => ({ ok: false, j: { feil: 'Ingen kontakt med serveren' } }));
     const pr = await post('/api/konto/profil', 'PUT', { profil });
     if (!pr.ok) { vis(pr.j.feil || 'Klarte ikke å lagre profilen'); return; }
