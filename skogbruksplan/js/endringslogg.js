@@ -2,6 +2,7 @@
 // Nyeste først. Første oppføring skal ha samme versjon som js/versjon.js (sjekkes i testene).
 // type: ny = ny funksjon, forbedret = bedre eller utvidet funksjon, rettet = feilretting.
 export const ENDRINGER = [
+  { versjon: '1.77.1', dato: '2026-11-15', type: 'forbedret', tittel: 'Om SkogIQ.ai', tekst: 'Informasjon om hvem som har utviklet løsningen, at den er laget på fritiden og uten kommersielle formål, og hvordan du kan ta kontakt. Står på innloggingssiden, i appen, i SkogIQ Felt og på personvernsiden.' },
   { versjon: '1.77.0', dato: '2026-11-15', type: 'ny', tittel: 'Kommuner i Nettverk', tekst: 'Innkjøpere og entreprenører velger kommunene de opererer i (spørres ved innlogging, kan endres i Min profil og Nettverk). Skogeiere ser bare aktører som opererer der de har skog – kommunene til planene teller automatisk, og flere kan legges til. Søk på navn eller velg et helt fylke.' },
   { versjon: '1.76.0', dato: '2026-11-13', type: 'ny', tittel: 'Profilbilde', tekst: 'Last opp et bilde av deg selv under Min profil. Bildet vises i Nettverk – i katalogen, blant koblingene og i chatten – så du ser hvem du samhandler med. Du kan bytte eller fjerne det når som helst.' },
   { versjon: '1.75.1', dato: '2026-11-13', type: 'forbedret', tittel: 'Tetthet (a/b) fra treantall før regulering', tekst: '«Rydding» heter nå «Tetthet» i hogstklasse I også. Der klassen mangler, beregnes a eller b fra treantall før regulering mot minste lovlige plantetall i forskriften (150, 100 eller 50 per daa etter bonitet). I barskog teller bare bartrærne.' },

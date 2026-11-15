@@ -19,6 +19,7 @@
   h3 { font-size: 16px; margin: 18px 0 4px; }
   p { margin: 0 0 10px; color: var(--text-2); }
   .pv-meta { font-size: 14px; }
+  .om { background: var(--surface-2); border-radius: 14px; padding: 4px 18px 8px; margin: 14px 0 6px; } .om h2 { border: 0; margin: 12px 0 6px; padding: 0; font-size: 18px; }
   .kort { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 8px; }
   .kort li { background: var(--surface-2); border-radius: 12px; padding: 10px 14px; }
   .kort li::before { content: '✓ '; color: var(--accent); font-weight: 800; }
@@ -39,10 +40,13 @@
 <main>
   <div class="topp"><p class="logo">Skog<b>IQ</b>.ai</p><a href="./">← Til SkogIQ.ai</a></div>
   <h1>Vilkår og personvern</h1>
+  <section id="om" class="om"></section>
   <div id="innhold"><p>Laster …</p></div>
 </main>
 <script type="module">
   import { html, KORT } from './js/personvern.js';
+  import { OM, omHtml } from './js/versjon.js';
+  document.getElementById('om').innerHTML = `<h2>${OM.tittel}</h2>${omHtml()}`;
   const el = document.getElementById('innhold');
   el.innerHTML = `<ul class="kort">${KORT.map((t) => `<li>${t}</li>`).join('')}</ul>${html()}`;
   // Åpne behandlingen det lenkes til (#pv-nettverk), og alle ved utskrift.

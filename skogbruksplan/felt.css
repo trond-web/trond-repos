@@ -267,3 +267,4 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .ts-red-rad input { width: 100%; padding: 9px 8px; font: inherit; font-size: 17px; text-align: right; box-sizing: border-box; }
 .ts-steg { min-height: 44px; padding: 0; font-size: 20px; font-weight: 700; }
 .ts-red-sum { font-weight: 700; text-align: right; } .ts-red-sum.avvik { color: var(--danger, #b4302f); }
+.om-tekst p { margin: 0 0 8px; font-size: 14px; color: var(--muted); } .om-tekst a { color: var(--accent, #1f6b4a); }

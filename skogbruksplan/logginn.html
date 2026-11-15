@@ -32,6 +32,8 @@
   .godta input { width: 20px; height: 20px; flex: none; margin: 1px 0 0; accent-color: var(--accent); }
   .godta a, footer a { color: var(--accent); } .godta.mangler { border-color: var(--danger); }
   .epost-knapp { display: block; text-align: center; margin-top: 10px; padding: 11px; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 700; text-decoration: none; }
+  .om-boks { margin-top: 18px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); font-size: 12.5px; line-height: 1.5; color: var(--text-2); }
+  .om-boks b { color: var(--text); font-size: 13px; } .om-boks p { margin: 4px 0 0; font-size: 12.5px; } .om-boks a { color: var(--accent); }
   footer { margin-top: 18px; font-size: 12px; color: var(--text-2); text-align: center; }
   .roller { border: 0; padding: 0; margin: 0 0 12px; }
   .roller legend { font-size: 14px; font-weight: 600; margin-bottom: 6px; } .roller legend small { font-weight: 400; color: var(--text-2); }
@@ -100,12 +102,15 @@
     <button type="submit">Registrer og logg inn</button>
     <div class="feil" role="alert"></div>
   </form>
-  <footer>Utviklet av Trond Harald Sand · <a href="personvern.html">Vilkår og personvern</a></footer>
+  <aside class="om-boks" data-om aria-label="Om SkogIQ.ai"></aside>
+  <footer>Utviklet av Trond Harald Sand · <a href="personvern.html#om">Om tjenesten</a> · <a href="personvern.html">Vilkår og personvern</a></footer>
 </main>
 <script type="module">
   import { RAILWAY, LS_OKT } from './js/innlogging.js';
   import { VILKAR, ANSVARLIG } from './js/personvern.js';
   import { mailto } from './js/epost.js';
+  import { OM, kontaktHtml } from './js/versjon.js';
+  document.querySelector('[data-om]').innerHTML = `<b>🌲 ${OM.tittel}</b><p>${OM.kort}</p><p>Kontakt: ${kontaktHtml()}</p>`;
   const API = /github\.io$/.test(location.hostname) ? RAILWAY : '';
   // Bare adresser i appen selv (ingen videresending til andre nettsteder).
   // «?full» og «#…» gjelder appen i samme mappe (./), ikke innloggingssiden.
