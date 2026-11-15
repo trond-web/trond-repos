@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.77.1** (2026-11-15) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.78.0** (2026-11-15) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -742,6 +742,36 @@ Behandlingsgrunnlaget er i hovedsak **avtale** (art. 6 nr. 1 b), ikke samtykke. 
 **DPIA:** `docs/DPIA.md` vurderer om det trengs en vurdering av personvernkonsekvenser. Den trolig ikke påkrevd i dag, men gjøres frivillig. Dokumentet inneholder beskrivelse, nødvendighet og proporsjonalitet, risikovurdering per behandling (R1–R13), handlingsplan (T1–T10) og endringer som gjør den påkrevd. Testene sjekker at den følger versjonen av erklæringen og har med alle behandlingene.
 
 **Behandlingsansvarlig:** Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no (`ANSVARLIG` i `js/personvern.js`). Organisasjonsnummer legges inn når foretak er etablert.
+
+## 🎄 Juletresjekken (`js/juletre.js`) – 15. november til 23. desember
+
+En sesongfunksjon som viser hvor på eiendommen det er lettest å finne et fint juletre. Den skrus på automatisk 15. november hvert år og av på julaften, 24. desember (`erJuletid`). Da vises knappen «🎄 Juletrær» i kartverktøyet og «Juletresjekken» i kommandopaletten.
+
+**Hva er et fint juletre?** Det finnes ingen norsk standard med tallgrenser.
+- Norsk Juletre gir råd om valg av tre: symmetrisk med jevn, rund omkrets, tett barnål og jevne greiner, naturlig forhold mellom bredde og høyde, rett stamme med én topp, jevn avsmalning og ingen døde greiner.
+- Dansk sortering (Prima/standard) krever i tillegg at toppskuddet er minst 25 cm på trær over 1,5 m.
+- Begge kildene er lenket i appen.
+
+**Juletrescore per bestand** (0–100 poeng, 1–5 stjerner), med begrunnelse:
+
+| Faktor | Beste verdi | Lavere poeng |
+|---|---|---|
+| Middelhøyde | 1,5–5 m (mange trær på 1,5–3 m) | Mindre eller større trær. HK IV–V og over 8 m er uegnet. |
+| Treslag | Gran | Furu er nest best. Lauv gir ikke juletrær. |
+| Bonitet | Moderat, G8–G14 (tette, kompakte trær) | Høy bonitet gir lange skudd og glisne trær. |
+| Treantall | 150–500/daa (lys rundt trærne gir grønne greiner helt ned) | Svært tett eller glissent |
+| Bilvei | Under 150 m | Lengre å bære |
+
+Ekstra:
+- Bonus når ungskogpleie er planlagt, siden treet skulle ut uansett.
+- Miljøfigurer og nøkkelbiotoper utelates.
+
+**Visning:**
+- Panel med topplisten (klikk for å gå til bestandet).
+- 🎄-markører med nummer i kartet.
+- Et nissetips og et kort snøfall. Snøfallet vises ikke når nettleseren er satt til redusert bevegelse.
+- Har planen ingen gode steder, vises «det nærmeste du kommer».
+- Påminnelse om at man bare kan hogge på egen eiendom eller med grunneierens tillatelse.
 
 ## Kommuner i Nettverk (`js/kommunevelger.js`)
 
