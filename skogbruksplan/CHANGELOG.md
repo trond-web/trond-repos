@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.78.1 – 🎄 Juletresjekken i SkogIQ Felt (2026-11-15)
+
+*Forbedret.* Juletresjekken finnes nå også i SkogIQ Felt: trykk den runde 🎄-knappen i kartet for å se hvor du lettest finner et fint juletre – med markører i kartet, nissetips og snø.
+
 ## 1.78.0 – 🎄 Juletresjekken (2026-11-15)
 
 *Nytt.* Fra 15. november til lille julaften viser knappen «🎄 Juletrær» i kartet hvor på eiendommen du lettest finner et fint juletre: ungskog med gran i passe høyde, moderat bonitet, lys rundt trærne og kort vei til bilvei. Med juletremarkører, nissetips og litt snø. God jul!

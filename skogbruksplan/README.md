@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.78.0** (2026-11-15) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.78.1** (2026-11-15) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -772,6 +772,8 @@ Ekstra:
 - Et nissetips og et kort snøfall. Snøfallet vises ikke når nettleseren er satt til redusert bevegelse.
 - Har planen ingen gode steder, vises «det nærmeste du kommer».
 - Påminnelse om at man bare kan hogge på egen eiendom eller med grunneierens tillatelse.
+
+**SkogIQ Felt** har en rund 🎄-knapp blant kartknappene (i samme periode). Den åpner topplisten i arket, med 🎄-markører i kartet, nissetips og snøfall. Trykk på et bestand for å åpne det. Avstand til bilvei er ikke med i Felt, så den faktoren regnes som ukjent.
 
 ## Kommuner i Nettverk (`js/kommunevelger.js`)
 

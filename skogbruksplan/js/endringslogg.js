@@ -2,6 +2,7 @@
 // Nyeste først. Første oppføring skal ha samme versjon som js/versjon.js (sjekkes i testene).
 // type: ny = ny funksjon, forbedret = bedre eller utvidet funksjon, rettet = feilretting.
 export const ENDRINGER = [
+  { versjon: '1.78.1', dato: '2026-11-15', type: 'forbedret', tittel: '🎄 Juletresjekken i SkogIQ Felt', tekst: 'Juletresjekken finnes nå også i SkogIQ Felt: trykk den runde 🎄-knappen i kartet for å se hvor du lettest finner et fint juletre – med markører i kartet, nissetips og snø.' },
   { versjon: '1.78.0', dato: '2026-11-15', type: 'ny', tittel: '🎄 Juletresjekken', tekst: 'Fra 15. november til lille julaften viser knappen «🎄 Juletrær» i kartet hvor på eiendommen du lettest finner et fint juletre: ungskog med gran i passe høyde, moderat bonitet, lys rundt trærne og kort vei til bilvei. Med juletremarkører, nissetips og litt snø. God jul!' },
   { versjon: '1.77.1', dato: '2026-11-15', type: 'forbedret', tittel: 'Om SkogIQ.ai', tekst: 'Informasjon om hvem som har utviklet løsningen, at den er laget på fritiden og uten kommersielle formål, og hvordan du kan ta kontakt. Står på innloggingssiden, i appen, i SkogIQ Felt og på personvernsiden.' },
   { versjon: '1.77.0', dato: '2026-11-15', type: 'ny', tittel: 'Kommuner i Nettverk', tekst: 'Innkjøpere og entreprenører velger kommunene de opererer i (spørres ved innlogging, kan endres i Min profil og Nettverk). Skogeiere ser bare aktører som opererer der de har skog – kommunene til planene teller automatisk, og flere kan legges til. Søk på navn eller velg et helt fylke.' },
