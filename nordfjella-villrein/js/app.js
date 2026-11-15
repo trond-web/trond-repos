@@ -11,7 +11,8 @@ const lagre = {
   hent(k, std) { try { return JSON.parse(localStorage.getItem(`nfv.${k}`)) ?? std; } catch { return std; } },
   sett(k, v) { try { localStorage.setItem(`nfv.${k}`, JSON.stringify(v)); return true; } catch { melding('Fikk ikke lagret på telefonen (lagringen er full eller privat modus).'); return false; } },
 };
-const avstand = (m) => (m < 1000 ? `${Math.round(m / 10) * 10 || Math.round(m)} m` : `${(m / 1000).toLocaleString('nb-NO', { maximumFractionDigits: m < 10000 ? 1 : 0 })} km`);
+const KM1 = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1 }), KM0 = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 });
+const avstand = (m) => (m < 1000 ? `${Math.round(m / 10) * 10 || Math.round(m)} m` : `${(m < 10000 ? KM1 : KM0).format(m / 1000)} km`);
 const tid = (t) => new Date(t).toLocaleString('nb-NO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const NOYAKTIG_TEKST = { god: 'god', middels: 'middels', lav: 'lav – grensa kan avvike mye i terrenget', ukjent: 'ukjent' };
 const FLISCACHE = 'nfv-fliser-v1';
@@ -20,26 +21,37 @@ const TYPER = { bil: { ikon: '🚙', navn: 'Bil' }, leir: { ikon: '⛺', navn: '
 let melderTimer;
 function melding(tekst, ms = 3500) {
   const el = $('#melding');
-  el.textContent = tekst; el.hidden = false;
+  el.textContent = tekst; el.hidden = false; el.classList.remove('klikkbar'); el.onclick = null;
   clearTimeout(melderTimer); melderTimer = setTimeout(() => { el.hidden = true; }, ms);
 }
 
 // ---------- Data ----------
 
-const omraade = await fetch('data/nordfjella.geojson').then((r) => r.json());
-const omraadeInfo = omraade.features[0].properties;
-const [v, s, ø, n] = bbox(omraade);
-const omraadeGrenser = L.latLngBounds([s, v], [n, ø]);
-// Valdgrenser: fra serveren (med admins endringer) når den finnes, ellers valdkartet som følger med appen.
-// Service workeren tar vare på siste svar, så det virker uten nett.
+// Siste svar fra serveren som service workeren har tatt vare på. Leses først, så appen starter med en gang
+// også med dårlig dekning; nye data hentes i bakgrunnen (oppdaterFraServer).
+const API_CACHE = 'nfv-api-v1';
+async function hentLagret(sti) {
+  try { const r = await caches.match(sti, { cacheName: API_CACHE }); return r ? await r.json() : null; } catch { return null; }
+}
+// Valdgrenser: lagret kopi, ellers fra serveren (med admins endringer), ellers valdkartet som følger med appen.
 async function hentJaktfelt() {
+  const lagret = await hentLagret('api/jaktfelt');
+  if (lagret?.features) return forbered(lagret);
   try {
     const r = await fetch('api/jaktfelt');
-    if (r.ok) return forbered(await r.json());
+    if (r.ok) { lagreKopi('api/jaktfelt', r.clone()); return forbered(await r.json()); }
   } catch { /* uten server eller nett */ }
   return forbered(await fetch('data/jaktfelt.geojson').then((r) => r.json()));
 }
-let jaktfelt = await hentJaktfelt();
+// Første besøk: service workeren er ikke aktiv ennå, så appen tar vare på svaret selv (uten ny nedlasting).
+function lagreKopi(sti, svar) {
+  caches.open(API_CACHE).then((c) => c.put(sti, svar)).catch(() => {});
+}
+const [omraade, jaktfeltStart] = await Promise.all([fetch('data/nordfjella.geojson').then((r) => r.json()), hentJaktfelt()]);
+const omraadeInfo = omraade.features[0].properties;
+const [v, s, ø, n] = bbox(omraade);
+const omraadeGrenser = L.latLngBounds([s, v], [n, ø]);
+let jaktfelt = jaktfeltStart;
 let samjakt = lagre.hent('samjakt', []);
 
 let grunner = lagre.hent('grunner', []); // mine jaktgrunner (teiger med geometri)
@@ -318,7 +330,7 @@ function startGps() {
 }
 function stoppGps() {
   if (vakt != null) navigator.geolocation.clearWatch(vakt);
-  vakt = null; posisjon = null; settGpsModus('av');
+  vakt = null; posisjon = null; sistBeregnet = null; settGpsModus('av');
   kart.removeLayer(posMarkor); kart.removeLayer(posSirkel);
   oppdaterStatus();
 }
@@ -344,9 +356,21 @@ function nyPosisjon(pos) {
     pil.hidden = !har; if (har) pil.style.transform = `rotate(${c.heading}deg)`;
   }
   if (gpsModus === 'venter') settGpsModus('folg');
-  if (gpsModus === 'folg') kart.setView(ll, forste ? Math.max(kart.getZoom(), 14) : kart.getZoom(), { animate: !forste });
+  if (gpsModus === 'folg') {
+    if (forste) kart.setView(ll, Math.max(kart.getZoom(), 14), { animate: false });
+    else {
+      // Kartet flyttes bare når posisjonen har kommet et stykke fra midten – sparer mye opptegning og batteri.
+      const pt = kart.latLngToContainerPoint(ll), str = kart.getSize();
+      if (Math.abs(pt.x - str.x / 2) > str.x * 0.15 || Math.abs(pt.y - str.y / 2) > str.y * 0.15) kart.panTo(ll);
+    }
+  }
+  // Står du i ro (under 5 m flytting) regnes grenser og avstander bare på nytt hvert 30. sekund.
+  const naa = Date.now();
+  if (!forste && sistBeregnet && avstandM(sistBeregnet.p, posisjon.p) < 5 && naa - sistBeregnet.tid < 30000) { visPosisjonstekst(); return; }
+  sistBeregnet = { p: posisjon.p, tid: naa };
   oppdaterStatus();
 }
+let sistBeregnet = null;
 
 async function oppdaterEiendomForPosisjon() {
   if (!posisjon) return;
@@ -402,10 +426,14 @@ function oppdaterStatus(slaaOpp = true) {
   el.innerHTML = `${h(o.tittel)}<small>${h(o.under)}</small>`;
   $('#s-felt').innerHTML = feltHtml(p, true);
   $('#s-eiendom').innerHTML = eiendomStatusHtml(p);
-  const alt = posisjon.alt != null ? ` · ${Math.round(posisjon.alt)} moh.` : '';
-  $('#s-pos').innerHTML = `<span class="mono">${h(utmTekst(p, 32))}</span> <span class="liten">±${Math.round(posisjon.acc)} m${alt}</span>`;
+  visPosisjonstekst();
   oppdaterMal();
   if (slaaOpp) oppdaterEiendomForPosisjon();
+}
+
+function visPosisjonstekst() {
+  const alt = posisjon.alt != null ? ` · ${Math.round(posisjon.alt)} moh.` : '';
+  $('#s-pos').innerHTML = `<span class="mono">${h(utmTekst(posisjon.p, 32))}</span> <span class="liten">±${Math.round(posisjon.acc)} m${alt}</span>`;
 }
 
 // Jaktfelt og vald i punktet, med avstand til feltgrensa når det er din posisjon.
@@ -648,11 +676,21 @@ const PAKKER = [
 ];
 const KB_PER_FLIS = { topo: 75, toporaster: 90, graa: 45 };
 const EIENDOM_KB = 3;
+// Kartrutene som dekker området er beregnet på forhånd (data/fliser.json, verktoy/lag-fliser.mjs), så telefonen
+// slipper å regne i flere sekunder. Mangler fila, regnes de ut her.
 let flisliste = null;
-const fliser = (zTil) => { flisliste ||= fliserFor(omraade, 6, 14); return flisliste.filter(([z]) => z <= zTil); };
+async function lastFliser() {
+  if (flisliste) return;
+  try {
+    const { z } = await fetch('data/fliser.json').then((r) => r.json());
+    flisliste = Object.entries(z).flatMap(([zz, l]) => Array.from({ length: l.length / 2 }, (_, i) => [Number(zz), l[2 * i], l[2 * i + 1]]));
+  } catch { flisliste = fliserFor(omraade, 6, 14); }
+}
+const fliser = (zTil) => flisliste.filter(([z]) => z <= zTil);
 let nedlasting = null;
 
-function tegnOffline() {
+async function tegnOffline() {
+  await lastFliser();
   const valgt = lagre.hent('pakke', 'detaljert');
   const b = BAKGRUNNER[aktivBakgrunn];
   $('#pakker').innerHTML = b.offline ? PAKKER.map((p) => {
@@ -682,8 +720,8 @@ $('#b-last-ned').addEventListener('click', async () => {
   const bg = BAKGRUNNER[aktivBakgrunn];
   try { await navigator.storage?.persist?.(); } catch { /* valgfritt */ }
   $('#b-last-ned').disabled = true; $('#b-avbryt').hidden = false; $('#framdrift').hidden = false;
-  $('#framdrift span').textContent = 'Beregner hvilke kartruter som trengs …';
-  await new Promise((r) => setTimeout(r, 30));
+  $('#framdrift span').textContent = 'Forbereder nedlasting …';
+  await lastFliser();
   const urler = [
     ...fliser(pakke.zTil).map(([z, x, y]) => flisUrl(bg.url, z, x, y)),
     ...fliser(14).filter(([z]) => z === WMS.eiendom.offlineZoom).map(([z, x, y]) => wmsUrl(WMS.eiendom, z, x, y)),
@@ -804,4 +842,16 @@ oppdaterFraServer();
 maalStatus();
 if (lagre.hent('gps', false)) startGps();
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator) {
+  // Ny versjon: service workeren har lastet ned hele det nye appskallet i bakgrunnen. Den tas i bruk ved neste start,
+  // eller med en gang hvis brukeren trykker på meldingen.
+  const hadde = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadde) return;
+    const el = $('#melding');
+    melding('Ny versjon av appen er klar – trykk her for å ta den i bruk.', 15000);
+    el.classList.add('klikkbar');
+    el.onclick = () => location.reload();
+  });
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}

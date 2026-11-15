@@ -2,7 +2,7 @@
 
 Kartapp for villreinjakt i Nordfjella villreinområde. Laget for telefon, og virker uten mobildekning når kartet er lastet ned.
 
-Versjon 1.4.1 · Utviklet av Trond Harald Sand for **Villreinutvalet for Nordfjella** · I produksjon: **https://nordfjella.up.railway.app**
+Versjon 1.5.0 · Utviklet av Trond Harald Sand for **Villreinutvalet for Nordfjella** · I produksjon: **https://nordfjella.up.railway.app**
 
 ## Hva den gjør
 
@@ -66,8 +66,16 @@ stående med gamle valdgrenser.
 **Sikkerhetskopi:** serveren beholder forrige versjon av datafila (`nordfjella.forrige.json`) og tar én kopi per dag i
 `kopier/` (de siste 30 dagene) på volumet. I admin (Konto) kan du laste ned en fullstendig kopi (`/api/admin/sikkerhetskopi`).
 
-**Ytelse:** serveren gzipper hver fil én gang og holder den i minnet (over 3 000 svar/s på valdkartet lokalt). Første åpning
-av appen henter ca. 1,2 MB fra serveren; valdkartet hentes én gang og deretter bare sjekket med ETag.
+**Ytelse:**
+- Appen starter alltid fra lagret kopi (appskall, valdgrenser, samjakt) og henter nytt i bakgrunnen. Målt med strupet
+  CPU: 0,8 s oppstart også ved svært dårlig dekning (2,5 s forsinkelse, 40 kbit/s) – før ventet den på nettet (107 s).
+- Nye versjoner lastes ned i sin helhet av service workeren; appen sier fra («Ny versjon … trykk her») og tar den i bruk
+  ved neste start. Øk `APP` i `sw.js` ved hver versjon.
+- GPS: kartet flyttes bare når posisjonen nærmer seg kanten, og grenser regnes bare på nytt når du har flyttet deg over
+  5 m (ellers hvert 30. sekund) – sparer batteri når du sitter og glaser.
+- Kartrutene for nedlasting er beregnet på forhånd (`data/fliser.json`, `node verktoy/lag-fliser.mjs` når grensa endres).
+- Serveren gzipper hver fil én gang og holder den i minnet; valdkartet hentes én gang og deretter bare sjekket med ETag.
+- Sikkerhet: CSP (bare egne skript, kart fra kjente kilder) og HSTS på alle svar.
 
 ## Datakilder
 

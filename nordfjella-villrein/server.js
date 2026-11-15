@@ -28,11 +28,20 @@ const TYPER = {
 const SKJULT = /^\/(tests|verktoy|server|pages-videresending|node_modules)(\/|$)|^\/(server\.js|package(-lock)?\.json|railway\.json|README\.md)$|\/\./;
 const KOMPRIMER = /^(text\/|application\/(json|geo\+json|manifest\+json)|image\/svg)/;
 
+// Kartkildene appen henter fliser og oppslag fra (Kartverket, Geonorge, Miljødirektoratet, Esri flyfoto).
+const KARTKILDER = 'https://cache.kartverket.no https://wms.geonorge.no https://kart.miljodirektoratet.no https://server.arcgisonline.com';
 const SIKKERHET = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'X-Frame-Options': 'SAMEORIGIN',
   'Permissions-Policy': 'geolocation=(self)',
+  'Strict-Transport-Security': 'max-age=31536000',
+  // Bare egne skript; kart og oppslag bare fra kjente kilder. Leaflet bruker style-attributter, derav 'unsafe-inline' for stil.
+  'Content-Security-Policy': [
+    "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'",
+    `img-src 'self' data: blob: ${KARTKILDER}`, `connect-src 'self' https://api.kartverket.no https://ws.geonorge.no ${KARTKILDER}`,
+    "worker-src 'self'", "manifest-src 'self'", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'self'",
+  ].join('; '),
 };
 
 // Komprimerte filer holdes i minnet, så hver fil bare gzippes én gang (til den endres).
@@ -77,7 +86,7 @@ const server = http.createServer(async (req, res) => {
   // Alle appfiler valideres ved hver last (ETag), slik at nye versjoner kommer fram med en gang.
   // Service workeren håndterer bruk uten nett.
   const etag = `W/"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`;
-  const hoder = { 'Content-Type': type, ETag: etag, 'Last-Modified': info.mtime.toUTCString(), 'Cache-Control': 'no-cache', ...SIKKERHET };
+  const hoder = { 'Content-Type': type, ETag: etag, 'Last-Modified': info.mtime.toUTCString(), 'Cache-Control': sti.startsWith('/vendor/') ? 'public, max-age=604800' : 'no-cache', ...SIKKERHET };
   if (req.headers['if-none-match'] === etag) { res.writeHead(304, hoder); return res.end(); }
   if (KOMPRIMER.test(type) && info.size > 1024) {
     hoder.Vary = 'Accept-Encoding';

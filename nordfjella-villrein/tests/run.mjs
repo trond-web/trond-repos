@@ -294,8 +294,18 @@ test('server: API, innlogging, samjakt og endring av jaktfelt', async () => {
     // Data er lagret på disk og ikke tilgjengelig som fil
     const lagret = JSON.parse(fs.readFileSync(`${dir}/nordfjella.json`, 'utf8'));
     assert.equal(lagret.samjakt.length, 1); assert.ok(!JSON.stringify(lagret).includes('nytt-langt-passord'));
-    for (const sti of ['server/api.js', 'verktoy/gpkg.py', '.lokaldata/nordfjella.json']) assert.equal((await fetch(`http://127.0.0.1:${port}/${sti}`)).status, 404, sti);
+    for (const sti of ['server/api.js', 'verktoy/gpkg.py', '.lokaldata/nordfjella.json', 'pages-videresending/sw.js']) assert.equal((await fetch(`http://127.0.0.1:${port}/${sti}`)).status, 404, sti);
+    const forside = await fetch(`http://127.0.0.1:${port}/`);
+    assert.match(forside.headers.get('content-security-policy'), /script-src 'self'/);
+    assert.match(forside.headers.get('strict-transport-security'), /max-age/);
   } finally { proc.kill(); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('forhåndsberegnet kartruteliste stemmer med grensa', async () => {
+  const { lagFliser } = await import('../verktoy/lag-fliser.mjs');
+  const lagret = JSON.parse(fs.readFileSync(new URL('../data/fliser.json', import.meta.url)));
+  assert.deepEqual(lagret.z, lagFliser(omraade).z, 'kjør node verktoy/lag-fliser.mjs');
+  assert.equal(lagret.z[14].length / 2, 2740);
 });
 
 if (process.env.LIVE) {

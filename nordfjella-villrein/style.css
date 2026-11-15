@@ -269,3 +269,4 @@ a { color: inherit; }
 .installer > .logo { max-width: 360px; margin: 0 auto 12px; }
 .signatur.bunn .logo { max-width: 240px; margin: 0 auto 6px; }
 .signatur.bunn p { margin: 0; }
+.melding.klikkbar { cursor: pointer; text-decoration: underline; }

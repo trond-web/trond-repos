@@ -66,7 +66,11 @@ export function lagSperre({ maks = 8, vindu = 15 * 60e3 } = {}) {
       forsok.set(ip, f);
       return f.length >= maks;
     },
-    feil(ip, naa = Date.now()) { forsok.set(ip, [...(forsok.get(ip) || []), naa]); },
+    feil(ip, naa = Date.now()) {
+      forsok.set(ip, [...(forsok.get(ip) || []), naa]);
+      // Rydder bort gamle oppføringer så lista ikke vokser uten grense.
+      if (forsok.size > 1000) for (const [k, t] of forsok) if (!t.some((x) => naa - x < vindu)) forsok.delete(k);
+    },
     nullstill(ip) { forsok.delete(ip); },
   };
 }
