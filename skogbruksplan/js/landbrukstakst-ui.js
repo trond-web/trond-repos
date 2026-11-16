@@ -2,6 +2,7 @@
 // del, priskontroll og konsesjonsplikt, skjema for arealer, jord, bygninger, rettigheter og boverdi, og en utskriftsvennlig
 // rapport. Data lagres i planen (S.takst).
 import * as LT from './landbrukstakst.js';
+import { hentBygninger, slaSammen, KILDER as BYGG_KILDER } from './bygninger.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const kr = (v) => `${Math.round(v).toLocaleString('nb-NO')} kr`;
@@ -11,7 +12,7 @@ const opsj = (obj, valgt) => Object.entries(obj).map(([k, v]) => `<option value=
 const FORBEHOLD = 'Beregnet verdivurdering – ikke en sertifisert takst. Beregningen bygger på skogbruksplanen, AR5 og opplysningene som er lagt inn, uten befaring. Metoden følger konsesjonsloven og rundskrivene M-1/2021 og M-3/2002 (4 % kapitaliseringsrente for jord og skog, kostnadsverdi for bygninger). Til salg, odelsløsning, skifte og lån skal det brukes takst fra sertifisert landbrukstakstmann.';
 
 export function initLandbrukstakst({ rot, hentPlan, endret, melding = () => {}, nyId, iAar = new Date().getFullYear() }) {
-  const apne = new Set(['bygg']);
+  const apne = new Set(['bygg']); let henter = '';
   const S = () => hentPlan();
   const takst = () => { const p = S(); if (!p.takst) p.takst = LT.takstFor(p); return p.takst; };
 
@@ -40,8 +41,10 @@ export function initLandbrukstakst({ rot, hentPlan, endret, melding = () => {}, 
         <label>Tilstand<select data-lt="bygg:${g.id}:tilstand">${opsj(LT.TILSTAND, g.tilstand || 'normal')}</select></label>
         ${bolig ? '' : `<label>Bruksverdi<select data-lt="bygg:${g.id}:bruksverdi">${opsj(LT.BRUKSVERDI, g.bruksverdi || 'hoy')}</select></label>`}
         ${felt(`bygg:${g.id}:kvm`, 'Nybyggpris (kr/m²)', g.kvm, { plass: String(LT.BYGG_TYPER[g.type]?.kvm || '') })}${felt(`bygg:${g.id}:skjonn`, 'Skjønnsverdi (kr)', g.skjonn, { hint: 'Overstyrer beregningen' })}</div>
-        <div class="lt-bygg-fot"><b>${kr(b.verdi)}</b><span class="hint">${b.skjonn ? 'skjønn' : `nybygg ${kr(b.nybygg)} · effektiv alder ${b.alder} år`}</span><button type="button" class="knapp liten fare" data-lt-h="fjern-bygg" data-id="${g.id}">Fjern</button></div></div>`; }).join('')}
-        <div class="knapperad"><button type="button" class="knapp liten" data-lt-h="ny-bygg">+ Legg til bygning</button></div>
+        ${g.merknad || g.kilde === 'matrikkel' ? `<p class="hint lt-bygg-kilde">${g.kilde === 'matrikkel' ? `🏛 Matrikkelen${g.bygningsnummer ? ` bygnr. ${esc(g.bygningsnummer)}` : ''} · ` : ''}${esc(g.merknad || '')}${g.kilde === 'matrikkel' && !g.byggeaar ? ' · <b>fyll inn byggeår</b>' : ''}</p>` : ''}
+        <div class="lt-bygg-fot"><b>${kr(b.verdi)}</b><span class="hint">${b.skjonn ? 'skjønn' : `nybygg ${kr(b.nybygg)} · ${b.ukjentAar ? 'byggeår ukjent – 50 % restverdi antatt' : `effektiv alder ${b.alder} år`}`}</span><button type="button" class="knapp liten fare" data-lt-h="fjern-bygg" data-id="${g.id}">Fjern</button></div></div>`; }).join('')}
+        <div class="knapperad"><button type="button" class="knapp liten primar" data-lt-h="hent-bygg" ${henter ? 'disabled' : ''}>${henter ? `⏳ ${esc(henter)}` : '🏛 Hent bygninger fra matrikkelen'}</button><button type="button" class="knapp liten" data-lt-h="ny-bygg">+ Legg til bygning</button></div>
+        <p class="hint">Henter bygningstype og bygningsnummer fra Matrikkelen og måler grunnflaten i kartet (FKB-Bygning, Kartverket). BTA anslås fra grunnflaten; byggeår finnes ikke i åpne data – sjekk <a href="${BYGG_KILDER.seeiendom}" target="_blank" rel="noopener">seeiendom.no</a> og fyll inn.</p>
         <p class="hint">Kostnadsverdi: nybyggpris med fradrag for alder, slitasje og egnethet. Driftsbygninger etter bruksverdi for dagens drift eller lovlig, godkjent alternativ bruk. Bygninger på landbrukseiendom verdsettes lavere enn vanlige boliger.</p>`),
       det('rett', '🦌 Utmark, jakt, fiske og rettigheter', `${t.rettigheter.map((x) => `<div class="skjema tre-kol lt-rett"><label>Navn<input data-lt="rett:${x.id}:navn" value="${esc(x.navn || '')}"></label>${felt(`rett:${x.id}:aarlig`, 'Årlig netto (kr)', x.aarlig, { hint: `Kapitaliseres med ${LT.RENTE} %` })}${felt(`rett:${x.id}:belop`, 'Skjønnsbeløp (kr)', x.belop)}</div>`).join('')}
         <div class="knapperad"><button type="button" class="knapp liten" data-lt-h="ny-rett">+ Legg til rettighet</button></div>`),
@@ -88,8 +91,31 @@ export function initLandbrukstakst({ rot, hentPlan, endret, melding = () => {}, 
     if (k.dataset.ltH === 'fjern-bygg') t.bygninger = t.bygninger.filter((g) => g.id !== k.dataset.id);
     if (k.dataset.ltH === 'ny-rett') { t.rettigheter.push({ id: nyId('rt'), navn: '', aarlig: 0, belop: 0 }); apne.add('rett'); }
     if (k.dataset.ltH === 'rapport') { skrivUt(); return; }
+    if (k.dataset.ltH === 'hent-bygg') { hentFraMatrikkelen(); return; }
     endret({ kart: false }); tegn();
   });
+
+  // ---------- bygninger fra Kartverket (js/bygninger.js) ----------
+  // Maske over fylte piksler i et kartbilde (FKB svarer med CORS, så lerretet kan leses).
+  function tellPiksler(url, w, h) {
+    return new Promise((ok) => {
+      const img = new Image(); img.crossOrigin = 'anonymous';
+      img.onload = () => { try { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, w, h); const d = x.getImageData(0, 0, w, h).data; ok((px, py) => d[(py * w + px) * 4 + 3] > 128); } catch { ok(null); } };
+      img.onerror = () => ok(null); img.src = url;
+    });
+  }
+  async function hentFraMatrikkelen() {
+    const p = S(); const grense = p.eiendom?.grense;
+    if (!grense) { melding('Planen mangler eiendomsgrense – lag planen fra gårds- og bruksnummer først.'); return; }
+    henter = 'Henter bygninger …'; apne.add('bygg'); tegn();
+    try {
+      const nye = await hentBygninger(grense, { tellPiksler, logg: (t) => { henter = t; const k = rot()?.querySelector('[data-lt-h="hent-bygg"]'); if (k) k.textContent = `⏳ ${t}`; } });
+      const t = takst(); const r = slaSammen(t.bygninger, nye, { nyId }); t.bygninger = r.liste; const flere = nye.totalt > nye.length ? ` Eiendommen har ${nye.totalt} bygninger – de ${nye.length} første er hentet.` : '';
+      endret({ kart: false });
+      melding(nye.length ? `${r.lagtTil} bygning${r.lagtTil === 1 ? '' : 'er'} lagt til fra matrikkelen${r.oppdatert ? `, ${r.oppdatert} oppdatert` : ''}. Sjekk type, BTA og fyll inn byggeår.${flere}` : 'Fant ingen registrerte bygninger innenfor eiendomsgrensen.');
+    } catch (e) { melding(`Kunne ikke hente bygninger: ${e.message}`); }
+    henter = ''; tegn();
+  }
 
   // ---------- rapport ----------
   function rapportHtml() {

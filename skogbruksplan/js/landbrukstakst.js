@@ -96,15 +96,16 @@ export function arealer(S, t = takstFor(S)) {
 export function bygningsverdi(g, iAar = new Date().getFullYear()) {
   const type = BYGG_TYPER[g.type] || BYGG_TYPER.annet;
   if (g.skjonn != null && g.skjonn !== '') return { verdi: rund(Number(g.skjonn) || 0), skjonn: true, type };
-  const bta = Number(g.bta) || 0; const bygget = Number(g.byggeaar) || iAar; const ren = Number(g.renovert) || null;
+  const bta = Number(g.bta) || 0; const ukjent = !Number(g.byggeaar); const bygget = Number(g.byggeaar) || iAar; const ren = Number(g.renovert) || null;
   const effAar = ren && ren > bygget ? Math.round((bygget + 2 * ren) / 3) : bygget;
-  const alder = Math.max(0, iAar - effAar);
-  const rest = Math.max(0.1, 1 - alder / type.levetid);
+  const alder = ukjent ? null : Math.max(0, iAar - effAar);
+  // Ukjent byggeår (f.eks. hentet fra matrikkelen): 50 % restverdi antas til byggeåret er fylt inn.
+  const rest = ukjent ? (ren ? Math.max(0.1, 1 - Math.max(0, iAar - ren) / type.levetid) : 0.5) : Math.max(0.1, 1 - alder / type.levetid);
   const fT = TILSTAND[g.tilstand || 'normal']?.f ?? 1;
   const fB = type.bolig ? 1 : (BRUKSVERDI[g.bruksverdi || 'hoy']?.f ?? 1);
   const kvm = Number(g.kvm) || type.kvm;
   const nybygg = bta * kvm;
-  return { verdi: rund(Math.min(nybygg, nybygg * rest * fT * fB)), nybygg: rund(nybygg), alder, rest: Math.round(rest * 100) / 100, fT, fB, kvm, type };
+  return { verdi: rund(Math.min(nybygg, nybygg * rest * fT * fB)), nybygg: rund(nybygg), alder, ukjentAar: ukjent, rest: Math.round(rest * 100) / 100, fT, fB, kvm, type };
 }
 
 // Hele beregningen: { arealer, deler: [{ id, navn, metode, verdi }], varianter: { konsesjon, odel, asete }, priskontroll, konsesjonsplikt }.
@@ -133,7 +134,7 @@ export function beregnTakst(S, { iAar = new Date().getFullYear() } = {}) {
   // Bygninger
   for (const g of t.bygninger) {
     const b = bygningsverdi(g, iAar);
-    deler.push({ id: g.id, gruppe: b.type.bolig ? 'bolig' : 'bygning', navn: g.navn || b.type.navn, bta: Number(g.bta) || null, byggeaar: g.byggeaar || null, metode: b.skjonn ? 'Skjønnsmessig satt' : `Kostnadsverdi: ${Number(g.bta) || 0} m² × ${b.kvm.toLocaleString('nb-NO')} kr × restverdi ${Math.round(b.rest * 100)} %${b.fT !== 1 ? ` × tilstand ${b.fT}` : ''}${b.fB !== 1 ? ` × bruksverdi ${b.fB}` : ''}`, verdi: b.verdi });
+    deler.push({ id: g.id, gruppe: b.type.bolig ? 'bolig' : 'bygning', navn: g.navn || b.type.navn, bta: Number(g.bta) || null, byggeaar: g.byggeaar || null, metode: b.skjonn ? 'Skjønnsmessig satt' : `Kostnadsverdi: ${Number(g.bta) || 0} m² × ${b.kvm.toLocaleString('nb-NO')} kr × restverdi ${Math.round(b.rest * 100)} %${b.ukjentAar ? ' (byggeår ukjent – antatt)' : ''}${b.fT !== 1 ? ` × tilstand ${b.fT}` : ''}${b.fB !== 1 ? ` × bruksverdi ${b.fB}` : ''}`, verdi: b.verdi });
   }
   const harBolig = t.bygninger.some((g) => (BYGG_TYPER[g.type] || {}).bolig);
   const boverdi = harBolig ? Math.min(BOVERDI_MAKS, Math.max(0, Number(t.boverdi) || 0)) : 0;

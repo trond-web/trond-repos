@@ -1471,3 +1471,4 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
   .lt-kort .skjema.fire-kol, .lt-kort .skjema.tre-kol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .lt-tabell { table-layout: auto; width: 100%; } .lt-tabell td:first-child { white-space: normal; min-width: 0; } .lt-tabell .lt-metode { white-space: normal; overflow-wrap: anywhere; }
+.lt-bygg-kilde { margin: 4px 0 0; font-size: 12px; }

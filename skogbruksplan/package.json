@@ -1,6 +1,6 @@
 {
   "name": "skogiq",
-  "version": "1.84.1",
+  "version": "1.85.0",
   "private": true,
   "description": "SkogIQ.ai – skogbruksplan, skifteplan og skogforvaltning i nettleseren",
   "type": "module",

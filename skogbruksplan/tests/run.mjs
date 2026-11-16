@@ -3545,6 +3545,7 @@ test('Landbrukstakst: delverdier (skog 4 %, jord, bygninger, rettigheter, boverd
   assert.equal(hus.alder, 34); assert.equal(hus.verdi, Math.round((214 * 22000 * (1 - 34 / 80)) / 1000) * 1000);
   assert.ok(LT.bygningsverdi({ type: 'driftsbygning', bta: 500, byggeaar: 2000, bruksverdi: 'ingen' }, 2026).verdi < LT.bygningsverdi({ type: 'driftsbygning', bta: 500, byggeaar: 2000 }, 2026).verdi * 0.2);
   assert.equal(LT.bygningsverdi({ type: 'lager', bta: 100, byggeaar: 1900 }, 2026).rest, 0.1, 'restverdi aldri under 10 %');
+  const ukj = LT.bygningsverdi({ type: 'vaaningshus', bta: 100 }, 2026); assert.deepEqual([ukj.rest, ukj.ukjentAar, ukj.verdi], [0.5, true, 1100000], 'ukjent byggeår: 50 % restverdi');
   assert.deepEqual([LT.bygningsverdi({ type: 'lager', bta: 100, skjonn: 123456 }).verdi, LT.bygningsverdi({ type: 'lager', skjonn: 5000 }).skjonn], [123000, true]);
   // Arealer fra AR5 (fulldyrka/overflatedyrka/innmarksbeite) og overstyring
   const S = { ...lagDemo(2026), markslag: [{ kategori: 'jordbruk', areal: 40, ar5: { artype: 'Fulldyrka jord' } }, { kategori: 'jordbruk', areal: 5, ar5: { artype: 'Overflatedyrka jord' } }, { kategori: 'jordbruk', areal: 3, ar5: { artype: 'Innmarksbeite' } }, { kategori: 'myr', areal: 10 }] };
@@ -3576,6 +3577,38 @@ test('Landbrukstakst: delverdier (skog 4 %, jord, bygninger, rettigheter, boverd
   assert.equal(LT.konsesjonsplikt({ total: 90, dyrka: 30, produktiv: 50 }, { harBolig: false }).plikt, true, 'ubebygd er konsesjonspliktig');
   // Uten takstdata: standardverdier, ingen bygninger
   const r0 = LT.beregnTakst(lagDemo(2026), { iAar: 2026 }); assert.ok(r0.sum > 0 && r0.deler.every((d) => d.gruppe === 'skog'));
+});
+
+test('Bygninger fra Kartverket: matrikkelpunkt, grunnflate fra FKB-kartet, BTA-anslag og sammenslåing i taksten', async () => {
+  const B = await import('../js/bygninger.js');
+  const xml = `<wfs:FeatureCollection><wfs:member><app:Bygning><app:bygningsnummer>101</app:bygningsnummer><app:bygningstype>113</app:bygningstype><app:bygningsstatus>TB</app:bygningsstatus><app:harSefrakminne>true</app:harSefrakminne><gml:pos>60.835 11.310</gml:pos></app:Bygning></wfs:member>
+    <wfs:member><app:Bygning><app:bygningsnummer>102</app:bygningsnummer><app:bygningstype>241</app:bygningstype><app:bygningsstatus>FA</app:bygningsstatus><app:harSefrakminne>false</app:harSefrakminne><gml:pos>60.8351 11.3101</gml:pos></app:Bygning></wfs:member>
+    <wfs:member><app:Bygning><app:bygningsnummer>103</app:bygningsnummer><app:bygningstype>111</app:bygningstype><app:bygningsstatus>RA</app:bygningsstatus><gml:pos>60.8352 11.3102</gml:pos></app:Bygning></wfs:member>
+    <wfs:member><app:Bygning><app:bygningsnummer>104</app:bygningsnummer><app:bygningstype>181</app:bygningstype><app:bygningsstatus>TB</app:bygningsstatus><gml:pos>61.5 11.9</gml:pos></app:Bygning></wfs:member></wfs:FeatureCollection>`;
+  const p = B.parseBygningspunkt(xml); assert.deepEqual(p.map((x) => x.nr), ['101', '102', '104'], 'rammetillatelse (RA) er ikke en stående bygning'); assert.equal(p[0].sefrak, true);
+  assert.deepEqual(B.parseBoks('<gml:coordinates decimal="." cs="," ts=" ">299849.38,6749774.78 299860.08,6749783.54</gml:coordinates>'), [299849.38, 6749774.78, 299860.08, 6749783.54]);
+  // Pikseltelling: to sammenbygde bygninger skilles med boksen
+  const maske = (x, y) => (x >= 10 && x < 30 && y >= 10 && y < 20) || (x >= 30 && x < 50 && y >= 10 && y < 40);
+  assert.equal(B.tellFotavtrykk(maske, 60, 60, { senter: [15, 15] }), 200 + 600, 'uten boks: hele klyngen');
+  assert.equal(B.tellFotavtrykk(maske, 60, 60, { senter: [15, 15], innenfor: [10, 10, 29, 19] }), 200, 'med boks: bare bygningen');
+  assert.equal(B.tellFotavtrykk(maske, 60, 60, { senter: [5, 5], innenfor: [0, 0, 29, 29] }), 200, 'starter i nærmeste fylte piksel');
+  assert.equal(B.tellFotavtrykk(() => false, 10, 10), 0);
+  // Grunnflate: boks fra GetFeatureInfo + maske fra kartbildet (0,1 m per piksel)
+  const hent = async (u) => ({ ok: true, text: async () => (/GetFeatureInfo/.test(u) ? '<gml:coordinates>995,995 1005,1003</gml:coordinates>' : '') });
+  const tell = async (url, w, h) => { const res = 60 / w; return (x, y) => { const e = 970 + x * res; const n = 1030 - y * res; return e >= 995 && e < 1005 && n >= 995 && n < 1003; }; };
+  const g = await B.grunnflate(1000, 1000, { hent, tellPiksler: tell }); assert.equal(g.metode, 'kart'); assert.ok(Math.abs(g.m2 - 80) <= 2, `${g.m2}`);
+  assert.equal((await B.grunnflate(1000, 1000, { hent })).m2, 68, 'uten kartbilde: boks × 0,85');
+  // Hele innhentingen innenfor eiendomsgrensen
+  const grense = { type: 'Polygon', coordinates: [[[11.30, 60.83], [11.32, 60.83], [11.32, 60.84], [11.30, 60.84], [11.30, 60.83]]] };
+  const urler = []; const hent2 = async (u) => { urler.push(u); return { ok: true, text: async () => (/wfs/.test(u) ? xml : '<gml:coordinates>0,0 10,12</gml:coordinates>') }; };
+  const l = await B.hentBygninger(grense, { hent: hent2 }); assert.deepEqual(l.map((x) => x.nr), ['101', '102'], 'bygning 104 ligger utenfor grensen'); assert.equal(l.totalt, 2);
+  assert.deepEqual([(await B.hentBygninger(grense, { hent: hent2, maks: 1 })).length, (await B.hentBygninger(grense, { hent: hent2, maks: 1 })).totalt], [1, 2]);
+  assert.match(urler[0], /wfs\.matrikkelen-bygningspunkt.*bbox=60\.830000,11\.300000,60\.840000,11\.320000/); assert.equal(l[0].grunnflate, 102);
+  // Til taksten: våningshus, driftsbygning, BTA-anslag, SEFRAK → før 1900, og ingen dobbel ved ny henting
+  let i = 0; const nyId = (x) => `${x}${++i}`;
+  const r = B.slaSammen([], [{ ...l[0], grunnflate: 120 }, { ...l[1], grunnflate: 400 }], { nyId });
+  assert.deepEqual(r.liste.map((g) => [g.type, g.bta, g.byggeaar, g.bygningsnummer]), [['vaaningshus', 192, 1890, '101'], ['driftsbygning', 520, null, '102']]);
+  const r2 = B.slaSammen(r.liste, [{ ...l[0], grunnflate: 150 }, { nr: '105', kode: 111, grunnflate: 90 }], { nyId }); assert.equal(r2.lagtTil, 1); assert.equal(r2.liste.length, 3); assert.equal(r2.liste[2].type, 'kaarbolig'); assert.equal(r2.liste[0].bta, 192, 'BTA som finnes, overskrives ikke');
 });
 
 test('Roller: rådgiver/regnskapsfører, og samme rolleliste på serveren, registreringen, dialogen, admin og nettverk', async () => {
