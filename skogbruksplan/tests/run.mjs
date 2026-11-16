@@ -3506,6 +3506,38 @@ test('Tilbud: svar i appen, «ikke aktuelt», beskjed til skogeieren og påminne
   assert.match(js, /postMessage\(\{ skogiq: 'tilbud'/); assert.match(js, /\/avslag\?k=/);
 });
 
+test('Stolpepotensial: furu med høyde, diameter, sakte vekst og alder; gran telles ikke; anslag, feltsjekk og melding', async () => {
+  const ST = await import('../js/stolpe.js'); const { lagDemo } = await import('../js/demo.js');
+  const base = { id: 'b1', nr: '7', areal: 20, treslag: 'F', bonitet: 11, alder: 110, hogstklasse: 5, volumDaa: 25, treantall: 60, hoyde: 19, ekstra: { OVERHOYDE: 21.5, MIDDELDIAMETER: 27, FURU_PST: 90 }, tiltak: [] };
+  const topp = ST.stolpeScore(base, { avstandVei: 120 });
+  assert.equal(topp.stjerner, 5, JSON.stringify(topp)); assert.ok(topp.grunner.some((g) => /21,5 m \(SR16\)/.test(g)) && topp.grunner.some((g) => /27 cm/.test(g)) && topp.grunner.some((g) => /F11: sakte vekst/.test(g)));
+  // Gran telles ikke, heller ikke blandingsskog med lite furu
+  assert.match(ST.stolpeScore({ ...base, treslag: 'G', ekstra: { ...base.ekstra, FURU_PST: 10 }, treslagAndel: { G: 0.9, F: 0.1 } }).uegnet, /For lite furu/);
+  assert.match(ST.stolpeScore({ ...base, treslag: 'G', ekstra: { OVERHOYDE: 22 } }).uegnet, /Ikke furu/);
+  // For lav, for ung, miljøfigur
+  assert.match(ST.stolpeScore({ ...base, ekstra: { ...base.ekstra, OVERHOYDE: 14 } }).uegnet, /For lave trær/);
+  assert.match(ST.stolpeScore({ ...base, alder: 40, hogstklasse: 3 }).uegnet, /for unge/);
+  assert.match(ST.stolpeScore({ ...base, miljo: true }).uegnet, /Miljøfigur/);
+  // Høy bonitet (rask vekst) og tynne trær trekker ned; lang vei litt
+  assert.ok(ST.stolpeScore({ ...base, bonitet: 20 }).score < topp.score * 0.5);
+  assert.ok(ST.stolpeScore({ ...base, ekstra: { ...base.ekstra, MIDDELDIAMETER: 16 } }).stjerner <= 2);
+  assert.ok(ST.stolpeScore(base, { avstandVei: 1500 }).score < ST.stolpeScore(base, { avstandVei: 100 }).score);
+  // Diameter beregnet fra middeltreet når SR16 mangler: 25 m³/daa / 60 trær ≈ 0,42 m³ per tre ved 19 m → ca. 25 cm
+  const d = ST.middeldiameter({ ...base, ekstra: {} }); assert.equal(d.kilde, 'beregnet'); assert.ok(d.verdi > 22 && d.verdi < 28, `${d.verdi}`);
+  // Anslag: 5–10 % av furutrærne (20 daa × 60 × 0,9 = 1080 trær → 54–108 stolper), merverdi mot furu-tømmerpris
+  const a = ST.stolpeAnslag(base, topp); assert.deepEqual(a.stolper, { min: 54, maks: 108 }); assert.ok(a.m3.maks > a.m3.min && a.merverdi.maks > 0);
+  // Feltsjekk: alle krav må være oppfylt
+  const regs = [{ kategori: 'Stolpetre', bestandId: 'b1', stolpe: { antall: 3, sjekk: { rett: true, kvist: true, rate: true, dim: true } } }, { kategori: 'Stolpetre', bestandId: 'b1', stolpe: { antall: 2, sjekk: { rett: true } } }, { kategori: 'Observasjon', bestandId: 'b1' }];
+  assert.deepEqual([ST.feltStolper(regs, 'b1').antall, ST.feltStolper(regs, 'b1').godkjent, ST.feltStolper(regs, 'b2').antall], [5, 3, 0]);
+  // Melding til stolpekjøper
+  const t = ST.befaringTekst([{ b: base, ...topp, anslag: a }], { eiendom: 'Skogli', kommune: 'Løten', navn: 'Ola' });
+  assert.match(t.emne, /Stolpebefaring – Skogli/); assert.match(t.tekst, /Bestand 7: ★★★★★/); assert.match(t.tekst, /54–108 stolper/); assert.doesNotMatch(t.tekst, /Scanpole|WOPAS/);
+  // Demoen har ett furubestand med potensial
+  const l = ST.toppliste(lagDemo(2026).bestand); assert.ok(l.length >= 1 && l.every((x) => ST.furuAndel(x.b) >= 0.6));
+  // Kjøpere nevnes ikke ved navn i appen
+  const { readFileSync: les } = await import('node:fs'); for (const f of ['../js/stolpe.js', '../js/stolpe-ui.js']) assert.doesNotMatch(les(new URL(f, import.meta.url), 'utf8').replace(/https?:\/\/\S+/g, ''), /Scanpole|WOPAS/, f);
+});
+
 test('Roller: rådgiver/regnskapsfører, og samme rolleliste på serveren, registreringen, dialogen, admin og nettverk', async () => {
   const A = await import('../auth.js'); const { readFileSync: les } = await import('node:fs');
   const nokler = Object.keys(A.BRUKERROLLER); assert.ok(nokler.includes('radgiver')); assert.equal(A.BRUKERROLLER.radgiver, 'Rådgiver / regnskapsfører');

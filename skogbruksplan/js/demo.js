@@ -1,6 +1,7 @@
 // Fiktiv demo-eiendom (Hedmarken) – gir noe å se på før man importerer egen plan.
 import { utmTilGeo, arealM2 } from './proj.js';
 import { normaliserBestand } from './model.js';
+import { hoydeOm } from './tiltaksmotor.js';
 
 function prng(frø) {
   let s = frø >>> 0;
@@ -41,8 +42,9 @@ export function lagDemo(iAar = new Date().getFullYear()) {
       const vol = pr.hk === 1 ? 0 : maks * (1 - Math.exp(-k * alder)) ** 3 * (0.8 + r() * 0.35);
       const props = {
         BESTANDNR: nr, TEIG: j < 2 ? 1 : 2, TRESLAG: pr.treslag, BONITET: pr.bonitet, HOGSTKLASSE: pr.hk, ALDER: alder,
-        VOLUM_DAA: Math.round(vol * 10) / 10, TREANTALL: pr.hk === 2 ? Math.round(250 + r() * 250) : pr.hk === 3 ? Math.round(120 + r() * 100) : null,
-        MIDDELHOYDE: pr.hk >= 3 ? Math.round((pr.bonitet * 0.9 * (1 - Math.exp(-0.03 * alder))) * 10) / 10 : null,
+        VOLUM_DAA: Math.round(vol * 10) / 10, TREANTALL: pr.hk === 2 ? Math.round(250 + r() * 250) : pr.hk === 3 ? Math.round(120 + r() * 100) : pr.hk === 4 ? 70 + (alder % 25) : pr.hk === 5 ? 45 + (alder % 25) : null, // uten r(): resten av demoen blir lik
+        // Eldre skog: høyden fra vekstmodellen (bonitet = H40), så demoen får realistiske høyder (bl.a. for stolpepotensialet).
+        MIDDELHOYDE: pr.hk >= 4 ? Math.round(hoydeOm({ treslag: pr.treslag, bonitet: pr.bonitet, alder }, 0) * 10) / 10 : pr.hk === 3 ? Math.round((pr.bonitet * 0.9 * (1 - Math.exp(-0.03 * alder))) * 10) / 10 : null,
         MILJOFIGUR: nr === 10 ? 'Ja' : '',
         MERKNAD: nr === 10 ? 'Gammel furuskog med liggende død ved – MiS-figur' : '',
       };

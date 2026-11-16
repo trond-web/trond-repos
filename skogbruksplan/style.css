@@ -1424,3 +1424,25 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 
 /* Juletresjekken: avslutning med glimt i øyet */
 .jt-glimt { font-size: 12.5px; font-style: italic; color: var(--text-2); margin: 6px 0 0; padding-top: 6px; border-top: 1px dashed var(--border); }
+
+/* 🪵 Stolpepotensial (js/stolpe-ui.js) */
+.kartverktoy .knapp.stolpe-knapp, .knapp.stolpe-knapp { font-weight: 700; }
+.stolpe-panel { position: absolute; left: 12px; top: 128px; z-index: 900; width: min(400px, calc(100% - 24px)); max-height: calc(100% - 150px); overflow: auto; background: var(--surface); color: var(--text); border-radius: 18px; box-shadow: 0 12px 40px rgba(0,0,0,.25); padding: 14px 16px; border-top: 4px solid #8a5a2b; }
+.st-ingress { margin: 4px 0 10px; color: var(--text-2); }
+.st-liste li:hover { outline-color: #8a5a2b; }
+.st-nr { background: #8a5a2b; }
+.st-stj { color: #c98500; letter-spacing: 1px; }
+.st-anslag { color: var(--text) !important; font-weight: 600; }
+.st-markor span { display: grid; place-items: center; font-size: 24px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); position: relative; }
+.st-markor b { position: absolute; right: -6px; top: -4px; background: #8a5a2b; color: #fff; font: 800 10px/16px system-ui; width: 16px; height: 16px; border-radius: 50%; text-align: center; }
+.stolpe-kort { margin: 10px 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, #c98500 9%, var(--surface)); border: 1px solid color-mix(in srgb, #c98500 35%, transparent); display: grid; gap: 4px; font-size: 13.5px; }
+.stolpe-kort.svak { background: var(--surface-2); border-color: var(--border); display: block; }
+.stolpe-kort small { color: var(--text-2); line-height: 1.4; }
+.stolpe-topp { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .stolpe-topp .knapp { margin-left: auto; }
+.stolpe-hint { font-size: 12.5px; margin: 4px 0; padding: 5px 9px; border-radius: 8px; background: color-mix(in srgb, #c98500 10%, transparent); }
+.st-dialog { border: 0; border-radius: 18px; padding: 0; width: min(560px, calc(100% - 24px)); background: var(--surface); color: var(--text); }
+.st-dialog::backdrop { background: rgba(0,0,0,.4); }
+.st-dialog-inn { padding: 16px 18px; display: grid; gap: 8px; }
+.st-dialog .st-tekst { display: grid; gap: 4px; font-weight: 600; font-size: 13.5px; }
+.st-dialog textarea { font: 13px/1.45 inherit; font-family: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100%; }
+@media (max-width: 860px) { .stolpe-panel { top: auto; bottom: 12px; max-height: 60vh; } }

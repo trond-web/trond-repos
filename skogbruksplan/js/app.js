@@ -62,6 +62,7 @@ import { eiendomGrenseLag as eiendomGrenseLagRod } from './eiendomslag.js';
 import { apneTilbakemelding } from './tilbakemelding-ui.js';
 import * as AF from './artsfilter.js';
 import * as JUL from './juletre.js';
+import { lagStolpeUi } from './stolpe-ui.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, settTreslagAndel, avvikHovedtreslag, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag } from './treslag.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
@@ -815,13 +816,29 @@ async function hentVegetasjonForPlan() {
   } catch (e) { melding(`Kunne ikke hente vegetasjonstype: ${e.message}`); }
 }
 
+// ---------- 🪵 Stolpepotensial (js/stolpe.js, js/stolpe-ui.js) – furubestand med sannsynlige stolpetrær ----------
+let stolpeUi = null;
+function stolpe() {
+  if (!stolpeUi) stolpeUi = lagStolpeUi({
+    hentPlan: () => S, inn, kart, L, etikettPunkt, velgBestand, visFane, melding,
+    avstand: (b) => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? a.meter : null; },
+    innlogget: () => !!innloggetBruker()?.registrering, navn: () => innloggetBruker()?.navn || '',
+  });
+  return stolpeUi;
+}
+function startStolper() {
+  const mal = $('#maalBtn'); if (!mal || $('#stolpeBtn')) return;
+  mal.insertAdjacentHTML('afterend', '<button id="stolpeBtn" class="knapp stolpe-knapp" type="button" title="Hvor står det sannsynligvis stolpetrær av furu?">🪵 Stolper</button>');
+  $('#stolpeBtn').addEventListener('click', () => { if (stolpe().apen()) stolpe().lukk(); else { lukkJuletrær(); stolpe().vis(); } });
+}
+
 // ---------- 🎄 Juletresjekken (js/juletre.js) – bare fra 15. november til og med 23. desember ----------
 let juletreLag = null;
 function startJuletid() {
   if (!JUL.erJuletid() || $('#juletreBtn')) return;
   const mal = $('#maalBtn'); if (!mal) return;
   mal.insertAdjacentHTML('afterend', '<button id="juletreBtn" class="knapp juletre-knapp" type="button" title="Hvor finner du lettest et fint juletre?">🎄 Juletrær</button>');
-  $('#juletreBtn').addEventListener('click', () => ($('.juletre-panel') ? lukkJuletrær() : visJuletrær()));
+  $('#juletreBtn').addEventListener('click', () => ($('.juletre-panel') ? lukkJuletrær() : (stolpeUi?.lukk(), visJuletrær())));
 }
 function lukkJuletrær() { $('.juletre-panel')?.remove(); juletreLag?.clearLayers(); }
 function sno() {
@@ -899,6 +916,7 @@ function visDetalj() {
       ${(() => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? `<div><b>${fmt(a.meter)} m</b><span>til nærmeste bilvei${a.meter > veiVisning.maks() ? ' – lang terrengtransport' : ''}</span></div>` : ''; })()}
     </div>
     ${treslagSeksjonHtml(b)}
+    ${stolpe().kortHtml(b)}
     ${artsSeksjonHtml(b)}
     ${b.markfukt ? (() => { const v = fuktVurdering(b.markfukt); return `<div class="bratt-linje fukt-${v.niva}"><div class="bratt-stolpe">${FUKT_KLASSER.map((k) => (b.markfukt.andeler[k.id] ? `<span style="flex:${b.markfukt.andeler[k.id]};background:${k.farge}" title="${esc(k.leg)}: ${Math.round(b.markfukt.andeler[k.id] * 100)} %"></span>` : '')).join('')}${b.markfukt.andeler.torr ? `<span style="flex:${b.markfukt.andeler.torr};background:#e6e1c8" title="Tørt: ${Math.round(b.markfukt.andeler.torr * 100)} %"></span>` : ''}</div><span>💧 ${esc(v.tekst)}</span></div>`; })() : ''}
     ${(() => { const nv = (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade', 'kulturminne'].includes(o.type) && o.geometri && b.geometri && overlapper(b.geometri, o.geometri)); return nv.length ? `<div class="bratt-linje plan-2"><span>${nv.slice(0, 4).map((o) => `${o.type === 'artsomrade' ? '🦉' : o.type === 'kulturminne' ? '🏛' : '🌿'} ${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : esc(o.navn)}`).join('<br>')}${nv.length > 4 ? `<br><small>+ ${nv.length - 4} til</small>` : ''}<br><small>${nv.some((o) => o.type === 'kulturminne') ? 'Kulturminne: ikke kjør over eller skad det, og hold sikringssonen fri (PEFC krav 30). ' : ''}${nv.some((o) => o.type !== 'kulturminne') ? 'Naturtype eller art – vurderes av skogbiologisk kompetanse før hogst (PEFC krav 22).' : ''}</small></span></div>` : ''; })()}
@@ -1179,6 +1197,7 @@ function tiltakRadHtml(t, { velg = false } = {}) {
       <div class="tittel">${utfort ? '<span class="tr-ok" title="Utført">✓</span> ' : ''}${esc(TILTAKSTYPER[t.type]?.navn || t.type)} – bestand <a href="#" data-handling="vis" title="Åpne bestandet">${esc(b.nr)}</a> <span class="hint">${t.aar}${utfort && t.utfortDato ? `, utført ${esc(t.utfortDato)}` : ''}</span>${t.prioritet ? ` <span class="prio prio-${t.prioritet}" title="Prioritet ${t.prioritet} (1 er høyest)">P${t.prioritet}</span>` : ''}${oppdragMerke(t)}</div>
       <div class="info">${t.arealDaa != null && t.arealDaa < (b.areal || 0) - 0.05 ? `${fmt(t.arealDaa, 1)} av ${fmt(b.areal, 1)} daa` : `${fmt(b.areal, 1)} daa`} · ${b.treslag || ''}${b.bonitet ?? ''}${ok.m3 ? ` · ca. ${fmt(ok.m3)} m³` : ''} · ${ok.netto >= 0 ? 'netto' : 'kostnad'} ca. ${fmt(Math.abs(ok.netto))} kr${ok.skogfond ? ` · skogfond ${fmt(ok.skogfond)} kr` : ''}${t.kommentar ? ` · ${esc(t.kommentar)}` : ''}</div>
       ${begrunnelseHtml(t)}
+      ${stolpe().tiltakHint(t)}
       <div class="tr-handlinger">
         ${t.forslag ? '<button class="knapp liten primar" data-handling="godta" type="button">＋ Legg til i planen</button>' : `<button class="knapp liten utfort-knapp${utfort ? ' er-utfort' : ''}" data-handling="utfort" type="button" aria-pressed="${utfort}" title="${utfort ? 'Angre – sett tilbake til planlagt' : 'Marker tiltaket som utført'}">${utfort ? '↶ Angre utført' : '✓ Marker utført'}</button>`}
         ${kanOppdrag && oppdragstype(t.type) ? `<button class="knapp liten tr-tilbud" data-be-om-tilbud data-tiltak-id="${esc(t.id)}" type="button" title="Få pris på dette tiltaket fra en entreprenør, tømmerkjøper eller planteleverandør">📨 Be om tilbud</button><button class="knapp liten" data-handling="nytt-oppdrag" type="button" title="Lag et oppdrag med dette tiltaket – for bestilling, driftsveg og skiltplan">＋ Oppdrag</button>` : ''}
@@ -2604,6 +2623,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '🔒', tittel: 'Vilkår og personvern', under: 'Les erklæringen, last ned dataene dine eller slett kontoen', sok: 'personvern vilkår gdpr samtykke mine data innsyn slett konto eksport', utfor: () => window.open('personvern.html', '_blank', 'noopener') },
     { gruppe: 'Handlinger', ikon: '📣', tittel: 'Gi tilbakemelding', under: 'Stjerner, ros, barkbiller (feil) og forbedringsforslag', sok: 'tilbakemelding forslag forbedring feil ros klage idé ide stjerner fornøyd', utfor: () => apneTilbakemelding({ fane: aktivFaneNavn() }) },
     { gruppe: 'Handlinger', ikon: '🦋', tittel: 'Rødlistede artsfunn (Artskart)', under: 'Vis funn i kartet og vurder dem mot tiltakene (S1–S3)', sok: 'arter rødliste rødlistet artskart artsdatabanken artsfunn truet sårbar artsfilter hensyn', utfor: () => { if (!kart.hasLayer(artsfunnLag)) artsfunnLag.addTo(kart); else if (!S.artsfunn) hentArtsfunnForPlan(); } },
+    { gruppe: 'Handlinger', ikon: '🪵', tittel: 'Stolpepotensial', under: 'Furubestand med sannsynlige stolpetrær – og be om stolpebefaring', sok: 'stolpe stolper stolpevirke furu stolpebefaring stolpekjøper', utfor: () => { lukkJuletrær(); stolpe().vis(); } },
     ...(JUL.erJuletid() ? [{ gruppe: 'Handlinger', ikon: '🎄', tittel: 'Juletresjekken', under: 'Hvor finner du lettest et fint juletre?', sok: 'jul juletre juletrær gran nissen desember', utfor: () => visJuletrær() }] : []),
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål i kartet', under: 'Lengde, areal, omkrets og volum per treslag', sok: 'mål måle måleverktøy lengde areal avstand omkrets volum treslag kubikk daa linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('areal'); } },
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål avstand (lengde)', sok: 'mål avstand lengde meter linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('lengde'); } },
@@ -2941,7 +2961,7 @@ function kobleHendelser() {
 }
 
 async function start() {
-  initKart(); startJuletid(); // 🎄 bare 15. november – 23. desember
+  initKart(); startStolper(); startJuletid(); // 🎄 bare 15. november – 23. desember
   kobleHendelser();
   const lagret = await hent();
   if (lagret) { S = { ...S, ...lagret, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...lagret.innstillinger } }; framskrivPlanTilIAar(); rettHogdIPlan(); }
