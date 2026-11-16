@@ -32,7 +32,7 @@ export const PROFILFELT = { telefon: 30, rolle: 20, foretak: 120, orgnr: 11, adr
 export const ROLLER = ['skogeier', 'bonde', 'radgiver', 'entreprenor', 'annet'];
 // Brukerroller (én eller flere per bruker, obligatorisk ved registrering). Lagres i profilen som «roller».
 // Den eldre enkeltrollen «rolle» over beholdes bare for å foreslå roller til brukere som ble registrert før.
-export const BRUKERROLLER = { skogeier: 'Skogeier', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', offentlig: 'Offentlig' };
+export const BRUKERROLLER = { skogeier: 'Skogeier', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', radgiver: 'Rådgiver / regnskapsfører', offentlig: 'Offentlig' };
 export const rensRoller = (r) => [...new Set((Array.isArray(r) ? r : r == null ? [] : [r]).map((x) => String(x || '').trim().toLowerCase()).filter((x) => BRUKERROLLER[x]))];
 // Versjoner som «1.10» sammenlignes tall for tall. Brukeren må godta på nytt når godtatt versjon er eldre enn kreverGodkjenning.
 export const sammenlignVersjon = (a, b) => { const x = String(a || '0').split('.').map(Number); const y = String(b || '0').split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return Math.sign(d); } return 0; };
@@ -135,7 +135,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       if (finn(u)) return { feil: 'E-postadressen er allerede registrert – bruk «Glemt passord» hvis du ikke husker passordet', status: 409 };
       // Administratornavnene (APP_ADMIN) er reservert: ellers kunne hvem som helst registrere dem først og bli admin.
       if (admins.has(u)) return { feil: 'Brukernavnet er reservert', status: 403 };
-      const rr = rensRoller(roller); if (!rr.length) return { feil: 'Velg minst én rolle (skogeier, entreprenør, innkjøper eller offentlig)', status: 400 };
+      const rr = rensRoller(roller); if (!rr.length) return { feil: 'Velg minst én rolle (skogeier, entreprenør, innkjøper, rådgiver/regnskapsfører eller offentlig)', status: 400 };
       if (!gyldigVilkarVersjon(vilkar)) return { feil: 'Du må godta brukervilkårene og personvernerklæringen for å registrere deg', status: 400 };
       l.push(t);
       const ny = store.lagre({ navn: u, visning: tekst(navn, 80) || u.split('@')[0], epost: u, ...hashPassord(p), pv: 0, rolle: 'bruker', sperret: false, opprettet: t, sistInnlogget: t, innlogginger: 1, profil: { roller: rr }, ...godkjenning({}, vilkar, 'registrering') });

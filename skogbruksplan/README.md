@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.78.1** (2026-11-15) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.79.0** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -857,10 +857,10 @@ Skogeiere kobler seg til innkjøpere og entreprenører, og partene chatter direk
 - **Meldinger:** høyst 2000 tegn, 30 per minutt per bruker og 2000 per kobling. Lest-markør per bruker.
 - **Lagring:** i `NETTVERK_FIL`, ellers `nettverk.json` ved siden av `BRUKER_FIL` (Railway-volumet). Når en bruker slettes, slettes også koblinger og meldinger.
 
-## Roller (Skogeier, Entreprenør, Innkjøper, Offentlig)
+## Roller (Skogeier, Entreprenør, Innkjøper, Rådgiver/regnskapsfører, Offentlig)
 
-Hver bruker har én eller flere roller, lagret i profilen som `profil.roller`. Gyldige nøkler er `skogeier`, `entreprenor`, `innkjoper` og `offentlig` (`BRUKERROLLER` i `auth.js`).
-- **Registrering:** Rollen er obligatorisk. Skjemaet har fire avkrysningskort, og serveren avviser registrering uten gyldig rolle med 400. Ukjente verdier fjernes, og duplikater slås sammen.
+Hver bruker har én eller flere roller, lagret i profilen som `profil.roller`. Gyldige nøkler er `skogeier`, `entreprenor`, `innkjoper`, `radgiver` (Rådgiver / regnskapsfører – skogfaglig rådgiver, regnskap, skatt) og `offentlig` (`BRUKERROLLER` i `auth.js`). Testene sjekker at registreringen, rolledialogen, admin, Nettverk og KI-konteksten har samme liste.
+- **Registrering:** Rollen er obligatorisk. Skjemaet har fem avkrysningskort, og serveren avviser registrering uten gyldig rolle med 400. Ukjente verdier fjernes, og duplikater slås sammen.
 - **Brukere uten rolle:** Etter innlogging (`/api/meg` gir `roller: []`) viser `innlogging.js` en enkel dialog. Den kan ikke lukkes med Esc. Rollen er forhåndsvalgt ut fra den eldre enkeltrollen («bonde» og «skogeier» gir Skogeier, «entreprenør» gir Entreprenør). Dialogen vises i alle sider som laster `innlogging.js` (appen, SkogIQ Felt og kontroller-siden).
 - **Min profil:** Rollene vises som avkrysningskort. Minst én må være valgt, og andre profilendringer beholder rollene.
 - **Admin:** antall brukere per rolle og «uten rolle», og rollene som merker på hver bruker.

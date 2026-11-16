@@ -3426,6 +3426,18 @@ test('Artsfilter: Artskart og Rødlista, livsmiljøprofil, plassering og S1–S3
   assert.deepEqual(A.vurderBestand(null, best).antall, { S1: 0, S2: 0, S3: 0 });
 });
 
+test('Roller: rådgiver/regnskapsfører, og samme rolleliste på serveren, registreringen, dialogen, admin og nettverk', async () => {
+  const A = await import('../auth.js'); const { readFileSync: les } = await import('node:fs');
+  const nokler = Object.keys(A.BRUKERROLLER); assert.ok(nokler.includes('radgiver')); assert.equal(A.BRUKERROLLER.radgiver, 'Rådgiver / regnskapsfører');
+  assert.deepEqual(A.rensRoller(['Radgiver', 'skogeier', 'tull']), ['radgiver', 'skogeier']);
+  const { VILKAR } = await import('../js/personvern.js'); const inn = A.lagInnlogging({ registrering: true });
+  assert.ok(inn.registrer('1', { bruker: 'revisor@x.no', passord: 'regnskap-2026', roller: ['radgiver'], vilkar: VILKAR.versjon }).ok); assert.deepEqual(inn.meg('revisor@x.no').roller, ['radgiver']);
+  const kilde = (f) => les(new URL(`../${f}`, import.meta.url), 'utf8');
+  const fraHtml = [...kilde('logginn.html').matchAll(/name="roller" value="([a-z]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(fraHtml.sort(), [...nokler].sort(), 'registreringen har alle rollene');
+  for (const f of ['js/innlogging.js', 'js/admin.js', 'js/nettverk-ui.js', 'js/ai-kontekst.js']) for (const k of nokler) assert.match(kilde(f), new RegExp(`\\b${k}: [{']`), `${f} mangler rollen ${k}`);
+});
+
 test('Juletresjekken: på 15. nov–23. des, av julaften; score etter høyde, gran, bonitet, tetthet, vei og miljø', async () => {
   const J = await import('../js/juletre.js');
   const d = (m, dag) => new Date(2026, m - 1, dag, 12);

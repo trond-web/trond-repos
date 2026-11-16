@@ -1,7 +1,7 @@
 // Adminsiden (admin.html): hvem som har registrert seg, og hvor mye SkogIQ.ai brukes. Data fra /api/admin/oversikt
 // (auth.js). Bare for administratorer; andre sendes til appen av serveren.
 import { RAILWAY, gyldigToken } from './innlogging.js';
-const ROLLENAVN = { skogeier: 'Skogeier', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', offentlig: 'Offentlig' };
+const ROLLENAVN = { skogeier: 'Skogeier', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', radgiver: 'Rådgiver / regnskapsfører', offentlig: 'Offentlig' };
 
 const API = /github\.io$/.test(location.hostname) ? RAILWAY : '';
 const $ = (s) => document.querySelector(s);

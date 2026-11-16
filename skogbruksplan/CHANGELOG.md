@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.79.0 – Ny rolle: Rådgiver / regnskapsfører (2026-11-16)
+
+*Nytt.* Du kan nå velge rollen Rådgiver / regnskapsfører (skogfaglig rådgiver, regnskap, skatt) når du registrerer deg eller i Min profil – alene eller sammen med andre roller.
+
 ## 1.78.1 – 🎄 Juletresjekken i SkogIQ Felt (2026-11-15)
 
 *Forbedret.* Juletresjekken finnes nå også i SkogIQ Felt: trykk den runde 🎄-knappen i kartet for å se hvor du lettest finner et fint juletre – med markører i kartet, nissetips og snø.
