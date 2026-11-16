@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.84.1** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.85.0** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -799,6 +799,16 @@ Beregnet verdivurdering av hele landbrukseiendommen under **Verdi**. Metoden fø
   - Bebygd eiendom har priskontroll bare med mer enn 35 daa fulldyrka/overflatedyrka jord eller mer enn 500 daa produktiv skog. Unntaket er brukbart bolighus og pris under 3,5 mill. kr (forskrift).
   - Appen nevner bindende forhåndsuttalelse om pris (§ 9 a annet ledd) og at selgeren bærer risikoen ved for høy pris (§ 15 a).
 - **Konsesjonsplikt og boplikt:** etter § 4 første ledd nr. 4 og § 5.
+
+**Bygninger fra Kartverket** (`js/bygninger.js`): knappen «🏛 Hent bygninger fra matrikkelen» henter åpne data, uten innlogging.
+- **Matrikkelen – bygningspunkt (WFS):** stående bygninger innenfor eiendomsgrensen, med bygningsnummer, bygningstype (NS 3457) og SEFRAK.
+- **Grunnflate:** måles i kartbildet fra FKB-Bygning (WMS, 0,1 m per piksel). Appen teller fylte piksler som henger sammen med bygningspunktet, avgrenset av bygningens boks fra GetFeatureInfo, slik at sammenbygde naboer skilles.
+- **Typer i taksten:**
+  - Første bolig blir våningshus, neste kårbolig.
+  - 241 blir driftsbygning, 181 og 249 redskapshus/garasje, lagerbygg blir lager.
+- **BTA** anslås som grunnflate × etasjefaktor: bolig 1,6, driftsbygning 1,3, ellers 1,0.
+- **Byggeår** finnes ikke i åpne data. SEFRAK-bygg får 1890. Mangler byggeåret, regnes 50 % restverdi til det fylles inn (lenke til seeiendom.no).
+- **Ny henting** lager ikke duplikater (samme bygningsnummer). Høyst 40 bygninger per henting.
 
 **Rapport:** utskriftsvennlig takstrapport merket «Beregnet verdivurdering – ikke en sertifisert takst».
 

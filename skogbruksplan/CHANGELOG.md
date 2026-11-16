@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.85.0 – 🏛 Bygninger hentes automatisk til landbrukstaksten (2026-11-16)
+
+*Nytt.* Med ett trykk hentes bygningene på eiendommen fra Matrikkelen (Kartverket) – type, bygningsnummer og SEFRAK – og grunnflaten måles i kartet (FKB-Bygning). BTA anslås fra grunnflaten. Byggeår finnes ikke i åpne data og fylles inn selv; til da regnes 50 % restverdi.
+
 ## 1.84.1 – 🏡 Landbrukstakst: priskontroll etter lovendringen fra 1. juli 2025 (2026-11-16)
 
 *Forbedret.* Priskontrollen følger nå konsesjonsloven § 9 a slik den gjelder fra 1. juli 2025: ubebygd eiendom alltid (også ren skog), bebygd med over 35 daa dyrka jord eller over 500 daa produktiv skog. Appen opplyser også om bindende forhåndsuttalelse om pris og at selgeren bærer risikoen ved for høy pris (§ 15 a).
