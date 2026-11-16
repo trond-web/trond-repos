@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.82.0** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.83.0** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -772,6 +772,37 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
+
+## 🪵 Stolpepotensial (`js/stolpe.js`, `js/stolpe-ui.js`)
+
+Finner furubestandene der det sannsynligvis står stolpetrær. Gran telles ikke.
+
+**Kravene til stolpevirke** (fra skogeierlagene, med den opphevede målingsforskriften fra 1974 som rettesnor):
+- Lengde 8–24 m, rotstokk.
+- Diameter under bark: 17,5–48 cm i rot og 13–35 cm i topp.
+- Rett, uten krok og sleng. Ingen gankvist eller grov kvist. Fri for råte og føyrer.
+- Saktevoksende furu.
+- 5–10 % av furutrærne blir stolper. Pris ca. 600–1 400 kr/m³.
+
+**Poeng (0–100, 0–5 stjerner):**
+- Furuandel: minst 60 %.
+- Overhøyde: minst 16 m, fra 20 m gir lange stolper. Kilde er SR16, ellers middelhøyde × 1,1 eller vekstmodellen.
+- Middeldiameter: 20–40 cm. Kilde er SR16, ellers beregnet fra middeltreet med formtall 0,45.
+- Bonitet: F8–F14.
+- Alder: helst over 80 år.
+- Hogstklasse: IV–V.
+- Avstand til bilvei.
+
+Miljøfigurer utelates. Anslaget er antall stolper, m³ og merverdi mot furu-tømmerprisen.
+
+**Appen:**
+- **Kart:** knappen «🪵 Stolper» gir toppliste med markører.
+- **Bestand:** kort i bestandsinfoen.
+- **Tiltak:** hint på hogsttiltak.
+- **Be om stolpebefaring:** melding i chatten til innkjøperne i nettverket, eller e-post. Kjøpere nevnes ikke ved navn, bare som «stolpekjøper».
+- **Felt:** «🪵» gir lista. Kategorien «Stolpetre» har sjekkliste (rett, kvist, råte, dimensjon) og antall trær.
+
+**Data:** SR16-overhøyde og middeldiameter lagres nå som `OVERHOYDE` og `MIDDELDIAMETER` når planen lages. Demoplanen har fått realistiske høyder for eldre skog.
 
 ## 🎄 Juletresjekken (`js/juletre.js`) – 15. november til 23. desember
 

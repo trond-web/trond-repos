@@ -20,6 +20,7 @@ import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } 
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { apneTilbakemelding } from './tilbakemelding-ui.js';
 import * as JUL from './juletre.js';
+import * as STP from './stolpe.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, treslagKortHtml, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag, settTreslagAndel, fordeling as tsFordeling, avvikHovedtreslag } from './treslag.js';
 import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
@@ -36,7 +37,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const fmt = (v, d = 0) => (v == null || Number.isNaN(v) ? '–' : Number(v).toLocaleString('nb-NO', { maximumFractionDigits: d, minimumFractionDigits: d }));
 const IAAR = new Date().getFullYear();
 const HK_FARGER = ['#fcfdfe', '#f8f6a9', '#d9f6c7', '#9bd47f', '#ef9a7c'];
-const KATEGORIER = ['Observasjon', 'Skade (vind/snø/råte)', 'Barkbille', 'Viltskade', 'Miljøverdi', 'Grense/merke', 'Vei/grøft', 'Kontroll etter tiltak'];
+const KATEGORIER = ['Observasjon', STP.STOLPE_KATEGORI, 'Skade (vind/snø/råte)', 'Barkbille', 'Viltskade', 'Miljøverdi', 'Grense/merke', 'Vei/grøft', 'Kontroll etter tiltak'];
 const LS = { plan: 'skogiq-felt-plan', lag: 'skogiq-felt-lag', start: 'skogiq-start-felt', offline: 'skogiq-offline-', natur: 'skogiq-felt-natur' };
 const ls = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* privat modus */ } } };
 const kanal = 'BroadcastChannel' in window ? new BroadcastChannel('skogiq') : null;
@@ -205,7 +206,7 @@ function zoomPlan() { const bb = planBb(); if (bb) kart.fitBounds([[bb[1], bb[0]
 function tegnRegistreringer() {
   regLag.clearLayers();
   for (const r of P?.registreringer || []) {
-    L.circleMarker([r.lat, r.lon], { radius: 8, color: '#fff', weight: 2.5, fillColor: '#e34948', fillOpacity: 1 })
+    L.circleMarker([r.lat, r.lon], { radius: 8, color: '#fff', weight: 2.5, fillColor: r.kategori === STP.STOLPE_KATEGORI ? '#8a5a2b' : '#e34948', fillOpacity: 1 })
       .on('click', (e) => { L.DomEvent.stopPropagation(e); if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (spor?.tegner()) { spor.leggTilPunkt(e.latlng); return; } visRegistrering(r.id); }).addTo(regLag);
   }
 }
@@ -214,6 +215,24 @@ function tegnRegistreringer() {
 // Et åpent ark har en oppføring i nettleserhistorikken, så tilbakeknappen (Android) og tilbakesveip lukker arket
 // i stedet for å forlate appen.
 let arkOppforing = false; let ignorerPop = false;
+// ---------- 🪵 Stolpepotensial (js/stolpe.js) ----------
+let stolpeLag = null;
+function visStolper() {
+  if (!P) { melding('Velg en plan først.'); return; }
+  const liste = STP.toppliste(P.bestand, { inn: inn() });
+  if (!stolpeLag) stolpeLag = L.layerGroup().addTo(kart); stolpeLag.clearLayers(); juletreLag?.clearLayers();
+  for (const [i, x] of liste.entries()) { const pt = etikettPunkt(x.b.geometri); if (pt) L.marker([pt[1], pt[0]], { icon: L.divIcon({ className: 'st-markor', html: `<span>🪵<b>${i + 1}</b></span>`, iconSize: [34, 34], iconAnchor: [17, 30] }), keyboard: false, zIndexOffset: 1000 }).on('click', () => visBestand(x.b.id, { zoom: true })).addTo(stolpeLag); }
+  const felt = STP.feltStolper(P.registreringer || []);
+  aapneArk(`<h2>🪵 Stolpepotensial</h2>
+    <p class="hint">Furubestand der det sannsynligvis står stolpetrær. Gå gjennom bestandene og registrer trærne som holder mål.</p>
+    ${felt.antall ? `<p>📍 Registrert i felt: <b>${felt.antall}</b> stolpetre${felt.antall === 1 ? '' : 'r'} (${felt.godkjent} med alle krav oppfylt).</p>` : ''}
+    ${liste.length ? `<div class="liste">${liste.map((x, i) => `<div class="rad jt-rad" data-st-best="${esc(x.b.id)}" role="button" tabindex="0"><span class="jt-nr st-nr">${i + 1}</span><div class="rad-tekst"><div class="tittel">Bestand ${esc(x.b.nr)} <span class="jt-stj" aria-label="${x.stjerner} av 5">${'★'.repeat(x.stjerner)}${'☆'.repeat(5 - x.stjerner)}</span></div><div class="under">${esc(x.grunner.join(' · '))}${x.anslag ? ` · anslått ${x.anslag.stolper.min}–${x.anslag.stolper.maks} stolper` : ''}</div></div></div>`).join('')}</div>` : '<p class="hint">Ingen furubestand med stolpepotensial i planen.</p>'}
+    <div class="knapper"><button type="button" class="knapp primar" data-h="ny-stolpe">+ Registrer stolpetre her</button></div>
+    <details class="jt-def"><summary>Hva kreves av en stolpe?</summary><ul>${STP.KRAV.map((k) => `<li>${esc(k)}</li>`).join('')}</ul><p class="hint">${esc(STP.SESONG)}</p></details>
+    <p class="hint">Anslaget bygger på plandata og laserdata. Krok, kvist og råte avgjøres i skogen – stolpekjøperens stolpesyner har siste ord.</p>`);
+  $('#arkInnhold').querySelectorAll('[data-st-best]').forEach((r) => r.addEventListener('click', () => visBestand(r.dataset.stBest, { zoom: true })));
+}
+
 // ---------- 🎄 Juletresjekken ----------
 let juletreLag = null;
 function sno() {
@@ -368,6 +387,7 @@ function visBestand(id, { zoom = false } = {}) {
     ${b.vegetasjon?.kode ? `<p class="hint">Vegetasjonstype ${esc(b.vegetasjon.kode)} ${esc(b.vegetasjon.navn || '')}</p>` : ''}
     ${b.merknad ? `<p class="hint">${esc(b.merknad)}</p>` : ''}
     ${ungskogSeksjon(b)}
+    ${(() => { const x = STP.stolpeScore(b, { inn: inn() }); const f = STP.feltStolper(P.registreringer || [], b.id); return x.stjerner >= 2 || f.antall ? `<div class="st-felt"><b>🪵 Stolpepotensial</b> <span class="jt-stj">${'★'.repeat(x.stjerner)}${'☆'.repeat(5 - x.stjerner)}</span>${f.antall ? ` · ${f.antall} stolpetre${f.antall === 1 ? '' : 'r'} registrert` : ''}<div class="hint">${esc(x.grunner.slice(0, 3).join(' · '))}</div><button type="button" class="knapp" data-h="ny-stolpe">+ Registrer stolpetre</button></div>` : ''; })()}
     <h3>Planlagte tiltak</h3>
     ${motorBanner(b)}
     <div class="liste">${tiltak.slice(0, 6).map((t) => tiltakRad(b, t)).join('') || '<div class="tom">Ingen planlagte tiltak.</div>'}</div>
@@ -564,6 +584,7 @@ function visRegistrering(id) {
   kart.setView([r.lat, r.lon], Math.max(kart.getZoom(), 16));
   const b = r.bestandId ? finn(r.bestandId) : null;
   aapneArk(`<h2>${esc(r.kategori)}</h2><p class="hint">${new Date(r.dato).toLocaleString('nb-NO')}${b ? ` · bestand ${esc(b.nr)}` : ''}</p>
+    ${r.stolpe ? `<p><b>🪵 ${r.stolpe.antall || 1} stolpetre${(r.stolpe.antall || 1) === 1 ? '' : 'r'}</b> – ${STP.SJEKK.every((k) => r.stolpe.sjekk?.[k.id]) ? 'alle krav oppfylt' : 'ikke alle krav oppfylt'}</p><ul class="st-sjekkliste">${STP.SJEKK.map((k) => `<li>${r.stolpe.sjekk?.[k.id] ? '✅' : '⬜'} ${esc(k.tekst)}</li>`).join('')}</ul>` : ''}
     <p>${esc(r.tekst || '')}</p>${r.bilde ? `<img src="${r.bilde}" alt="" style="width:100%;border-radius:12px;margin-top:6px">` : ''}
     <div class="knapper">${b ? `<button type="button" class="knapp" data-bestand-vis="${esc(b.id)}">Vis bestand</button>` : ''}<button type="button" class="knapp fare" data-slett-reg="${esc(r.id)}">Slett</button></div>`);
 }
@@ -578,12 +599,19 @@ function tegnRegSkjema() {
   aapneArk(`<h2>Ny registrering</h2>
     <div class="pos">${pos.kilde === 'gps' ? `📍 GPS-posisjon (±${Math.round(pos.noyaktighet)} m)` : '✛ Flytt kartet slik at korset står på stedet'}${b ? ` · bestand <b>${esc(b.nr)}</b>` : ''}</div>
     <div class="chips">${KATEGORIER.map((k) => `<button type="button" class="chip" data-kat="${esc(k)}" aria-pressed="${r.kategori === k}">${esc(k)}</button>`).join('')}</div>
-    <textarea id="regTekst" rows="3" placeholder="Beskrivelse">${esc(r.tekst || '')}</textarea>
+    ${r.kategori === STP.STOLPE_KATEGORI ? stolpeSjekkHtml(r) : ''}
+    <textarea id="regTekst" rows="3" placeholder="${r.kategori === STP.STOLPE_KATEGORI ? 'Merknad (f.eks. anslått lengde, merket med bånd)' : 'Beskrivelse'}">${esc(r.tekst || '')}</textarea>
     <label class="foto">${r.bilde ? `<img src="${r.bilde}" alt="">` : ''}<span class="knapp">📷 ${r.bilde ? 'Bytt bilde' : 'Ta bilde'}</span><input type="file" accept="image/*" capture="environment" id="regBilde"></label>
     <div class="knapper"><button type="button" class="knapp" data-h="avbryt-reg">Avbryt</button><button type="button" class="knapp primar" data-h="lagre-reg">Lagre</button></div>`);
 }
-function startReg(bestandId = null) {
-  regPagar = { kategori: KATEGORIER[0], tekst: '', bilde: null, bestandId };
+// 🪵 Stolpetre: sjekkliste per tre (js/stolpe.js) og antall trær på stedet.
+function stolpeSjekkHtml(r) {
+  const s = r.stolpe || (r.stolpe = { sjekk: {}, antall: 1 });
+  return `<div class="st-sjekk"><span class="hint">Sjekk treet – alle må være oppfylt for et stolpeemne:</span>${STP.SJEKK.map((k) => `<button type="button" class="chip" data-st-sjekk="${k.id}" aria-pressed="${!!s.sjekk[k.id]}">${s.sjekk[k.id] ? '✓' : '○'} ${esc(k.tekst)}</button>`).join('')}
+    <label class="st-antall">Antall trær her <input id="regStolpeAntall" type="number" min="1" max="200" inputmode="numeric" value="${s.antall || 1}"></label></div>`;
+}
+function startReg(bestandId = null, kategori = null) {
+  regPagar = { kategori: kategori || KATEGORIER[0], tekst: '', bilde: null, bestandId };
   if (bestandId && !(gps.pos && Date.now() - gps.pos.tid < 60000)) { const l = lagPerBestand.get(bestandId); if (l) kart.panTo(l.getBounds().getCenter()); }
   settVisning('reg', false); tegnRegSkjema();
 }
@@ -593,7 +621,8 @@ async function lagreReg() {
   const pos = regPosisjon(); const tekst = $('#regTekst')?.value.trim() || '';
   const b = bestandVed(pos.lat, pos.lon);
   P.registreringer = P.registreringer || [];
-  P.registreringer.unshift({ id: nyId('r'), dato: new Date().toISOString(), kategori: regPagar.kategori, tekst, lat: pos.lat, lon: pos.lon, bestandId: b?.id || regPagar.bestandId || null, bilde: regPagar.bilde, noyaktighet: pos.noyaktighet ?? null, kilde: 'felt' });
+  const stolpe = regPagar.kategori === STP.STOLPE_KATEGORI ? { sjekk: { ...(regPagar.stolpe?.sjekk || {}) }, antall: Math.max(1, Math.min(200, Math.round(Number($('#regStolpeAntall')?.value) || 1))) } : null;
+  P.registreringer.unshift({ id: nyId('r'), dato: new Date().toISOString(), kategori: regPagar.kategori, tekst, lat: pos.lat, lon: pos.lon, bestandId: b?.id || regPagar.bestandId || null, bilde: regPagar.bilde, noyaktighet: pos.noyaktighet ?? null, kilde: 'felt', ...(stolpe ? { stolpe } : {}) });
   avbrytReg(); await lagrePlanen(); tegnRegistreringer();
   melding('Registrering lagret.'); visRegListe(); settVisning('reg', false);
 }
@@ -785,7 +814,8 @@ function kobleHendelser() {
     const reg = e.target.closest('[data-reg]'); if (reg) { visRegistrering(reg.dataset.reg); return; }
     const slett = e.target.closest('[data-slett-reg]'); if (slett) { if (!confirm('Slette registreringen?')) return; merkSlettet(P, 'registreringer', slett.dataset.slettReg); P.registreringer = P.registreringer.filter((r) => r.id !== slett.dataset.slettReg); await lagrePlanen(); tegnRegistreringer(); visRegListe(); return; }
     const st = e.target.closest('[data-tf-status]'); if (st && endring) { endring.utkast = { ...lesEndring(), status: st.dataset.tfStatus }; visEndreTiltak(endring.bid, endring.tid); return; }
-    const kat = e.target.closest('[data-kat]'); if (kat && regPagar) { regPagar.kategori = kat.dataset.kat; regPagar.tekst = $('#regTekst').value; document.querySelectorAll('[data-kat]').forEach((c) => c.setAttribute('aria-pressed', String(c === kat))); return; }
+    const kat = e.target.closest('[data-kat]'); if (kat && regPagar) { const byttet = (regPagar.kategori === STP.STOLPE_KATEGORI) !== (kat.dataset.kat === STP.STOLPE_KATEGORI); regPagar.kategori = kat.dataset.kat; regPagar.tekst = $('#regTekst').value; if (byttet) tegnRegSkjema(); else document.querySelectorAll('[data-kat]').forEach((c) => c.setAttribute('aria-pressed', String(c === kat))); return; }
+    const sj = e.target.closest('[data-st-sjekk]'); if (sj && regPagar?.stolpe) { const id = sj.dataset.stSjekk; regPagar.stolpe.sjekk[id] = !regPagar.stolpe.sjekk[id]; regPagar.stolpe.antall = Number($('#regStolpeAntall')?.value) || 1; regPagar.tekst = $('#regTekst').value; tegnRegSkjema(); return; }
     const steg = e.target.closest('[data-ts-steg]');
     if (steg) { const [t, d] = steg.dataset.tsSteg.split('|'); const inp = document.querySelector(`[data-ts-andel="${t}"]`); inp.value = Math.max(0, Math.min(100, (Number(String(inp.value).replace(',', '.')) || 0) + Number(d))); tsSum(); return; }
     const h = e.target.closest('[data-h]')?.dataset.h; if (!h) return;
@@ -797,6 +827,7 @@ function kobleHendelser() {
     if (h === 'ny-reg') startReg();
     if (h === 'avbryt-reg') { avbrytReg(); visRegListe(); }
     if (h === 'lagre-reg') lagreReg();
+    if (h === 'ny-stolpe') { const pos = regPosisjon(); const b = bestandVed(pos.lat, pos.lon); startReg(b?.id || null, STP.STOLPE_KATEGORI); }
     if (h === 'offline') lastNedOffline();
     if (h === 'nytt') { aapneArk(`<h2>✨ Hva er nytt</h2><p class="hint">SkogIQ Felt og fullversjonen har samme versjon (${esc(VERSJON)}). Nyeste først.</p>${endringsloggHtml({ antall: 20 })}`, { hoy: true }); return; }
     if (h === 'lagre-endring') lagreEndring();
@@ -878,6 +909,9 @@ function kobleHendelser() {
 
 async function start() {
   initKart();
+  // 🪵 Stolpepotensial (js/stolpe.js) – hele året
+  document.querySelector('.kartknapper')?.insertAdjacentHTML('afterbegin', '<button type="button" class="rund stolpe-rund" id="stolpeBtn" title="Stolpepotensial – hvor står det stolpetrær av furu?" aria-label="Stolpepotensial">🪵</button>');
+  $('#stolpeBtn')?.addEventListener('click', visStolper);
   // 🎄 Juletresjekken (js/juletre.js): bare 15. november – 23. desember
   if (JUL.erJuletid()) {
     document.querySelector('.kartknapper')?.insertAdjacentHTML('afterbegin', '<button type="button" class="rund juletre-rund" id="juletreBtn" title="Juletresjekken – hvor finner du et fint juletre?" aria-label="Juletresjekken">🎄</button>');

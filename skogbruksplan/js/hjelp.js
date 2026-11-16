@@ -149,6 +149,12 @@ export const KAPITLER = [
       ${obs('Andre brukere ser navnet ditt, firma, kommune og eventuelt profilbildet – aldri e-postadressen. Begge kan avslutte en kobling; da stenges chatten.')}`,
   },
   {
+    id: 'stolper', ikon: '🪵', tittel: 'Stolpepotensial (furu)',
+    tekst: `<p>Stolper av furu betales godt over sagtømmer. SkogIQ.ai finner furubestandene der det sannsynligvis står stolpetrær, ut fra furuandel, overhøyde, middeldiameter, bonitet, alder og avstand til vei (plandata og SR16). Gran telles ikke.</p>
+      ${steg(['Trykk <b>🪵 Stolper</b> i kartet. De beste bestandene får stjerner, nummer i kartet og et anslag på antall stolper og merverdi.', 'I bestandet ser du <b>🪵 Stolpepotensial</b>. Hogsttiltak i slike bestand får et hint om å be om stolpebefaring før hogst.', 'Trykk <b>📨 Be om stolpebefaring</b>: meldingen går i chatten til innkjøperne du er koblet til, eller som e-post til en stolpekjøper.', 'I SkogIQ Felt (🪵) registrerer du stolpetrær med sjekkliste: rett, kvist, råte og dimensjon.'])}
+      ${obs('Anslaget bygger på plandata og laserdata. Krok, kvist og råte kan bare sjekkes i skogen – stolpekjøperens stolpesyner avgjør. Stolpesynerne går fra oktober til juni.')}`,
+  },
+  {
     id: 'arter', ikon: '🦋', tittel: 'Rødlistede arter og tiltak',
     tekst: `<p>For hvert bestand kan du se rødlistede arter som er funnet i og rundt bestandet (Artskart), og om de påvirkes av tiltakene du planlegger.</p>
       ${steg(['Åpne et bestand og <b>🦋 Rødlistede arter og tiltak</b>. Trykk <b>Hent artsfunn fra Artskart</b> (én gang per plan – funnene lagres i planen).', 'Hver art vurderes mot hvert planlagt tiltak: <b>S1</b> direkte relevant (må vurderes før tiltaket), <b>S2</b> betinget (sjekk forholdene) og <b>S3</b> ikke påvirket. Uten planlagte tiltak vurderes sluttavvirkning.', 'Under hver art står <i>hvorfor</i>: hvor funnet er, hva arten trenger (gammel skog, død ved, på trær, fuktig …) og hva tiltaket påvirker. Lenkene går til rødlistevurderingen med kilder, Artsdatabanken, forskning og GBIF.', 'Kartlaget <b>🦋 Rødlistede artsfunn (Artskart)</b> viser funnene farget etter rødlistekategori.'])}

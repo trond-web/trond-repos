@@ -662,6 +662,8 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
       VOLUM_DAA: r1(volub),
       TREANTALL: trean !== null ? Math.round(trean) : null,
       MIDDELHOYDE: r1(hoydeM),
+      OVERHOYDE: r1(vektet('srhoydeo', 0.1)), // m (SR16, dm) – brukes bl.a. for stolpepotensialet
+      MIDDELDIAMETER: r1(vektet('srdiam_ge8') ?? vektet('srdiam')), // cm i brysthøyde, trær ≥ 8 cm (SR16)
       MILJOFIGUR: miljo ? 'Ja' : null,
       MERKNAD: merknader.join('; ') || null,
       KILDE: k.kilde === 'plan' ? 'Tidligere skogbruksplan (NIBIO) + SR16' : 'SR16',
