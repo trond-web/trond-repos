@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.80.0 – Tilbudsforespørsler til nettverket (2026-11-16)
+
+*Nytt.* Be om tilbud fra innkjøperne og entreprenørene du er koblet til – du velger selv hvem. De får forespørselen i SkogIQ.ai under Nettverk › Tilbudsforespørsler og som melding i chatten, og ser status til de har fått svar. Andre kan fortsatt få en lenke på e-post eller SMS.
+
 ## 1.79.0 – Ny rolle: Rådgiver / regnskapsfører (2026-11-16)
 
 *Nytt.* Du kan nå velge rollen Rådgiver / regnskapsfører (skogfaglig rådgiver, regnskap, skatt) når du registrerer deg eller i Min profil – alene eller sammen med andre roller.

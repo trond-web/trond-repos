@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.79.0** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.80.0** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -742,6 +742,27 @@ Behandlingsgrunnlaget er i hovedsak **avtale** (art. 6 nr. 1 b), ikke samtykke. 
 **DPIA:** `docs/DPIA.md` vurderer om det trengs en vurdering av personvernkonsekvenser. Den trolig ikke påkrevd i dag, men gjøres frivillig. Dokumentet inneholder beskrivelse, nødvendighet og proporsjonalitet, risikovurdering per behandling (R1–R13), handlingsplan (T1–T10) og endringer som gjør den påkrevd. Testene sjekker at den følger versjonen av erklæringen og har med alle behandlingene.
 
 **Behandlingsansvarlig:** Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no (`ANSVARLIG` i `js/personvern.js`). Organisasjonsnummer legges inn når foretak er etablert.
+
+## Tilbudsforespørsler til nettverket (`js/tilbud-nettverk.js`, `tilbud-relay.js`)
+
+Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive koblinger) som skal få en tilbudsforespørsel.
+
+**Skogeieren:**
+- **«📨 Be om tilbud», steg 2:** kort med avkrysning for koblingene, med bilde, firma, rolle og kommuner. Den rollen som passer oppdraget, står først og er merket «passer»: innkjøper for hogst, entreprenør for kultur og vei.
+- **Andre mottakere** legges fortsatt inn med e-post eller mobil og får en lenke.
+- **Utfører-fanen i oppdraget** har samme valg. Nettverksmottakere kan også legges til en forespørsel som allerede er sendt.
+- **Etter sending:** «✓ Levert i SkogIQ.ai» vises for nettverket, og knapper for e-post, SMS og lenke for de andre.
+
+**Innkjøperen eller entreprenøren:**
+- Ser forespørselen under **Nettverk › 📨 Tilbudsforespørsler** med merke på fanen. Hver forespørsel viser tittel, fra hvem, sted, omfang og svarfrist.
+- Status: Ny, Åpnet, ✓ Tilbud sendt, 🏆 Du fikk oppdraget, Gikk til en annen, Avsluttet, Svarfristen er ute eller Utløpt.
+- Får i tillegg en melding i chatten med skogeieren.
+- «Åpne og gi tilbud» åpner svarsiden. Svaret hentes som før under Tiltak › Oppdrag.
+
+**Serveren:**
+- En mottaker med `bruker` godtas bare når avsenderen er innlogget og har en aktiv kobling med brukeren (`nettverk.koblingMellom`). Andre blir vanlige lenkemottakere.
+- `GET /api/tilbud/innboks` gir forespørslene til den innloggede brukeren.
+- Varselet i chatten sendes fra skogeieren i koblingen.
 
 ## 🎄 Juletresjekken (`js/juletre.js`) – 15. november til 23. desember
 

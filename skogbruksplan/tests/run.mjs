@@ -3426,6 +3426,43 @@ test('Artsfilter: Artskart og Rødlista, livsmiljøprofil, plassering og S1–S3
   assert.deepEqual(A.vurderBestand(null, best).antall, { S1: 0, S2: 0, S3: 0 });
 });
 
+test('Tilbud til nettverket: bare koblede mottakere, innboks med status, varsel i chatten, og lenke for de andre', async () => {
+  const { lagTilbudRelay, tilbudApi } = await import('../tilbud-relay.js'); const { lagNettverk } = await import('../nettverk.js'); const TN = await import('../js/tilbud-nettverk.js');
+  const B = { 'ola@x.no': { navn: 'ola@x.no', visning: 'Ola Skog', profil: { roller: ['skogeier'] } }, 'kari@x.no': { navn: 'kari@x.no', visning: 'Kari', profil: { roller: ['innkjoper'], foretak: 'Tømmer AS' } }, 'per@x.no': { navn: 'per@x.no', visning: 'Per', profil: { roller: ['entreprenor'] } } };
+  let tid = Date.UTC(2026, 10, 16, 9); const n = lagNettverk({ brukere: { hent: (u) => B[u] || null, alle: () => Object.values(B) }, naa: () => tid });
+  const k = n.be('ola@x.no', { til: 'kari@x.no', rolle: 'innkjoper' }); n.svar('kari@x.no', k.kobling, 'godta');
+  assert.equal(n.koblingMellom('ola@x.no', 'kari@x.no'), k.kobling); assert.equal(n.koblingMellom('kari@x.no', 'ola@x.no'), k.kobling); assert.equal(n.koblingMellom('ola@x.no', 'per@x.no'), null);
+  const relay = lagTilbudRelay({ naa: () => tid }); const varsler = [];
+  const ctx = (bruker) => ({ bruker: () => (bruker ? { bruker, navn: B[bruker]?.visning } : null), koblet: (a, b) => !!n.koblingMellom(a, b), varsle: (a, b, d) => { varsler.push([a, b, d.tittel]); const kid = n.koblingMellom(a, b); if (kid) n.send(a, kid, `📨 Ny tilbudsforespørsel: ${d.tittel}`); } });
+  const kjor = (metode, url, bruker, kropp) => new Promise((ok) => { const h = {}; const req = { method: metode, url, headers: {}, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(JSON.stringify(kropp))); f(); }, 0); }, destroy() {} }; const res = { writeHead(st) { this.s = st; }, end(b) { ok({ status: this.s, d: JSON.parse(b) }); } }; tilbudApi(relay, req, res, new URL(url, 'http://x').pathname, {}, '/api/tilbud', ctx(bruker)); });
+  const data = { tittel: 'Sluttavvirkning bestand 3 og 7', typeNavn: 'Sluttavvirkning', sted: 'Løten', svarfrist: '2026-11-30', omfang: { bestand: [{ nr: '3', areal: 12.5 }, { nr: '7', areal: 8 }] }, kontakt: { navn: 'Ola' } };
+  // Per er ikke koblet til Ola → kan ikke være nettverksmottaker (bare lenke)
+  const r = await kjor('POST', '/api/tilbud', 'ola@x.no', { data, mottakere: [{ id: 'm1', navn: 'Tømmer AS', bruker: 'KARI@x.no' }, { id: 'm2', navn: 'Per', bruker: 'per@x.no' }, { id: 'm3', navn: 'Ekstern AS' }] });
+  assert.equal(r.status, 200); assert.deepEqual(r.d.nettverk, ['kari@x.no'], 'bare koblede brukere godtas');
+  assert.deepEqual(varsler.map((v) => v[1]), ['kari@x.no']); assert.equal(n.oversikt('kari@x.no').ulest, 1, 'melding i chatten'); assert.match(n.meldinger('kari@x.no', k.kobling).meldinger.at(-1).tekst, /Ny tilbudsforespørsel: Sluttavvirkning/);
+  // Innboks
+  assert.equal((await kjor('GET', '/api/tilbud/innboks', null)).status, 401);
+  let inn = (await kjor('GET', '/api/tilbud/innboks', 'kari@x.no')).d.innboks; assert.equal(inn.length, 1);
+  assert.deepEqual([inn[0].tittel, inn[0].fra, inn[0].bestand, inn[0].areal, inn[0].status, inn[0].apnet, inn[0].svart], ['Sluttavvirkning bestand 3 og 7', 'Ola Skog', 2, 20.5, 'sendt', null, null]);
+  assert.equal((await kjor('GET', '/api/tilbud/innboks', 'per@x.no')).d.innboks.length, 0, 'Per får den ikke i innboksen');
+  // Kari åpner med koden fra innboksen og svarer
+  assert.equal(relay.vis(inn[0].id, inn[0].kode).data.tittel, data.tittel);
+  assert.ok(relay.svar(inn[0].id, inn[0].kode, { pris: 120000, prisform: 'fast' }).ok);
+  inn = relay.innboks('kari@x.no'); assert.ok(inn[0].apnet && inn[0].svart);
+  // Tildelt Kari → «Du fikk oppdraget»
+  const m1 = Object.values(relay.innboks('kari@x.no'))[0]; relay.oppdater(r.d.id, r.d.eier, { status: 'tildelt', mottakere: { valgt: 'm1' } }); assert.equal(relay.innboks('kari@x.no')[0].vunnet, true);
+  // Legg til en nettverksmottaker senere (PUT) gir varsel bare til den nye
+  const p2 = n.be('per@x.no', { til: 'ola@x.no', rolle: 'entreprenor' }); n.svar('ola@x.no', p2.kobling, 'godta'); varsler.length = 0;
+  const r2 = await kjor('POST', '/api/tilbud', 'ola@x.no', { data: { ...data, tittel: 'Planting' }, mottakere: [{ id: 'a', navn: 'Kari', bruker: 'kari@x.no' }] });
+  const pu = await kjor('PUT', `/api/tilbud/${r2.d.id}?e=${r2.d.eier}`, 'ola@x.no', { mottakere: [{ id: 'b', navn: 'Per', bruker: 'per@x.no' }] }); assert.deepEqual(pu.d.nettverk, ['per@x.no']); assert.deepEqual(varsler.map((v) => v[1]), ['kari@x.no', 'per@x.no']);
+  assert.equal(relay.innboks('per@x.no')[0].tittel, 'Planting');
+  // Uten innlogging (lenke-mottakere og tømmerdeling): ingen nettverksmottakere
+  const r3 = relay.opprett({ data, mottakere: [{ id: 'z', navn: 'X', bruker: 'kari@x.no' }] }); assert.deepEqual(r3.nettverk, []);
+  // Klientens hjelpere
+  assert.equal(TN.passerRolle('sluttavvirkning'), 'innkjoper'); assert.equal(TN.passerRolle('planting'), 'entreprenor');
+  const mt = TN.somMottaker({ bruker: 'kari@x.no', navn: 'Kari', foretak: 'Tømmer AS' }, (p) => `${p}1`); assert.deepEqual([mt.bruker, mt.firma, mt.epost, mt.nettverk], ['kari@x.no', 'Tømmer AS', '', true]);
+});
+
 test('Roller: rådgiver/regnskapsfører, og samme rolleliste på serveren, registreringen, dialogen, admin og nettverk', async () => {
   const A = await import('../auth.js'); const { readFileSync: les } = await import('node:fs');
   const nokler = Object.keys(A.BRUKERROLLER); assert.ok(nokler.includes('radgiver')); assert.equal(A.BRUKERROLLER.radgiver, 'Rådgiver / regnskapsfører');

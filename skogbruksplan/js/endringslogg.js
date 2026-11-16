@@ -2,6 +2,7 @@
 // Nyeste først. Første oppføring skal ha samme versjon som js/versjon.js (sjekkes i testene).
 // type: ny = ny funksjon, forbedret = bedre eller utvidet funksjon, rettet = feilretting.
 export const ENDRINGER = [
+  { versjon: '1.80.0', dato: '2026-11-16', type: 'ny', tittel: 'Tilbudsforespørsler til nettverket', tekst: 'Be om tilbud fra innkjøperne og entreprenørene du er koblet til – du velger selv hvem. De får forespørselen i SkogIQ.ai under Nettverk › Tilbudsforespørsler og som melding i chatten, og ser status til de har fått svar. Andre kan fortsatt få en lenke på e-post eller SMS.' },
   { versjon: '1.79.0', dato: '2026-11-16', type: 'ny', tittel: 'Ny rolle: Rådgiver / regnskapsfører', tekst: 'Du kan nå velge rollen Rådgiver / regnskapsfører (skogfaglig rådgiver, regnskap, skatt) når du registrerer deg eller i Min profil – alene eller sammen med andre roller.' },
   { versjon: '1.78.1', dato: '2026-11-15', type: 'forbedret', tittel: '🎄 Juletresjekken i SkogIQ Felt', tekst: 'Juletresjekken finnes nå også i SkogIQ Felt: trykk den runde 🎄-knappen i kartet for å se hvor du lettest finner et fint juletre – med markører i kartet, nissetips og snø.' },
   { versjon: '1.78.0', dato: '2026-11-15', type: 'ny', tittel: '🎄 Juletresjekken', tekst: 'Fra 15. november til lille julaften viser knappen «🎄 Juletrær» i kartet hvor på eiendommen du lettest finner et fint juletre: ungskog med gran i passe høyde, moderat bonitet, lys rundt trærne og kort vei til bilvei. Med juletremarkører, nissetips og litt snø. God jul!' },

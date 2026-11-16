@@ -6,6 +6,7 @@ import { OPPDRAGSTYPER, lagOppdrag, ledig } from './oppdrag.js';
 import { nyForesporsel, offentligForesporsel, foresporselTekst, mailto, smsLenke, KRAV, mangler } from './tilbud.js';
 import { API, RAILWAY } from './plan-synk.js';
 import { TILTAKSTYPER } from './model.js';
+import { hentNettverksmottakere, nettverkValgHtml, somMottaker, fyllBilder } from './tilbud-nettverk.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const tall = (v, d = 0) => (v == null ? '–' : Number(v).toLocaleString('nb-NO', { maximumFractionDigits: d }));
@@ -28,7 +29,7 @@ export function grupper(S, iAar = new Date().getFullYear()) {
   return [...g].map(([type, liste]) => ({ type, liste, aar: Math.min(...liste.map((x) => x.tiltak.aar || iAar)) })).sort((a, c) => a.aar - c.aar);
 }
 
-export function lagHurtigTilbud({ hentPlan, endret, melding, okonomi, tiltakNavn, iAar, kontakt = () => null, apneOppdrag = () => {}, nyId }) {
+export function lagHurtigTilbud({ hentPlan, endret, melding, okonomi, tiltakNavn, iAar, kontakt = () => null, apneOppdrag = () => {}, apneNettverk = () => {}, nyId }) {
   const S = () => hentPlan();
   let st = null; // { steg, type, valgt:Set, mottakere:[], ny:{}, svarfrist, fra, til, merknad, kontakt, o, sender }
   const d = () => document.getElementById('hurtigTilbud');
@@ -47,7 +48,7 @@ export function lagHurtigTilbud({ hentPlan, endret, melding, okonomi, tiltakNavn
       }
     } else if (valgtType) { for (const x of gr.find((g) => g.type === valgtType)?.liste || []) if ((x.tiltak.aar || iAar) <= iAar + 1) valgt.add(x.tiltak.id); }
     const k = plan.tilbudKontakt || kontakt() || {};
-    st = { steg: valgtType ? 1 : 0, type: valgtType, valgt, mottakere: [], ny: {}, svarfrist: pluss(iDag(), 14), fra: '', til: '', merknad: '', kontakt: { navn: k.navn || plan.eiendom?.eier || '', telefon: k.telefon || '', epost: k.epost || '' }, o: null };
+    st = { nett: null, nettFeil: '', steg: valgtType ? 1 : 0, type: valgtType, valgt, mottakere: [], ny: {}, svarfrist: pluss(iDag(), 14), fra: '', til: '', merknad: '', kontakt: { navn: k.navn || plan.eiendom?.eier || '', telefon: k.telefon || '', epost: k.epost || '' }, o: null };
     tegn(); if (!d().open) d().showModal();
   }
 
@@ -74,9 +75,14 @@ export function lagHurtigTilbud({ hentPlan, endret, melding, okonomi, tiltakNavn
     }
     if (st.steg === 2) {
       const reg = (plan.leverandorer || []).filter((l) => !st.mottakere.some((m) => samme(m, l)));
+      const valgteNett = new Set(st.mottakere.filter((m) => m.bruker).map((m) => m.bruker));
+      const nett = st.nett === null ? '<p class="hint">Henter nettverket ditt …</p>' : st.nett.length ? nettverkValgHtml(st.nett, valgteNett, { type: st.type, attr: 'data-ht-nett' }) : `<div class="tn-tom">Du er ikke koblet til noen innkjøpere eller entreprenører ennå. <button type="button" class="lenkeknapp" data-ht="nettverk">Finn dem under Nettverk</button> – da kan du sende forespørsler rett til dem i SkogIQ.ai.${st.nettFeil ? ` <span class="hint">(${esc(st.nettFeil)})</span>` : ''}</div>`;
       return `<h3>Hvem skal gi tilbud?</h3>
-        <p class="hint">Legg til én eller flere – vanligvis ${esc(HVEM[st.type] || 'en entreprenør')}. Flere tilbud gir bedre pris. De får en lenke og svarer uten innlogging.</p>
-        ${st.mottakere.length ? `<div class="ht-mottakere">${st.mottakere.map((m) => `<div class="ht-mottaker"><span><b>${esc(m.firma || m.navn)}</b><span class="hint">${esc([m.firma && m.navn !== m.firma ? m.navn : '', m.epost, m.telefon].filter(Boolean).join(' · ')) || 'uten e-post og mobil – kopier lenken selv'}</span></span><button type="button" class="knapp liten" data-ht="fjern" data-id="${m.id}" aria-label="Fjern">✕</button></div>`).join('')}</div>` : ''}
+        <p class="hint">Velg én eller flere – vanligvis ${esc(HVEM[st.type] || 'en entreprenør')}. Flere tilbud gir bedre pris.</p>
+        <h4 class="ht-del">🤝 Fra nettverket ditt <span class="hint">– får forespørselen i SkogIQ.ai</span></h4>
+        ${nett}
+        <h4 class="ht-del">✉ Andre <span class="hint">– får en lenke på e-post eller SMS og svarer uten innlogging</span></h4>
+        ${st.mottakere.some((m) => !m.bruker) ? `<div class="ht-mottakere">${st.mottakere.filter((m) => !m.bruker).map((m) => `<div class="ht-mottaker"><span><b>${esc(m.firma || m.navn)}</b><span class="hint">${esc([m.firma && m.navn !== m.firma ? m.navn : '', m.epost, m.telefon].filter(Boolean).join(' · ')) || 'uten e-post og mobil – kopier lenken selv'}</span></span><button type="button" class="knapp liten" data-ht="fjern" data-id="${m.id}" aria-label="Fjern">✕</button></div>`).join('')}</div>` : ''}
         ${reg.length ? `<p class="hint" style="margin-bottom:4px">Brukt før:</p><div class="knapperad">${reg.slice(0, 8).map((l, i) => `<button type="button" class="knapp liten" data-ht="reg" data-i="${(plan.leverandorer || []).indexOf(l)}">+ ${esc(l.firma || l.navn)}</button>`).join('')}</div>` : ''}
         <div class="ht-ny">
           <label>Firma eller navn <input data-ht-ny="firma" value="${esc(st.ny.firma || '')}" autocomplete="organization"></label>
@@ -102,8 +108,10 @@ export function lagHurtigTilbud({ hentPlan, endret, melding, okonomi, tiltakNavn
     }
     // Steg 4: sendt – lenkene.
     const o = st.o; const f = o.tilbud; const pub = offentligForesporsel(S(), o, f, { okonomi, tiltakNavn });
-    return `<div class="ht-ferdig"><div class="ht-ok">✓</div><h3>Forespørselen er klar</h3><p class="hint">Send lenken til hver mottaker. Du finner forespørselen og svarene under <b>Tiltak › Oppdrag › Mine tilbudsforespørsler</b> (oppdrag ${esc(o.nr)}), der du sammenligner og velger utfører.</p></div>
-      <div class="ht-mottakere">${f.mottakere.map((m) => { const t = foresporselTekst(pub, m, lenke(o, m)); return `<div class="ht-mottaker"><span><b>${esc(m.firma || m.navn)}</b><span class="hint">${esc([m.epost, m.telefon].filter(Boolean).join(' · ')) || 'ingen e-post eller mobil'}</span></span>
+    const nettM = f.mottakere.filter((m) => m.bruker); const andre = f.mottakere.filter((m) => !m.bruker);
+    return `<div class="ht-ferdig"><div class="ht-ok">✓</div><h3>${andre.length ? 'Forespørselen er klar' : 'Forespørselen er sendt'}</h3><p class="hint">${nettM.length ? `${nettM.length === 1 ? 'Mottakeren' : `De ${nettM.length} i nettverket ditt`} har fått den i SkogIQ.ai – under Nettverk og som melding i chatten med deg. ` : ''}${andre.length ? 'Send lenken til de andre mottakerne. ' : ''}Du finner forespørselen og svarene under <b>Tiltak › Oppdrag › Mine tilbudsforespørsler</b> (oppdrag ${esc(o.nr)}), der du sammenligner og velger utfører.</p></div>
+      ${nettM.length ? `<div class="ht-mottakere">${nettM.map((m) => `<div class="ht-mottaker"><span><b>${esc(m.firma || m.navn)}</b><span class="hint">🤝 Nettverket ditt</span></span><span class="tn-levert">✓ Levert i SkogIQ.ai</span></div>`).join('')}</div>` : ''}
+      <div class="ht-mottakere">${andre.map((m) => { const t = foresporselTekst(pub, m, lenke(o, m)); return `<div class="ht-mottaker"><span><b>${esc(m.firma || m.navn)}</b><span class="hint">${esc([m.epost, m.telefon].filter(Boolean).join(' · ')) || 'ingen e-post eller mobil'}</span></span>
         <span class="knapperad" style="margin:0">${m.epost ? `<a class="knapp liten primar" href="${esc(mailto(m.epost, t))}" data-ht="sendt" data-id="${m.id}">✉ E-post</a>` : ''}${m.telefon ? `<a class="knapp liten${m.epost ? '' : ' primar'}" href="${esc(smsLenke(m.telefon, `${t.emne}: ${lenke(o, m)}`))}" data-ht="sendt" data-id="${m.id}">💬 SMS</a>` : ''}<button type="button" class="knapp liten" data-ht="kopier" data-id="${m.id}">📋 Kopier lenke</button></span></div>`; }).join('')}</div>`;
   }
 
@@ -117,9 +125,13 @@ export function lagHurtigTilbud({ hentPlan, endret, melding, okonomi, tiltakNavn
     return `<button type="button" class="knapp" data-ht="${st.steg === 1 ? 'tilbake-type' : 'tilbake'}">← Tilbake</button><span class="hint ht-mangel">${esc(mangel)}</span><button type="button" class="knapp primar" data-ht="${st.steg === 3 ? 'send' : 'neste'}" ${mangel || st.sender ? 'disabled' : ''}>${st.steg === 3 ? (st.sender ? 'Sender …' : '📨 Send forespørsel') : 'Neste →'}</button>`;
   }
 
+  // Nettverket (innkjøpere/entreprenører skogeieren er koblet til) hentes når steg 2 vises.
+  async function lastNett() { if (st.nett !== null) return; try { st.nett = await hentNettverksmottakere(); } catch (e) { st.nett = []; st.nettFeil = e.message; } if (st?.steg === 2) tegn(); }
   function tegn() {
     const el = d(); if (!el || !st) return;
+    if (st.steg === 2 && st.nett === null) setTimeout(lastNett, 0);
     el.innerHTML = `<div class="ht-topp"><h2>📨 Be om tilbud</h2><button type="button" class="knapp liten" data-ht="lukk" aria-label="Lukk">✕</button></div>${stegLinje()}<div class="ht-kropp">${kropp()}</div><div class="ht-knapper">${knapper()}</div>`;
+    fyllBilder(el);
   }
 
   function leggTilNy() {
@@ -142,11 +154,11 @@ export function lagHurtigTilbud({ hentPlan, endret, melding, okonomi, tiltakNavn
       const mg = mangler(f); if (mg.length) throw new Error(`Mangler ${mg.join(', ')}.`);
       o.tilbud = f;
       let res;
-      try { const svar = await fetch(`${API}/api/tilbud`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: offentligForesporsel(plan, o, f, { okonomi, tiltakNavn }), mottakere: f.mottakere.map((x) => ({ id: x.id, navn: x.navn })) }) }); res = await svar.json().catch(() => ({})); if (!svar.ok) throw new Error(res.feil || `Serveren svarte ${svar.status}`); } catch (e) { throw new Error(e.message?.startsWith('Serveren') || e.message?.startsWith('Logg') ? e.message : 'Ingen kontakt med SkogIQ-serveren. Oppdraget er laget – prøv å sende under Oppdrag › Utfører.'); }
+      try { const svar = await fetch(`${API}/api/tilbud`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: offentligForesporsel(plan, o, f, { okonomi, tiltakNavn }), mottakere: f.mottakere.map((x) => ({ id: x.id, navn: x.navn, ...(x.bruker ? { bruker: x.bruker } : {}) })) }) }); res = await svar.json().catch(() => ({})); if (!svar.ok) throw new Error(res.feil || `Serveren svarte ${svar.status}`); } catch (e) { throw new Error(e.message?.startsWith('Serveren') || e.message?.startsWith('Logg') ? e.message : 'Ingen kontakt med SkogIQ-serveren. Oppdraget er laget – prøv å sende under Oppdrag › Utfører.'); }
       f.relay = { id: res.id, eier: res.eier }; for (const x of f.mottakere) x.kode = res.koder[x.id];
-      f.status = 'sendt'; f.sendt = iDag();
+      f.status = 'sendt'; f.sendt = iDag(); for (const m of f.mottakere) if (m.bruker) m.sendt = iDag(); // levert i nettverket
       plan.tilbudKontakt = st.kontakt;
-      plan.leverandorer = plan.leverandorer || []; for (const m of f.mottakere) { const l = plan.leverandorer.find((x) => samme(x, m)); if (l) Object.assign(l, { firma: m.firma || l.firma, epost: m.epost || l.epost, telefon: m.telefon || l.telefon }); else plan.leverandorer.push({ id: nyId('l'), navn: m.navn, firma: m.firma, epost: m.epost, telefon: m.telefon }); }
+      plan.leverandorer = plan.leverandorer || []; for (const m of f.mottakere.filter((x) => !x.bruker)) { const l = plan.leverandorer.find((x) => samme(x, m)); if (l) Object.assign(l, { firma: m.firma || l.firma, epost: m.epost || l.epost, telefon: m.telefon || l.telefon }); else plan.leverandorer.push({ id: nyId('l'), navn: m.navn, firma: m.firma, epost: m.epost, telefon: m.telefon }); }
       st.o = o; st.steg = 4; st.sender = false; endret({ kart: false }); tegn();
       melding(`Oppdrag ${o.nr} er laget og forespørselen er klar. Send lenkene.`);
     } catch (e) { st.sender = false; endret({ kart: false }); tegn(); melding(e.message, 'feil'); }
@@ -158,7 +170,8 @@ export function lagHurtigTilbud({ hentPlan, endret, melding, okonomi, tiltakNavn
     if (h === 'type') { st.type = k.dataset.type; st.valgt = new Set((grupper(S(), iAar).find((g) => g.type === st.type)?.liste || []).filter((x, i) => i === 0 || (x.tiltak.aar || iAar) <= iAar + 1).map((x) => x.tiltak.id)); st.steg = 1; tegn(); return; }
     if (h === 'tilbake-type') { st.steg = 0; tegn(); return; }
     if (h === 'tilbake') { st.steg = Math.max(0, st.steg - 1); tegn(); return; }
-    if (h === 'neste') { if (st.steg === 2 && (st.ny.firma || '').trim() && !leggTilNy()) return; st.steg += 1; tegn(); return; }
+    if (h === 'neste') { if (st.steg === 2 && (st.ny.firma || '').trim() && !leggTilNy()) return; st.steg += 1; tegn(); if (st.steg === 2) lastNett(); return; }
+    if (h === 'nettverk') { d().close(); st = null; apneNettverk(); return; }
     if (h === 'legg-til') { if (leggTilNy()) tegn(); return; }
     if (h === 'fjern') { st.mottakere = st.mottakere.filter((m) => m.id !== k.dataset.id); tegn(); return; }
     if (h === 'reg') { const l = (S().leverandorer || [])[Number(k.dataset.i)]; if (l) st.mottakere.push({ id: nyId('m'), navn: l.firma || l.navn, firma: l.firma || l.navn, epost: l.epost || '', telefon: l.telefon || '' }); tegn(); return; }
@@ -177,6 +190,7 @@ export function lagHurtigTilbud({ hentPlan, endret, melding, okonomi, tiltakNavn
   document.addEventListener('change', (e) => {
     if (!st || !e.target.closest('#hurtigTilbud')) return; const t = e.target;
     if (t.dataset.htT) { if (t.checked) st.valgt.add(t.dataset.htT); else st.valgt.delete(t.dataset.htT); tegn(); }
+    if (t.dataset.htNett) { const n = (st.nett || []).find((x) => x.bruker === t.dataset.htNett); if (!n) return; st.mottakere = st.mottakere.filter((m) => m.bruker !== n.bruker); if (t.checked) st.mottakere.push(somMottaker(n, nyId)); tegn(); }
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && st?.steg === 2 && e.target.closest?.('#hurtigTilbud [data-ht-ny]')) { e.preventDefault(); if (leggTilNy()) { tegn(); d().querySelector('[data-ht-ny="firma"]')?.focus(); } } });
   return { start };

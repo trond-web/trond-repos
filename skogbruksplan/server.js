@@ -143,7 +143,12 @@ const server = http.createServer(async (req, res) => {
   if (erMottakerKall(req.method, sti) && tilbudApi(tilbudRelay, req, res, sti, SIKKERHET)) return;
   if (erMottakerKall(req.method, sti, '/api/tommer') && tilbudApi(tommerRelay, req, res, sti, SIKKERHET, '/api/tommer')) return;
   if (krevInnlogging(innlogging, req, res, sti, SIKKERHET)) return;
-  if (tilbudApi(tilbudRelay, req, res, sti, SIKKERHET)) return;
+  // Tilbudsforespørsler kan gå til innkjøpere/entreprenører i nettverket: de får dem i innboksen og som melding i chatten.
+  if (tilbudApi(tilbudRelay, req, res, sti, SIKKERHET, '/api/tilbud', {
+    bruker: (q) => { const o = innlogging.aktiv ? innlogging.fraForesporsel(q) : null; return o ? { bruker: o.u, navn: innlogging.meg(o.u)?.navn || o.u } : null; },
+    koblet: (a, b) => !!nettverk?.koblingMellom(a, b),
+    varsle: (a, b, d) => { const kid = nettverk?.koblingMellom(a, b); if (kid) nettverk.send(a, kid, `📨 Ny tilbudsforespørsel: ${d?.tittel || d?.typeNavn || 'oppdrag'}${d?.sted ? ` (${d.sted})` : ''}${d?.svarfrist ? `. Svarfrist ${String(d.svarfrist).split('-').reverse().join('.')}` : ''}. Du finner den under Nettverk › Tilbudsforespørsler.`); },
+  })) return;
   if (tilbudApi(tommerRelay, req, res, sti, SIKKERHET, '/api/tommer')) return;
   if (kontrollerApi(relay, req, res, sti, SIKKERHET)) return;
   if (innlogging.registrering && profilbildeApi(profilbilder, {
