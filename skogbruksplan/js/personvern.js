@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.5', dato: '2026-11-13', kreverGodkjenning: '1.0' };
+export const VILKAR = { versjon: '1.6', dato: '2026-11-16', kreverGodkjenning: '1.0' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -46,7 +46,7 @@ export const BEHANDLINGER = [
     opplysninger: 'Planen eller droneruten som overføres, med en tilfeldig id.', grunnlag: 'initiativ',
     lagring: 'Planer: 90 dager uten bruk. Droneoppdrag: 14 dager. Koder: 15 minutter.', mottakere: 'Bare enhetene du kobler til.', api: ['/api/plan', '/api/plankobling', '/api/kontroller', '/api/kobling'] },
   { id: 'tilbud', navn: 'Tilbudsforespørsler', formaal: 'Sende forespørsel om tilbud på et oppdrag til utførere du velger, og ta imot svarene.',
-    opplysninger: 'Oppdraget (område, tiltak, frister og vilkår), kontaktinformasjonen du oppgir, og navnet og e-postadressen til mottakerne du velger. Svarene fra mottakerne.',
+    opplysninger: 'Oppdraget (område, tiltak, frister og vilkår), kontaktinformasjonen du oppgir, og navnet og e-postadressen til mottakerne du velger. Svarene fra mottakerne, og begrunnelsen når en mottaker svarer «ikke aktuelt». Når mottakeren er en innkjøper eller entreprenør du er koblet til i nettverket, leveres forespørselen i SkogIQ.ai, og det sendes automatiske meldinger i chatten mellom dere (ny forespørsel, svar eller «ikke aktuelt», og påminnelse to dager før svarfristen).',
     grunnlag: 'initiativ', lagring: '180 dager uten bruk.', mottakere: 'Mottakerne du velger. Hver mottaker ser bare forespørselen og sitt eget svar.', api: ['/api/tilbud'] },
   { id: 'tommer', navn: 'Deling med tømmerkjøper', formaal: 'Dele utvalgte bestand og volumer med en tømmerkjøper, som kan svare med pris eller anslag.',
     opplysninger: 'Det du velger å dele: eiendom, bestand, volumer og kart, og kontaktinformasjonen din.',

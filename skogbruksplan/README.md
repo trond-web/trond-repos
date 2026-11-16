@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.80.0** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.81.0** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -763,6 +763,15 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
 - En mottaker med `bruker` godtas bare når avsenderen er innlogget og har en aktiv kobling med brukeren (`nettverk.koblingMellom`). Andre blir vanlige lenkemottakere.
 - `GET /api/tilbud/innboks` gir forespørslene til den innloggede brukeren.
 - Varselet i chatten sendes fra skogeieren i koblingen.
+
+**Svar, avslag og påminnelser:**
+- **I appen:** «Åpne og gi tilbud» åpner svarsiden (`tilbud.html?…&inne=1`) i en ramme under Nettverk. Svarsiden gir appen beskjed med `postMessage` når tilbudet er sendt eller avslått.
+- **Ikke aktuelt:** mottakeren kan takke nei med en valgfri begrunnelse (`POST /api/tilbud/:id/avslag?k=`). Et tilbud sendt senere opphever avslaget. Skogeieren ser «🙅 Takket nei – «begrunnelse»» blant mottakerne.
+- **Beskjed til skogeieren:**
+  - Når en nettverksmottaker svarer, endrer tilbudet eller takker nei, kommer det en melding i chatten.
+  - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
+  - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
+- **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
 
 ## 🎄 Juletresjekken (`js/juletre.js`) – 15. november til 23. desember
 

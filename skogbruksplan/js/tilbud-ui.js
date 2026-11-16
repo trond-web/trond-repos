@@ -74,7 +74,7 @@ export function lagTilbudUi({ hentPlan, endret, melding, nyId, okonomi, tiltakNa
   }
   function oversikt(o, f) {
     const s = sammendrag(S(), o, okonomi); const rader = sammenlign(f, s.areal);
-    const status = (m) => { const svar = f.svar.find((x) => x.mottakerId === m.id); return svar ? `✓ Svart ${dato(svar.mottatt)}` : m.apnet ? `Åpnet ${dato(new Date(m.apnet).toISOString())}` : m.sendt ? `Sendt ${dato(m.sendt)}` : 'Ikke sendt'; };
+    const status = (m) => { const svar = f.svar.find((x) => x.mottakerId === m.id); const avs = (f.avslag || []).find((x) => x.mottakerId === m.id); return svar ? `✓ Svart ${dato(svar.mottatt)}` : avs ? `🙅 Takket nei ${dato(avs.tid)}${avs.grunn ? ` – «${avs.grunn}»` : ''}` : m.apnet ? `Åpnet ${dato(new Date(m.apnet).toISOString())}` : m.sendt ? `Sendt ${dato(m.sendt)}` : 'Ikke sendt'; };
     const send = (m) => { if (m.bruker) return '<span class="tn-levert">🤝 Levert i SkogIQ.ai</span>'; const t = foresporselTekst(pub(o), m, lenke(f, m)); return `${m.epost ? `<a class="knapp liten" href="${esc(mailto(m.epost, t))}" data-tb="merk-sendt" data-id="${esc(m.id)}">✉ E-post</a>` : ''}${m.telefon ? `<a class="knapp liten" href="${esc(smsLenke(m.telefon, `${t.emne}: ${lenke(f, m)}`))}" data-tb="merk-sendt" data-id="${esc(m.id)}">💬 SMS</a>` : ''}<button type="button" class="knapp liten" data-tb="kopier" data-id="${esc(m.id)}">📋 Kopier lenke</button>`; };
     const tildelt = f.status === 'tildelt'; const avsluttet = f.status === 'avsluttet';
     return `<p class="hint">Svarfrist ${esc(dato(f.svarfrist))}${f.prisform === 'enhet' ? ` · ${fmt(f.mengde, 1)} ${esc(f.enhet)}` : ' · fastpris'} · ${f.mottakere.length} mottakere · ${f.svar.length} svar${sistHentet ? ` · hentet ${sistHentet}` : ''}</p>
@@ -127,10 +127,10 @@ export function lagTilbudUi({ hentPlan, endret, melding, nyId, okonomi, tiltakNa
   async function hent(o, tegn, { stille = false } = {}) {
     const f = o.tilbud; if (!f?.relay || henter) return; henter = true; if (!stille) tegn();
     try {
-      const d = await kall(`/api/tilbud/${f.relay.id}/svar?e=${f.relay.eier}`);
+      const d = await kall(`/api/tilbud/${f.relay.id}/svar?e=${f.relay.eier}&sett=1`);
       const manuelle = f.svar.filter((x) => x.manuelt && !d.svar.some((s) => s.mottakerId === x.mottakerId));
       const nye = d.svar.filter((s) => !f.svar.some((x) => x.mottakerId === s.mottakerId && x.mottatt === s.mottatt)).length;
-      f.svar = [...d.svar, ...manuelle];
+      f.svar = [...d.svar, ...manuelle]; f.avslag = d.avslag || [];
       for (const m of f.mottakere) m.apnet = d.apnet?.[m.id] || m.apnet || null;
       sistHentet = new Date().toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
       endret({ kart: false }); if (!stille || nye) melding(nye ? `${nye} nytt tilbud${nye > 1 ? '' : ''} hentet.` : 'Ingen nye tilbud.');
@@ -142,7 +142,7 @@ export function lagTilbudUi({ hentPlan, endret, melding, nyId, okonomi, tiltakNa
     const d = await kall(`/api/tilbud/${f.relay.id}/svar?e=${f.relay.eier}`);
     const manuelle = f.svar.filter((x) => x.manuelt && !d.svar.some((s) => s.mottakerId === x.mottakerId));
     const nye = d.svar.filter((s) => !f.svar.some((x) => x.mottakerId === s.mottakerId && x.mottatt === s.mottatt)).length;
-    f.svar = [...d.svar, ...manuelle]; for (const m of f.mottakere) m.apnet = d.apnet?.[m.id] || m.apnet || null;
+    f.svar = [...d.svar, ...manuelle]; f.avslag = d.avslag || []; for (const m of f.mottakere) m.apnet = d.apnet?.[m.id] || m.apnet || null;
     f.hentet = new Date().toISOString();
     return nye;
   }

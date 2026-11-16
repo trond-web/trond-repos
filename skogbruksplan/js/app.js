@@ -2725,6 +2725,8 @@ function kobleHendelser() {
     // Kommunene der brukeren har skog: åpen plan og planene på enheten (serveren legger til skyen og profilen).
     skogKommuner: async () => [...(S?.eiendom?.kommune || S?.eiendom?.kommunenr ? [{ nr: S.eiendom.kommunenr || '', navn: S.eiendom.kommune || '' }] : []), ...(await listPlaner()).filter((p) => p.kommunenr).map((p) => ({ nr: p.kommunenr, navn: '' }))],
     merke: (n) => { const m = $('#nettverkMerke'); if (m) { m.hidden = !n; m.textContent = n > 9 ? '9+' : String(n || ''); } },
+    // «Se og sammenlign» på et svar: oppdraget med forespørselen i den åpne planen
+    apneTilbud: (rid) => { const o = (S?.oppdrag || []).find((x) => x.tilbud?.relay?.id === rid); if (!o) { melding('Forespørselen hører til en annen plan. Åpne den planen og se under Tiltak › Oppdrag.', 'feil'); return; } visFane('tiltak'); visTiltakVisning('oppdrag'); oppdragVisning?.apne(o.id, 'utforer'); },
   });
   const startNettverk = (meg) => { if (meg?.registrering) nettverk.start(); };
   if (innloggetBruker()) startNettverk(innloggetBruker()); else window.addEventListener('skogiq-innlogget', (e) => startNettverk(e.detail), { once: true });

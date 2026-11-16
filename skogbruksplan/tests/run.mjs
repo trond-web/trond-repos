@@ -3463,6 +3463,49 @@ test('Tilbud til nettverket: bare koblede mottakere, innboks med status, varsel 
   const mt = TN.somMottaker({ bruker: 'kari@x.no', navn: 'Kari', foretak: 'Tømmer AS' }, (p) => `${p}1`); assert.deepEqual([mt.bruker, mt.firma, mt.epost, mt.nettverk], ['kari@x.no', 'Tømmer AS', '', true]);
 });
 
+test('Tilbud: svar i appen, «ikke aktuelt», beskjed til skogeieren og påminnelse før fristen', async () => {
+  const { lagTilbudRelay, tilbudApi, erMottakerKall } = await import('../tilbud-relay.js');
+  let tid = Date.UTC(2026, 10, 16, 9); const relay = lagTilbudRelay({ naa: () => tid });
+  const ctx = { fra: { bruker: 'ola@x.no', navn: 'Ola' }, koblet: (a, b) => b !== 'ekstern@x.no' };
+  const data = { tittel: 'Planting bestand 4', typeNavn: 'Planting', sted: 'Løten', svarfrist: '2026-11-20', enhet: 'planter' };
+  const r = relay.opprett({ data, mottakere: [{ id: 'k', navn: 'Kari', bruker: 'kari@x.no' }, { id: 'p', navn: 'Per', bruker: 'per@x.no' }, { id: 'e', navn: 'Ekstern AS' }] }, ctx);
+  const kode = (u) => relay.innboks(u)[0].kode;
+  assert.ok(erMottakerKall('POST', `/api/tilbud/${r.id}/avslag`)); assert.ok(!erMottakerKall('PUT', `/api/tilbud/${r.id}/avslag`));
+  // Påminnelse: ikke før to dager før fristen, deretter én gang per mottaker som ikke har svart
+  assert.deepEqual(relay.paminnelser(), []);
+  tid = Date.UTC(2026, 10, 18, 9);
+  // Kari svarer, Per takker nei
+  const sv = relay.svar(r.id, kode('kari@x.no'), { prisform: 'fast', pris: 50000, firma: 'Plant AS' });
+  assert.deepEqual([sv.varsel.type, sv.varsel.fra, sv.varsel.til, sv.varsel.firma, sv.varsel.pris], ['svar', 'kari@x.no', 'ola@x.no', 'Plant AS', 50000]);
+  assert.equal(relay.svar(r.id, kode('kari@x.no'), { prisform: 'fast', pris: 48000, firma: 'Plant AS' }).varsel.type, 'endret');
+  assert.equal(relay.avslaa(r.id, kode('kari@x.no'), { grunn: 'x' }).status, 409, 'har allerede gitt tilbud');
+  const av = relay.avslaa(r.id, kode('per@x.no'), { grunn: 'Full ordrebok i desember' });
+  assert.deepEqual([av.varsel.type, av.varsel.grunn], ['avslag', 'Full ordrebok i desember']);
+  assert.equal(relay.vis(r.id, kode('per@x.no')).avslag.grunn, 'Full ordrebok i desember');
+  assert.ok(relay.innboks('per@x.no')[0].avslatt);
+  assert.deepEqual(relay.paminnelser(), [], 'ingen påminnelse når alle i nettverket har svart eller takket nei');
+  // Skogeierens «nye svar», og sett=1 fjerner dem
+  let ny = relay.nyeSvar('ola@x.no'); assert.equal(ny.length, 1); assert.equal(ny[0].svar[0].pris, 48000); assert.equal(ny[0].avslag[0].navn, 'Per');
+  assert.deepEqual(relay.nyeSvar('kari@x.no'), []);
+  const sf = relay.svarFor(r.id, r.eier); assert.equal(sf.avslag[0].mottakerId, 'p'); assert.equal(relay.nyeSvar('ola@x.no').length, 1, 'stille henting fjerner ikke merket');
+  relay.svarFor(r.id, r.eier, { sett: true }); assert.deepEqual(relay.nyeSvar('ola@x.no'), []);
+  // Per ombestemmer seg: tilbud opphever avslaget
+  tid += 60000; relay.svar(r.id, kode('per@x.no'), { prisform: 'fast', pris: 52000 }); assert.equal(relay.svarFor(r.id, r.eier).avslag.length, 0); assert.equal(relay.nyeSvar('ola@x.no')[0].svar[0].navn, 'Per');
+  // Påminnelse til den som verken har svart eller takket nei
+  const r2 = relay.opprett({ data: { ...data, tittel: 'Hogst', svarfrist: '2026-11-20' }, mottakere: [{ id: 'k', navn: 'Kari', bruker: 'kari@x.no' }, { id: 'e', navn: 'Ekstern' }] }, ctx);
+  const p = relay.paminnelser(); assert.deepEqual(p.map((x) => [x.fra, x.til, x.tittel]), [['ola@x.no', 'kari@x.no', 'Hogst']]);
+  assert.deepEqual(relay.paminnelser(), [], 'bare én påminnelse');
+  // HTTP: avslag via åpent kall gir svarVarsel, og varselet sendes ikke til klienten
+  const varsler = [];
+  const kjor = (url, kropp) => new Promise((ok) => { const h = {}; const req = { method: 'POST', url, headers: {}, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { h.data?.(Buffer.from(JSON.stringify(kropp))); f(); }, 0); }, destroy() {} }; const res = { writeHead(st) { this.s = st; }, end(b) { ok({ status: this.s, d: JSON.parse(b) }); } }; tilbudApi(relay, req, res, new URL(url, 'http://x').pathname, {}, '/api/tilbud', null, (v) => varsler.push(v)); });
+  const h = await kjor(`/api/tilbud/${r2.id}/avslag?k=${relay.innboks('kari@x.no').find((x) => x.tittel === 'Hogst').kode}`, { grunn: 'For langt unna' });
+  assert.equal(h.status, 200); assert.equal(h.d.varsel, undefined); assert.deepEqual(varsler.map((v) => [v.type, v.til, v.grunn]), [['avslag', 'ola@x.no', 'For langt unna']]);
+  assert.equal((await kjor(`/api/tilbud/${r2.id}/avslag?k=feil`, {})).status, 404);
+  // Svarsiden kan vises i appen og gir beskjed til appen
+  const { readFileSync: les } = await import('node:fs'); const js = les(new URL('../js/tilbud-svar.js', import.meta.url), 'utf8');
+  assert.match(js, /postMessage\(\{ skogiq: 'tilbud'/); assert.match(js, /\/avslag\?k=/);
+});
+
 test('Roller: rådgiver/regnskapsfører, og samme rolleliste på serveren, registreringen, dialogen, admin og nettverk', async () => {
   const A = await import('../auth.js'); const { readFileSync: les } = await import('node:fs');
   const nokler = Object.keys(A.BRUKERROLLER); assert.ok(nokler.includes('radgiver')); assert.equal(A.BRUKERROLLER.radgiver, 'Rådgiver / regnskapsfører');
@@ -3678,6 +3721,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.3': '43615e4bebe0642f', // tilbakemeldinger og forbedringsforslag
   '1.4': '1d48addaab85b157', // Artsdatabanken (artsfunn og rødliste) som offentlig kilde
   '1.5': '1eee6ddd5e27e456', // profilbilde (valgfritt), vist i Nettverk
+  '1.6': 'a0fb42021e2ae582',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
