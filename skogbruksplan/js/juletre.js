@@ -85,3 +85,14 @@ const NISSE = [
   'Rist treet: Faller det mye barnål nå, faller det enda mer på julaften.',
 ];
 export const nisseTips = (i = Math.floor(Math.random() * NISSE.length)) => NISSE[i % NISSE.length];
+
+// Avslutningen: et tips med glimt i øyet (vises under regelen om egen eiendom, så spøken er tydelig).
+// Det første er en tilbakemelding fra en bruker.
+const GLIMT = [
+  'SkogIQ har hørt at de beste juletrærne nesten alltid står hos naboen. Men ikke stol på AI.',
+  'Det perfekte juletreet finnes ikke. Det blir perfekt når det står i stua med pynt på.',
+  'Jo lenger du leter, jo likere blir alle trærne i skumringen. Bestem deg før det blir mørkt.',
+  'Treet ser alltid mindre ut i skogen enn i stua. Mål takhøyden før du drar.',
+  'Den skjeve toppen kaller vi «sjarm». Den skjulte siden kaller vi «mot veggen».',
+];
+export const glimtTips = (i = Math.floor(Math.random() * GLIMT.length)) => GLIMT[i % GLIMT.length];

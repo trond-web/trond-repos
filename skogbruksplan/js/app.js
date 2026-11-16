@@ -842,7 +842,8 @@ function visJuletrær() {
     ${S.bestand.length ? (liste.length ? `${gode.length ? '' : '<p class="hint">Ingen ideelle juletresteder her – men dette er det nærmeste du kommer:</p>'}<ol class="jt-liste">${liste.map((x, i) => `<li data-jt-best="${esc(x.b.id)}"><span class="jt-nr">${i + 1}</span><div><b>Bestand ${esc(x.b.nr)}</b> <span class="jt-stj" aria-label="${x.stjerner} av 5">${'★'.repeat(x.stjerner)}${'☆'.repeat(5 - x.stjerner)}</span> <span class="hint">${fmt(x.b.areal, 1)} daa · ${x.score} poeng</span><small>${x.grunner.map(esc).join(' · ')}</small></div></li>`).join('')}</ol>` : '<p>Ingen ungskog med gran i juletrehøyde i denne planen. Kanskje naboen har? 😉</p>') : '<p>Åpne eller lag en skogbruksplan, så finner nissen de beste stedene.</p>'}
     <details class="jt-def"><summary>Hva er et fint juletre?</summary><ul>${JUL.KRITERIER.map((k) => `<li>${esc(k)}</li>`).join('')}</ul><p class="hint">I skogen står de fineste i ungskog med gran på 1,5–5 m middelhøyde, moderat bonitet og lys rundt seg – gjerne langs vei, myr og åker. Kilder: ${JUL.KILDER.map((k) => `<a href="${esc(k.url)}" target="_blank" rel="noopener">${esc(k.navn)}</a>`).join(', ')}.</p></details>
     <p class="jt-tips">🎅 ${esc(JUL.nisseTips())}</p>
-    <p class="hint jt-fot">Hogg bare på egen eiendom eller med grunneierens tillatelse – allemannsretten gir ikke rett til å ta juletre. Juletresjekken er på fra 15. november til julaften.</p>`;
+    <p class="hint jt-fot">Hogg bare på egen eiendom eller med grunneierens tillatelse – allemannsretten gir ikke rett til å ta juletre. Juletresjekken er på fra 15. november til julaften.</p>
+    <p class="jt-glimt">😉 ${esc(JUL.glimtTips())}</p>`;
   $('#kart').parentElement.appendChild(p);
   // Rett under verktøylinja (den kan bryte over to linjer)
   const vl = $('.kartverktoy'); if (vl && innerWidth > 860) p.style.top = `${vl.offsetTop + vl.offsetHeight + 8}px`;

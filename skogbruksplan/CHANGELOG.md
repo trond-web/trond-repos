@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.82.0 – 🎄 Juletresjekken: et tips med glimt i øyet (2026-11-16)
+
+*Forbedret.* Juletresjekken avslutter med et lite tips med glimt i øyet, for eksempel «SkogIQ har hørt at de beste juletrærne nesten alltid står hos naboen. Men ikke stol på AI.» Takk for tipset!
+
 ## 1.81.0 – Tilbud: svar i appen, «ikke aktuelt», varsel og påminnelse (2026-11-16)
 
 *Nytt.* Innkjøpere og entreprenører åpner og svarer på tilbudsforespørsler direkte under Nettverk, og kan takke nei med «Ikke aktuelt» og en kort begrunnelse. Skogeieren får beskjed i chatten og ser nye svar under Nettverk › Svar på forespørslene dine, med merke på fanen. To dager før svarfristen får de som ikke har svart, en påminnelse. Personvernerklæringen er oppdatert (versjon 1.6).
