@@ -35,6 +35,7 @@ import { RAPPORTER, lagRapport, lagRapportCsv } from './rapporter.js';
 import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling, hentAr5, lagFigurer, klippTil, trekkUtAvBestand } from './markslag.js';
 import { skadeOppsummering, RISIKONIVAA } from './skade.js';
 import { initVerdi, utenProduksjon } from './verdi-ui.js';
+import { initLandbrukstakst } from './landbrukstakst-ui.js';
 import { initTommerkjoper } from './tommerkjoper-ui.js';
 import { hentDatagrunnlag } from './datagrunnlag.js';
 import { kalibrerPriser, verdiberegning, STANDARD_VERDI } from './verdi.js';
@@ -616,7 +617,7 @@ function angreDeling() {
 let kommuneVisning = null;
 let veiVisning = null;
 let pefcVisning = null;
-let verdiVisning = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null; let maaling = null; let nettverk = null;
+let verdiVisning = null; let takstVisning = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null; let maaling = null; let nettverk = null;
 let aiVisning = null;
 let skogbrandVisning = null;
 let skifteplanVisning = null;
@@ -644,7 +645,7 @@ function visFane(navn) {
   if (navn === 'ksl') kslVisning?.vis();
   if (navn === 'karbon') karbonVisning?.vis();
   if (navn === 'framskriving') tegnFramskriving();
-  if (navn === 'verdi') { verdiVisning?.tegn(); tommerVisning?.tegn(); }
+  if (navn === 'verdi') { verdiVisning?.tegn(); takstVisning?.tegn(); tommerVisning?.tegn(); }
   if (navn === 'nettverk') nettverk?.vis(); else nettverk?.skjul();
   if (navn === 'ai') aiVisning?.vis();
   if (navn === 'rapporter') tegnRapportKort();
@@ -2196,7 +2197,7 @@ function endret({ kart: kartEndret = false, zoom = false } = {}) {
   kslVisning?.oppdater();
   karbonVisning?.oppdater();
   if (!$('#fane-framskriving').hidden) tegnFramskriving();
-  if (!$('#fane-verdi').hidden && !document.activeElement?.closest?.('#fane-verdi')) verdiVisning?.tegn();
+  if (!$('#fane-verdi').hidden && !document.activeElement?.closest?.('#fane-verdi')) { verdiVisning?.tegn(); takstVisning?.tegn(); }
   if (valgtId && !finnBestand(valgtId)) { valgtId = null; visDetalj(); }
 }
 
@@ -2793,6 +2794,8 @@ function kobleHendelser() {
     hentSsb: () => hentDataForAktivPlan(['ssb']),
     visBestand: (id) => { velgBestand(id); visFane('bestand'); },
   });
+  // Landbrukstakst (landbrukstakst-ui.js): beregnet verdivurdering av hele eiendommen – konsesjon, odel og åsete.
+  takstVisning = initLandbrukstakst({ rot: () => $('#landbrukstakst'), hentPlan: () => S, endret: () => { lagreSnart(); }, melding, nyId, iAar: IAAR });
   // Del skogdata med tømmerkjøpere (tommerkjoper-ui.js) – øverst i Verdi-fanen.
   tommerVisning = initTommerkjoper({
     rot: () => $('#tommerDeling'), hentPlan: () => S, endret: () => lagreSnart(), melding, inn, iAar: IAAR,

@@ -3538,6 +3538,41 @@ test('Stolpepotensial: furu med høyde, diameter, sakte vekst og alder; gran tel
   const { readFileSync: les } = await import('node:fs'); for (const f of ['../js/stolpe.js', '../js/stolpe-ui.js']) assert.doesNotMatch(les(new URL(f, import.meta.url), 'utf8').replace(/https?:\/\/\S+/g, ''), /Scanpole|WOPAS/, f);
 });
 
+test('Landbrukstakst: delverdier (skog 4 %, jord, bygninger, rettigheter, boverdi), varianter, priskontroll og konsesjonsplikt', async () => {
+  const LT = await import('../js/landbrukstakst.js'); const { lagDemo } = await import('../js/demo.js');
+  // Bygninger: kostnadsverdi med fradrag for alder, tilstand og bruksverdi; skjønn overstyrer
+  const hus = LT.bygningsverdi({ type: 'vaaningshus', bta: 214, byggeaar: 1960, renovert: 2008 }, 2026);
+  assert.equal(hus.alder, 34); assert.equal(hus.verdi, Math.round((214 * 22000 * (1 - 34 / 80)) / 1000) * 1000);
+  assert.ok(LT.bygningsverdi({ type: 'driftsbygning', bta: 500, byggeaar: 2000, bruksverdi: 'ingen' }, 2026).verdi < LT.bygningsverdi({ type: 'driftsbygning', bta: 500, byggeaar: 2000 }, 2026).verdi * 0.2);
+  assert.equal(LT.bygningsverdi({ type: 'lager', bta: 100, byggeaar: 1900 }, 2026).rest, 0.1, 'restverdi aldri under 10 %');
+  assert.deepEqual([LT.bygningsverdi({ type: 'lager', bta: 100, skjonn: 123456 }).verdi, LT.bygningsverdi({ type: 'lager', skjonn: 5000 }).skjonn], [123000, true]);
+  // Arealer fra AR5 (fulldyrka/overflatedyrka/innmarksbeite) og overstyring
+  const S = { ...lagDemo(2026), markslag: [{ kategori: 'jordbruk', areal: 40, ar5: { artype: 'Fulldyrka jord' } }, { kategori: 'jordbruk', areal: 5, ar5: { artype: 'Overflatedyrka jord' } }, { kategori: 'jordbruk', areal: 3, ar5: { artype: 'Innmarksbeite' } }, { kategori: 'myr', areal: 10 }] };
+  let a = LT.arealer(S); assert.deepEqual([a.full, a.overflate, a.beite, a.myr, a.dyrka], [40, 5, 3, 10, 45]);
+  S.takst = { arealer: { full: 30 } }; a = LT.arealer(S); assert.deepEqual([a.full, a.fraPlan.full, a.dyrka], [30, 40, 35]);
+  // Hele beregningen
+  S.takst = { arealer: {}, jord: { full: 140, overflate: 90, beite: 40, rasjonalisering: 50 }, bygninger: [{ id: 'g1', type: 'vaaningshus', bta: 200, byggeaar: 1990 }, { id: 'g2', type: 'driftsbygning', bta: 400, byggeaar: 2010 }], rettigheter: [{ id: 'j', navn: 'Jakt', aarlig: 2000, belop: 0 }, { id: 'f', navn: 'Fiske', aarlig: 0, belop: 20000 }], boverdi: 2000000, borett: 100000, asetefradrag: 20 };
+  const r = LT.beregnTakst(S, { iAar: 2026 }); const del = (id) => r.deler.find((d) => d.id === id);
+  assert.ok(del('skog').verdi > 0 && /4 %/.test(del('skog').metode));
+  assert.equal(del('full').perDaa, Math.round((140 / 0.04) * 1.5)); assert.equal(del('full').verdi, Math.round((40 * 140 / 0.04 * 1.5) / 1000) * 1000);
+  assert.equal(del('j').verdi, 50000, 'jakt 2000 kr/år ÷ 4 %'); assert.equal(del('f').verdi, 20000);
+  assert.equal(del('boverdi').verdi, LT.BOVERDI_MAKS, 'boverdi høyst 1,5 mill.'); assert.equal(del('borett').verdi, -100000);
+  assert.equal(r.sum, r.deler.reduce((s, d) => s + d.verdi, 0));
+  assert.equal(r.varianter.konsesjon.verdi, Math.round(r.sum / 10000) * 10000); assert.equal(r.varianter.odel.verdi, r.varianter.konsesjon.verdi);
+  assert.equal(r.varianter.asete.verdi, Math.round(((r.sum - LT.BOVERDI_MAKS) * 0.8) / 10000) * 10000, 'åsete: uten boverdi, 20 % fradrag');
+  assert.ok(r.varianter.asete.verdi < r.varianter.odel.verdi);
+  // Priskontroll og konsesjonsplikt
+  assert.equal(r.priskontroll.svar, 'ja'); assert.equal(r.konsesjonsplikt.plikt, true); assert.match(r.konsesjonsplikt.boplikt, /boplikt/);
+  assert.equal(LT.priskontroll({ dyrka: 50, beite: 0, produktiv: 0 }, { harBolig: true, verdi: 3000000 }).svar, 'nei', 'under 3,5 mill. med bolighus');
+  assert.equal(LT.priskontroll({ dyrka: 20, beite: 0, produktiv: 100 }, { harBolig: true, verdi: 9e6 }).svar, 'nei');
+  assert.equal(LT.priskontroll({ dyrka: 10, beite: 0, produktiv: 0 }, { harBolig: false, verdi: 1e6 }).svar, 'ja', 'ubebygd med dyrka jord');
+  assert.equal(LT.priskontroll({ dyrka: 0, beite: 0, produktiv: 800 }, { harBolig: false, verdi: 5e6 }).svar, 'usikker', 'ren skog: sjekk reglene');
+  assert.equal(LT.konsesjonsplikt({ total: 90, dyrka: 30, produktiv: 50 }, { harBolig: true }).plikt, false);
+  assert.equal(LT.konsesjonsplikt({ total: 90, dyrka: 30, produktiv: 50 }, { harBolig: false }).plikt, true, 'ubebygd er konsesjonspliktig');
+  // Uten takstdata: standardverdier, ingen bygninger
+  const r0 = LT.beregnTakst(lagDemo(2026), { iAar: 2026 }); assert.ok(r0.sum > 0 && r0.deler.every((d) => d.gruppe === 'skog'));
+});
+
 test('Roller: rådgiver/regnskapsfører, og samme rolleliste på serveren, registreringen, dialogen, admin og nettverk', async () => {
   const A = await import('../auth.js'); const { readFileSync: les } = await import('node:fs');
   const nokler = Object.keys(A.BRUKERROLLER); assert.ok(nokler.includes('radgiver')); assert.equal(A.BRUKERROLLER.radgiver, 'Rådgiver / regnskapsfører');
@@ -3755,6 +3790,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.4': '1d48addaab85b157', // Artsdatabanken (artsfunn og rødliste) som offentlig kilde
   '1.5': '1eee6ddd5e27e456', // profilbilde (valgfritt), vist i Nettverk
   '1.6': 'a0fb42021e2ae582',
+  '1.7': 'ad76546af094b915',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
