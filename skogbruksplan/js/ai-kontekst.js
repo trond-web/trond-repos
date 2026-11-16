@@ -20,7 +20,7 @@ export function lagKontekst(S, { iAar = new Date().getFullYear(), pefcFunn = [],
   d.push(`# Skogbruksplan: ${e.navn || 'uten navn'}`);
   d.push(`Kommune: ${e.kommune || '–'}${e.kommunenr ? ` (${e.kommunenr})` : ''}. Gnr/bnr: ${e.gnrbnr || '–'}. Eier: ${e.eier || '–'}. Takstår: ${e.takstAar || '–'}. Dagens år: ${iAar}.`);
   // Brukerens profil (Min profil): rolle og det brukeren har skrevet om gården og skogen.
-  const ROLLENAVN = { skogeier: 'skogeier', entreprenor: 'entreprenør', innkjoper: 'innkjøper (tømmer)', offentlig: 'offentlig forvaltning' };
+  const ROLLENAVN = { skogeier: 'skogeier', entreprenor: 'entreprenør', innkjoper: 'innkjøper (tømmer)', radgiver: 'rådgiver/regnskapsfører (skogfaglig rådgivning, regnskap og skatt)', offentlig: 'offentlig forvaltning' };
   const roller = (profil?.roller || []).map((r) => ROLLENAVN[r] || r).join(', ');
   if (profil && (roller || profil.rolle || profil.om || profil.foretak)) d.push(`Brukeren: ${[roller ? `roller: ${roller}` : profil.rolle && `rolle ${profil.rolle}`, profil.foretak && `gård/foretak ${profil.foretak}`, profil.andelslag && `skogeierandelslag ${profil.andelslag}`].filter(Boolean).join(', ') || '–'}.${profil.om ? ` Om gården og skogen (skrevet av brukeren): ${String(profil.om).slice(0, 600)}` : ''}`);
   if (S.metadata) {
