@@ -24,8 +24,8 @@ export const RENTE = 4; // % – nedre grense for kapitaliseringsrenten for jord
 export const BOVERDI_MAKS = 1500000;
 export const PRISKONTROLL_GRENSE = 3500000; // under dette med brukbart bolighus: ingen priskontroll
 export const KILDER = [
-  { navn: 'Konsesjonsloven §§ 9 og 9a (Lovdata)', url: 'https://lovdata.no/dokument/NL/lov/2003-11-28-98' },
-  { navn: 'Rundskriv M-1/2021 Konsesjon, priskontroll og boplikt', url: 'https://www.regjeringen.no/no/dokumenter/konsesjon-priskontroll-og-boplikt/id2849398/' },
+  { navn: 'Konsesjonsloven §§ 9, 9 a og 15 a (Lovdata – endret ved lov 6. juni 2025 nr. 27)', url: 'https://lovdata.no/lov/2003-11-28-98/§9a' },
+  { navn: 'Rundskriv M-1/2021 Konsesjon, priskontroll og boplikt (justert 23. juni 2026)', url: 'https://www.regjeringen.no/no/dokumenter/konsesjon-priskontroll-og-boplikt/id2849398/' },
   { navn: 'Rundskriv M-3/2002 Priser på landbrukseiendommer ved konsesjon', url: 'https://www.regjeringen.no/no/dokumenter/m-32002-priser-pa-landbrukseiendommer-ve/id109014/' },
   { navn: 'Statsforvalteren: Priskontroll etter konsesjonsloven § 9a (2025)', url: 'https://prod.statsforvalteren.no/contentassets/f03ba78616de483bb0e008db6af238e9/digitalmoteplass-17.1.2025.-priskontroll-etter-konsesjonsloven.pdf' },
   { navn: 'Odelsloven § 49 (odelstakst)', url: 'https://lovdata.no/dokument/NL/lov/1974-06-28-58' },
@@ -151,16 +151,23 @@ export function beregnTakst(S, { iAar = new Date().getFullYear() } = {}) {
   return { takst: t, arealer: a, deler, sum: rund(sum), boverdi, varianter, priskontroll: priskontroll(a, { harBolig, verdi: Number(t.kjopesum) || varianter.konsesjon.verdi, kjopesum: Number(t.kjopesum) || null }), konsesjonsplikt: konsesjonsplikt(a, { harBolig }), skogInfo };
 }
 
-// Priskontroll etter konsesjonsloven § 9a.
+// Priskontroll etter konsesjonsloven § 9 a (endret ved lov 6. juni 2025 nr. 27, i kraft 1. juli 2025):
+//   * Ubebygd eiendom til landbruksformål: alltid priskontroll – også ren skog.
+//   * Bebygd eiendom: bare med mer enn 35 daa fulldyrka/overflatedyrka jord ELLER mer enn 500 daa produktiv skog.
+//   * Unntak (forskrift): bebygd med brukbart bolighus og pris under 3,5 mill. kr.
+//   * Nytt: eieren kan kreve bindende forhåndsuttalelse om pris (§ 9 a annet ledd), og avtalen kan ikke gjøres
+//     gjeldende hvis konsesjon avslås fordi prisen er for høy – selgeren bærer risikoen (§ 15 a).
+export const PRISKONTROLL_MERKNAD = 'Eieren kan be kommunen om en bindende forhåndsuttalelse om hvor høy pris som godtas (konsesjonsloven § 9 a annet ledd). Avslås konsesjon fordi prisen er for høy, kan avtalen ikke gjøres gjeldende – selgeren bærer risikoen (§ 15 a).';
 export function priskontroll(a, { harBolig, verdi, kjopesum = null }) {
-  const dyrka = a.dyrka; const kr = (v) => `${(v / 1e6).toLocaleString('nb-NO', { maximumFractionDigits: 2 })} mill. kr`;
-  if (harBolig && dyrka > 35) {
-    if (verdi < PRISKONTROLL_GRENSE) return { svar: 'nei', tekst: `Bebygd med over 35 daa dyrka jord, men ${kjopesum ? 'kjøpesummen' : 'beregnet verdi'} (${kr(verdi)}) er under ${kr(PRISKONTROLL_GRENSE)}. Med brukbart bolighus (vei, vann og avløp i orden) gjøres det ikke priskontroll.` };
-    return { svar: 'ja', tekst: `Bebygd eiendom med ${dyrka.toLocaleString('nb-NO', { maximumFractionDigits: 1 })} daa fulldyrka/overflatedyrka jord (over 35 daa): prisen kontrolleres mot verdien av de enkelte delene.` };
+  const dyrka = a.dyrka; const kr = (v) => `${(v / 1e6).toLocaleString('nb-NO', { maximumFractionDigits: 2 })} mill. kr`; const d1 = (v) => v.toLocaleString('nb-NO', { maximumFractionDigits: 1 });
+  if (!harBolig) {
+    if (dyrka > 0 || a.beite > 0 || a.produktiv > 0) return { svar: 'ja', merknad: PRISKONTROLL_MERKNAD, tekst: `Ubebygd eiendom til landbruksformål${!dyrka && !a.beite ? ' (ren skog)' : ''}: det gjøres priskontroll uansett størrelse (§ 9 a, fra 1. juli 2025).` };
+    return { svar: 'nei', tekst: 'Ingen jordbruksareal eller produktiv skog: ikke priskontroll.' };
   }
-  if (!harBolig && (dyrka > 0 || a.beite > 0)) return { svar: 'ja', tekst: 'Ubebygd eiendom med dyrka jord eller innmarksbeite: det gjøres priskontroll.' };
-  if (a.produktiv > 0 && !dyrka && !a.beite) return { svar: 'usikker', tekst: 'Ren skogeiendom: priskontroll for rene skogeiendommer ble etter det vi kjenner til gjeninnført i 2025. Sjekk gjeldende regler (rundskriv M-1/2021 med senere endringer) hos kommunen.' };
-  return { svar: 'nei', tekst: 'Bebygd eiendom med 35 daa dyrka jord eller mindre: det gjøres ikke priskontroll.' };
+  const grunn = [dyrka > 35 ? `${d1(dyrka)} daa fulldyrka/overflatedyrka jord (over 35 daa)` : '', a.produktiv > 500 ? `${d1(a.produktiv)} daa produktiv skog (over 500 daa)` : ''].filter(Boolean);
+  if (!grunn.length) return { svar: 'nei', tekst: 'Bebygd eiendom med høyst 35 daa dyrka jord og høyst 500 daa produktiv skog: det gjøres ikke priskontroll.' };
+  if (verdi < PRISKONTROLL_GRENSE) return { svar: 'nei', tekst: `Bebygd med ${grunn.join(' og ')}, men ${kjopesum ? 'kjøpesummen' : 'beregnet verdi'} (${kr(verdi)}) er under ${kr(PRISKONTROLL_GRENSE)}. Med brukbart bolighus (vei, vann og avløp i orden) gjøres det ikke priskontroll.` };
+  return { svar: 'ja', merknad: PRISKONTROLL_MERKNAD, tekst: `Bebygd eiendom med ${grunn.join(' og ')}: prisen kontrolleres mot verdien av de enkelte delene (§ 9 a).` };
 }
 // Konsesjonsplikt (konsesjonsloven § 4 første ledd nr. 4 og § 5 andre ledd).
 export function konsesjonsplikt(a, { harBolig }) {

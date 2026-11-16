@@ -152,7 +152,7 @@ export const KAPITLER = [
     id: 'landbrukstakst', ikon: '🏡', tittel: 'Landbrukstakst (beregnet)',
     tekst: `<p>Under <b>Verdi › 🏡 Landbrukstakst</b> beregner SkogIQ.ai verdien av hele landbrukseiendommen etter samme metode som konsesjonsmyndighetene og landbrukstakstmenn bruker: hver del for seg, og så summen.</p>
       ${steg(['<b>Skog</b> og <b>jord</b> får avkastningsverdi med 4 % kapitaliseringsrente. Skogen regnes fra bestandene, jorda fra AR5-arealene og årlig netto per daa (kan endres).', 'Legg inn <b>bygninger</b> med type, BTA, byggeår og tilstand – appen foreslår kostnadsverdi (nybyggpris med fradrag for alder og egnethet). Du kan sette skjønnsverdi.', 'Legg inn <b>jakt, fiske, utmarksbeite og andre rettigheter</b>, <b>boverdi</b> (høyst 1,5 mill. kr) og eventuelle fradrag.', 'Du får <b>konsesjonsverdi/markedsverdi</b>, <b>odelstakst</b> og <b>åsetestakst</b>, om det er priskontroll og konsesjonsplikt, og en takstrapport du kan skrive ut.'])}
-      ${obs('Dette er en beregnet verdivurdering, ikke en sertifisert takst. Til salg, odelsløsning, skifte og lån trengs takst fra sertifisert landbrukstakstmann. Sjekk gjeldende rundskriv for priskontroll på rene skogeiendommer.')}`,
+      ${obs('Dette er en beregnet verdivurdering, ikke en sertifisert takst. Til salg, odelsløsning, skifte og lån trengs takst fra sertifisert landbrukstakstmann. Priskontrollen følger konsesjonsloven § 9 a slik den gjelder fra 1. juli 2025: ubebygd eiendom alltid (også ren skog), bebygd med over 35 daa dyrka jord eller over 500 daa produktiv skog.')}`,
   },
   {
     id: 'stolper', ikon: '🪵', tittel: 'Stolpepotensial (furu)',
