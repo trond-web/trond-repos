@@ -3528,6 +3528,7 @@ test('Juletresjekken: på 15. nov–23. des, av julaften; score etter høyde, gr
   assert.equal(topp.stjerner, 5); assert.ok(topp.score >= 95, `${topp.score}`); assert.ok(topp.grunner.some((g) => /juletrehøyde/.test(g)) && topp.grunner.some((g) => /80 m fra bilvei/.test(g)));
   assert.ok(J.juletreScore({ ...base, treslag: 'F' }).score < topp.score, 'furu er nest best');
   assert.equal(J.juletreScore({ ...base, treslag: 'L' }).score < 20, true, 'lauv gir ikke juletrær');
+  assert.match(J.glimtTips(0), /hos naboen\. Men ikke stol på AI/); assert.equal(J.glimtTips(5), J.glimtTips(0));
   assert.ok(J.juletreScore({ ...base, bonitet: 23 }).score < topp.score, 'høy bonitet gir glisne trær');
   assert.ok(J.juletreScore({ ...base, ungskog: { treantallFor: 1500 } }).score < topp.score, 'for tett');
   assert.ok(J.juletreScore(base, { avstandVei: 900 }).score < J.juletreScore(base, { avstandVei: 100 }).score, 'langt å bære');

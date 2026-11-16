@@ -235,7 +235,8 @@ function visJuletrær() {
     ${liste.length ? `${gode.length ? '' : '<p class="hint">Ingen ideelle juletresteder her – men dette er det nærmeste du kommer:</p>'}<div class="liste">${liste.map((x, i) => `<div class="rad jt-rad" data-jt-best="${esc(x.b.id)}" role="button" tabindex="0"><span class="jt-nr">${i + 1}</span><div class="rad-tekst"><div class="tittel">Bestand ${esc(x.b.nr)} <span class="jt-stj" aria-label="${x.stjerner} av 5">${'★'.repeat(x.stjerner)}${'☆'.repeat(5 - x.stjerner)}</span></div><div class="under">${fmt(x.b.areal, 1)} daa · ${x.grunner.map(esc).join(' · ')}</div></div></div>`).join('')}</div>` : '<p>Ingen ungskog med gran i juletrehøyde i denne planen. Kanskje naboen har? 😉</p>'}
     <details class="jt-def"><summary>Hva er et fint juletre?</summary><ul>${JUL.KRITERIER.map((k) => `<li>${esc(k)}</li>`).join('')}</ul></details>
     <p class="jt-tips">🎅 ${esc(JUL.nisseTips())}</p>
-    <p class="hint">Hogg bare på egen eiendom eller med grunneierens tillatelse – allemannsretten gir ikke rett til å ta juletre.</p>`);
+    <p class="hint">Hogg bare på egen eiendom eller med grunneierens tillatelse – allemannsretten gir ikke rett til å ta juletre.</p>
+    <p class="jt-glimt">😉 ${esc(JUL.glimtTips())}</p>`);
   const ark = $('#arkInnhold');
   ark.querySelectorAll('[data-jt-best]').forEach((r) => r.addEventListener('click', () => visBestand(r.dataset.jtBest, { zoom: true })));
 }

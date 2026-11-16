@@ -282,3 +282,4 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .sno i { position: absolute; top: -30px; color: #fff; text-shadow: 0 0 3px rgba(80,110,140,.8); font-style: normal; animation: sno-fall linear 2 forwards; }
 @keyframes sno-fall { to { transform: translateY(105vh) rotate(260deg); opacity: .2; } }
 @media (prefers-color-scheme: dark) { .jt-tips { background: #3a1c20; color: #f4c7cc; } }
+.jt-glimt { font-size: 13px; font-style: italic; opacity: .8; margin: 8px 0 0; padding-top: 6px; border-top: 1px dashed currentColor; }
