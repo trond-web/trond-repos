@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.6', dato: '2026-11-16', kreverGodkjenning: '1.0' };
+export const VILKAR = { versjon: '1.7', dato: '2026-11-16', kreverGodkjenning: '1.0' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -39,7 +39,7 @@ export const BEHANDLINGER = [
     opplysninger: 'Stjerner (1–5), type, teksten du skriver, hvilken del av appen du var i, appversjon, navnet ditt og e-postadressen (brukernavnet), og status og svar fra administrator.',
     grunnlag: 'initiativ', lagring: 'Til du sletter kontoen, eller administrator sletter tilbakemeldingen.', mottakere: 'Bare administrator.', api: ['/api/tilbakemelding'] },
   { id: 'sky', navn: 'Skylagring av skogbruksplaner', formaal: 'Lagre planene dine på serveren, slik at de er tilgjengelige på alle enhetene dine.',
-    opplysninger: 'Skogbruksplanene med eiendom, bestand, tiltak, notater, bilder og sporlogger du har lagt inn.',
+    opplysninger: 'Skogbruksplanene med eiendom, bestand, tiltak, notater, bilder og sporlogger du har lagt inn, og verdivurderingen (landbrukstakst) med bygninger, rettigheter og eventuell kjøpesum.',
     grunnlag: 'avtale', lagring: 'Til du sletter planen. De 10 siste versjonene tas vare på, og slettede planer ligger 30 dager i papirkurven.',
     mottakere: 'Ingen, med mindre du selv deler (se Tilbud, Tømmerkjøper og Nettverk).', api: ['/api/sky'] },
   { id: 'synk', navn: 'Overføring mellom enheter', formaal: 'Flytte en plan mellom PC og SkogIQ Felt med en kort kode, og sende droneoppdrag til fjernkontrollen.',

@@ -1446,3 +1446,28 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .st-dialog .st-tekst { display: grid; gap: 4px; font-weight: 600; font-size: 13.5px; }
 .st-dialog textarea { font: 13px/1.45 inherit; font-family: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100%; }
 @media (max-width: 860px) { .stolpe-panel { top: auto; bottom: 12px; max-height: 60vh; } }
+
+/* 🏡 Landbrukstakst (js/landbrukstakst-ui.js) */
+.lt-varianter { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 6px 0 10px; }
+.lt-variant { border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; display: grid; gap: 2px; background: var(--surface-2); }
+.lt-variant span { font-size: 12.5px; color: var(--text-2); font-weight: 600; } .lt-variant b { font-size: 20px; } .lt-variant small { color: var(--text-2); font-size: 11.5px; line-height: 1.35; }
+.lt-v-konsesjon { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.lt-status { display: grid; gap: 6px; font-size: 13.5px; margin-bottom: 10px; }
+.lt-pk { padding: 8px 10px; border-radius: 10px; background: var(--surface-2); border-left: 4px solid var(--border); }
+.lt-pk-ja { border-left-color: #c98500; } .lt-pk-nei { border-left-color: var(--accent); } .lt-pk-usikker { border-left-color: #b4302f; }
+.lt-advarsel { color: #b4302f; }
+.lt-tabell td.hint { font-size: 12px; } .lt-tabell tr.lt-fradrag td:last-child { color: #b4302f; }
+.lt-del { margin: 8px 0; border: 1px solid var(--border); border-radius: 12px; padding: 6px 12px; } .lt-del summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+.lt-bygg { border-bottom: 1px dashed var(--border); padding: 8px 0; }
+.lt-bygg-fot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } .lt-bygg-fot .knapp { margin-left: auto; }
+.skjema.fire-kol { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.lt-forbehold { font-size: 12px; }
+@media (max-width: 900px) { .lt-varianter { grid-template-columns: 1fr; } .skjema.fire-kol { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lt-kort { container-type: inline-size; }
+.lt-metode { display: block; color: var(--text-2); font-size: 11.5px; line-height: 1.35; }
+.lt-tabell td.tall { white-space: nowrap; vertical-align: top; }
+@container (max-width: 640px) {
+  .lt-varianter { grid-template-columns: 1fr; }
+  .lt-kort .skjema.fire-kol, .lt-kort .skjema.tre-kol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.lt-tabell { table-layout: auto; width: 100%; } .lt-tabell td:first-child { white-space: normal; min-width: 0; } .lt-tabell .lt-metode { white-space: normal; overflow-wrap: anywhere; }

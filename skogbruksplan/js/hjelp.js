@@ -149,6 +149,12 @@ export const KAPITLER = [
       ${obs('Andre brukere ser navnet ditt, firma, kommune og eventuelt profilbildet – aldri e-postadressen. Begge kan avslutte en kobling; da stenges chatten.')}`,
   },
   {
+    id: 'landbrukstakst', ikon: '🏡', tittel: 'Landbrukstakst (beregnet)',
+    tekst: `<p>Under <b>Verdi › 🏡 Landbrukstakst</b> beregner SkogIQ.ai verdien av hele landbrukseiendommen etter samme metode som konsesjonsmyndighetene og landbrukstakstmenn bruker: hver del for seg, og så summen.</p>
+      ${steg(['<b>Skog</b> og <b>jord</b> får avkastningsverdi med 4 % kapitaliseringsrente. Skogen regnes fra bestandene, jorda fra AR5-arealene og årlig netto per daa (kan endres).', 'Legg inn <b>bygninger</b> med type, BTA, byggeår og tilstand – appen foreslår kostnadsverdi (nybyggpris med fradrag for alder og egnethet). Du kan sette skjønnsverdi.', 'Legg inn <b>jakt, fiske, utmarksbeite og andre rettigheter</b>, <b>boverdi</b> (høyst 1,5 mill. kr) og eventuelle fradrag.', 'Du får <b>konsesjonsverdi/markedsverdi</b>, <b>odelstakst</b> og <b>åsetestakst</b>, om det er priskontroll og konsesjonsplikt, og en takstrapport du kan skrive ut.'])}
+      ${obs('Dette er en beregnet verdivurdering, ikke en sertifisert takst. Til salg, odelsløsning, skifte og lån trengs takst fra sertifisert landbrukstakstmann. Sjekk gjeldende rundskriv for priskontroll på rene skogeiendommer.')}`,
+  },
+  {
     id: 'stolper', ikon: '🪵', tittel: 'Stolpepotensial (furu)',
     tekst: `<p>Stolper av furu betales godt over sagtømmer. SkogIQ.ai finner furubestandene der det sannsynligvis står stolpetrær, ut fra furuandel, overhøyde, middeldiameter, bonitet, alder og avstand til vei (plandata og SR16). Gran telles ikke.</p>
       ${steg(['Trykk <b>🪵 Stolper</b> i kartet. De beste bestandene får stjerner, nummer i kartet og et anslag på antall stolper og merverdi.', 'I bestandet ser du <b>🪵 Stolpepotensial</b>. Hogsttiltak i slike bestand får et hint om å be om stolpebefaring før hogst.', 'Trykk <b>📨 Be om stolpebefaring</b>: meldingen går i chatten til innkjøperne du er koblet til, eller som e-post til en stolpekjøper.', 'I SkogIQ Felt (🪵) registrerer du stolpetrær med sjekkliste: rett, kvist, råte og dimensjon.'])}

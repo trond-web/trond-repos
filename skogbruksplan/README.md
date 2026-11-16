@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.83.0** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.84.0** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -772,6 +772,36 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
+
+## 🏡 Landbrukstakst – beregnet (`js/landbrukstakst.js`, `js/landbrukstakst-ui.js`)
+
+Beregnet verdivurdering av hele landbrukseiendommen under **Verdi**. Metoden følger konsesjonsloven §§ 9 og 9a og rundskrivene M-1/2021 og M-3/2002: hver del verdsettes for seg.
+
+**Delene:**
+- **Skog:** avkastningsverdi med 4 % (`verdiberegning` med 4 % rente), minus kapitalisert veivedlikehold.
+- **Fulldyrka, overflatedyrka og innmarksbeite:** arealer fra AR5, som kan overstyres. Verdien er årlig netto per daa ÷ 4 %, med valgfri rasjonaliseringsgevinst. Standard er 140, 90 og 40 kr/daa per år.
+- **Utmark, jakt, fiske og rettigheter:** årlig netto ÷ 4 % pluss skjønnsbeløp.
+- **Bygninger:** kostnadsverdi = BTA × nybyggpris × restverdi × tilstand × bruksverdi.
+  - Restverdien går ned lineært over levetiden, men aldri under 10 %.
+  - Renovering gir yngre effektiv alder.
+  - Standardpriser og levetid: våningshus 22 000 kr/m² og 80 år, driftsbygning 9 000 kr/m² og 50 år. Prisene er kalibrert mot en ekte landbrukstakst og kan overstyres, med skjønnsverdi per bygning.
+- **Boverdi:** høyst 1,5 mill. kr. Fradrag for borett eller kår.
+
+**Varianter:**
+- Konsesjonsverdi / markedsverdi (salg, skifte, lån).
+- Odelstakst (verdi ved fritt salg med landbruksformål).
+- Åsetestakst (uten boverdi, med et skjønnsmessig fradrag på 20 % som standard).
+
+**Vurderinger:**
+- **Priskontroll:**
+  - Ja for bebygd eiendom med mer enn 35 daa dyrka jord, men ikke med brukbart bolighus under 3,5 mill. kr.
+  - Ja for ubebygd eiendom med jordbruksareal.
+  - Ren skog står som «må sjekkes».
+- **Konsesjonsplikt og boplikt:** etter § 4 første ledd nr. 4 og § 5.
+
+**Rapport:** utskriftsvennlig takstrapport merket «Beregnet verdivurdering – ikke en sertifisert takst».
+
+**Lagring:** dataene ligger i `S.takst`. Personvernerklæringen er versjon 1.7.
 
 ## 🪵 Stolpepotensial (`js/stolpe.js`, `js/stolpe-ui.js`)
 

@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.84.0 – 🏡 Landbrukstakst (beregnet) (2026-11-16)
+
+*Nytt.* Verdi-fanen beregner nå verdien av hele landbrukseiendommen etter metoden i konsesjonsloven og rundskrivene: skog og jord med avkastningsverdi (4 %), bygninger med kostnadsverdi, rettigheter og boverdi. Du får konsesjonsverdi/markedsverdi, odelstakst og åsetestakst, vurdering av priskontroll og konsesjonsplikt, og en takstrapport til utskrift. Personvernerklæringen er oppdatert (versjon 1.7).
+
 ## 1.83.0 – 🪵 Stolpepotensial for furu (2026-11-16)
 
 *Nytt.* SkogIQ.ai finner furubestandene der det sannsynligvis står stolpetrær – ut fra furuandel, høyde, diameter, bonitet, alder og vei – med stjerner, kart og anslag på antall stolper og merverdi. Be om stolpebefaring i chatten til innkjøperne dine eller på e-post, få hint på hogsttiltak, og registrer stolpetrær med sjekkliste i felt.
