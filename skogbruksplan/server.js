@@ -81,6 +81,22 @@ const relay = lagRelay({ fil: process.env.KONTROLLER_FIL || iData('kontroller.js
 const planRelay = lagPlanRelay({ fil: process.env.PLAN_FIL || iData('plan-synk.json') });
 // Tilbudsforespørsler til utførere (tilbud-relay.js). Mottakerne svarer via lenke uten innlogging.
 const tilbudRelay = lagTilbudRelay({ fil: process.env.TILBUD_FIL || iData('tilbud.json') });
+const datoNo = (d) => String(d || '').split('-').reverse().join('.');
+const krNo = (v) => `${Math.round(Number(v)).toLocaleString('nb-NO')} kr`;
+// Svar og «Ikke aktuelt» fra en innkjøper/entreprenør i nettverket: beskjed til skogeieren i chatten (fra mottakeren).
+function tilbudSvarVarsel(v) {
+  const kid = nettverk?.koblingMellom(v.fra, v.til); if (!kid) return;
+  const pris = v.pris != null ? krNo(v.pris) : v.enhetspris != null ? `${Number(v.enhetspris).toLocaleString('nb-NO')} kr per ${v.enhet || 'enhet'}` : '';
+  const tekst = v.type === 'avslag' ? `🙅 ${v.firma} kan ikke ta oppdraget «${v.tittel}»${v.grunn ? `: «${v.grunn}»` : '.'}`
+    : `${v.type === 'endret' ? '✏️ Endret tilbud' : '✅ Nytt tilbud'} fra ${v.firma} på «${v.tittel}»${pris ? `: ${pris} eks. mva` : ''}. Sammenlign under Tiltak › Oppdrag.`;
+  nettverk.send(v.fra, kid, tekst);
+}
+// Påminnelse to dager før svarfristen til nettverksmottakere som ikke har svart (sjekkes hver time).
+function tilbudPaminnelser() {
+  if (!nettverk) return;
+  for (const p of tilbudRelay.paminnelser()) { const kid = nettverk.koblingMellom(p.fra, p.til); if (kid) nettverk.send(p.fra, kid, `⏰ Påminnelse (automatisk): svarfristen for «${p.tittel}»${p.sted ? ` (${p.sted})` : ''} er ${datoNo(p.svarfrist)}. Gi tilbud eller trykk «Ikke aktuelt» under Nettverk › Tilbudsforespørsler.`); }
+}
+setTimeout(tilbudPaminnelser, 60000).unref(); setInterval(tilbudPaminnelser, 3600000).unref();
 // Deling med tømmerkjøpere (js/tommerkjoper.js). Lagres ved siden av BRUKER_FIL (Railway-volumet) når TOMMER_FIL ikke er satt.
 const tommerRelay = lagTilbudRelay({ fil: process.env.TOMMER_FIL || (process.env.BRUKER_FIL ? path.join(path.dirname(process.env.BRUKER_FIL), 'tommer.json') : null), rens: rensTommerSvar, sjekk: sjekkTommerSvar });
 // Innlogging (auth.js): brukernavn og passord settes som miljøvariabler på serveren, aldri i koden.
@@ -140,7 +156,7 @@ const server = http.createServer(async (req, res) => {
   if (backupApi(backup, { erAdmin: (q) => { const o = innlogging.fraForesporsel(q); return o ? innlogging.erAdmin(o.u) : null; }, cors: corsFor }, req, res, sti, SIKKERHET)) return;
   // Utførernes visning og svar er åpne (personlig kode i lenken). Oppdragsgiverens kall (opprette, hente svar, tildele)
   // krever innlogging når den er slått på, og eiernøkkelen.
-  if (erMottakerKall(req.method, sti) && tilbudApi(tilbudRelay, req, res, sti, SIKKERHET)) return;
+  if (erMottakerKall(req.method, sti) && tilbudApi(tilbudRelay, req, res, sti, SIKKERHET, '/api/tilbud', null, tilbudSvarVarsel)) return;
   if (erMottakerKall(req.method, sti, '/api/tommer') && tilbudApi(tommerRelay, req, res, sti, SIKKERHET, '/api/tommer')) return;
   if (krevInnlogging(innlogging, req, res, sti, SIKKERHET)) return;
   // Tilbudsforespørsler kan gå til innkjøpere/entreprenører i nettverket: de får dem i innboksen og som melding i chatten.
@@ -148,7 +164,7 @@ const server = http.createServer(async (req, res) => {
     bruker: (q) => { const o = innlogging.aktiv ? innlogging.fraForesporsel(q) : null; return o ? { bruker: o.u, navn: innlogging.meg(o.u)?.navn || o.u } : null; },
     koblet: (a, b) => !!nettverk?.koblingMellom(a, b),
     varsle: (a, b, d) => { const kid = nettverk?.koblingMellom(a, b); if (kid) nettverk.send(a, kid, `📨 Ny tilbudsforespørsel: ${d?.tittel || d?.typeNavn || 'oppdrag'}${d?.sted ? ` (${d.sted})` : ''}${d?.svarfrist ? `. Svarfrist ${String(d.svarfrist).split('-').reverse().join('.')}` : ''}. Du finner den under Nettverk › Tilbudsforespørsler.`); },
-  })) return;
+  }, tilbudSvarVarsel)) return;
   if (tilbudApi(tommerRelay, req, res, sti, SIKKERHET, '/api/tommer')) return;
   if (kontrollerApi(relay, req, res, sti, SIKKERHET)) return;
   if (innlogging.registrering && profilbildeApi(profilbilder, {

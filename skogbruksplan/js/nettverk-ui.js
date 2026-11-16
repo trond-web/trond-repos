@@ -15,8 +15,8 @@ export const antall = (n, r) => `${nb(n)} ${n === 1 ? ROLLE[r].entall : ROLLE[r]
 const tid = (ms) => { const d = new Date(ms); const idag = new Date(); return d.toDateString() === idag.toDateString() ? d.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' }) + (d.getFullYear() !== idag.getFullYear() ? ` ${d.getFullYear()}` : ''); };
 
 // skogKommuner() → [{ nr, navn }]: kommunene til planene på enheten (skogeiere ser aktører i disse kommunene).
-export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKommuner = async () => [] }) {
-  let data = null; let feil = ''; let laster = false; let sok = { q: '', rolle: '', liste: null, laster: false }; let chat = null; let poll = null; let bakgrunn = null; let sistUlest = 0; let synlig = false; let kvRed = null; let kvVelger = null; let innboks = []; /* tilbudsforespørsler til innkjøpere/entreprenører */ let epostForslag = null; // ferdig e-post etter invitasjon (mailto)
+export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKommuner = async () => [], apneTilbud = () => {} }) {
+  let data = null; let feil = ''; let laster = false; let sok = { q: '', rolle: '', liste: null, laster: false }; let chat = null; let poll = null; let bakgrunn = null; let sistUlest = 0; let synlig = false; let kvRed = null; let kvVelger = null; let innboks = []; /* tilbudsforespørsler til innkjøpere/entreprenører */ let nyeSvar = []; /* svar til skogeieren */ let tbApen = null; /* forespørselen som er åpen i appen */ let epostForslag = null; // ferdig e-post etter invitasjon (mailto)
   async function kall(sti, { metode = 'GET', kropp } = {}) {
     const r = await fetch(`${API}${sti}`, { method: metode, headers: kropp ? { 'Content-Type': 'application/json' } : {}, credentials: 'same-origin', body: kropp ? JSON.stringify(kropp) : undefined });
     const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.feil || `Serveren svarte ${r.status}`), { status: r.status }); return j;
@@ -30,10 +30,12 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKom
     try { data = await kall('/api/nettverk'); feil = ''; } catch (e) { feil = e.message; }
     // Tilbudsforespørsler fra skogeiere i nettverket (bare for innkjøpere og entreprenører)
     if (data && erAktor()) { try { innboks = (await kall('/api/tilbud/innboks')).innboks || []; } catch { /* beholder forrige */ } } else innboks = [];
+    // Nye svar og «ikke aktuelt» på skogeierens forespørsler
+    if (data && harRolle('skogeier')) { try { nyeSvar = (await kall('/api/tilbud/nye-svar')).nyeSvar || []; } catch { /* beholder forrige */ } } else nyeSvar = [];
     laster = false; oppdaterMerke(); if (synlig && !chat) tegn();
   }
   function oppdaterMerke() {
-    const n = (data?.ulest || 0) + (data?.forespørsler || 0) + nyeTilbud().length; merke(n);
+    const n = (data?.ulest || 0) + (data?.forespørsler || 0) + nyeTilbud().length + nyeSvar.length; merke(n);
     if (data && data.ulest > sistUlest && !(chat && synlig)) { const ny = data.koblinger.find((k) => k.ulest && k.siste && !k.siste.fraMeg); if (ny) melding(`💬 Ny melding fra ${ny.motpart.navn}: «${ny.siste.tekst.slice(0, 60)}»`); }
     sistUlest = data?.ulest || 0;
   }
@@ -83,6 +85,7 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKom
     const aktive = data.koblinger.filter((k) => k.status === 'aktiv' && k.jegEr === 'skogeier');
     return `<section class="nv-del">
       <h3>🌲 Som skogeier</h3>
+      ${nyeSvarHtml()}
       ${liste('🪵 Mine innkjøpere', aktive.filter((k) => k.rolle === 'innkjoper'), 'Ingen ennå. Finn en innkjøper under og be om kobling.')}
       ${liste('🚜 Mine entreprenører', aktive.filter((k) => k.rolle === 'entreprenor'), 'Ingen ennå. Finn en entreprenør under og be om kobling.')}
       <h4 class="undertittel">Finn innkjøpere og entreprenører</h4>
@@ -92,13 +95,14 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKom
     </section>`;
   }
   // ---------- tilbudsforespørsler (innkjøper/entreprenør) ----------
-  const nyeTilbud = () => innboks.filter((x) => x.status === 'sendt' && !x.apnet && !x.svart && !x.utlopt);
+  const nyeTilbud = () => innboks.filter((x) => x.status === 'sendt' && !x.apnet && !x.svart && !x.avslatt && !x.utlopt);
   const datoKort = (d) => (d ? String(d).slice(0, 10).split('-').reverse().slice(0, 2).join('.') : '');
   function tilbudStatus(x) {
     if (x.status === 'tildelt') return x.vunnet ? ['vunnet', '🏆 Du fikk oppdraget'] : ['tapt', 'Gikk til en annen'];
     if (x.status === 'avsluttet') return ['avsluttet', 'Avsluttet av skogeieren'];
     if (x.utlopt) return ['avsluttet', 'Utløpt'];
     if (x.svart) return ['svart', `✓ Tilbud sendt ${datoKort(new Date(x.svart).toISOString())}`];
+    if (x.avslatt) return ['avslatt', 'Takket nei'];
     if (x.fristUte) return ['frist', 'Svarfristen er ute'];
     return x.apnet ? ['apnet', 'Åpnet – ikke svart'] : ['ny', 'Ny'];
   }
@@ -109,8 +113,25 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKom
       <div class="nv-tilbud">${innboks.map((x) => { const [k, t] = tilbudStatus(x); const apen = x.status === 'sendt' && !x.utlopt; return `<div class="nv-tb ${k}">
         <div class="nv-tb-topp"><b>${esc(x.tittel)}</b><span class="nv-tb-status ${k}">${esc(t)}</span></div>
         <span class="hint">Fra <b>${esc(x.fra || 'skogeier')}</b>${x.sted ? ` · ${esc(x.sted)}` : ''}${x.bestand ? ` · ${x.bestand} bestand, ${String(x.areal).replace('.', ',')} daa` : ''}${x.svarfrist ? ` · <span class="${x.fristUte && apen ? 'nv-tb-frist' : ''}">svar innen ${esc(datoKort(x.svarfrist))}</span>` : ''}</span>
-        <div class="knapperad" style="margin:4px 0 0">${apen ? `<a class="knapp liten${x.svart ? '' : ' primar'}" href="${esc(lenke(x))}" target="_blank" rel="noopener" data-nv-tb="${esc(x.id)}">${x.svart ? 'Se eller endre tilbudet' : 'Åpne og gi tilbud'}</a>` : `<a class="knapp liten" href="${esc(lenke(x))}" target="_blank" rel="noopener">Se forespørselen</a>`}</div>
+        <div class="knapperad" style="margin:4px 0 0"><button type="button" class="knapp liten${apen && !x.svart && !x.avslatt ? ' primar' : ''}" data-nv-tb="${esc(x.id)}">${!apen ? 'Se forespørselen' : x.svart ? 'Se eller endre tilbudet' : x.avslatt ? 'Se forespørselen' : 'Åpne og gi tilbud'}</button><a class="lenkeknapp" href="${esc(lenke(x))}" target="_blank" rel="noopener" title="Åpne i egen fane">↗ egen fane</a></div>
       </div>`; }).join('')}</div>`;
+  }
+  // Forespørselen åpnet inne i appen (svarsiden i en ramme).
+  function tbVisningHtml() {
+    const x = innboks.find((y) => y.id === tbApen); if (!x) return '';
+    return `<div class="kort nv-tb-vis"><div class="nv-tb-vis-topp"><button type="button" class="knapp liten" data-nv="tb-lukk">← Tilbudsforespørsler</button><b>${esc(x.tittel)}</b></div>
+      <iframe class="nv-tb-ramme" src="tilbud.html?f=${encodeURIComponent(x.id)}&k=${encodeURIComponent(x.kode)}&inne=1" title="Tilbudsforespørsel: ${esc(x.tittel)}"></iframe></div>`;
+  }
+  // Skogeieren: nye svar og «ikke aktuelt» på forespørslene sine.
+  function nyeSvarHtml() {
+    if (!nyeSvar.length) return '';
+    const pris = (s, x) => (s.pris != null ? `${nb(Math.round(s.pris))} kr` : s.enhetspris != null ? `${String(s.enhetspris).replace('.', ',')} kr per ${x.enhet || 'enhet'}` : '');
+    return `<h4 class="undertittel">📬 Svar på forespørslene dine <span class="nv-ulest">${nyeSvar.length}</span></h4>
+      <div class="nv-tilbud">${nyeSvar.map((x) => `<div class="nv-tb ny">
+        <div class="nv-tb-topp"><b>${esc(x.tittel)}</b>${x.nr ? `<span class="hint">oppdrag ${esc(x.nr)}</span>` : ''}</div>
+        ${x.svar.map((s) => `<span>✅ <b>${esc(s.navn)}</b> ga tilbud${pris(s, x) ? `: ${esc(pris(s, x))} eks. mva` : ''}</span>`).join('')}
+        ${x.avslag.map((a) => `<span>🙅 <b>${esc(a.navn)}</b> takket nei${a.grunn ? ` – «${esc(a.grunn)}»` : ''}</span>`).join('')}
+        <div class="knapperad" style="margin:4px 0 0"><button type="button" class="knapp liten primar" data-nv="se-svar" data-id="${esc(x.id)}">Se og sammenlign</button></div></div>`).join('')}</div>`;
   }
   function kvRedHtml(tittel, hint) {
     return `<div class="nv-kv-red"><b>📍 ${esc(tittel)}</b><span class="hint">${esc(hint)}</span><div data-nv-kv-plass></div><div class="knapperad"><button type="button" class="knapp liten primar" data-nv="kv-lagre">Lagre</button><button type="button" class="knapp liten" data-nv="kv-avbryt">Avbryt</button></div></div>`;
@@ -148,6 +169,7 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKom
   function tegnInnhold() {
     const el = rot(); if (!el) return;
     if (!innlogget()) { el.innerHTML = '<div class="kort"><p>Logg inn for å bruke nettverket.</p></div>'; return; }
+    if (tbApen && innboks.some((y) => y.id === tbApen)) { if (!el.querySelector('.nv-tb-ramme')) el.innerHTML = tbVisningHtml(); return; } // rammen beholdes (ikke last på nytt)
     if (chat) { el.innerHTML = chatHtml(); fyllBilder(el); const l = el.querySelector('#nvMeldinger'); if (l) l.scrollTop = l.scrollHeight; return; }
     if (laster && !data) { el.innerHTML = '<div class="kort"><p class="hint">Henter nettverket …</p></div>'; return; }
     if (!data) { el.innerHTML = `<div class="kort"><p>${esc(feil || 'Nettverket er ikke tilgjengelig.')}</p><button type="button" class="knapp liten" data-nv="oppdater">Prøv igjen</button></div>`; return; }
@@ -189,10 +211,12 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKom
 
   // ---------- hendelser ----------
   document.addEventListener('click', async (e) => {
-    const tb = e.target.closest('[data-nv-tb]'); if (tb) { const x = innboks.find((y) => y.id === tb.dataset.nvTb); if (x && !x.apnet) { x.apnet = Date.now(); oppdaterMerke(); setTimeout(() => tegn(), 50); } return; } // åpnes i ny fane; serveren merker den som åpnet
+    const tb = e.target.closest('[data-nv-tb]'); if (tb && rot()?.contains(tb)) { const x = innboks.find((y) => y.id === tb.dataset.nvTb); if (!x) return; if (!x.apnet) { x.apnet = Date.now(); oppdaterMerke(); } tbApen = x.id; chat = null; tegn(); rot()?.scrollIntoView?.({ block: 'start' }); return; } // åpnes i appen; serveren merker den som åpnet
     const k = e.target.closest('[data-nv]'); if (!k || !rot()?.contains(k)) return; const h = k.dataset.nv;
     try {
       if (h === 'oppdater') await hent();
+      if (h === 'tb-lukk') { tbApen = null; tegn(); await hent({ stille: true }); tegn(); }
+      if (h === 'se-svar') { apneTilbud(k.dataset.id); nyeSvar = nyeSvar.filter((x) => x.id !== k.dataset.id); oppdaterMerke(); setTimeout(() => hent({ stille: true }), 3000); }
       if (h === 'kv-skog' || h === 'kv-aktor') { kvRed = h === 'kv-skog' ? 'skog' : 'aktor'; kvVelger = null; tegn(); }
       if (h === 'kv-avbryt') { kvRed = null; kvVelger = null; tegn(); }
       if (h === 'kv-lagre' && kvVelger) {
@@ -223,6 +247,8 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKom
       if (h === 'tilbake') { chat = null; clearInterval(poll); await hent(); }
     } catch (err) { melding(err.message, 'feil'); }
   });
+  // Svarsiden i rammen gir beskjed når tilbudet er sendt eller avslått.
+  window.addEventListener('message', (e) => { if (e.origin !== location.origin || e.data?.skogiq !== 'tilbud') return; const x = innboks.find((y) => y.id === e.data.id); if (x) { if (e.data.hendelse === 'svar') x.svart = Date.now(); if (e.data.hendelse === 'avslag') x.avslatt = Date.now(); } melding(e.data.hendelse === 'avslag' ? 'Skogeieren har fått beskjed om at oppdraget ikke er aktuelt.' : 'Tilbudet er sendt. Skogeieren har fått beskjed.'); oppdaterMerke(); });
   document.addEventListener('submit', (e) => { if (!e.target.matches?.('[data-nv-skjema]')) return; e.preventDefault(); const t = e.target.querySelector('[data-nv-tekst]'); sendMelding(t.value); });
   document.addEventListener('keydown', (e) => {
     if (e.target.matches?.('[data-nv-tekst]') && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMelding(e.target.value); }
@@ -233,7 +259,7 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKom
 
   return {
     vis() { synlig = true; tegn(); hent({ stille: !!data }); if (!sok.liste && data && (data.roller || []).includes('skogeier')) sokAktorer(); },
-    skjul() { synlig = false; clearInterval(poll); },
+    skjul() { synlig = false; clearInterval(poll); tbApen = null; },
     // Bakgrunn: henter oversikten hvert minutt for merket på fanen og varsel om nye meldinger.
     start() { if (bakgrunn) return; hent({ stille: true }); bakgrunn = setInterval(() => { if (!document.hidden) hent({ stille: true }); }, 60000); },
     data: () => data,

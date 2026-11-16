@@ -142,6 +142,7 @@ export const KAPITLER = [
       ${tips('Rollene dine (skogeier, innkjøper, entreprenør) bestemmer hva du ser. Endre dem i Min profil.')}
       <h4>Tilbudsforespørsler</h4>
       <p>Når du som skogeier trykker <b>📨 Be om tilbud</b>, kan du velge innkjøpere og entreprenører du er koblet til. De får forespørselen i SkogIQ.ai – under <b>Nettverk › 📨 Tilbudsforespørsler</b> (med merke på fanen) og som melding i chatten – og svarer med «Åpne og gi tilbud». Andre kan du fortsatt sende en lenke på e-post eller SMS. Svarene ser du under Tiltak › Oppdrag.</p>
+      <p>Som innkjøper eller entreprenør åpner du forespørselen rett i appen og gir tilbud, eller trykker <b>🙅 Ikke aktuelt</b> med en kort begrunnelse. Skogeieren får beskjed i chatten og ser svarene under <b>Nettverk › 📬 Svar på forespørslene dine</b>. Har du ikke svart to dager før fristen, får du en påminnelse.</p>
       <h4>Kommuner</h4>
       <p>Innkjøpere og entreprenører velger hvilke kommuner de opererer i (påkrevd – du blir spurt ved innlogging, og kan endre under Nettverk eller Min profil). Skogeiere ser bare aktører som opererer i kommunene der de har skog: kommunene til planene dine teller automatisk, og du kan legge til flere. Søk på navn, eller legg til et helt fylke.</p>
       ${tips('Legg inn et profilbilde under Min profil (📷 Last opp bilde), så ser de du samhandler med hvem du er.')}

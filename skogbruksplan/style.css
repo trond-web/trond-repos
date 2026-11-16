@@ -1413,3 +1413,11 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .nv-tb-frist { color: #b4302f; font-weight: 700; }
 .nv-tb.tapt, .nv-tb.avsluttet { opacity: .7; }
 .nv-tb a.knapp { text-decoration: none; }
+
+/* Tilbudsforespørsel åpnet i appen, svar til skogeieren */
+.nv-tb-vis { padding: 10px; display: grid; gap: 8px; }
+.nv-tb-vis-topp { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.nv-tb-ramme { width: 100%; height: min(78vh, 900px); border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.nv-tb-status.avslatt { background: var(--surface-2); color: var(--text-2); }
+.nv-tb.avslatt { opacity: .75; }
+.nv-tb .lenkeknapp { font-size: 12.5px; margin-left: auto; align-self: center; }

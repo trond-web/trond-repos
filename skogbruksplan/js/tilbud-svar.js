@@ -4,6 +4,9 @@ const RAILWAY = 'https://skogiq-production.up.railway.app';
 const API = /github\.io$/.test(location.hostname) ? RAILWAY : '';
 const q = new URLSearchParams(location.search); const id = q.get('f'); const kode = q.get('k');
 const el = document.getElementById('innhold');
+// Inne i appen (iframe fra Nettverk): ingen topp/bunn, og appen får beskjed når tilbudet er sendt eller avslått.
+const inne = q.get('inne') === '1' && window.parent !== window; if (inne) document.body.classList.add('inne');
+const siApp = (hendelse) => { if (inne) try { window.parent.postMessage({ skogiq: 'tilbud', id, hendelse }, location.origin); } catch { /* ignorer */ } };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const tall = (v, d = 0) => (v == null || v === '' ? '–' : Number(v).toLocaleString('nb-NO', { maximumFractionDigits: d }));
 const kr = (v) => `${Math.round(v).toLocaleString('nb-NO')} kr`;
@@ -31,7 +34,8 @@ function vis(v) {
   const d = v.data; const s = v.svar || {}; const ute = d.svarfrist && iDag() > d.svarfrist; const avgjort = v.status !== 'sendt';
   const enhet = d.prisform === 'enhet';
   const status = avgjort ? (v.vunnet ? '<div class="melding ok">Tilbudet ditt er akseptert. Oppdragsgiveren tar kontakt om avtale og arbeidsordre.</div>' : v.status === 'tildelt' ? '<div class="melding info">Oppdraget er tildelt. Takk for tilbudet.</div>' : '<div class="melding info">Forespørselen er avsluttet.</div>')
-    : v.svar ? `<div class="melding ok">Tilbudet ditt er mottatt ${new Date(s.mottatt).toLocaleString('nb-NO')}. Du kan endre det fram til svarfristen.</div>` : '';
+    : v.svar ? `<div class="melding ok">Tilbudet ditt er mottatt ${new Date(s.mottatt).toLocaleString('nb-NO')}. Du kan endre det fram til svarfristen.</div>`
+    : v.avslag ? `<div class="melding info">Du takket nei ${new Date(v.avslag.tid).toLocaleString('nb-NO')}${v.avslag.grunn ? `: «${esc(v.avslag.grunn)}»` : ''}. Oppdragsgiveren har fått beskjed. Ombestemmer du deg, kan du fortsatt sende tilbud under.</div>` : '';
   el.innerHTML = `${status}
     <div class="kort"><h1>${esc(d.tittel)}</h1><p class="hint">${esc(d.typeNavn)}${d.sted ? ` · ${esc(d.sted)}` : ''} · oppdrag ${esc(d.nr)}${v.mottaker?.navn ? ` · til ${esc(v.mottaker.navn)}` : ''}</p>
       <p><span class="frist ${ute ? 'ute' : ''}">Svarfrist ${esc(dato(d.svarfrist))}${ute ? ' – passert' : ''}</span></p>
@@ -59,7 +63,19 @@ function vis(v) {
         <label>Kommentar og forbehold <textarea name="kommentar" rows="4" placeholder="Hva er inkludert, forbehold, maskiner, mannskap …">${esc(s.kommentar || '')}</textarea></label>
         ${avgjort ? '' : `<button type="submit">${v.svar ? 'Lagre endringer i tilbudet' : 'Send tilbud'}</button>`}
         <div id="status" role="status"></div>
-      </form></div>`;
+      </form></div>
+    ${avgjort || v.svar || v.avslag ? '' : `<details class="kort nei"><summary>🙅 Ikke aktuelt – takk nei</summary>
+      <form id="neiSkjema"><label>Begrunnelse (valgfritt) <textarea name="grunn" rows="2" maxlength="500" placeholder="F.eks. full ordrebok i perioden, for langt unna, ikke vår type oppdrag …"></textarea></label>
+        <button type="submit" class="sekundar">Send «ikke aktuelt»</button><div id="neiStatus" role="status"></div></form></details>`}`;
+  const nei = document.getElementById('neiSkjema');
+  nei?.addEventListener('submit', async (e) => {
+    e.preventDefault(); const knapp = nei.querySelector('button'); knapp.disabled = true;
+    try {
+      const r = await fetch(`${API}/api/tilbud/${id}/avslag?k=${encodeURIComponent(kode)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ grunn: nei.grunn.value }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.feil || `Serveren svarte ${r.status}`);
+      siApp('avslag'); await last(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) { document.getElementById('neiStatus').innerHTML = `<div class="melding feil">${esc(err.message)}</div>`; knapp.disabled = false; }
+  });
   const f = document.getElementById('skjema');
   if (avgjort) for (const x of f.elements) x.disabled = true;
   const oppdaterSum = () => { const v2 = enhet ? Number(f.enhetspris.value) * (Number(d.mengde) || 0) : Number(f.pris.value); document.getElementById('sum').textContent = v2 ? kr(v2) : '–'; };
@@ -72,7 +88,7 @@ function vis(v) {
       const r = await fetch(`${API}/api/tilbud/${id}/svar?k=${encodeURIComponent(kode)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.feil || `Serveren svarte ${r.status}`);
-      await last(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      siApp('svar'); await last(); window.scrollTo({ top: 0, behavior: 'smooth' });
       if (mangler) setTimeout(() => { const s2 = document.getElementById('status'); if (s2) s2.innerHTML = `<div class="melding info">Tilbudet er sendt, men ${mangler} av kravene er ikke bekreftet. Skriv i kommentaren hvorfor.</div>`; }, 50);
     } catch (err) { st.innerHTML = `<div class="melding feil">${esc(err.message)}</div>`; knapp.disabled = false; }
   });

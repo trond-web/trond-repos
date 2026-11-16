@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.81.0 – Tilbud: svar i appen, «ikke aktuelt», varsel og påminnelse (2026-11-16)
+
+*Nytt.* Innkjøpere og entreprenører åpner og svarer på tilbudsforespørsler direkte under Nettverk, og kan takke nei med «Ikke aktuelt» og en kort begrunnelse. Skogeieren får beskjed i chatten og ser nye svar under Nettverk › Svar på forespørslene dine, med merke på fanen. To dager før svarfristen får de som ikke har svart, en påminnelse. Personvernerklæringen er oppdatert (versjon 1.6).
+
 ## 1.80.0 – Tilbudsforespørsler til nettverket (2026-11-16)
 
 *Nytt.* Be om tilbud fra innkjøperne og entreprenørene du er koblet til – du velger selv hvem. De får forespørselen i SkogIQ.ai under Nettverk › Tilbudsforespørsler og som melding i chatten, og ser status til de har fått svar. Andre kan fortsatt få en lenke på e-post eller SMS.

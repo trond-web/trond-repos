@@ -39,6 +39,12 @@
   .melding.ok { border-left: 4px solid var(--good); } .melding.feil { border-left: 4px solid var(--danger); } .melding.info { border-left: 4px solid var(--warn); }
   pre { white-space: pre-wrap; font: inherit; margin: 0; }
   footer { text-align: center; color: var(--text-2); font-size: 12px; padding: 12px 0 28px; }
+  /* Inne i appen (Nettverk › Tilbudsforespørsler): uten topp og bunn */
+  body.inne header, body.inne footer { display: none; } body.inne main { padding: 10px; } body.inne { background: var(--surface-2); }
+  .nei { border: 1px dashed var(--border); background: transparent; }
+  .nei summary { cursor: pointer; font-weight: 700; padding: 12px 0; list-style: none; } .nei summary::-webkit-details-marker { display: none; }
+  button.sekundar { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  button.sekundar:hover { background: var(--bg); }
 </style>
 </head>
 <body>
