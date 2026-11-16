@@ -3566,7 +3566,12 @@ test('Landbrukstakst: delverdier (skog 4 %, jord, bygninger, rettigheter, boverd
   assert.equal(LT.priskontroll({ dyrka: 50, beite: 0, produktiv: 0 }, { harBolig: true, verdi: 3000000 }).svar, 'nei', 'under 3,5 mill. med bolighus');
   assert.equal(LT.priskontroll({ dyrka: 20, beite: 0, produktiv: 100 }, { harBolig: true, verdi: 9e6 }).svar, 'nei');
   assert.equal(LT.priskontroll({ dyrka: 10, beite: 0, produktiv: 0 }, { harBolig: false, verdi: 1e6 }).svar, 'ja', 'ubebygd med dyrka jord');
-  assert.equal(LT.priskontroll({ dyrka: 0, beite: 0, produktiv: 800 }, { harBolig: false, verdi: 5e6 }).svar, 'usikker', 'ren skog: sjekk reglene');
+  // § 9 a fra 1. juli 2025: ubebygd alltid (også ren skog), bebygd over 35 daa dyrka eller over 500 daa produktiv skog
+  assert.equal(LT.priskontroll({ dyrka: 0, beite: 0, produktiv: 80 }, { harBolig: false, verdi: 5e5 }).svar, 'ja', 'ubebygd ren skog, uansett størrelse');
+  assert.match(LT.priskontroll({ dyrka: 0, beite: 0, produktiv: 80 }, { harBolig: false, verdi: 5e5 }).merknad, /forhåndsuttalelse.*§ 15 a/);
+  assert.equal(LT.priskontroll({ dyrka: 10, beite: 0, produktiv: 600 }, { harBolig: true, verdi: 6e6 }).svar, 'ja', 'bebygd med over 500 daa skog');
+  assert.equal(LT.priskontroll({ dyrka: 10, beite: 0, produktiv: 400 }, { harBolig: true, verdi: 6e6 }).svar, 'nei');
+  assert.equal(LT.priskontroll({ dyrka: 0, beite: 0, produktiv: 600 }, { harBolig: true, verdi: 3e6 }).svar, 'nei', 'brukbart bolighus under 3,5 mill.');
   assert.equal(LT.konsesjonsplikt({ total: 90, dyrka: 30, produktiv: 50 }, { harBolig: true }).plikt, false);
   assert.equal(LT.konsesjonsplikt({ total: 90, dyrka: 30, produktiv: 50 }, { harBolig: false }).plikt, true, 'ubebygd er konsesjonspliktig');
   // Uten takstdata: standardverdier, ingen bygninger

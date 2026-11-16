@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.84.1 – 🏡 Landbrukstakst: priskontroll etter lovendringen fra 1. juli 2025 (2026-11-16)
+
+*Forbedret.* Priskontrollen følger nå konsesjonsloven § 9 a slik den gjelder fra 1. juli 2025: ubebygd eiendom alltid (også ren skog), bebygd med over 35 daa dyrka jord eller over 500 daa produktiv skog. Appen opplyser også om bindende forhåndsuttalelse om pris og at selgeren bærer risikoen ved for høy pris (§ 15 a).
+
 ## 1.84.0 – 🏡 Landbrukstakst (beregnet) (2026-11-16)
 
 *Nytt.* Verdi-fanen beregner nå verdien av hele landbrukseiendommen etter metoden i konsesjonsloven og rundskrivene: skog og jord med avkastningsverdi (4 %), bygninger med kostnadsverdi, rettigheter og boverdi. Du får konsesjonsverdi/markedsverdi, odelstakst og åsetestakst, vurdering av priskontroll og konsesjonsplikt, og en takstrapport til utskrift. Personvernerklæringen er oppdatert (versjon 1.7).

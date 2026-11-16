@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.84.0** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.84.1** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -794,9 +794,10 @@ Beregnet verdivurdering av hele landbrukseiendommen under **Verdi**. Metoden fø
 
 **Vurderinger:**
 - **Priskontroll:**
-  - Ja for bebygd eiendom med mer enn 35 daa dyrka jord, men ikke med brukbart bolighus under 3,5 mill. kr.
-  - Ja for ubebygd eiendom med jordbruksareal.
-  - Ren skog står som «må sjekkes».
+  Reglene følger konsesjonsloven § 9 a slik den er endret ved lov 6. juni 2025 nr. 27 (i kraft 1. juli 2025), kontrollert mot Lovdata:
+  - Ubebygd eiendom til landbruksformål har alltid priskontroll, også ren skog.
+  - Bebygd eiendom har priskontroll bare med mer enn 35 daa fulldyrka/overflatedyrka jord eller mer enn 500 daa produktiv skog. Unntaket er brukbart bolighus og pris under 3,5 mill. kr (forskrift).
+  - Appen nevner bindende forhåndsuttalelse om pris (§ 9 a annet ledd) og at selgeren bærer risikoen ved for høy pris (§ 15 a).
 - **Konsesjonsplikt og boplikt:** etter § 4 første ledd nr. 4 og § 5.
 
 **Rapport:** utskriftsvennlig takstrapport merket «Beregnet verdivurdering – ikke en sertifisert takst».
