@@ -1392,3 +1392,24 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 @keyframes sno-fall { to { transform: translateY(105vh) rotate(260deg); opacity: .2; } }
 @media (prefers-color-scheme: dark) { .jt-tips { background: #3a1c20; color: #f4c7cc; } }
 @media (max-width: 860px) { .juletre-panel { top: auto; bottom: 12px; max-height: 60vh; } }
+
+/* Tilbudsforespørsler til nettverket (js/tilbud-nettverk.js, Nettverk) */
+.tn-liste { display: grid; gap: 6px; margin: 4px 0 10px; }
+.tn-kort { display: grid; grid-template-columns: auto auto 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 12px; cursor: pointer; background: var(--surface); }
+.tn-kort.valgt { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
+.tn-kort input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+.tn-tekst { display: grid; gap: 1px; min-width: 0; } .tn-tekst small { color: var(--text-2); font-size: 12px; }
+.tn-passer { font-size: 11px; font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 99px; padding: 1px 7px; }
+.tn-tom { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; font-size: 13.5px; margin: 4px 0 10px; }
+.tn-levert { color: var(--accent); font-weight: 700; font-size: 13px; }
+.ht-del { margin: 14px 0 4px; font-size: 14px; } .ht-del .hint { font-weight: 400; }
+.nv-tilbud { display: grid; gap: 8px; margin-bottom: 10px; }
+.nv-tb { border: 1.5px solid var(--border); border-radius: 12px; padding: 10px 12px; display: grid; gap: 3px; font-size: 13.5px; }
+.nv-tb.ny { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
+.nv-tb-topp { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+.nv-tb-status { font-size: 11.5px; font-weight: 700; border-radius: 99px; padding: 2px 9px; background: var(--surface-2); color: var(--text-2); }
+.nv-tb-status.ny { background: var(--accent); color: #fff; } .nv-tb-status.svart { background: #e6f0ea; color: #1f6b4a; }
+.nv-tb-status.vunnet { background: #fff1c2; color: #6b4b00; } .nv-tb-status.frist { background: #fde8e8; color: #9b1c1c; }
+.nv-tb-frist { color: #b4302f; font-weight: 700; }
+.nv-tb.tapt, .nv-tb.avsluttet { opacity: .7; }
+.nv-tb a.knapp { text-decoration: none; }

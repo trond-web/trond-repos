@@ -2734,6 +2734,7 @@ function kobleHendelser() {
     tiltakNavn: (k) => TILTAKSTYPER[k]?.navn || k,
     kontakt: () => { const m = innloggetBruker(); return m ? { navn: m.navn || '', epost: m.epost || '', telefon: m.profil?.telefon || '' } : null; },
     apneOppdrag: (id, fane) => { visFane('tiltak'); visTiltakVisning('oppdrag'); oppdragVisning?.apne(id, fane); },
+    apneNettverk: () => visFane('nettverk'),
   });
   document.addEventListener('click', (e) => { const k = e.target.closest('[data-be-om-tilbud]'); if (!k) return; e.preventDefault(); hurtigTilbud.start({ tiltakId: k.dataset.tiltakId || null, type: k.dataset.type || null }); });
   oppdragVisning = initOppdrag({

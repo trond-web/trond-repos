@@ -4,6 +4,7 @@ import { KRAV, KILDER, STATUS, nyForesporsel, offentligForesporsel, mangler, sam
 import { sammendrag } from './oppdrag.js';
 import { API, RAILWAY } from './plan-synk.js';
 import { fmt } from './charts.js';
+import { hentNettverksmottakere, nettverkValgHtml, somMottaker, fyllBilder } from './tilbud-nettverk.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const kr = (v) => `${Math.round(v || 0).toLocaleString('nb-NO')} kr`;
@@ -11,7 +12,10 @@ const dato = (d) => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocale
 const iDag = () => new Date().toISOString().slice(0, 10);
 
 export function lagTilbudUi({ hentPlan, endret, melding, nyId, okonomi, tiltakNavn }) {
-  let steg = 1; let henter = false; let sistHentet = null; let leggTilModus = false;
+  let steg = 1; let henter = false; let sistHentet = null; let leggTilModus = false; let nett = null; let sistTegn = null;
+  // Nettverket (innkjøpere/entreprenører skogeieren er koblet til) – hentes første gang mottakerne vises.
+  const lastNett = () => { if (nett !== null) return; nett = 'laster'; hentNettverksmottakere().then((l) => { nett = l; }, () => { nett = []; }).then(() => sistTegn?.()); };
+  const nettHtml = (f, type) => { if (nett === null) setTimeout(lastNett, 0); setTimeout(() => fyllBilder(document), 0); const valgte = new Set(f.mottakere.filter((m) => m.bruker).map((m) => m.bruker)); return `<h4 class="undertittel">🤝 Fra nettverket ditt <span class="hint">– får forespørselen i SkogIQ.ai</span></h4>${!Array.isArray(nett) ? '<p class="hint">Henter nettverket ditt …</p>' : nett.length ? nettverkValgHtml(nett.filter((n) => f.status !== 'sendt' || !valgte.has(n.bruker)), valgte, { type, attr: 'data-tb-nett' }) : '<p class="hint">Du er ikke koblet til noen innkjøpere eller entreprenører ennå. Koble deg til dem under Nettverk, så kan du sende forespørsler rett til dem.</p>'}<h4 class="undertittel">✉ Andre <span class="hint">– får en lenke på e-post eller SMS</span></h4>`; };
   const S = () => hentPlan();
   const lenke = (f, m) => `${RAILWAY}/tilbud.html?f=${f.relay.id}&k=${m.kode}`;
   const pub = (o) => offentligForesporsel(S(), o, o.tilbud, { okonomi, tiltakNavn });
@@ -59,7 +63,7 @@ export function lagTilbudUi({ hentPlan, endret, melding, nyId, okonomi, tiltakNa
     if (steg === 3) {
       const reg = (S().leverandorer || []).filter((l) => !f.mottakere.some((m) => samme(m, l)));
       const m = mangler(f);
-      kropp = `${f.mottakere.length ? `<div class="md-liste">${f.mottakere.map((x) => `<div class="md-rad"><b>${esc(x.firma || x.navn)}</b><span>${esc([x.firma ? x.navn : '', x.epost, x.telefon].filter(Boolean).join(' · '))}</span><small><button type="button" class="knapp liten" data-tb="fjern-mottaker" data-id="${esc(x.id)}">Fjern</button></small></div>`).join('')}</div>` : '<p class="hint">Legg til de du vil ha tilbud fra. Tre tilbud gir et godt grunnlag for å sammenligne.</p>'}
+      kropp = `${nettHtml(f, o.type)}${f.mottakere.some((x) => !x.bruker) ? `<div class="md-liste">${f.mottakere.filter((x) => !x.bruker).map((x) => `<div class="md-rad"><b>${esc(x.firma || x.navn)}</b><span>${esc([x.firma ? x.navn : '', x.epost, x.telefon].filter(Boolean).join(' · '))}</span><small><button type="button" class="knapp liten" data-tb="fjern-mottaker" data-id="${esc(x.id)}">Fjern</button></small></div>`).join('')}</div>` : '<p class="hint">Legg til de du vil ha tilbud fra. Tre tilbud gir et godt grunnlag for å sammenligne.</p>'}
         ${reg.length ? `<p class="hint" style="margin-bottom:4px">Fra utførerregisteret:</p><div class="knapperad">${reg.map((l) => `<button type="button" class="knapp liten" data-tb="fra-register" data-id="${esc(l.id)}">+ ${esc(l.firma || l.navn)}</button>`).join('')}</div>` : ''}
         <div class="skjema to-kol" id="tbNy"><label>Kontaktperson <input data-tb-ny="navn"></label><label>Firma <input data-tb-ny="firma"></label><label>E-post <input data-tb-ny="epost" type="email"></label><label>Mobil <input data-tb-ny="telefon" type="tel"></label></div>
         <div class="knapperad"><button type="button" class="knapp liten" data-tb="legg-til">+ Legg til mottaker</button></div>
@@ -71,13 +75,13 @@ export function lagTilbudUi({ hentPlan, endret, melding, nyId, okonomi, tiltakNa
   function oversikt(o, f) {
     const s = sammendrag(S(), o, okonomi); const rader = sammenlign(f, s.areal);
     const status = (m) => { const svar = f.svar.find((x) => x.mottakerId === m.id); return svar ? `✓ Svart ${dato(svar.mottatt)}` : m.apnet ? `Åpnet ${dato(new Date(m.apnet).toISOString())}` : m.sendt ? `Sendt ${dato(m.sendt)}` : 'Ikke sendt'; };
-    const send = (m) => { const t = foresporselTekst(pub(o), m, lenke(f, m)); return `${m.epost ? `<a class="knapp liten" href="${esc(mailto(m.epost, t))}" data-tb="merk-sendt" data-id="${esc(m.id)}">✉ E-post</a>` : ''}${m.telefon ? `<a class="knapp liten" href="${esc(smsLenke(m.telefon, `${t.emne}: ${lenke(f, m)}`))}" data-tb="merk-sendt" data-id="${esc(m.id)}">💬 SMS</a>` : ''}<button type="button" class="knapp liten" data-tb="kopier" data-id="${esc(m.id)}">📋 Kopier lenke</button>`; };
+    const send = (m) => { if (m.bruker) return '<span class="tn-levert">🤝 Levert i SkogIQ.ai</span>'; const t = foresporselTekst(pub(o), m, lenke(f, m)); return `${m.epost ? `<a class="knapp liten" href="${esc(mailto(m.epost, t))}" data-tb="merk-sendt" data-id="${esc(m.id)}">✉ E-post</a>` : ''}${m.telefon ? `<a class="knapp liten" href="${esc(smsLenke(m.telefon, `${t.emne}: ${lenke(f, m)}`))}" data-tb="merk-sendt" data-id="${esc(m.id)}">💬 SMS</a>` : ''}<button type="button" class="knapp liten" data-tb="kopier" data-id="${esc(m.id)}">📋 Kopier lenke</button>`; };
     const tildelt = f.status === 'tildelt'; const avsluttet = f.status === 'avsluttet';
     return `<p class="hint">Svarfrist ${esc(dato(f.svarfrist))}${f.prisform === 'enhet' ? ` · ${fmt(f.mengde, 1)} ${esc(f.enhet)}` : ' · fastpris'} · ${f.mottakere.length} mottakere · ${f.svar.length} svar${sistHentet ? ` · hentet ${sistHentet}` : ''}</p>
       <h4 class="undertittel">Mottakere</h4>
       <div class="md-liste">${f.mottakere.map((m) => `<div class="md-rad"><b>${esc(m.firma || m.navn)}</b><span>${esc(status(m))}</span>${tildelt || avsluttet ? '' : `<small>${send(m)}</small>`}</div>`).join('')}</div>
       ${tildelt || avsluttet ? '' : `<div class="knapperad"><button type="button" class="knapp" data-tb="hent" ${henter ? 'disabled' : ''}>↻ Hent svar</button><button type="button" class="knapp liten" data-tb="flere">+ Flere mottakere</button><button type="button" class="knapp liten" data-tb="manuelt">Registrer tilbud på telefon/papir</button></div>`}
-      ${leggTilModus && !tildelt && !avsluttet ? nyMottakerSkjema() : ''}
+      ${leggTilModus && !tildelt && !avsluttet ? nyMottakerSkjema(f, o.type) : ''}
       ${tbManuelt(o, f)}
       <h4 class="undertittel">Tilbud ${rader.length ? `<span class="hint">sortert på pris, eks. mva</span>` : ''}</h4>
       ${rader.length ? `<div class="md-liste">${rader.map((r) => `<div class="md-rad tb-svar${r.billigst ? ' tb-billigst' : ''}${f.valgt === r.mottakerId ? ' tb-valgt' : ''}">
@@ -88,7 +92,7 @@ export function lagTilbudUi({ hentPlan, endret, melding, nyId, okonomi, tiltakNa
         ${tildelt || avsluttet ? '' : `<small><button type="button" class="knapp liten primar" data-tb="velg" data-id="${esc(r.mottakerId)}">Velg dette tilbudet</button></small>`}</div>`).join('')}</div>` : '<p class="hint">Ingen svar ennå. Trykk «Hent svar» – svarene hentes også når du åpner oppdraget.</p>'}
       ${tildelt ? meldinger(o, f) : avsluttet ? '' : `<div class="knapperad"><button type="button" class="knapp liten fare" data-tb="avslutt">Avslutt uten å tildele</button></div>`}`;
   }
-  const nyMottakerSkjema = () => `<div class="skjema to-kol" id="tbNy"><label>Kontaktperson <input data-tb-ny="navn"></label><label>Firma <input data-tb-ny="firma"></label><label>E-post <input data-tb-ny="epost" type="email"></label><label>Mobil <input data-tb-ny="telefon" type="tel"></label></div>
+  const nyMottakerSkjema = (f, type) => `${f ? nettHtml(f, type) : ''}<div class="skjema to-kol" id="tbNy"><label>Kontaktperson <input data-tb-ny="navn"></label><label>Firma <input data-tb-ny="firma"></label><label>E-post <input data-tb-ny="epost" type="email"></label><label>Mobil <input data-tb-ny="telefon" type="tel"></label></div>
       <div class="knapperad"><button type="button" class="knapp liten primar" data-tb="legg-til">+ Legg til mottaker</button></div>`;
   let manuelt = false;
   function tbManuelt(o, f) {
@@ -113,11 +117,11 @@ export function lagTilbudUi({ hentPlan, endret, melding, nyId, okonomi, tiltakNa
   async function sendForesporsel(o, tegn) {
     const f = o.tilbud; const m = mangler(f); if (m.length) { melding(`Mangler: ${m.join(', ')}.`); return; }
     try {
-      const d = await kall('/api/tilbud', { metode: 'POST', kropp: { data: pub(o), mottakere: f.mottakere.map((x) => ({ id: x.id, navn: x.navn })) } });
+      const d = await kall('/api/tilbud', { metode: 'POST', kropp: { data: pub(o), mottakere: f.mottakere.map((x) => ({ id: x.id, navn: x.navn, ...(x.bruker ? { bruker: x.bruker } : {}) })) } });
       f.relay = { id: d.id, eier: d.eier }; for (const x of f.mottakere) x.kode = d.koder[x.id];
-      f.status = 'sendt'; f.sendt = iDag(); for (const x of f.mottakere) husk(x);
+      f.status = 'sendt'; f.sendt = iDag(); for (const x of f.mottakere) { if (x.bruker) x.sendt = iDag(); else husk(x); }
       S().tilbudKontakt = f.kontakt; endret({ kart: false }); tegn();
-      melding('Forespørselen er klar. Send lenken til hver mottaker med e-post, SMS eller kopier den.');
+      melding(f.mottakere.some((x) => !x.bruker) ? `Forespørselen er klar.${f.mottakere.some((x) => x.bruker) ? ' Nettverket ditt har fått den i SkogIQ.ai.' : ''} Send lenken til de andre med e-post, SMS eller kopier den.` : 'Forespørselen er sendt – mottakerne har fått den i SkogIQ.ai.');
     } catch (e) { melding(e.message); }
   }
   async function hent(o, tegn, { stille = false } = {}) {
@@ -148,8 +152,9 @@ export function lagTilbudUi({ hentPlan, endret, melding, nyId, okonomi, tiltakNa
   return {
     html, hentStille,
     // Henter svar i bakgrunnen når et oppdrag med en sendt forespørsel åpnes.
-    apnet(o, tegn) { steg = o.tilbud?.status === 'utkast' ? steg : 1; manuelt = false; if (o.tilbud?.status === 'sendt') hent(o, tegn, { stille: true }); },
+    apnet(o, tegn) { sistTegn = tegn; steg = o.tilbud?.status === 'utkast' ? steg : 1; manuelt = false; if (o.tilbud?.status === 'sendt') hent(o, tegn, { stille: true }); },
     async klikk(e, o, tegn) {
+      sistTegn = tegn;
       const k = e.target.closest('[data-tb]'); if (!k) return false; const h = k.dataset.tb; const f = o.tilbud;
       const lagre = () => { endret({ kart: false }); tegn(); };
       if (h === 'start') { o.tilbud = nyForesporsel(S(), o, { okonomi, kontakt: S().tilbudKontakt || { navn: S().eiendom?.eier || '' } }); steg = 1; lagre(); return true; }
@@ -192,6 +197,15 @@ export function lagTilbudUi({ hentPlan, endret, melding, nyId, okonomi, tiltakNa
     },
     endring(e, o, tegn) {
       const t = e.target; const f = o.tilbud; if (!f) return false;
+      if (t.dataset.tbNett) {
+        const n = Array.isArray(nett) ? nett.find((x) => x.bruker === t.dataset.tbNett) : null; if (!n) return true;
+        if (f.status === 'sendt') { // legg til i en sendt forespørsel
+          if (!t.checked) return true; const ny = somMottaker(n, nyId);
+          oppdaterServer(o, { data: pub(o), mottakere: [{ id: ny.id, navn: ny.navn, bruker: ny.bruker }] }).then((d) => { ny.kode = d.koder?.[ny.id]; ny.sendt = iDag(); f.mottakere.push(ny); leggTilModus = false; endret({ kart: false }); tegn(); melding(`${ny.navn} har fått forespørselen i SkogIQ.ai.`); }, (x) => melding(x.message));
+          return true;
+        }
+        f.mottakere = f.mottakere.filter((m) => m.bruker !== n.bruker); if (t.checked) f.mottakere.push(somMottaker(n, nyId)); endret({ kart: false }); tegn(); return true;
+      }
       if (t.dataset.tbFelt) { const n = t.dataset.tbFelt; f[n] = ['mengde', 'vedstaaelse'].includes(n) ? (t.value === '' ? null : Number(t.value)) : t.value; endret({ kart: false }); if (['prisform', 'enhet'].includes(n)) tegn(); return true; }
       if (t.dataset.tbKrav) { f.krav = t.checked ? [...new Set([...f.krav, t.dataset.tbKrav])] : f.krav.filter((x) => x !== t.dataset.tbKrav); endret({ kart: false }); return true; }
       if (t.dataset.tbKontakt) { f.kontakt = { ...f.kontakt, [t.dataset.tbKontakt]: t.value }; endret({ kart: false }); return true; }

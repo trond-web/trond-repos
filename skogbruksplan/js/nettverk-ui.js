@@ -2,7 +2,7 @@
 // Skogeier: statistikk, «Mine innkjøpere», «Mine entreprenører», søk i aktørene og «Be om kobling».
 // Innkjøper/entreprenør: «Mine skogeiere», forespørsler og invitasjon av skogeiere med e-post.
 // Uleste meldinger og nye forespørsler vises som merke på fanen. Serveren: nettverk.js (/api/nettverk).
-import { API } from './plan-synk.js';
+import { API, RAILWAY } from './plan-synk.js';
 import { mailto, appAdresse } from './epost.js';
 import { innloggetBruker, lagreKommuner } from './innlogging.js';
 import { lagKommunevelger, kommuneTekst } from './kommunevelger.js';
@@ -16,7 +16,7 @@ const tid = (ms) => { const d = new Date(ms); const idag = new Date(); return d.
 
 // skogKommuner() → [{ nr, navn }]: kommunene til planene på enheten (skogeiere ser aktører i disse kommunene).
 export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKommuner = async () => [] }) {
-  let data = null; let feil = ''; let laster = false; let sok = { q: '', rolle: '', liste: null, laster: false }; let chat = null; let poll = null; let bakgrunn = null; let sistUlest = 0; let synlig = false; let kvRed = null; let kvVelger = null; let epostForslag = null; // ferdig e-post etter invitasjon (mailto)
+  let data = null; let feil = ''; let laster = false; let sok = { q: '', rolle: '', liste: null, laster: false }; let chat = null; let poll = null; let bakgrunn = null; let sistUlest = 0; let synlig = false; let kvRed = null; let kvVelger = null; let innboks = []; /* tilbudsforespørsler til innkjøpere/entreprenører */ let epostForslag = null; // ferdig e-post etter invitasjon (mailto)
   async function kall(sti, { metode = 'GET', kropp } = {}) {
     const r = await fetch(`${API}${sti}`, { method: metode, headers: kropp ? { 'Content-Type': 'application/json' } : {}, credentials: 'same-origin', body: kropp ? JSON.stringify(kropp) : undefined });
     const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.feil || `Serveren svarte ${r.status}`), { status: r.status }); return j;
@@ -28,10 +28,12 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKom
     if (!innlogget()) return;
     if (!stille) { laster = true; tegn(); }
     try { data = await kall('/api/nettverk'); feil = ''; } catch (e) { feil = e.message; }
+    // Tilbudsforespørsler fra skogeiere i nettverket (bare for innkjøpere og entreprenører)
+    if (data && erAktor()) { try { innboks = (await kall('/api/tilbud/innboks')).innboks || []; } catch { /* beholder forrige */ } } else innboks = [];
     laster = false; oppdaterMerke(); if (synlig && !chat) tegn();
   }
   function oppdaterMerke() {
-    const n = (data?.ulest || 0) + (data?.forespørsler || 0); merke(n);
+    const n = (data?.ulest || 0) + (data?.forespørsler || 0) + nyeTilbud().length; merke(n);
     if (data && data.ulest > sistUlest && !(chat && synlig)) { const ny = data.koblinger.find((k) => k.ulest && k.siste && !k.siste.fraMeg); if (ny) melding(`💬 Ny melding fra ${ny.motpart.navn}: «${ny.siste.tekst.slice(0, 60)}»`); }
     sistUlest = data?.ulest || 0;
   }
@@ -89,6 +91,27 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKom
       ${sok.laster ? '<p class="hint">Søker …</p>' : sok.liste ? (sok.liste.length ? sok.liste.map((a) => personHtml({ motpart: a }, { knapper: ['innkjoper', 'entreprenor'].filter((r) => a.roller.includes(r)).map((r) => (a.kobling ? `<span class="nv-merke">${a.kobling === 'aktiv' ? '✓ koblet' : 'venter'}</span>` : `<button type="button" class="knapp liten" data-nv="be" data-til="${esc(a.bruker)}" data-rolle="${r}">＋ ${ROLLE[r].navn}</button>`)).filter((x, i, l) => l.indexOf(x) === i).join('') })).join('') : '<p class="hint">Ingen treff.</p>') : ''}
     </section>`;
   }
+  // ---------- tilbudsforespørsler (innkjøper/entreprenør) ----------
+  const nyeTilbud = () => innboks.filter((x) => x.status === 'sendt' && !x.apnet && !x.svart && !x.utlopt);
+  const datoKort = (d) => (d ? String(d).slice(0, 10).split('-').reverse().slice(0, 2).join('.') : '');
+  function tilbudStatus(x) {
+    if (x.status === 'tildelt') return x.vunnet ? ['vunnet', '🏆 Du fikk oppdraget'] : ['tapt', 'Gikk til en annen'];
+    if (x.status === 'avsluttet') return ['avsluttet', 'Avsluttet av skogeieren'];
+    if (x.utlopt) return ['avsluttet', 'Utløpt'];
+    if (x.svart) return ['svart', `✓ Tilbud sendt ${datoKort(new Date(x.svart).toISOString())}`];
+    if (x.fristUte) return ['frist', 'Svarfristen er ute'];
+    return x.apnet ? ['apnet', 'Åpnet – ikke svart'] : ['ny', 'Ny'];
+  }
+  function innboksHtml() {
+    if (!innboks.length) return '';
+    const nye = nyeTilbud().length; const base = API || (typeof location !== 'undefined' ? location.origin : RAILWAY); const lenke = (x) => `${base}/tilbud.html?f=${x.id}&k=${x.kode}`;
+    return `<h4 class="undertittel">📨 Tilbudsforespørsler ${nye ? `<span class="nv-ulest">${nye} ny${nye > 1 ? 'e' : ''}</span>` : `<span class="hint">${innboks.length}</span>`}</h4>
+      <div class="nv-tilbud">${innboks.map((x) => { const [k, t] = tilbudStatus(x); const apen = x.status === 'sendt' && !x.utlopt; return `<div class="nv-tb ${k}">
+        <div class="nv-tb-topp"><b>${esc(x.tittel)}</b><span class="nv-tb-status ${k}">${esc(t)}</span></div>
+        <span class="hint">Fra <b>${esc(x.fra || 'skogeier')}</b>${x.sted ? ` · ${esc(x.sted)}` : ''}${x.bestand ? ` · ${x.bestand} bestand, ${String(x.areal).replace('.', ',')} daa` : ''}${x.svarfrist ? ` · <span class="${x.fristUte && apen ? 'nv-tb-frist' : ''}">svar innen ${esc(datoKort(x.svarfrist))}</span>` : ''}</span>
+        <div class="knapperad" style="margin:4px 0 0">${apen ? `<a class="knapp liten${x.svart ? '' : ' primar'}" href="${esc(lenke(x))}" target="_blank" rel="noopener" data-nv-tb="${esc(x.id)}">${x.svart ? 'Se eller endre tilbudet' : 'Åpne og gi tilbud'}</a>` : `<a class="knapp liten" href="${esc(lenke(x))}" target="_blank" rel="noopener">Se forespørselen</a>`}</div>
+      </div>`; }).join('')}</div>`;
+  }
   function kvRedHtml(tittel, hint) {
     return `<div class="nv-kv-red"><b>📍 ${esc(tittel)}</b><span class="hint">${esc(hint)}</span><div data-nv-kv-plass></div><div class="knapperad"><button type="button" class="knapp liten primar" data-nv="kv-lagre">Lagre</button><button type="button" class="knapp liten" data-nv="kv-avbryt">Avbryt</button></div></div>`;
   }
@@ -97,6 +120,7 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKom
     const mineRoller = ['innkjoper', 'entreprenor'].filter(harRolle);
     return `<section class="nv-del">
       <h3>${mineRoller.map((r) => ROLLE[r].ikon).join('')} Som ${mineRoller.map((r) => ROLLE[r].navn.toLowerCase()).join(' og ')}</h3>
+      ${innboksHtml()}
       ${kvRed === 'aktor' ? kvRedHtml('Kommuner du opererer i', 'Skogeiere med skog i disse kommunene finner deg i katalogen.') : `<div class="nv-kv-info${(innloggetBruker()?.profil?.kommuner || []).length ? '' : ' mangler'}">📍 ${(innloggetBruker()?.profil?.kommuner || []).length ? `Du opererer i <b>${esc(kommuneTekst(innloggetBruker().profil.kommuner, 5))}</b>` : 'Du har ikke valgt kommuner – skogeiere finner deg ikke ennå.'} <button type="button" class="lenkeknapp" data-nv="kv-aktor">${(innloggetBruker()?.profil?.kommuner || []).length ? 'Endre' : 'Velg kommuner'}</button></div>`}
       ${liste('🌲 Mine skogeiere', aktive, 'Ingen skogeiere ennå. Skogeiere kan finne deg og be om kobling, eller du kan invitere dem under.')}
       <h4 class="undertittel">Inviter en skogeier</h4>
@@ -165,6 +189,7 @@ export function lagNettverk({ rot, melding, innlogget, merke = () => {}, skogKom
 
   // ---------- hendelser ----------
   document.addEventListener('click', async (e) => {
+    const tb = e.target.closest('[data-nv-tb]'); if (tb) { const x = innboks.find((y) => y.id === tb.dataset.nvTb); if (x && !x.apnet) { x.apnet = Date.now(); oppdaterMerke(); setTimeout(() => tegn(), 50); } return; } // åpnes i ny fane; serveren merker den som åpnet
     const k = e.target.closest('[data-nv]'); if (!k || !rot()?.contains(k)) return; const h = k.dataset.nv;
     try {
       if (h === 'oppdater') await hent();

@@ -50,6 +50,8 @@ export function lagNettverk({ fil = null, brukere, naa = () => Date.now(), skogK
         .map((k) => ({ ...k, kobling: mine(u).find((x) => motpart(x, u) === k.bruker && x.status !== 'avsluttet' && x.status !== 'avslatt')?.status || null }))
         .sort((a, b) => a.navn.localeCompare(b.navn, 'nb')).slice(0, 200);
     },
+    // Aktiv kobling mellom to brukere (begge veier), eller null. Brukes av tilbudsforespørsler til nettverket.
+    koblingMellom(a, b) { const k = Object.values(data.koblinger).find((x) => x.status === 'aktiv' && ((x.skogeier === a && x.aktor === b) || (x.skogeier === b && x.aktor === a))); return k ? k.id : null; },
     // Kommunene der skogeieren har skog: profilen, planene i skyen og planene på enheten (klient = [{ nr, navn }]).
     skogKommunerFor(u, klient = []) { const b = brukere.hent(u); return kommuneSett([kommunerFor(b), b?.profil?.kommune ? [{ navn: b.profil.kommune }] : [], skogKommuner(u) || [], klient]); },
     // Oversikten for en bruker: statistikk, koblingene med motpart og uleste meldinger.
