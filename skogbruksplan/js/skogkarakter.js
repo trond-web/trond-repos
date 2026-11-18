@@ -23,7 +23,7 @@ export const OMRADER = [
 export const KARAKTERER = [
   { k: 'A', min: 85, navn: 'Fremragende', farge: '#1f6b4a' },
   { k: 'B', min: 70, navn: 'God', farge: '#4f8a2b' },
-  { k: 'C', min: 55, navn: 'Tilfredsstillende', farge: '#b08a00' },
+  { k: 'C', min: 55, navn: 'Tilfredsstillende', farge: '#9a7600' },
   { k: 'D', min: 40, navn: 'Svak', farge: '#c0661c' },
   { k: 'E', min: 0, navn: 'Mangelfull', farge: '#b4302f' },
 ];
@@ -203,20 +203,31 @@ export function lagreOyeblikk(S, r) {
   return S.skogkarakter.historikk;
 }
 
-// Stempelet som SVG: rund segl med karakter, symbol (gran) og tekst rundt kanten. Brukes i appen, rapporten og delt visning.
+// Stempelet som SVG: klassisk segl med farget bånd og hvit tekst rundt («SKOGIQ SKOGKARAKTER» øverst, vurderingen
+// nederst), gran-symboler som skille, og et hvitt midtfelt med stor bokstav, poengbånd og år. Brukes i appen, i
+// karakterbeviset og i nedlastet stempel. Fargen følger karakteren.
 export function stempelSvg(r, { str = 160, id = 'sk' } = {}) {
   const k = r.karakter || '–'; const f = r.farge || '#888'; const aar = r.aar || new Date().getFullYear();
   const s = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  return `<svg class="sk-stempel" viewBox="0 0 200 200" width="${str}" height="${str}" role="img" aria-label="SkogIQ Skogkarakter ${s(k)}${r.total != null ? `, ${r.total} av 100 poeng` : ''}">
-  <defs><path id="${id}-topp" d="M 30,100 A 70,70 0 0 1 170,100"/><path id="${id}-bunn" d="M 24,100 A 76,76 0 0 0 176,100"/></defs>
-  <circle cx="100" cy="100" r="96" fill="#fff" stroke="${f}" stroke-width="5"/>
-  <circle cx="100" cy="100" r="86" fill="none" stroke="${f}" stroke-width="1.5" stroke-dasharray="3 3"/>
-  <circle cx="100" cy="100" r="58" fill="${f}"/>
-  <text font-family="system-ui,-apple-system,sans-serif" font-size="13.5" font-weight="800" letter-spacing="2.5" fill="${f}"><textPath href="#${id}-topp" startOffset="50%" text-anchor="middle">SKOGIQ SKOGKARAKTER</textPath></text>
-  <text font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="700" letter-spacing="2" fill="${f}"><textPath href="#${id}-bunn" startOffset="50%" text-anchor="middle">${s(r.navn || '').toUpperCase()} · ${aar}${r.forelopig ? ' · FORELØPIG' : ''}</textPath></text>
-  <g fill="#fff" opacity=".95" transform="translate(100 56)"><path d="M0,-14 L9,-2 L5,-2 L12,7 L7,7 L14,16 L-14,16 L-7,7 L-12,7 L-5,-2 L-9,-2 Z"/><rect x="-2" y="16" width="4" height="5"/></g>
-  <text x="100" y="128" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="60" font-weight="700" fill="#fff">${s(k)}</text>
-  <text x="100" y="149" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#fff" opacity=".9">${r.total != null ? `${r.total} / 100` : ''}</text>
-  <circle cx="16" cy="100" r="3" fill="${f}"/><circle cx="184" cy="100" r="3" fill="${f}"/>
+  const navn = `${s(r.navn || 'Ikke vurdert').toUpperCase()} · ${aar}`; const lang = navn.length > 18;
+  const SANS = "font-family=\"'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif\"";
+  // Gran (symbol) sentrert i (x, y) med høyde h
+  const gran = (x, y, h, farge) => { const w = h * 0.78; return `<g transform="translate(${x} ${y - h / 2}) scale(${h / 30})" fill="${farge}"><path d="M0,0 L7.5,9 L4.2,9 L10.5,17 L6.2,17 L13.5,26 L-13.5,26 L-6.2,17 L-10.5,17 L-4.2,9 L-7.5,9 Z"/><rect x="-1.8" y="26" width="3.6" height="4" rx=".6"/></g>`.replace(/scale\([^)]*\)/, `scale(${(w / 27).toFixed(3)} ${(h / 30).toFixed(3)})`); };
+  return `<svg class="sk-stempel" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="${str}" height="${str}" role="img" aria-label="SkogIQ Skogkarakter ${s(k)}${r.total != null ? `, ${r.total} av 100 poeng` : ''}">
+  <defs>
+    <path id="${id}-topp" d="M 17,100 A 83,83 0 0 1 183,100"/>
+    <path id="${id}-bunn" d="M 9,100 A 91,91 0 0 0 191,100"/>
+  </defs>
+  <circle cx="100" cy="100" r="98" fill="${f}"/>
+  <circle cx="100" cy="100" r="95" fill="none" stroke="#fff" stroke-width="1" opacity=".55"/>
+  <circle cx="100" cy="100" r="74" fill="#fff"/>
+  <circle cx="100" cy="100" r="70" fill="none" stroke="${f}" stroke-width="1.2"/>
+  <text ${SANS} font-size="14" font-weight="800" letter-spacing="2.6" fill="#fff"><textPath href="#${id}-topp" startOffset="50%" text-anchor="middle">SKOGIQ SKOGKARAKTER</textPath></text>
+  <text ${SANS} font-size="${lang ? 10.5 : 12.5}" font-weight="800" letter-spacing="${lang ? 1.2 : 2.2}" fill="#fff"><textPath href="#${id}-bunn" startOffset="50%" text-anchor="middle">${navn}</textPath></text>
+  ${gran(13.5, 100, 11, '#fff')}${gran(186.5, 100, 11, '#fff')}
+  ${gran(100, 52, 17, f)}
+  <text x="100" y="124" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="64" font-weight="700" fill="${f}">${s(k)}</text>
+  ${r.total != null ? `<rect x="66" y="131" width="68" height="17" rx="8.5" fill="${f}"/><text x="100" y="143.5" text-anchor="middle" ${SANS} font-size="11.5" font-weight="800" fill="#fff">${r.total} / 100</text>` : ''}
+  ${r.forelopig ? `<text x="100" y="${r.total != null ? 160 : 150}" text-anchor="middle" ${SANS} font-size="8.5" font-weight="800" letter-spacing="1.6" fill="${f}">FORELØPIG</text>` : ''}
 </svg>`;
 }
