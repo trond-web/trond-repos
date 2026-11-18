@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Utkast til godkjenning hos behandlingsansvarlig |
 | **Dato** | 2026-11-11 |
-| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.7 (`js/personvern.js`) |
+| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.8 (`js/personvern.js`) |
 | **Behandlingsansvarlig** | Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no. Organisasjonsnummer legges inn når foretak er etablert |
 | **Neste gjennomgang** | Ved endringene i kapittel 8, og senest 2027-11-11 |
 
@@ -64,6 +64,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | John Deere (`jd`) | Tilgangsnøkler til Operations Center | Brukerens initiativ | Til brukeren kobler fra |
 | Kart og offentlige data (`offentlig`) | Koordinater og eiendomsnummer i oppslag; IP-adressen hos leverandørene | Avtale | Lagres ikke av SkogIQ.ai |
 | Spør AI (`ai`) | Spørsmål og plansammendrag til Anthropic, med brukerens egen nøkkel | Brukerens initiativ | Lagres ikke på serveren |
+| SkogIQ Skogkarakter (`skogkarakter`) | Karakter A–E og poeng per område, beregnet i nettleseren fra planens data; ett øyeblikksbilde per år i planen | Avtale | Sammen med planen |
 | Lagring i nettleseren (`lokal`) | Planer, kartfliser, innstillinger, økt | Avtale | På enheten |
 
 **Dataflyt:**
@@ -119,6 +120,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | R12 | Ufullstendig sletting (`synk`, `tilbud`, `tommer`) | Kontosletting fjerner skylagring, nettverk og chat; mellomlagre har faste lagringstider; sikkerhetskopier roteres etter høyst 30 dager | M | L | **Lav** (T4) |
 | R13 | Feil i modeller gir feil beslutninger (ikke personvern, men tillit) | Vilkårene sier at beregninger er veiledende; kilder og «beregnet/registrert» vises | M | M | Håndteres i vilkårene |
 | R14 | Fritekst i tilbakemeldinger kan inneholde personopplysninger om andre (`tilbakemelding`) | Bare administrator ser tilbakemeldingene; teksten er begrenset til 3000 tegn og 10 per time; slettes med kontoen; administrator kan slette enkeltmeldinger | L | L | **Lav** |
+| R15 | Skogkarakteren brukes som rangering eller profilering av skogeieren (`skogkarakter`) | Beregnes i nettleseren fra eierens egne data og vises bare for eieren; ingen sammenligning med andre og ingen visning for kjøpere, kommune eller andre; deles bare når eieren selv skriver ut karakterbeviset eller laster ned stempelet; forklarbare indikatorer, «ukjent» gir ikke minuspoeng; erklæringen 1.8 krever ny godkjenning | L | M | **Lav**. Deling uten eierens handling, sammenligning eller bruk for andre krever ny vurdering (kap. 8 punkt 2) |
 
 **Samlet restrisiko:** lav, bortsett fra **R6** (middels til lagring utenfor Railway er satt opp) og **R7/R11** (lav–middels) inntil tiltakene under er gjennomført. Ingen restrisiko er høy, så forhåndsdrøfting med Datatilsynet (art. 36) er ikke nødvendig.
 
@@ -151,7 +153,7 @@ Behandlingen gir ikke høy risiko for de registrertes rettigheter og friheter. D
 Vurderingen skal oppdateres, og vil trolig bli **påkrevd**, hvis noe av dette innføres:
 
 1. **Maskindata knyttet til fører:** førernavn eller ID, arbeidstid eller produktivitet per person (HPR `OperatorDefinition`, John Deere).
-2. **Profilering eller rangering av skogeiere** for innkjøpere eller entreprenører, for eksempel «skogeiere med hogstmoden skog nær deg» eller anbefalinger og leads.
+2. **Profilering eller rangering av skogeiere** for innkjøpere eller entreprenører, for eksempel «skogeiere med hogstmoden skog nær deg» eller anbefalinger og leads. SkogIQ Skogkarakter (versjon 1.8) er vurdert som egenvurdering med lav risiko (R15) så lenge den bare vises for eieren og deles på eierens eget initiativ. Skal karakteren vises for andre, sammenlignes mellom eiendommer eller brukes av kjøpere, kommuner eller sertifiseringsorgan uten eierens handling, må DPIA-en vurderes på nytt.
 3. **KI på serveren** med SkogIQ.ai sin nøkkel og brukernes data, eller KI som tar avgjørelser.
 4. **Kontinuerlig posisjonssporing** av personer eller maskiner.
 5. **Stor skala**, for eksempel avtaler med skogeierandelslag eller kommuner som omfatter mange tusen skogeiere, eller import av eierregistre.

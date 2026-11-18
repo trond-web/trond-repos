@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.88.0 – 🌲 SkogIQ Skogkarakter (2026-11-18)
+
+*Nytt.* Ny karakter A–E for hvor godt og bærekraftig skogeiendommen drives, med eget stempel. Den bygger på foryngelse, oppfølging av tiltak, miljøverdier, langsiktig produksjon, dokumentasjon og skaderisiko, viser hva som gir flere poeng, og lagres per år. Karakteren er din egen og deles bare når du selv skriver ut karakterbeviset eller laster ned stempelet. Personvernerklæringen er oppdatert (versjon 1.8) og må godtas på nytt.
+
 ## 1.87.0 – 🏡 Landbrukstakst: skogverdien regnes som i takstpraksis (2026-11-18)
 
 *Forbedret.* Skogverdien i landbrukstaksten ble for høy. Nå regnes den som takstmenn gjør: 80 % utnyttelsesgrad, faste kostnader (10 kr/daa per år) og hogstmoden skog fordelt over flere år. Normalskog av god middels bonitet gir ca. 3 800 kr/daa, på nivå med skogeierlagets anslag (ca. 4 000 kr/daa ved 4 %). Forutsetningene kan endres under 🌲 Skog.

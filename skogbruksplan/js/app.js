@@ -36,6 +36,7 @@ import { MARKSLAG, monsterDefs, symbolFyll, symbolRute, arealfordeling, hentAr5,
 import { skadeOppsummering, RISIKONIVAA } from './skade.js';
 import { initVerdi, utenProduksjon } from './verdi-ui.js';
 import { initLandbrukstakst } from './landbrukstakst-ui.js';
+import { initSkogkarakter } from './skogkarakter-ui.js';
 import { initTommerkjoper } from './tommerkjoper-ui.js';
 import { hentDatagrunnlag } from './datagrunnlag.js';
 import { kalibrerPriser, verdiberegning, STANDARD_VERDI } from './verdi.js';
@@ -622,7 +623,7 @@ function angreDeling() {
 let kommuneVisning = null;
 let veiVisning = null;
 let pefcVisning = null;
-let verdiVisning = null; let takstVisning = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null; let maaling = null; let nettverk = null;
+let verdiVisning = null; let takstVisning = null; let skogkarakter = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null; let maaling = null; let nettverk = null;
 let aiVisning = null;
 let skogbrandVisning = null;
 let skifteplanVisning = null;
@@ -727,6 +728,7 @@ async function trekkUtMarkslag() {
 }
 
 function tegnOversikt() {
+  skogkarakter?.tegn();
   tegnInnsikt();
   tegnArealfordeling();
   tegnArealplan();
@@ -2799,6 +2801,8 @@ function kobleHendelser() {
     hentSsb: () => hentDataForAktivPlan(['ssb']),
     visBestand: (id) => { velgBestand(id); visFane('bestand'); },
   });
+  // SkogIQ Skogkarakter (skogkarakter-ui.js): hvor godt og bærekraftig skogen drives – øverst i Oversikt.
+  skogkarakter = initSkogkarakter({ rot: () => $('#skogkarakter'), hentPlan: () => S, endret: () => lagreSnart(), melding, iAar: IAAR, visBestand: (id) => { visFane('bestand'); velgBestand(id); } });
   // Landbrukstakst (landbrukstakst-ui.js): beregnet verdivurdering av hele eiendommen – konsesjon, odel og åsete.
   takstVisning = initLandbrukstakst({ rot: () => $('#landbrukstakst'), hentPlan: () => S, endret: () => { lagreSnart(); }, melding, nyId, iAar: IAAR });
   // Del skogdata med tømmerkjøpere (tommerkjoper-ui.js) – øverst i Verdi-fanen.
