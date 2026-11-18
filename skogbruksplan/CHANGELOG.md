@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.89.0 – ＋ Ny skogbruksplan rett fra kartet i SkogIQ Felt (2026-11-18)
+
+*Nytt.* Ute i skogen kan du nå lage skogbruksplan i SkogIQ Felt: trykk «📍 Der jeg står» eller «✛ Velg i kartet». Appen finner eiendommen hos Kartverket, viser grensen og lager planen med samme data som fullversjonen – vanligvis på under ett minutt.
+
 ## 1.88.1 – 🌲 Nytt stempel for Skogkarakteren (2026-11-18)
 
 *Forbedret.* Stempelet er tegnet på nytt som et klassisk segl: farget bånd med «SKOGIQ SKOGKARAKTER» og vurderingen med årstall, gran-symboler, stor karakter og poeng i midten. Tydeligere og lettere å lese, også i små størrelser.

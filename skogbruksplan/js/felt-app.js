@@ -22,6 +22,7 @@ import { apneTilbakemelding } from './tilbakemelding-ui.js';
 import * as JUL from './juletre.js';
 import * as STP from './stolpe.js';
 import { lagOkLag } from './ok-kart.js';
+import { initNyPlanFelt } from './felt-nyplan.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, treslagKortHtml, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag, settTreslagAndel, fordeling as tsFordeling, avvikHovedtreslag } from './treslag.js';
 import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
@@ -48,6 +49,7 @@ let kart; let naturLag = null; let misLag = null; let grunnlag = {}; let lagNavn
 const lagPerBestand = new Map(); let bestandLag; let grenseLag; let regLag; let etikettLag;
 let valgtId = null; let visning = 'kart';
 let gps = { watch: null, pos: null, folg: false, markor: null, sirkel: null };
+let nyPlan = null; // ny skogbruksplan fra kartet (js/felt-nyplan.js)
 let installHendelse = null; let spor = null; let flate = null;
 let drone = null; let oppdrag = null; let uthevOppdrag = new Set(); let kandidatOppdrag = new Set(); // bestand i oppdraget som er åpent, og bestand som kan velges
 let ungskogRed = null; // bestand der ungskogfeltene er åpne for registrering
@@ -179,7 +181,7 @@ function initKart() {
   kart.on('zoomend', etiketter); etiketter();
   kart.on('dragstart', () => { if (gps.folg) { gps.folg = false; oppdaterGpsKnapp(); } });
   // Trykk i kartet utenfor arket lukker det – men ikke midt i et skjema (registrering, endring, sporlogg).
-  kart.on('click', (e) => { if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (!$('#ark').hidden && !regPagar && !endring && !spor?.harResultat() && !spor?.tegner() && !oppdrag?.velgerIKart() && !drone?.aktiv()) lukkArk(); });
+  kart.on('click', (e) => { if (nyPlan?.klikk(e.latlng)) return; if (flate?.aktiv()) { flate.klikk(e.latlng); return; } if (!$('#ark').hidden && !regPagar && !endring && !spor?.harResultat() && !spor?.tegner() && !oppdrag?.velgerIKart() && !drone?.aktiv()) lukkArk(); });
 }
 
 function stil(b) {
@@ -698,10 +700,13 @@ async function visPlaner() {
     <div class="knapper"><button type="button" class="knapp" data-h="synk">⇅ Synkroniser nå</button></div>` : ''}
     ${sky.aktiv ? `<h3>☁ Skylagring</h3><p class="hint">${sky.feil ? `⚠ ${esc(sky.feil)}` : 'Planene dine er lagret i skyen og hentes automatisk på alle enhetene du logger inn på.'}${sky.sist ? ` Sist synkronisert ${klokke(sky.sist.toISOString())}.` : ''}</p>
     <div class="knapper"><button type="button" class="knapp" data-h="sky">☁ Synkroniser nå</button></div>` : ''}
+    <h3>＋ Ny skogbruksplan</h3>
+    <p class="hint">Lag plan for eiendommen der du står, eller pek den ut i kartet – rett her i skogen. Data fra Kartverket, NIBIO og SR16, som i fullversjonen.</p>
+    <div class="knapper"><button type="button" class="knapp primar" data-np="gps">📍 Der jeg står</button><button type="button" class="knapp" data-np="start">✛ Velg i kartet</button></div>
     <h3>Hent plan fra PC-en</h3>
     <p class="hint">Med innlogging kommer planene dine automatisk. For å hente en plan fra en annen bruker: åpne planen i fullversjonen på PC-en og trykk <b>📱 Til mobil</b>. Skann QR-koden med kameraet, eller skriv koden her:</p>
     <div class="kodefelt"><input id="hentKode" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="F.eks. K7Q2MX" aria-label="Kode fra PC-en"><button type="button" class="knapp primar" data-h="hent-kode">Hent</button></div>
-    <p class="hint">Ny plan fra gårds- og bruksnummer lager du i fullversjonen – også på mobilen.</p>
+    <p class="hint">Gårds- og bruksnummer og flere valg finner du i fullversjonen.</p>
     <div class="knapper"><a class="knapp" href="./?full#planer">Lag ny plan i fullversjonen</a></div>`, { hoy: true });
 }
 
@@ -920,6 +925,13 @@ async function start() {
     document.querySelector('.kartknapper')?.insertAdjacentHTML('afterbegin', '<button type="button" class="rund juletre-rund" id="juletreBtn" title="Juletresjekken – hvor finner du et fint juletre?" aria-label="Juletresjekken">🎄</button>');
     $('#juletreBtn')?.addEventListener('click', visJuletrær);
   }
+  // Ny skogbruksplan fra kartet (js/felt-nyplan.js): der du står eller pekt ut med korset.
+  nyPlan = initNyPlanFelt({
+    kart, L, aapneArk, lukkArk, melding, nyId, iAar: IAAR, lagrePlan, hentPlan, aktivPlan: () => P,
+    sikte: (paa) => { $('#sikte').hidden = !paa; },
+    velgPlan: async (id) => { await velgPlan(id); },
+    gpsPos: () => (gps.pos && Date.now() - gps.pos.tid < 60000 ? Promise.resolve(gps.pos) : new Promise((ok) => { if (!navigator.geolocation) { ok(null); return; } navigator.geolocation.getCurrentPosition((p) => ok({ lat: p.coords.latitude, lon: p.coords.longitude }), () => ok(null), { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }); })),
+  });
   spor = initSporlogg({ L, kart, plan: () => P, lagrePlanen, aapneArk, lukkArk, melding, tegnPlan: () => tegnPlan(false), nyId, tegnFlater: () => tegnTiltaksflater(), settStatus: (paa) => document.body.classList.toggle('spor-aktiv', paa) });
   drone = initDroneFelt({ L, kart, plan: () => P, aapneArk, lagrePlanen, melding, nyId, tegnFlateGeo, iAar: IAAR });
   oppdrag = initOppdragFelt({

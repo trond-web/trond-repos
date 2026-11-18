@@ -3676,6 +3676,26 @@ test('SkogIQ Skogkarakter: områder, indikatorer, ukjent gir ikke minuspoeng, fo
   assert.match(svg, /SKOGIQ SKOGKARAKTER/); assert.match(svg, />B</); assert.match(svg, /78 \/ 100/); assert.match(svg, /FORELØPIG/); assert.match(svg, /aria-label="SkogIQ Skogkarakter B, 78 av 100 poeng"/);
 });
 
+test('Ny plan fra kartet (Felt): eiendom i punktet, grense uten festetomter, kommune og planobjekt', async () => {
+  const P = await import('../js/plan-fra-kart.js');
+  const urler = [];
+  const hent = async (u) => { urler.push(u); const j = (o) => ({ ok: true, json: async () => o, text: async () => JSON.stringify(o) });
+    if (/eiendom\/v1\/punkt/.test(u)) return j({ eiendom: [{ kommunenummer: '3420', gardsnummer: 15, bruksnummer: 16, festenummer: 0, meterFraPunkt: 0 }, { kommunenummer: '3420', gardsnummer: 15, bruksnummer: 16, festenummer: 0, meterFraPunkt: 3 }, { kommunenummer: '3420', gardsnummer: 15, bruksnummer: 129, festenummer: 0, meterFraPunkt: 1, teigmedflerematrikkelenheter: true }, { kommunenummer: '3420', gardsnummer: 0, bruksnummer: 0 }] });
+    if (/geokoding/.test(u)) return j({ features: [{ geometry: { type: 'Polygon', coordinates: [[[11, 60], [11.1, 60], [11.1, 60.1], [11, 60]]] }, properties: { festenummer: 0 } }, { geometry: { type: 'Polygon', coordinates: [[[11.2, 60], [11.3, 60], [11.3, 60.1], [11.2, 60]]] }, properties: { festenummer: 7 } }] });
+    if (/kommuneinfo/.test(u)) return j([{ kommunenummer: '3420', kommunenavnNorsk: 'Elverum' }]);
+    return { ok: false, status: 404 }; };
+  const l = await P.eiendomVed(60.95, 11.45, { hent });
+  assert.deepEqual(l.map((x) => [x.kommunenr, x.tekst, x.avstand, x.sameie]), [['3420', '15/16', 0, false], ['3420', '15/129', 1, true]], 'unike matrikkelenheter, nærmeste først, uten ugyldige');
+  assert.match(urler[0], /eiendom\/v1\/punkt\?nord=60\.950000&ost=11\.450000&koordsys=4258/);
+  const g = await P.eiendomGrense(l[0], { hent }); assert.equal(g.type, 'MultiPolygon'); assert.equal(g.coordinates.length, 1, 'festetomtene er ikke med');
+  assert.equal((await P.eiendomGrense({ ...l[0], fnr: 7 }, { hent })).coordinates.length, 1);
+  assert.deepEqual(await P.kommuneFor('3420', { hent }), { nr: '3420', navn: 'Elverum' });
+  assert.ok(P.GEN_STEG.some(([id]) => id === 'sr16'));
+  // Felt-modulen bruker samme motor og henter datagrunnlaget i bakgrunnen
+  const { readFileSync: les } = await import('node:fs'); const f = les(new URL('../js/felt-nyplan.js', import.meta.url), 'utf8');
+  assert.match(f, /lagSkogbruksplan\(/); assert.match(f, /hentDatagrunnlag\(/); assert.match(les(new URL('../js/felt-app.js', import.meta.url), 'utf8'), /data-np="gps"/);
+});
+
 test('Roller: rådgiver/regnskapsfører, og samme rolleliste på serveren, registreringen, dialogen, admin og nettverk', async () => {
   const A = await import('../auth.js'); const { readFileSync: les } = await import('node:fs');
   const nokler = Object.keys(A.BRUKERROLLER); assert.ok(nokler.includes('radgiver')); assert.equal(A.BRUKERROLLER.radgiver, 'Rådgiver / regnskapsfører');
