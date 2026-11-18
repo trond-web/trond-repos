@@ -3575,6 +3575,17 @@ test('Landbrukstakst: delverdier (skog 4 %, jord, bygninger, rettigheter, boverd
   assert.equal(LT.priskontroll({ dyrka: 0, beite: 0, produktiv: 600 }, { harBolig: true, verdi: 3e6 }).svar, 'nei', 'brukbart bolighus under 3,5 mill.');
   assert.equal(LT.konsesjonsplikt({ total: 90, dyrka: 30, produktiv: 50 }, { harBolig: true }).plikt, false);
   assert.equal(LT.konsesjonsplikt({ total: 90, dyrka: 30, produktiv: 50 }, { harBolig: false }).plikt, true, 'ubebygd er konsesjonspliktig');
+  // Skog som i takstpraksis: utnyttelse, faste kostnader og fordeling av hogstmoden skog trekker ned – og normalskog av
+  // god middels bonitet (G14) havner rundt Glommen Mjøsens nivå (ca. 4 000 kr/daa ved 4 %)
+  const M2 = await import('../js/model.js');
+  const normal = (h) => ({ bestand: Array.from({ length: M2.STANDARD_INNSTILLINGER.hogstalder.G[h] }, (_, i) => ({ id: `n${i}`, nr: String(i), treslag: 'G', bonitet: h, alder: i + 1, areal: 1 })), innstillinger: M2.STANDARD_INNSTILLINGER });
+  const g14 = LT.skogTakst(normal(14), {}, { iAar: 2026 }); assert.ok(g14.info.perDaa > 3300 && g14.info.perDaa < 4500, `${g14.info.perDaa}`);
+  const ren = LT.skogTakst(normal(14), { utnyttelse: 100, fasteKostnader: 0, fordelingAar: 1 }, { iAar: 2026 }); assert.ok(ren.verdi > g14.verdi * 1.3, 'uten takstjusteringer blir verdien klart høyere');
+  assert.ok(LT.skogTakst(normal(8), {}, { iAar: 2026 }).info.perDaa < LT.skogTakst(normal(20), {}, { iAar: 2026 }).info.perDaa / 4);
+  const dm = lagDemo(2026); const d0 = LT.skogTakst(dm, {}, { iAar: 2026 }); const d1 = LT.skogTakst(dm, { fordelingAar: 1 }, { iAar: 2026 });
+  assert.ok(d0.info.fordelingAar > 1 && d0.verdi < d1.verdi, 'hogstmoden skog fordelt over flere år gir lavere verdi'); assert.match(d0.metode, /80 % utnyttelse.*fordelt over \d+ år.*faste kostnader 10 kr\/daa/);
+  assert.equal(LT.skogTakst(dm, { fasteKostnader: 20 }, { iAar: 2026 }).info.faste, Math.round(20 * dm.bestand.reduce((s0, b) => s0 + b.areal, 0) / 0.04));
+  assert.ok(d0.info.utenJustering > d0.verdi * 1.2, 'uten justeringer (100 % utnyttelse, ingen fordeling eller faste kostnader)');
   // Uten takstdata: standardverdier, ingen bygninger
   const r0 = LT.beregnTakst(lagDemo(2026), { iAar: 2026 }); assert.ok(r0.sum > 0 && r0.deler.every((d) => d.gruppe === 'skog'));
 });

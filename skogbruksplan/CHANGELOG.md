@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.87.0 – 🏡 Landbrukstakst: skogverdien regnes som i takstpraksis (2026-11-18)
+
+*Forbedret.* Skogverdien i landbrukstaksten ble for høy. Nå regnes den som takstmenn gjør: 80 % utnyttelsesgrad, faste kostnader (10 kr/daa per år) og hogstmoden skog fordelt over flere år. Normalskog av god middels bonitet gir ca. 3 800 kr/daa, på nivå med skogeierlagets anslag (ca. 4 000 kr/daa ved 4 %). Forutsetningene kan endres under 🌲 Skog.
+
 ## 1.86.0 – 🗺️ ØK-kart med høydekurver (2026-11-18)
 
 *Nytt.* Nytt bakgrunnskart: ØK-kart (Kartverkets N5 Raster) med høydekurver for hver 5. meter, eiendomsnummer og bygninger – og den historiske førsteutgaven av ØK. Bestandsfargene blir gjennomsiktige, så terrenget synes. Også i SkogIQ Felt. Takk for tipset!

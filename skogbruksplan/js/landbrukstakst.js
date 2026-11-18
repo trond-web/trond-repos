@@ -67,8 +67,9 @@ export const STANDARD_TAKST = {
   asetefradrag: 20, // % skjønnsmessig fradrag i åsetestakst
   kjopesum: null,
   merknad: '',
+  skog: { utnyttelse: 80, fasteKostnader: 10, fordelingAar: 10 },
 };
-export const takstFor = (S) => ({ ...STANDARD_TAKST, ...(S.takst || {}), jord: { ...STANDARD_TAKST.jord, ...(S.takst?.jord || {}) }, arealer: { ...(S.takst?.arealer || {}) }, rettigheter: S.takst?.rettigheter || STANDARD_TAKST.rettigheter.map((r) => ({ ...r })), bygninger: S.takst?.bygninger || [] });
+export const takstFor = (S) => ({ ...STANDARD_TAKST, ...(S.takst || {}), jord: { ...STANDARD_TAKST.jord, ...(S.takst?.jord || {}) }, arealer: { ...(S.takst?.arealer || {}) }, rettigheter: S.takst?.rettigheter || STANDARD_TAKST.rettigheter.map((r) => ({ ...r })), bygninger: S.takst?.bygninger || [], skog: { ...STANDARD_TAKST.skog, ...(S.takst?.skog || {}) } });
 
 const kap = (aarlig) => (Number(aarlig) || 0) / (RENTE / 100);
 const rund = (v, n = 1000) => Math.round(v / n) * n;
@@ -108,17 +109,43 @@ export function bygningsverdi(g, iAar = new Date().getFullYear()) {
   return { verdi: rund(Math.min(nybygg, nybygg * rest * fT * fB)), nybygg: rund(nybygg), alder, ukjentAar: ukjent, rest: Math.round(rest * 100) / 100, fT, fB, kvm, type };
 }
 
+// Skogverdien slik landbrukstakst og priskontroll regner den: avkastningsverdi med 4 % per bestand (js/verdi.js), men
+//   * utnyttelsesgrad: bare en del av volumet kan drives og selges (kantsoner, hensyn, impediment i bestand, drivbarhet)
+//     – nettoen per m³ ganges med graden (Glommen Mjøsens veiledende tabell forutsetter 80 %);
+//   * faste årlige kostnader (administrasjon, forsikring, skogavgift o.l.) per daa, kapitalisert med 4 %;
+//   * hogstmoden skog hogges ikke på én gang: den fordeles jevnt over flere år (høyst 10 % av skogarealet per år og
+//     høyst «fordelingAar» år), slik takstmenn regner «jevn drift» med uttak av overskog over tid.
+export function skogTakst(S, opt = {}, { iAar = new Date().getFullYear() } = {}) {
+  const o = { ...STANDARD_TAKST.skog, ...(opt || {}) };
+  const tom = { verdi: 0, info: null, metode: `Avkastningsverdi, ${RENTE} %` };
+  if (!(S.bestand || []).length) return tom;
+  const inn0 = S.innstillinger || STANDARD_INNSTILLINGER; const u = Math.min(1, Math.max(0.3, (Number(o.utnyttelse) || 100) / 100));
+  const pris = Object.fromEntries(Object.keys(inn0.pris).map((k) => [k, (inn0.drift[k] ?? inn0.drift.G) + (inn0.pris[k] - (inn0.drift[k] ?? inn0.drift.G)) * u]));
+  const Sx = { ...S, innstillinger: { ...inn0, pris } };
+  const r = RENTE / 100;
+  const v = verdiberegning(Sx, { ...STANDARD_VERDI, ...(S.verdi || {}), rente: RENTE, annenInntekt: 0, fasteKostnader: 0 }, { iAar, utenProduksjonIder: utenProduksjon(Sx) });
+  const areal = v.rader.reduce((s0, x) => s0 + x.areal, 0);
+  // Fordeling av hogstmoden skog (hogst nå) over N år: verdien ganges med snittet av diskonteringsfaktorene.
+  const moden = v.rader.filter((x) => x.hogstAar != null && x.hogstAar <= iAar && x.verdi > 0);
+  const modenAreal = moden.reduce((s0, x) => s0 + x.areal, 0); const modenVerdi = moden.reduce((s0, x) => s0 + x.verdi, 0);
+  const N = modenAreal ? Math.max(1, Math.min(Number(o.fordelingAar) || 1, Math.ceil(modenAreal / (0.1 * areal)))) : 1;
+  const faktor = Array.from({ length: N }, (_, i) => (1 + r) ** -i).reduce((x, y) => x + y, 0) / N;
+  const fordelt = modenVerdi * (1 - faktor);
+  const faste = (Number(o.fasteKostnader) || 0) * areal / r;
+  const verdi = Math.max(0, v.eiendom - fordelt - faste);
+  const deler = [`nåverdien av hogstinntektene per bestand`, u < 1 ? `${Math.round(u * 100)} % utnyttelse` : '', N > 1 ? `hogstmoden skog fordelt over ${N} år` : '', faste ? `minus faste kostnader ${o.fasteKostnader} kr/daa/år` : '', v.veiPerAar ? 'minus veivedlikehold' : ''].filter(Boolean);
+  return {
+    verdi, metode: `Avkastningsverdi, ${RENTE} % – ${deler.join(', ')}`,
+    info: { bestand: v.rader.length, volum: Math.round(v.rader.reduce((s0, x) => s0 + x.volum, 0)), slakt: Math.round(v.slakt), vei: Math.round(v.veiPerAar), perDaa: areal ? Math.round(verdi / areal) : 0, utnyttelse: Math.round(u * 100), fordelingAar: N, fordelt: Math.round(fordelt), faste: Math.round(faste), fasteKostnader: Number(o.fasteKostnader) || 0, utenJustering: rund(Math.max(0, u < 1 ? verdiberegning(S.innstillinger ? S : { ...S, innstillinger: inn0 }, { ...STANDARD_VERDI, ...(S.verdi || {}), rente: RENTE, annenInntekt: 0, fasteKostnader: 0 }, { iAar, utenProduksjonIder: utenProduksjon(Sx) }).eiendom : v.eiendom)) },
+  };
+}
+
 // Hele beregningen: { arealer, deler: [{ id, navn, metode, verdi }], varianter: { konsesjon, odel, asete }, priskontroll, konsesjonsplikt }.
 export function beregnTakst(S, { iAar = new Date().getFullYear() } = {}) {
   const t = takstFor(S); const a = arealer(S, t); const deler = [];
-  // Skog: avkastningsverdi med 4 %
-  let skog = 0; let skogInfo = null;
-  if ((S.bestand || []).length) {
-    const Sx = S.innstillinger ? S : { ...S, innstillinger: STANDARD_INNSTILLINGER };
-    const v = verdiberegning(Sx, { ...STANDARD_VERDI, ...(S.verdi || {}), rente: RENTE, annenInntekt: 0, fasteKostnader: 0 }, { iAar, utenProduksjonIder: utenProduksjon(Sx) });
-    skog = Math.max(0, v.eiendom); skogInfo = { bestand: v.rader.length, volum: Math.round(v.rader.reduce((s, x) => s + x.volum, 0)), slakt: Math.round(v.slakt), vei: Math.round(v.veiPerAar) };
-  }
-  deler.push({ id: 'skog', gruppe: 'skog', navn: 'Skog', areal: a.produktiv, metode: `Avkastningsverdi, ${RENTE} % – nåverdien av hogstinntektene per bestand${skogInfo?.vei ? ', minus veivedlikehold' : ''}`, verdi: rund(skog), info: skogInfo });
+  // Skog: avkastningsverdi med 4 %, med takstpraksis (skogTakst)
+  const sk = skogTakst(S, t.skog, { iAar });
+  deler.push({ id: 'skog', gruppe: 'skog', navn: 'Skog', areal: a.produktiv, metode: sk.metode, verdi: rund(sk.verdi), info: sk.info });
   // Jord
   const rasj = 1 + (Number(t.jord.rasjonalisering) || 0) / 100;
   for (const [k, navn] of [['full', 'Fulldyrka jord'], ['overflate', 'Overflatedyrka jord'], ['beite', 'Innmarksbeite']]) {
@@ -149,7 +176,7 @@ export function beregnTakst(S, { iAar = new Date().getFullYear() } = {}) {
     odel: { ...VARIANTER.odel, verdi: rund(sum, 10000) },
     asete: { ...VARIANTER.asete, verdi: rund((sum - boverdi) * (1 - asetefradrag / 100), 10000), fradrag: asetefradrag },
   };
-  return { takst: t, arealer: a, deler, sum: rund(sum), boverdi, varianter, priskontroll: priskontroll(a, { harBolig, verdi: Number(t.kjopesum) || varianter.konsesjon.verdi, kjopesum: Number(t.kjopesum) || null }), konsesjonsplikt: konsesjonsplikt(a, { harBolig }), skogInfo };
+  return { takst: t, arealer: a, deler, sum: rund(sum), boverdi, varianter, priskontroll: priskontroll(a, { harBolig, verdi: Number(t.kjopesum) || varianter.konsesjon.verdi, kjopesum: Number(t.kjopesum) || null }), konsesjonsplikt: konsesjonsplikt(a, { harBolig }), skogInfo: sk.info };
 }
 
 // Priskontroll etter konsesjonsloven § 9 a (endret ved lov 6. juni 2025 nr. 27, i kraft 1. juli 2025):
