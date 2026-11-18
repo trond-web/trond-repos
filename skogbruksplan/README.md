@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.86.0** (2026-11-18) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.87.0** (2026-11-18) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -786,7 +786,12 @@ Bakgrunnskartet «ØK-kart med høydekurver (N5)» er Kartverkets N5 Raster, ett
 Beregnet verdivurdering av hele landbrukseiendommen under **Verdi**. Metoden følger konsesjonsloven §§ 9 og 9a og rundskrivene M-1/2021 og M-3/2002: hver del verdsettes for seg.
 
 **Delene:**
-- **Skog:** avkastningsverdi med 4 % (`verdiberegning` med 4 % rente), minus kapitalisert veivedlikehold.
+- **Skog:** avkastningsverdi med 4 % per bestand (`skogTakst`), justert slik takstmenn regner:
+  - **Utnyttelsesgrad**, standard 80 % (Glommen Mjøsens veiledende tabell forutsetter 80 %). Nettoen per m³ ganges med graden.
+  - **Faste kostnader**, standard 10 kr/daa per år, kapitalisert med 4 %.
+  - **Hogstmoden skog** fordeles jevnt over flere år: høyst 10 % av skogarealet per år og høyst 10 år.
+  - Planlagt veivedlikehold trekkes fra.
+  - Kalibrert mot Glommen Mjøsen Skog. En normalskog av god middels bonitet (G14) gir ca. 3 800 kr/daa, mot deres ca. 4 000 kr/daa (4 %, 2023). Uten justeringene ble skogverdien 1,4–1,8 ganger for høy.
 - **Fulldyrka, overflatedyrka og innmarksbeite:** arealer fra AR5, som kan overstyres. Verdien er årlig netto per daa ÷ 4 %, med valgfri rasjonaliseringsgevinst. Standard er 140, 90 og 40 kr/daa per år.
 - **Utmark, jakt, fiske og rettigheter:** årlig netto ÷ 4 % pluss skjønnsbeløp.
 - **Bygninger:** kostnadsverdi = BTA × nybyggpris × restverdi × tilstand × bruksverdi.
