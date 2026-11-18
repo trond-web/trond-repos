@@ -3640,6 +3640,42 @@ test('ØK-kart: UTM-sone, affin innretting av flisen og WMS-adresse i UTM', asyn
   assert.equal(OK.flisPlan([[29, 70.1], [29.01, 70.1], [29, 70.09], [29.01, 70.09]]).sone, 35);
 });
 
+test('SkogIQ Skogkarakter: områder, indikatorer, ukjent gir ikke minuspoeng, forbedringer, historikk og stempel', async () => {
+  const K = await import('../js/skogkarakter.js'); const { lagDemo } = await import('../js/demo.js');
+  assert.equal(K.OMRADER.reduce((s, o) => s + o.vekt, 0), 100);
+  assert.deepEqual([85, 84, 70, 55, 40, 39, 0].map((p) => K.karakterFor(p).k), ['A', 'B', 'B', 'C', 'D', 'E', 'E']);
+  const ny = (b) => ({ id: b.id, nr: b.id, areal: 10, treslag: 'G', bonitet: 14, tiltak: [], ...b });
+  const base = () => ({ eiendom: { takstAar: 2022, navn: 'Test' }, bestand: [ny({ id: 'a', alder: 60, volumDaa: 20 }), ny({ id: 'b', alder: 95, volumDaa: 30 })] });
+  // Foryngelse: hogst 2021 uten planting → mangel; med planting etter hogsten → i orden
+  const S1 = base(); S1.bestand.push(ny({ id: 'h', alder: 4, tiltak: [{ id: 't1', type: 'sluttavvirkning', status: 'utfort', aar: 2021 }] }));
+  let r = K.beregnSkogkarakter(S1, { iAar: 2026 }); const ind = (r0, o, i) => r0.omrader.find((x) => x.id === o).indikatorer.find((x) => x.id === i);
+  assert.equal(ind(r, 'foryngelse', 'foryngelse3').poeng, 0); assert.match(ind(r, 'foryngelse', 'foryngelse3').forbedringer[0].tekst, /Bestand h: hogd 2021 – foryng/);
+  S1.bestand[2].tiltak.push({ id: 't2', type: 'planting', status: 'utfort', aar: 2022 }); r = K.beregnSkogkarakter(S1, { iAar: 2026 });
+  assert.equal(ind(r, 'foryngelse', 'foryngelse3').poeng, 1);
+  // Oppfølging: forfalte tiltak vektet etter prioritet, og langvarig etterslep
+  const S2 = base(); S2.bestand[0].tiltak = [{ id: 'x1', type: 'tynning', status: 'utfort', aar: 2024, prioritet: 1 }, { id: 'x2', type: 'tynning', status: 'planlagt', aar: 2022, prioritet: 3 }, { id: 'x3', type: 'ungskogpleie', status: 'planlagt', aar: 2030 }];
+  r = K.beregnSkogkarakter(S2, { iAar: 2026 }); assert.equal(ind(r, 'oppfolging', 'itide').poeng, 3 / 4); assert.equal(ind(r, 'oppfolging', 'etterslep').poeng, 0.5);
+  assert.ok(r.forbedringer.some((f) => f.tiltakId === 'x2' && f.poeng > 0), 'forsinket tiltak gir forbedring med poeng');
+  // Ukjent gir ikke minuspoeng: uten skader er risiko-området ukjent og teller ikke
+  assert.equal(r.omrader.find((o) => o.id === 'risiko').poeng, null);
+  const S3 = base(); S3.skogbrand = { skader: [{ dato: '2024-05-01', status: 'registrert' }] }; const r3 = K.beregnSkogkarakter(S3, { iAar: 2026 });
+  assert.equal(r3.omrader.find((o) => o.id === 'risiko').poeng, 0);
+  // Miljøfigur med utført hogst gir 0, urørt gir full score
+  const S4 = base(); S4.bestand[1].miljo = true; assert.equal(ind(K.beregnSkogkarakter(S4, { iAar: 2026 }), 'miljo', 'miljofigurer').poeng, 1);
+  S4.bestand[1].tiltak = [{ id: 'm', type: 'sluttavvirkning', status: 'utfort', aar: 2025 }]; assert.equal(ind(K.beregnSkogkarakter(S4, { iAar: 2026 }), 'miljo', 'miljofigurer').poeng, 0);
+  // Planalder
+  assert.equal(ind(K.beregnSkogkarakter({ ...base(), eiendom: { takstAar: 2003 } }, { iAar: 2026 }), 'oppfolging', 'planalder').poeng, 0);
+  // Demo: total og karakter, datadekning, datatiltak uten poeng
+  const D = lagDemo(2026); const rd = K.beregnSkogkarakter(D, { iAar: 2026 });
+  assert.ok(rd.total >= 0 && rd.total <= 100 && rd.karakter); assert.ok(rd.dekning > 0 && rd.dekning <= 100); assert.ok(rd.datatiltak.every((f) => f.poeng === 0));
+  // Historikk: ett per år
+  K.lagreOyeblikk(D, rd); K.lagreOyeblikk(D, { ...rd, total: 10 }); K.lagreOyeblikk(D, { ...rd, aar: 2027 });
+  assert.deepEqual(D.skogkarakter.historikk.map((h) => [h.aar, h.total]), [[2026, 10], [2027, rd.total]]);
+  // Stempel
+  const svg = K.stempelSvg({ ...rd, karakter: 'B', total: 78, navn: 'God', forelopig: true });
+  assert.match(svg, /SKOGIQ SKOGKARAKTER/); assert.match(svg, />B</); assert.match(svg, /78 \/ 100/); assert.match(svg, /FORELØPIG/); assert.match(svg, /aria-label="SkogIQ Skogkarakter B, 78 av 100 poeng"/);
+});
+
 test('Roller: rådgiver/regnskapsfører, og samme rolleliste på serveren, registreringen, dialogen, admin og nettverk', async () => {
   const A = await import('../auth.js'); const { readFileSync: les } = await import('node:fs');
   const nokler = Object.keys(A.BRUKERROLLER); assert.ok(nokler.includes('radgiver')); assert.equal(A.BRUKERROLLER.radgiver, 'Rådgiver / regnskapsfører');
@@ -3858,6 +3894,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.5': '1eee6ddd5e27e456', // profilbilde (valgfritt), vist i Nettverk
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
+  '1.8': '1b41be6f78760f90',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {

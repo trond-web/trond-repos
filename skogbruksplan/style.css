@@ -1472,3 +1472,27 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 }
 .lt-tabell { table-layout: auto; width: 100%; } .lt-tabell td:first-child { white-space: normal; min-width: 0; } .lt-tabell .lt-metode { white-space: normal; overflow-wrap: anywhere; }
 .lt-bygg-kilde { margin: 4px 0 0; font-size: 12px; }
+
+/* 🌲 SkogIQ Skogkarakter (js/skogkarakter-ui.js) */
+.sk-kort { container-type: inline-size; }
+.sk-topp { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; }
+.sk-stempel-boks svg { display: block; filter: drop-shadow(0 3px 8px rgba(0,0,0,.12)); }
+.sk-sum h3 { margin: 0 0 2px; } .sk-sum h3 .hint { font-weight: 400; font-size: 12.5px; }
+.sk-total { margin: 2px 0 8px; font-size: 18px; } .sk-total span { font-size: 13.5px; color: var(--text-2); margin-left: 6px; }
+.sk-bar { display: block; height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; } .sk-bar i { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+.sk-dekning { display: grid; gap: 3px; font-size: 12px; color: var(--text-2); margin-bottom: 10px; }
+.sk-omrader { display: grid; gap: 5px; margin-bottom: 8px; }
+.sk-omr { display: grid; grid-template-columns: minmax(150px, 1fr) 1.2fr 46px; gap: 8px; align-items: center; font-size: 13px; }
+.sk-omr small { color: var(--text-2); } .sk-omr b { text-align: right; font-variant-numeric: tabular-nums; } .sk-omr.ukjent b { color: var(--text-2); font-weight: 400; font-size: 12px; }
+.sk-detaljer { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 6px; }
+.sk-forb { list-style: none; padding: 0; margin: 4px 0 10px; display: grid; gap: 5px; }
+.sk-forb li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; padding: 6px 8px; border-radius: 10px; background: var(--surface-2); }
+.sk-forb li[data-sk-bestand] { cursor: pointer; } .sk-forb li[data-sk-bestand]:hover { outline: 2px solid var(--accent); }
+.sk-forb.data li { background: transparent; border: 1px dashed var(--border); }
+.sk-pluss { font-weight: 800; color: var(--accent); min-width: 30px; }
+.sk-omr-det { border: 1px solid var(--border); border-radius: 10px; padding: 4px 10px; margin: 6px 0; } .sk-omr-det summary { cursor: pointer; font-weight: 600; } .sk-omr-det summary b { float: right; }
+.sk-omr-det ul { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 6px; } .sk-omr-det li { display: grid; grid-template-columns: 36px 1fr; gap: 8px; font-size: 13px; } .sk-omr-det small { display: block; color: var(--text-2); }
+.sk-ind { display: grid; place-items: center; height: 26px; border-radius: 8px; font-weight: 800; font-size: 12px; background: var(--surface-2); }
+.sk-ind.god { background: #dcefe3; color: #1f6b4a; } .sk-ind.middels { background: #fbf0cf; color: #7a5a00; } .sk-ind.svak { background: #f9dcd6; color: #9b2c22; } .sk-ind.ukjent { color: var(--text-2); }
+.sk-hist { display: flex; gap: 8px; flex-wrap: wrap; } .sk-hist div { display: grid; text-align: center; padding: 4px 10px; border-radius: 10px; background: var(--surface-2); font-size: 12px; } .sk-hist b { font-size: 18px; }
+@container (max-width: 520px) { .sk-topp { grid-template-columns: 1fr; justify-items: center; } .sk-sum { width: 100%; } .sk-omr { grid-template-columns: 1fr 70px 40px; } }

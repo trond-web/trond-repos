@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.87.0** (2026-11-18) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.88.0** (2026-11-18) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -772,6 +772,32 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
+
+## 🌲 SkogIQ Skogkarakter (`js/skogkarakter.js`, `js/skogkarakter-ui.js`)
+
+Skogkarakteren viser hvor godt og bærekraftig eiendommen drives. Den står øverst i Oversikt og gir karakter A–E (0–100 poeng), med et stempel. Kriteriene bygger på:
+- skogbruksloven og forskrift om berekraftig skogbruk (foryngelse innen 3 år, minst 150/100/50 planter per daa)
+- Norsk PEFC Skogstandard (`js/pefc.js`)
+- Landbruksdirektoratets kontroll av foryngelse og miljøhensyn
+
+| Område | Vekt | Indikatorer |
+|---|---|---|
+| 🌱 Foryngelse og skogkultur | 25 % | Foryngelse innen 3 år etter hogst, ungskogpleie i tide, tetthetsklasse a |
+| ✅ Oppfølging av tiltak | 20 % | Tiltak med passert frist som er utført (vektet etter prioritet), etterslep over 2 år, planens alder |
+| 🦋 Miljøverdier | 25 % | PEFC-krav 13, 16, 19, 20 og 22–30, miljøfigurer urørt, S1-konflikter med rødlistede arter |
+| 📈 Langsiktig produksjon | 15 % | Hogst siste 10 år mot bærekraftig flateuttak, PEFC-krav 15 (nedre alder), overmoden skog |
+| 📋 Dokumentasjon | 10 % | PEFC-krav 3, PEFC-sjekkliste før hogst, planen ajourført etter hogst |
+| 🛡️ Skog- og skaderisiko | 5 % | Registrerte skader fulgt opp |
+
+**Karakterskala:** A ≥ 85, B ≥ 70, C ≥ 55, D ≥ 40, E under 40.
+
+**Ukjente indikatorer:** gir ikke minuspoeng. Datadekningen vises, og under 50 % er karakteren foreløpig.
+
+**Forbedringer:** «Slik øker du karakteren» viser hver forbedring med poengene den er verdt, og lenker til bestandet. Tiltak som bare gir mer data, står i en egen liste.
+
+**Lagring:** ett øyeblikksbilde per år lagres i `S.skogkarakter.historikk`.
+
+**Personvern:** karakteren er en egenvurdering. Den beregnes i nettleseren, vises bare for eieren og brukes ikke til sammenligning. Den deles bare når eieren selv skriver ut karakterbeviset eller laster ned stempelet (SVG). Dette er personvernerklæring 1.8 (krever ny godkjenning) og DPIA R15.
 
 ## 🗺️ ØK-kart med høydekurver (`js/ok-kart.js`)
 
