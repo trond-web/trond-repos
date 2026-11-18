@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.85.0** (2026-11-16) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.86.0** (2026-11-18) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -772,6 +772,14 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
+
+## 🗺️ ØK-kart med høydekurver (`js/ok-kart.js`)
+
+Bakgrunnskartet «ØK-kart med høydekurver (N5)» er Kartverkets N5 Raster, etterfølgeren til Økonomisk kartverk 1:5000. Det har høydekurver med 5 m ekvidistanse, eiendomsnummer og bygninger. I tillegg finnes «ØK førsteutgave (historisk)», de skannede førsteutgavene med gamle bonitetsmerker. Begge ligger i fullversjonen, og N5 også i SkogIQ Felt.
+
+**Projeksjon:** tjenesten (`wms.n5raster2`) svarer bare i UTM (EPSG:25832–25835), ikke i Web Mercator. Hver kartflis hentes derfor i sin UTM-sone og rettes inn på et lerret med en affin transformasjon ut fra tre hjørner.
+
+**Visning:** på ØK tegnes bestandsfargene med 50 % dekning, slik at høydekurvene synes.
 
 ## 🏡 Landbrukstakst – beregnet (`js/landbrukstakst.js`, `js/landbrukstakst-ui.js`)
 

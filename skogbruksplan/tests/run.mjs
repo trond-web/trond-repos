@@ -3611,6 +3611,24 @@ test('Bygninger fra Kartverket: matrikkelpunkt, grunnflate fra FKB-kartet, BTA-a
   const r2 = B.slaSammen(r.liste, [{ ...l[0], grunnflate: 150 }, { nr: '105', kode: 111, grunnflate: 90 }], { nyId }); assert.equal(r2.lagtTil, 1); assert.equal(r2.liste.length, 3); assert.equal(r2.liste[2].type, 'kaarbolig'); assert.equal(r2.liste[0].bta, 192, 'BTA som finnes, overskrives ikke');
 });
 
+test('ØK-kart: UTM-sone, affin innretting av flisen og WMS-adresse i UTM', async () => {
+  const OK = await import('../js/ok-kart.js');
+  assert.deepEqual([OK.utmSone(5), OK.utmSone(10.7), OK.utmSone(13), OK.utmSone(25), OK.utmSone(31)], [32, 32, 33, 35, 35]);
+  // Affin: tre punkter sendes nøyaktig dit de skal, også med rotasjon
+  const m = OK.affin([[10, 20], [110, 30], [5, 120]], [[0, 0], [256, 0], [0, 256]]);
+  const T = ([x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+  for (const [p, t] of [[[10, 20], [0, 0]], [[110, 30], [256, 0]], [[5, 120], [0, 256]]]) { const q = T(p); assert.ok(Math.abs(q[0] - t[0]) < 1e-9 && Math.abs(q[1] - t[1]) < 1e-9, JSON.stringify(q)); }
+  assert.equal(OK.affin([[0, 0], [1, 1], [2, 2]], [[0, 0], [1, 0], [0, 1]]), null, 'kolineære punkter');
+  // Flis ved Løten (≈ 11,37° Ø): sone 32 (6–12° Ø), boks i meter, og hjørnene innenfor bildet
+  const hj = [[11.37, 60.895], [11.38, 60.895], [11.37, 60.89], [11.38, 60.89]];
+  const plan = OK.flisPlan(hj, { px: 320 }); assert.equal(plan.sone, 32);
+  assert.ok(plan.boks[2] - plan.boks[0] > 500 && plan.boks[2] - plan.boks[0] < 650, `${plan.boks}`);
+  for (const [x, y] of plan.bildePunkter) assert.ok(x >= 0 && x <= 320 && y >= 0 && y <= 320);
+  assert.match(OK.okUrl('n5raster', plan), /wms\.n5raster2\?.*LAYERS=n5raster&.*CRS=EPSG:25832&BBOX=\d+\.\d,\d+\.\d,\d+\.\d,\d+\.\d&WIDTH=320/);
+  // Øst i landet: sone 35
+  assert.equal(OK.flisPlan([[29, 70.1], [29.01, 70.1], [29, 70.09], [29.01, 70.09]]).sone, 35);
+});
+
 test('Roller: rådgiver/regnskapsfører, og samme rolleliste på serveren, registreringen, dialogen, admin og nettverk', async () => {
   const A = await import('../auth.js'); const { readFileSync: les } = await import('node:fs');
   const nokler = Object.keys(A.BRUKERROLLER); assert.ok(nokler.includes('radgiver')); assert.equal(A.BRUKERROLLER.radgiver, 'Rådgiver / regnskapsfører');

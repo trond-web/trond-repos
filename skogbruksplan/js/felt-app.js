@@ -21,6 +21,7 @@ import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { apneTilbakemelding } from './tilbakemelding-ui.js';
 import * as JUL from './juletre.js';
 import * as STP from './stolpe.js';
+import { lagOkLag } from './ok-kart.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, treslagKortHtml, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag, settTreslagAndel, fordeling as tsFordeling, avvikHovedtreslag } from './treslag.js';
 import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
@@ -157,6 +158,8 @@ function initKart() {
   const kv = (lag) => L.tileLayer(`https://cache.kartverket.no/v1/wmts/1.0.0/${lag}/default/webmercator/{z}/{y}/{x}.png`, { maxZoom: 20, maxNativeZoom: 18, attribution: '© Kartverket' });
   grunnlag = {
     graa: kv('topograatone'), topo: kv('topo'),
+    // ØK-kart (Kartverkets N5 Raster) med høydekurver – bestandsfargene legges gjennomsiktig over.
+    ok: lagOkLag(L, { lag: 'n5raster', className: '' }),
     flyfoto: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 19, attribution: 'Flyfoto © Esri, Maxar' }),
   };
   (grunnlag[lagNavn] || grunnlag.graa).addTo(kart);
@@ -181,7 +184,7 @@ function initKart() {
 
 function stil(b) {
   const h = hk(b); const valgt = b.id === valgtId; const fly = lagNavn === 'flyfoto'; const ut = uthevOppdrag.has(b.id); const kand = !ut && kandidatOppdrag.has(b.id);
-  return { color: valgt ? '#ffd400' : ut || kand ? '#ff6a00' : fly ? '#f5f06a' : '#1b1c19', weight: valgt ? 4 : ut ? 3.5 : kand ? 2.5 : fly ? 1.6 : 1.1, dashArray: kand ? '6 5' : null, opacity: 0.95, fillColor: ut ? '#ff6a00' : h ? HK_FARGER[h - 1] : '#999', fillOpacity: ut ? 0.45 : fly ? 0.25 : h ? 0.8 : 0.1 };
+  return { color: valgt ? '#ffd400' : ut || kand ? '#ff6a00' : fly ? '#f5f06a' : '#1b1c19', weight: valgt ? 4 : ut ? 3.5 : kand ? 2.5 : fly ? 1.6 : 1.1, dashArray: kand ? '6 5' : null, opacity: 0.95, fillColor: ut ? '#ff6a00' : h ? HK_FARGER[h - 1] : '#999', fillOpacity: ut ? 0.45 : fly ? 0.25 : h ? (lagNavn === 'ok' ? 0.5 : 0.8) : 0.1 };
 }
 function tegnPlan(zoom = false) {
   bestandLag.clearLayers(); etikettLag.clearLayers(); lagPerBestand.clear();
@@ -781,9 +784,9 @@ function kobleHendelser() {
   $('#nyRegBtn').addEventListener('click', () => startReg());
   $('#sporBtn').addEventListener('click', () => spor.visStart());
   $('#lagBtn').addEventListener('click', () => {
-    const rekke = ['graa', 'topo', 'flyfoto']; const neste = rekke[(rekke.indexOf(lagNavn) + 1) % rekke.length];
+    const rekke = ['graa', 'topo', 'ok', 'flyfoto']; const neste = rekke[(rekke.indexOf(lagNavn) + 1) % rekke.length];
     kart.removeLayer(grunnlag[lagNavn]); lagNavn = neste; grunnlag[lagNavn].addTo(kart); grunnlag[lagNavn].bringToBack(); ls.set(LS.lag, lagNavn);
-    oppdaterStiler(); melding({ graa: 'Topografisk (gråtone)', topo: 'Topografisk', flyfoto: navigator.onLine ? 'Flyfoto' : 'Flyfoto krever nett' }[lagNavn], 1600);
+    oppdaterStiler(); melding({ graa: 'Topografisk (gråtone)', topo: 'Topografisk', ok: navigator.onLine ? 'ØK-kart med høydekurver' : 'ØK-kart krever nett', flyfoto: navigator.onLine ? 'Flyfoto' : 'Flyfoto krever nett' }[lagNavn], 1600);
   });
   document.querySelector('.bunn').addEventListener('click', (e) => { const b = e.target.closest('[data-vis]'); if (!b) return; if (regPagar) avbrytReg(); settVisning(b.dataset.vis); });
   kart.on('moveend', () => { if (regPagar) tegnRegSkjemaPos(); });

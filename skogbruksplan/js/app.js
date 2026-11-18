@@ -64,6 +64,7 @@ import { apneTilbakemelding } from './tilbakemelding-ui.js';
 import * as AF from './artsfilter.js';
 import * as JUL from './juletre.js';
 import { lagStolpeUi } from './stolpe-ui.js';
+import { lagOkLag } from './ok-kart.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, settTreslagAndel, avvikHovedtreslag, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag } from './treslag.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
@@ -147,7 +148,7 @@ let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks.
 let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let kpLag = null; let rpLag = null; let eiendomGrenseLag = null; let naboLag = null; let ninLag = null; let artLag = null; let artsfunnLag = null; let kulturLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
-let etikettLag; let flyfotoAktiv = false; let lagKontroll = null; let andreVisning = null;
+let etikettLag; let flyfotoAktiv = false; let okAktiv = false; /* ØK-kart som grunnkart: gjennomsiktige bestandsfarger */ let lagKontroll = null; let andreVisning = null;
 let satellitt = null; let grunnkart = {};
 
 function initKart() {
@@ -163,9 +164,12 @@ function initKart() {
   const flyfoto = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 20, maxNativeZoom: 19, attribution: 'Flyfoto © Esri, Maxar, Earthstar Geographics',
   });
+  // ØK-kart: Kartverkets N5 Raster (etterfølgeren til Økonomisk kartverk 1:5000) med høydekurver (5 m), og de skannede
+  // førsteutgavene av ØK (historiske, med gamle bonitetsmerker). Svart-hvitt – bestandsfargene legges gjennomsiktig over.
+  const ok = lagOkLag(L, { lag: 'n5raster' }); const okForste = lagOkLag(L, { lag: 'n5raster_foerstegang' }); // js/ok-kart.js (UTM → kartet)
   // Satellitt: Kartverkets skyfrie Sentinel-2-mosaikker per sommer, med sammenligning av to år (satellitt.js).
   satellitt = lagSatellittVisning(kart);
-  grunnkart = { graa, topo, flyfoto, satellitt: satellitt.lag };
+  grunnkart = { graa, topo, ok, okForste, flyfoto, satellitt: satellitt.lag };
   const wms = (url, layers, navn) => L.tileLayer.wms(url, { layers, format: 'image/png', transparent: true, opacity: 0.6, attribution: `${navn} © NIBIO` });
   const overlays = {
     'SR16 Volum (NIBIO)': wms('https://wms.nibio.no/cgi-bin/sr16', 'SRRVOLMB', 'SR16'),
@@ -203,7 +207,7 @@ function initKart() {
   document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, '🌿 Naturtyper (NiN, Miljødirektoratet)': ninLag, '🦉 Arter av nasjonal forvaltningsinteresse': artLag, '🦋 Rødlistede artsfunn (Artskart)': artsfunnLag, '🏛 Kulturminner (Riksantikvaren)': kulturLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'ØK-kart med høydekurver (N5)': ok, 'ØK førsteutgave (historisk)': okForste, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, '🌿 Naturtyper (NiN, Miljødirektoratet)': ninLag, '🦉 Arter av nasjonal forvaltningsinteresse': artLag, '🦋 Rødlistede artsfunn (Artskart)': artsfunnLag, '🏛 Kulturminner (Riksantikvaren)': kulturLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
   // NiN-naturtyper og arter vises som standard i kartet i alle faner (som nøkkelbiotopene). Valget huskes.
   const NATUR_LS = 'skogiq-natur-lag';
@@ -227,15 +231,16 @@ function initKart() {
   kart.on('overlayadd', (e) => { if (e.layer === artsfunnLag) { if (S.artsfunn) tegnArtsfunn(); else hentArtsfunnForPlan(); } if (e.layer === bratthetLag) visBratthet(); if (e.layer === fuktLag) beregnFukt(); if ((e.layer === kpLag || e.layer === rpLag) && !S.arealplan) hentPlaner({ stille: true }); if (e.layer === naboLag) visNaboer(); });
   // På flyfoto tegnes bestandene som i skogbruksplankart: gule grenser og hvit tekst.
   kart.on('baselayerchange', (e) => {
-    flyfotoAktiv = e.layer === flyfoto || e.layer === satellitt.lag;
-    kart.getContainer().classList.toggle('flyfoto', flyfotoAktiv);
+    flyfotoAktiv = e.layer === flyfoto || e.layer === satellitt.lag; okAktiv = e.layer === ok || e.layer === okForste;
+    kart.getContainer().classList.toggle('flyfoto', flyfotoAktiv); kart.getContainer().classList.toggle('ok-aktiv', okAktiv);
     oppdaterStiler();
   });
 }
 
 // Viser satellittbildet for året som grunnkart, sammenlignet med året før (glideren i kartet), og zoomer til bestandet.
 function visSatellittAar(aar, b) {
-  for (const l of [grunnkart.graa, grunnkart.topo, grunnkart.flyfoto]) if (l && kart.hasLayer(l)) kart.removeLayer(l);
+  for (const l of [grunnkart.graa, grunnkart.topo, grunnkart.ok, grunnkart.okForste, grunnkart.flyfoto]) if (l && kart.hasLayer(l)) kart.removeLayer(l);
+  okAktiv = false; kart.getContainer().classList.remove('ok-aktiv');
   const forrige = SATELLITT_AAR.includes(aar - 1) ? aar - 1 : null;
   satellitt.vis(aar, forrige); if (!kart.hasLayer(satellitt.lag)) satellitt.lag.addTo(kart);
   flyfotoAktiv = true; kart.getContainer().classList.add('flyfoto'); oppdaterStiler();
@@ -393,7 +398,7 @@ function stilFor(b) {
   if (vs === 'valgt' && !valgt) return { color: '#ff6a00', weight: 3, opacity: 0.95, dashArray: null, fillColor: '#ff6a00', fillOpacity: 0.45 };
   return {
     color: valgt ? (flyfotoAktiv ? '#36e0ff' : '#ffd400') : ut ? '#ff6a00' : flyfotoAktiv ? '#e6e04b' : '#1b1c19', weight: valgt ? 3.5 : ut ? 3 : flyfotoAktiv ? 1.6 : 1.2, opacity: 0.9,
-    fillColor: farge || '#999', fillOpacity: !farge ? 0.08 : flyfotoAktiv ? 0.3 : HK_FARGER.includes(farge) ? 0.85 : 0.7,
+    fillColor: farge || '#999', fillOpacity: !farge ? 0.08 : flyfotoAktiv ? 0.3 : okAktiv ? 0.5 : HK_FARGER.includes(farge) ? 0.85 : 0.7,
     // Anslått vegetasjonstype vises med stiplet kant, kartlagt med heltrukken.
     ...($('#fargeEtter').value === 'vegetasjon' && b.vegetasjon?.kilde === 'anslag' && !valgt ? { dashArray: '4 3' } : { dashArray: null }),
   };

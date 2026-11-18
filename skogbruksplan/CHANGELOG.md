@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.86.0 – 🗺️ ØK-kart med høydekurver (2026-11-18)
+
+*Nytt.* Nytt bakgrunnskart: ØK-kart (Kartverkets N5 Raster) med høydekurver for hver 5. meter, eiendomsnummer og bygninger – og den historiske førsteutgaven av ØK. Bestandsfargene blir gjennomsiktige, så terrenget synes. Også i SkogIQ Felt. Takk for tipset!
+
 ## 1.85.0 – 🏛 Bygninger hentes automatisk til landbrukstaksten (2026-11-16)
 
 *Nytt.* Med ett trykk hentes bygningene på eiendommen fra Matrikkelen (Kartverket) – type, bygningsnummer og SEFRAK – og grunnflaten måles i kartet (FKB-Bygning). BTA anslås fra grunnflaten. Byggeår finnes ikke i åpne data og fylles inn selv; til da regnes 50 % restverdi.
