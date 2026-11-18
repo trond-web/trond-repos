@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.88.1** (2026-11-18) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.89.0** (2026-11-18) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -772,6 +772,21 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
+
+## ＋ Ny skogbruksplan i felt (`js/plan-fra-kart.js`, `js/felt-nyplan.js`)
+
+SkogIQ Felt kan lage skogbruksplan rett fra kartet. Under «Velg plan» finnes to valg:
+- **«📍 Der jeg står»** bruker GPS-posisjonen.
+- **«✛ Velg i kartet»** bruker korset midt i kartet, eller et trykk i kartet.
+
+**Slik lages planen:**
+1. **Eiendommen:** Kartverkets `eiendom/v1/punkt` finner gnr/bnr i punktet.
+2. **Grensen:** `eiendom/v1/geokoding` viser grensen, uten festetomter. Eventuelle andre eiendommer i punktet kan velges.
+3. **Planen:** lages med samme motor som fullversjonen (`genererPlan`).
+4. **Lagring:** planen lagres på mobilen og synkroniseres til skyen når brukeren er innlogget.
+5. **Datagrunnlaget** (PEFC-miljødata, NVDB, FKB, SSB) hentes i bakgrunnen og legges inn i planen.
+
+**Testet:** Elverum 15/16 ga 96 bestand og 1 423 daa skog på 13 sekunder.
 
 ## 🌲 SkogIQ Skogkarakter (`js/skogkarakter.js`, `js/skogkarakter-ui.js`)
 

@@ -294,3 +294,8 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .st-antall { display: flex; align-items: center; gap: 10px; font-weight: 600; } .st-antall input { width: 90px; }
 .st-sjekkliste { list-style: none; padding: 0; margin: 4px 0; }
 .st-felt { margin: 10px 0; padding: 10px 12px; border-radius: 12px; background: rgba(201,133,0,.1); display: grid; gap: 6px; } .st-felt .knapp { justify-self: start; }
+/* Ny skogbruksplan fra kartet (js/felt-nyplan.js) */
+.np-steg { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 6px; }
+.np-steg li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; padding: 7px 9px; border-radius: 10px; background: var(--surface-2); }
+.np-steg li small { display: block; color: var(--muted); font-size: 12.5px; }
+.np-steg li.aktiv { outline: 2px solid var(--accent); } .np-steg li.ok > span { color: var(--accent); font-weight: 800; } .np-steg li.feil > span { color: #b4302f; }

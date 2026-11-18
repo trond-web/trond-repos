@@ -211,7 +211,8 @@ export const KAPITLER = [
   },
   {
     id: 'felt', ikon: '📍', tittel: 'SkogIQ Felt (mobil)',
-    tekst: `<p><b>SkogIQ Felt</b> er planen på mobilen ute i skogen: kart med din posisjon, bestandsinfo, registrering av tiltak og skader med bilde, sporlogg av utført arbeid, og kart som virker uten dekning (lagre kartutsnitt før du går ut).</p>
+    tekst: `<h4>＋ Ny skogbruksplan i felt</h4><p>Under <b>Velg plan</b> trykker du <b>📍 Der jeg står</b> (bruker GPS) eller <b>✛ Velg i kartet</b> (flytt korset til eiendommen, eller trykk på den). Appen finner gårds- og bruksnummer hos Kartverket, viser grensen, og lager planen med samme data som fullversjonen. Miljødata, veier og tømmerpriser kommer i bakgrunnen. Krever nett.</p>
+      <p><b>SkogIQ Felt</b> er planen på mobilen ute i skogen: kart med din posisjon, bestandsinfo, registrering av tiltak og skader med bilde, sporlogg av utført arbeid, og kart som virker uten dekning (lagre kartutsnitt før du går ut).</p>
       ${tips('Under <b>Felt</b> i menyen trykker du <b>Send planen til mobilen</b> og skanner QR-koden med telefonen. Registreringer kommer tilbake automatisk.')}`,
   },
   {
