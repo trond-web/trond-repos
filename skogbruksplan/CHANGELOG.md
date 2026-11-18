@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.88.1 – 🌲 Nytt stempel for Skogkarakteren (2026-11-18)
+
+*Forbedret.* Stempelet er tegnet på nytt som et klassisk segl: farget bånd med «SKOGIQ SKOGKARAKTER» og vurderingen med årstall, gran-symboler, stor karakter og poeng i midten. Tydeligere og lettere å lese, også i små størrelser.
+
 ## 1.88.0 – 🌲 SkogIQ Skogkarakter (2026-11-18)
 
 *Nytt.* Ny karakter A–E for hvor godt og bærekraftig skogeiendommen drives, med eget stempel. Den bygger på foryngelse, oppfølging av tiltak, miljøverdier, langsiktig produksjon, dokumentasjon og skaderisiko, viser hva som gir flere poeng, og lagres per år. Karakteren er din egen og deles bare når du selv skriver ut karakterbeviset eller laster ned stempelet. Personvernerklæringen er oppdatert (versjon 1.8) og må godtas på nytt.
