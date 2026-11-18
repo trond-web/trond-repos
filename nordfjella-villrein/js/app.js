@@ -70,6 +70,11 @@ kart.attributionControl.setPrefix('');
 const startvisning = lagre.hent('visning', null);
 if (startvisning) kart.setView(startvisning.c, startvisning.z); else kart.fitBounds(omraadeGrenser, { padding: [10, 10] });
 kart.on('moveend', () => lagre.sett('visning', { c: kart.getCenter(), z: kart.getZoom() }));
+// Zoomknapper (små, nede til venstre). Gråes ut ved største og minste zoom.
+$('#b-zoom-inn').addEventListener('click', () => kart.zoomIn());
+$('#b-zoom-ut').addEventListener('click', () => kart.zoomOut());
+const zoomKnapper = () => { $('#b-zoom-inn').disabled = kart.getZoom() >= kart.getMaxZoom(); $('#b-zoom-ut').disabled = kart.getZoom() <= kart.getMinZoom(); };
+kart.on('zoomend', zoomKnapper); zoomKnapper();
 
 kart.createPane('overleggfliser').style.zIndex = 350;
 kart.createPane('skygge').style.zIndex = 380;

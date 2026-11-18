@@ -2,7 +2,7 @@
 
 Kartapp for villreinjakt i Nordfjella villreinområde. Laget for telefon, og virker uten mobildekning når kartet er lastet ned.
 
-Versjon 1.5.0 · Utviklet av Trond Harald Sand for **Villreinutvalet for Nordfjella** · I produksjon: **https://nordfjella.up.railway.app**
+Versjon 1.5.1 · Utviklet av Trond Harald Sand for **Villreinutvalet for Nordfjella** · I produksjon: **https://nordfjella.up.railway.app**
 
 ## Hva den gjør
 

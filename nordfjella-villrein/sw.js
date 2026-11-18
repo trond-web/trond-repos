@@ -1,6 +1,6 @@
 // Service worker: appen, valdgrenser, nedlastede og besøkte kartruter virker uten nett og starter raskt ved dårlig dekning.
 // Mangler en kartrute uten nett, lages den ved å forstørre en lagret rute fra et lavere zoomnivå.
-const APP = 'nfv-app-v8';
+const APP = 'nfv-app-v9';
 const FLISER = 'nfv-fliser-v1';
 const API = 'nfv-api-v1'; // siste svar fra serveren (valdgrenser, samjakt) – beholdes på tvers av versjoner
 const SKALL = ['./', 'index.html', 'style.css', 'manifest.webmanifest', 'icon.svg', 'data/nordfjella.geojson', 'data/fliser.json',
