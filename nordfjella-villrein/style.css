@@ -270,3 +270,16 @@ a { color: inherit; }
 .signatur.bunn .logo { max-width: 240px; margin: 0 auto 6px; }
 .signatur.bunn p { margin: 0; }
 .melding.klikkbar { cursor: pointer; text-decoration: underline; }
+
+/* ---------- Zoomknapper: smal +/– nede til venstre, over målestokken ---------- */
+.zoom {
+  position: fixed; z-index: 1000; left: 10px; bottom: calc(var(--status-h, 96px) + var(--bunn) + 34px);
+  display: flex; flex-direction: column; background: var(--papir); border-radius: 10px; box-shadow: var(--skygge); overflow: hidden;
+}
+.zoom button { width: 40px; height: 40px; border: 0; background: none; color: var(--skog); display: grid; place-items: center; cursor: pointer; padding: 0; }
+@media (prefers-color-scheme: dark) { .zoom button { color: #e6efe8; } }
+.zoom button + button { border-top: 1px solid var(--linje); }
+.zoom button svg { width: 20px; height: 20px; }
+.zoom button:active { background: var(--graa-bg); }
+.zoom button:disabled { opacity: .35; cursor: default; }
+@media (min-width: 700px) { .zoom { bottom: 40px; } }
