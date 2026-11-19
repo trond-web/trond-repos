@@ -14,6 +14,8 @@ import { lagTilbudRelay, tilbudApi, erMottakerKall } from './tilbud-relay.js';
 import { rensSvar as rensTommerSvar, sjekkSvar as sjekkTommerSvar } from './js/tommer-felles.js';
 import { lagSkyLager, skyApi } from './sky-lager.js';
 import { lagNettverk, nettverkApi } from './nettverk.js';
+import { lagApiNokler } from './api-nokler.js';
+import { apiV1, apiNoklerAdmin } from './api-v1.js';
 import { lagBackup, lagS3, backupApi } from './backup.js';
 import { lagTilbakemelding, tilbakemeldingApi } from './tilbakemelding.js';
 import { lagProfilbilder, profilbildeApi } from './profilbilde.js';
@@ -36,7 +38,7 @@ const TYPER = {
   '.sos': 'text/plain; charset=utf-8',
 };
 // Mapper og filer som ikke skal publiseres.
-const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|backup\.js|tilbakemelding\.js|profilbilde\.js|package(-lock)?\.json|railway\.json)$|\/\./;
+const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|api-v1\.js|api-nokler\.js|api-dok\.js|backup\.js|tilbakemelding\.js|profilbilde\.js|package(-lock)?\.json|railway\.json)$|\/\./;
 const KOMPRIMER = /^(text\/|application\/(json|geo\+json|manifest\+json)|image\/svg)/;
 
 const SIKKERHET = {
@@ -104,14 +106,16 @@ const tommerRelay = lagTilbudRelay({ fil: process.env.TOMMER_FIL || (process.env
 // Skylagring av planene per bruker (sky-lager.js). SKY_MAPPE, eller mappen «sky» ved siden av BRUKER_FIL (Railway-volumet).
 const SKY_MAPPE = process.env.SKY_MAPPE || (process.env.BRUKER_FIL ? path.join(path.dirname(process.env.BRUKER_FIL), 'sky') : null);
 const sky = lagSkyLager({ mappe: SKY_MAPPE });
+// API-nøkler for integrasjons-API-et (/api/v1, api-v1.js) – opprettes av administrator, én bruker per nøkkel.
+const apiNokler = lagApiNokler({ fil: process.env.API_NOKKEL_FIL || iData('api-nokler.json') });
 if (!sky.permanent) console.warn('SKY_MAPPE er ikke satt – planene i skyen forsvinner når serveren startes på nytt.');
 const innlogging = lagInnlogging({
   bruker: process.env.APP_BRUKER || '', passord: process.env.APP_PASSORD || '', hemmelighet: process.env.APP_HEMMELIGHET || '',
   registrering: process.env.APP_REGISTRERING === '1', fil: process.env.BRUKER_FIL || null, admin: process.env.APP_ADMIN || '', kode: process.env.APP_REGISTRERINGSKODE || '',
   sendEpost: lagEpostSender({ nokkel: process.env.EPOST_NOKKEL || '', fra: process.env.EPOST_FRA || '' }),
-  ekstraBruker: (u) => ({ sky: sky.bruk(u) }), vedSlett: (u, b) => { sky.slettBruker(u); nettverk?.slettBruker(u); tilbakemelding?.slettBruker(u); if (b?.profil?.bilde) profilbilder.slett(b.profil.bilde); },
+  ekstraBruker: (u) => ({ sky: sky.bruk(u) }), vedSlett: (u, b) => { sky.slettBruker(u); apiNokler.slettForBruker(u); nettverk?.slettBruker(u); tilbakemelding?.slettBruker(u); if (b?.profil?.bilde) profilbilder.slett(b.profil.bilde); },
   // Innsyn/dataportabilitet: planlisten i skyen (planene eksporteres fra appen) og nettverket med chat.
-  eksport: (u) => ({ skylagring: { ...sky.bruk(u), planer: [...sky.liste(u), ...sky.liste(u, { slettede: true })] }, nettverk: nettverk?.eksport(u) || null, tilbakemeldinger: tilbakemelding?.eksport(u) || [], profilbilde: (() => { const id = innlogging.lager?.hent(u)?.profil?.bilde; return id ? profilbilder.dataUrl(id) : null; })() }),
+  eksport: (u) => ({ apiNokler: apiNokler.forBruker(u), skylagring: { ...sky.bruk(u), planer: [...sky.liste(u), ...sky.liste(u, { slettede: true })] }, nettverk: nettverk?.eksport(u) || null, tilbakemeldinger: tilbakemelding?.eksport(u) || [], profilbilde: (() => { const id = innlogging.lager?.hent(u)?.profil?.bilde; return id ? profilbilder.dataUrl(id) : null; })() }),
 });
 // Uten innlogging (lokal utvikling) brukes én lokal bruker med profil i minnet.
 const lokalProfil = { navn: 'Lokal bruker', epost: '' };
@@ -150,9 +154,12 @@ function svar(res, status, tekst) {
 const server = http.createServer(async (req, res) => {
   let sti;
   try { sti = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { return svar(res, 400, 'Ugyldig adresse'); }
+  // Integrasjons-API med API-nøkkel (api-v1.js): egen autentisering, åpen CORS (ingen informasjonskapsler).
+  if (apiV1({ nokler: apiNokler, sky, ekstraHoder: SIKKERHET }, req, res, sti)) return;
   // Forhåndssjekk (CORS) fra appen på GitHub Pages: Authorization-hodet bærer innloggingen.
   if (req.method === 'OPTIONS' && sti.startsWith('/api/')) { const c = corsFor(req); res.writeHead(204, { ...c, ...(c['Access-Control-Allow-Origin'] ? { 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Max-Age': '600' } : {}) }); return res.end(); }
   if (innloggingApi(innlogging, req, res, sti, SIKKERHET)) return;
+  if (apiNoklerAdmin({ nokler: apiNokler, cors: corsFor, admin: (q) => { const o = innlogging.fraForesporsel(q); return o ? (innlogging.erAdmin(o.u) ? o.u : false) : null; }, brukere: () => innlogging.lager.alle().map((b) => ({ bruker: b.navn, navn: b.visning || b.navn })) }, req, res, sti, SIKKERHET)) return;
   if (backupApi(backup, { erAdmin: (q) => { const o = innlogging.fraForesporsel(q); return o ? innlogging.erAdmin(o.u) : null; }, cors: corsFor }, req, res, sti, SIKKERHET)) return;
   // Utførernes visning og svar er åpne (personlig kode i lenken). Oppdragsgiverens kall (opprette, hente svar, tildele)
   // krever innlogging når den er slått på, og eiernøkkelen.

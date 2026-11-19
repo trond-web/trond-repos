@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.8', dato: '2026-11-18', kreverGodkjenning: '1.8' };
+export const VILKAR = { versjon: '1.9', dato: '2026-11-19', kreverGodkjenning: '1.9' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -66,6 +66,10 @@ export const BEHANDLINGER = [
     opplysninger: 'Spørsmålet ditt og et sammendrag av planen (eiendom, bestand, tiltak, økonomi og profilteksten om gården).',
     grunnlag: 'initiativ', lagring: 'SkogIQ.ai lagrer ikke samtalen på serveren. Nøkkelen din lagres bare i nettleseren.',
     mottakere: 'Anthropic (USA), direkte fra nettleseren med din egen API-nøkkel, etter Anthropics vilkår. Brukes bare når du selv stiller et spørsmål.', api: [] },
+  { id: 'api', navn: 'Integrasjons-API (API-nøkler)', formaal: 'La et system du bruker – for eksempel regnskap, skogeierandelslag, entreprenør eller eget fagsystem – hente og oppdatere dine skogbruksplaner (bestand, tiltak, oppdrag, registreringer og beregninger) automatisk.',
+    opplysninger: 'Planene dine i skylagringen, slik de er. For hver nøkkel: navn, hvilken bruker den gjelder, tilgang (lese eller lese og skrive), når den ble laget og av hvilken administrator, og når den sist ble brukt. For hvert kall: tid, nøkkel, metode, adresse og status (ikke innholdet). Selve nøkkelen lagres bare som en kryptografisk sjekksum.',
+    grunnlag: 'avtale', lagring: 'Nøkler til de trekkes tilbake eller kontoen slettes. De siste 1000 kallene logges.',
+    mottakere: 'Systemet som har fått nøkkelen. En nøkkel opprettes bare av administrator etter avtale med deg, gjelder bare dine egne planer, og kan trekkes tilbake når som helst. Skrivinger lagres som ny versjon av planen.', api: ['/api/v1', '/api/admin/apinokler'] },
   { id: 'skogkarakter', navn: 'SkogIQ Skogkarakter (egenvurdering)', formaal: 'Gi deg en karakter (A–E) for hvor godt og bærekraftig skogeiendommen drives, med forslag til forbedringer og utvikling over tid.',
     opplysninger: 'Beregnes fra opplysningene i planen din (bestand, tiltak og status, miljøregistreringer, PEFC-sjekklister, artsfunn og skader). Karakteren og ett øyeblikksbilde per år lagres i planen.',
     grunnlag: 'avtale', lagring: 'Sammen med planen, til du sletter den.',

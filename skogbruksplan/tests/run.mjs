@@ -3743,6 +3743,60 @@ test('Kantsone 15 m mot vann: henting fra NVE, buffer innenfor eiendommen, per b
   assert.ok(!PEFC.kontroller({ eiendom: {}, bestand: [{ ...b, tiltak: [] }], innstillinger: STANDARD_INNSTILLINGER }, PEFC.tomPefc(), { iAar: 2026 }).some((f) => f.krav === 27), 'ingen tiltak – ingen varsel');
 });
 
+test('Integrasjons-API /api/v1: nøkler per bruker, lese/skrive, versjonering, rate-grense, logg og admin', async () => {
+  const { lagApiNokler } = await import('../api-nokler.js'); const { apiV1, apiNoklerAdmin, pakk, pakkUt } = await import('../api-v1.js'); const { lagSkyLager } = await import('../sky-lager.js'); const { openapi } = await import('../api-dok.js');
+  let tid = Date.UTC(2026, 10, 19, 10); const nokler = lagApiNokler({ naa: () => tid }); const sky = lagSkyLager({ naa: () => tid });
+  const plan = { planId: 'p1', eiendom: { navn: 'Skogli', kommune: 'Løten', grense: { type: 'Polygon', coordinates: [[[11, 60], [11.01, 60], [11.01, 60.01], [11, 60]]] } }, bestand: [{ id: 'b1', nr: '7', areal: 20, treslag: 'G', bonitet: 14, alder: 60, volumDaa: 20, geometri: { type: 'Polygon', coordinates: [[[11, 60], [11.001, 60], [11.001, 60.001], [11, 60]]] }, tiltak: [{ id: 't1', type: 'tynning', aar: 2027, status: 'planlagt' }] }], registreringer: [], oppdrag: [{ id: 'o1', nr: 'O-1', type: 'hogst', status: 'bestilt' }] };
+  const lagre = (u, S, grunn = null) => sky.lagre(u, 'plan1', { ...pakk(S), navn: S.eiendom.navn, grunnVersjon: grunn });
+  lagre('ola@x.no', plan); lagre('kari@x.no', { ...plan, eiendom: { navn: 'Kari sin' } });
+  const kall = (metode, url, { tok, kropp, hoder = {} } = {}) => new Promise((ok) => { const h = {}; const req = { method: metode, url, headers: { ...(tok ? { authorization: `Bearer ${tok}` } : {}), ...hoder }, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(JSON.stringify(kropp))); f(); }, 0); }, destroy() {} }; const res = { writeHead(st, hd) { this.s = st; this.h = hd; }, end(b) { ok({ status: this.s, hoder: this.h, d: b ? JSON.parse(b) : null }); } }; const sti = new URL(url, 'http://x').pathname; if (!apiV1({ nokler, sky }, req, res, sti)) ok(null); });
+  // Åpne endepunkter og OpenAPI
+  assert.equal((await kall('GET', '/api/v1')).d.navn, 'SkogIQ.ai API'); const spec = (await kall('GET', '/api/v1/openapi.json')).d;
+  assert.equal(spec.openapi, '3.1.0'); assert.ok(spec.paths['/api/v1/planer/{planId}/tiltak'].post && spec['x-interne-endepunkter'].some((e) => e.sti === '/api/sky/planer'));
+  assert.equal(openapi().components.securitySchemes.apiNokkel.scheme, 'bearer');
+  assert.equal((await kall('GET', '/api/v1/planer')).status, 401); assert.equal((await kall('GET', '/api/v1/planer', { tok: 'skiq_0000000000_feilfeilfeilfeilfeilfeil' })).status, 401);
+  // Lesenøkkel for Ola: ser bare Olas planer
+  const les = nokler.opprett({ bruker: 'OLA@x.no', navn: 'ERP', tilgang: 'les', av: 'admin@x.no' }); assert.match(les.nokkel, /^skiq_[0-9a-f]{10}_[A-Za-z0-9_-]{40,}$/);
+  assert.ok(!JSON.stringify(nokler._data()).includes(les.nokkel.split('_')[2]), 'bare hash av hemmeligheten lagres');
+  const pl = await kall('GET', '/api/v1/planer', { tok: les.nokkel }); assert.deepEqual(pl.d.planer.map((p) => p.navn), ['Skogli']);
+  const full = await kall('GET', '/api/v1/planer/plan1', { tok: les.nokkel }); assert.equal(full.d.plan.eiendom.navn, 'Skogli'); assert.equal(full.hoder.ETag, '"1"');
+  assert.equal((await kall('GET', '/api/v1/planer/plan1/bestand', { tok: les.nokkel })).d.bestand[0].nr, '7');
+  assert.equal((await kall('GET', '/api/v1/planer/plan1/bestand?format=geojson', { tok: les.nokkel })).d.type, 'FeatureCollection');
+  assert.deepEqual((await kall('GET', '/api/v1/planer/plan1/tiltak?status=planlagt', { tok: les.nokkel })).d.tiltak.map((t) => [t.id, t.navn, t.bestandNr]), [['t1', 'Tynning', '7']]);
+  assert.ok((await kall('GET', '/api/v1/planer/plan1/skogkarakter', { tok: les.nokkel })).d.karakter);
+  assert.ok((await kall('GET', '/api/v1/planer/plan1/landbrukstakst', { tok: les.nokkel })).d.varianter.konsesjon);
+  assert.equal((await kall('POST', '/api/v1/planer/plan1/tiltak', { tok: les.nokkel, kropp: { bestandId: 'b1', type: 'planting', aar: 2027 } })).status, 403, 'lesenøkkel kan ikke skrive');
+  assert.equal((await kall('GET', '/api/v1/planer/ukjent', { tok: les.nokkel })).status, 404);
+  // Skrivenøkkel: opprett, endre (utført), versjon og If-Match, slett med gravstein
+  const skriv = nokler.opprett({ bruker: 'ola@x.no', navn: 'Entreprenør', tilgang: 'skriv' });
+  assert.equal((await kall('POST', '/api/v1/planer/plan1/tiltak', { tok: skriv.nokkel, kropp: { bestandId: '7', type: 'tull', aar: 2027 } })).status, 400);
+  const ny = await kall('POST', '/api/v1/planer/plan1/tiltak', { tok: skriv.nokkel, kropp: { bestandId: '7', type: 'ungskogpleie', aar: 2028, prioritet: 1 } }); assert.equal(ny.status, 201); assert.equal(ny.d.versjon, 2); assert.equal(ny.d.tiltak.kilde, 'api');
+  assert.equal((await kall('PATCH', '/api/v1/planer/plan1/tiltak/t1', { tok: skriv.nokkel, kropp: { status: 'utfort' }, hoder: { 'if-match': '"1"' } })).status, 409, 'If-Match med gammel versjon gir konflikt');
+  const ut = await kall('PATCH', '/api/v1/planer/plan1/tiltak/t1', { tok: skriv.nokkel, kropp: { status: 'utfort', utfortDato: '2026-11-18' }, hoder: { 'if-match': '"2"' } }); assert.equal(ut.status, 200); assert.equal(ut.d.tiltak.status, 'utfort');
+  let S = pakkUt(sky.hent('ola@x.no', 'plan1')); assert.equal(S.bestand[0].tiltak.find((t) => t.id === 't1').utfortDato, '2026-11-18'); assert.ok(S.bestand[0].tiltak.find((t) => t.id === 't1').endret);
+  assert.equal(sky.hent('ola@x.no', 'plan1').enhet, 'api:Entreprenør');
+  assert.equal((await kall('DELETE', `/api/v1/planer/plan1/tiltak/${ny.d.tiltak.id}`, { tok: skriv.nokkel })).status, 200); S = pakkUt(sky.hent('ola@x.no', 'plan1')); assert.deepEqual(S.slettet.tiltak, [ny.d.tiltak.id]);
+  assert.equal((await kall('PATCH', '/api/v1/planer/plan1/oppdrag/O-1', { tok: skriv.nokkel, kropp: { status: 'pagar' } })).d.oppdrag.status, 'pagar');
+  assert.equal((await kall('PATCH', '/api/v1/planer/plan1/oppdrag/o1', { tok: skriv.nokkel, kropp: { status: 'tull' } })).status, 400);
+  assert.equal((await kall('POST', '/api/v1/planer/plan1/registreringer', { tok: skriv.nokkel, kropp: { kategori: 'Stormfall', lat: 60.95, lon: 11.45 } })).status, 201);
+  assert.equal((await kall('POST', '/api/v1/planer/plan1/registreringer', { tok: skriv.nokkel, kropp: { lat: 10, lon: 10 } })).status, 400);
+  // Logg og tilbaketrekking
+  assert.ok(nokler.sisteLogg().length >= 10 && nokler.sisteLogg()[0].nokkel === skriv.info.id);
+  assert.equal(nokler.liste().find((n) => n.id === les.info.id).antallKall > 5, true);
+  nokler.trekk(les.info.id); assert.equal((await kall('GET', '/api/v1/planer', { tok: les.nokkel })).status, 401, 'tilbaketrukket nøkkel avvises');
+  // Rate-grense
+  const r2 = nokler.opprett({ bruker: 'kari@x.no', tilgang: 'les' }); for (let i = 0; i < 300; i++) nokler.verifiser(r2.nokkel); assert.equal((await kall('GET', '/api/v1/planer', { tok: r2.nokkel })).status, 429);
+  // Sletting av bruker fjerner nøklene
+  nokler.slettForBruker('ola@x.no'); assert.equal(nokler.forBruker('ola@x.no').length, 0); assert.equal((await kall('GET', '/api/v1/planer', { tok: skriv.nokkel })).status, 401);
+  // Admin-endepunktet: bare administrator
+  const adminKall = (metode, url, admin, kropp) => new Promise((ok) => { const h = {}; const req = { method: metode, url, headers: {}, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(JSON.stringify(kropp))); f(); }, 0); } }; const res = { writeHead(st) { this.s = st; }, end(b) { ok({ status: this.s, d: JSON.parse(b) }); } }; apiNoklerAdmin({ nokler, admin: () => admin, brukere: () => [{ bruker: 'kari@x.no', navn: 'Kari' }] }, req, res, new URL(url, 'http://x').pathname); });
+  assert.equal((await adminKall('GET', '/api/admin/apinokler', null)).status, 401); assert.equal((await adminKall('GET', '/api/admin/apinokler', false)).status, 403);
+  const opp = await adminKall('POST', '/api/admin/apinokler', 'admin@x.no', { bruker: 'kari@x.no', navn: 'Regnskap', tilgang: 'les' }); assert.equal(opp.status, 201); assert.match(opp.d.nokkel, /^skiq_/);
+  assert.equal((await adminKall('POST', '/api/admin/apinokler', 'admin@x.no', { bruker: 'ukjent@x.no' })).status, 400);
+  const liste = await adminKall('GET', '/api/admin/apinokler', 'admin@x.no'); assert.ok(liste.d.nokler.some((n) => n.navn === 'Regnskap' && n.lagetAv === 'admin@x.no') && !JSON.stringify(liste.d).includes(opp.d.nokkel));
+  assert.equal((await adminKall('DELETE', `/api/admin/apinokler/${opp.d.info.id}`, 'admin@x.no')).d.info.aktiv, false);
+});
+
 test('Roller: rådgiver/regnskapsfører, og samme rolleliste på serveren, registreringen, dialogen, admin og nettverk', async () => {
   const A = await import('../auth.js'); const { readFileSync: les } = await import('node:fs');
   const nokler = Object.keys(A.BRUKERROLLER); assert.ok(nokler.includes('radgiver')); assert.equal(A.BRUKERROLLER.radgiver, 'Rådgiver / regnskapsfører');
@@ -3962,6 +4016,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
   '1.8': '1b41be6f78760f90',
+  '1.9': '95e150ddf143b146',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {

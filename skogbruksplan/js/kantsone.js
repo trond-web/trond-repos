@@ -22,7 +22,7 @@ export const KILDER = {
   innsjo: 'https://kart.nve.no/enterprise/rest/services/Innsjodatabase2/MapServer/5/query',
 };
 // Tiltak som skal holdes utenfor kantsonen (eller gjennomføres med særlig hensyn)
-export const BERORTE_TILTAK = ['sluttavvirkning', 'tynning', 'lukkethogst', 'markberedning', 'gjodsling', 'ungskogpleie', 'sproyting', 'veibygging'];
+export const BERORTE_TILTAK = ['sluttavvirkning', 'tynning', 'lukkethogst', 'markberedning', 'gjodsling', 'ungskogpleie', 'sproyting', 'veibygging', 'vei'];
 export const HENSYN = 'Kantsonen mot vann skal være flersjiktet og normalt urørt: ingen flatehogst, markberedning, gjødsling eller sprøyting, og ingen kjøring – kryss bekker bare på bru eller klopp.';
 
 const arcgis = (base, [a, b, c, d], felt) => `${base}?geometry=${a.toFixed(6)},${b.toFixed(6)},${c.toFixed(6)},${d.toFixed(6)}&geometryType=esriGeometryEnvelope&inSR=4326&outSR=4326&spatialRel=esriSpatialRelIntersects&outFields=${felt}&returnGeometry=true&f=geojson&resultRecordCount=2000`;
