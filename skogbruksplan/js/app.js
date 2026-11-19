@@ -1,4 +1,6 @@
 import { visBruker, registrerBruk, innloggetBruker, gyldigToken } from './innlogging.js'; // først: økten følger med alle kall til serveren
+import { initEgneLag } from './egne-lag-ui.js';
+import { ER_EGET_LAG } from './egne-lag.js';
 import { lagVelkomst } from './velkommen.js';
 import { arealM2, punktIGeometri, bbox, fraWgs84, etikettPunkt, utmTilGeo } from './proj.js';
 import { lagSosi } from './sosi.js';
@@ -210,6 +212,8 @@ function initKart() {
   misLag = L.featureGroup().addTo(kart);
   // SVG-mønstre for markslagssymbolene (myr, impediment, …) og MiS-skravur – brukes av kartet via fill="url(#…)".
   document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
+  // 📌 Egne kartlag (GPX/KML/KMZ) over bestandene og MiS – klikkbare (popup med navn og opplysninger)
+  kart.createPane('egneLagPane'); kart.getPane('egneLagPane').style.zIndex = 460;
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
   lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'ØK-kart med høydekurver (N5)': ok, 'ØK førsteutgave (historisk)': okForste, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '💧 Kantsone 15 m mot bekker, elver og vann': kantsoneLag, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, '🌿 Naturtyper (NiN, Miljødirektoratet)': ninLag, '🦉 Arter av nasjonal forvaltningsinteresse': artLag, '🦋 Rødlistede artsfunn (Artskart)': artsfunnLag, '🏛 Kulturminner (Riksantikvaren)': kulturLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
@@ -626,7 +630,7 @@ function angreDeling() {
 
 // ---------------------------------------------------------------- faner
 let kommuneVisning = null;
-let veiVisning = null;
+let veiVisning = null; let egneLagVisning = null; // 📌 egne kartlag (GPX/KML/KMZ, js/egne-lag-ui.js)
 let pefcVisning = null;
 let verdiVisning = null; let takstVisning = null; let skogkarakter = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null; let maaling = null; let nettverk = null;
 let aiVisning = null;
@@ -1992,6 +1996,9 @@ async function importerFiler(filer, tvingModus = null) {
   // HPR-filer (hogstmaskin, StanForD 2010) går til sammenligningen med SR16.
   const hpr = filer.filter((f) => /\.hprz?$/i.test(f.name));
   if (hpr.length && hprVisning) { hprVisning.lesFiler(await Promise.all(hpr.map(async (f) => ({ navn: f.name, data: new Uint8Array(await f.arrayBuffer()) })))); filer = filer.filter((f) => !hpr.includes(f)); if (!filer.length) return; }
+  // GPX, KML og KMZ blir egne kartlag (📌), ikke bestand.
+  const egne = filer.filter((f) => ER_EGET_LAG.test(f.name));
+  if (egne.length && egneLagVisning) { await egneLagVisning.importer(egne); $('#impResultat').innerHTML = `<div class="hint">📌 ${egne.length} ${egne.length === 1 ? 'fil' : 'filer'} lagt inn som egne kartlag – se «Egne kartlag» under.</div>`; filer = filer.filter((f) => !egne.includes(f)); if (!filer.length) return; }
   const ut = [];
   let samlet = S.bestand;
   for (const fil of filer) {
@@ -2204,7 +2211,7 @@ function endret({ kart: kartEndret = false, zoom = false } = {}) {
   frResultat = null;
   for (const b of S.bestand) for (const t of b.tiltak || []) if (!t.id) t.id = nyId('t'); // eldre importerte tiltak uten id
   lagreSnart();
-  if (kartEndret) { tegnBestandKart(zoom); tegnKantsone(); if (S.eiendom?.grense && !S.kantsone?.bred) setTimeout(() => sikreKantsone(), 0); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); } else oppdaterStiler();
+  if (kartEndret) { tegnBestandKart(zoom); tegnKantsone(); if (S.eiendom?.grense && !S.kantsone?.bred) setTimeout(() => sikreKantsone(), 0); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); egneLagVisning?.oppdater(); } else oppdaterStiler();
   tegnOversikt();
   tegnBestandTabell();
   tegnTiltak();
@@ -2719,6 +2726,8 @@ function kobleHendelser() {
   visNyttSidenSist();
   initKommando({ hentValg: kommandoValg });
   $('#genSkjema').addEventListener('submit', startGenerering);
+  egneLagVisning = initEgneLag({ L, kart, lagKontroll: () => lagKontroll, hentPlan: () => S, endret, melding, nyId, panel: $('#egneLagPanel') });
+  egneLagVisning.oppdater();
   veiVisning = initVeier({
     kart, hentPlan: () => S, endret, melding, nyId,
     settKartKlikk: (fn) => { kartKlikk = fn; },

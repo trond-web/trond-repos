@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.92.0** (2026-11-19) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.93.0** (2026-11-19) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -772,6 +772,19 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
+
+## 📌 Egne kartlag – GPX, KML, KMZ og GeoJSON (`js/egne-lag.js`, `js/egne-lag-ui.js`)
+
+Under **Data › Egne kartlag** kan du legge inn egne data som kartlag, for eksempel mastefester og traséer fra Statnett eller nettselskapet, stier, poster eller grøfter. GPX-, KML- og KMZ-filer som slippes i den vanlige importen, blir også egne kartlag.
+
+- **Filtyper:**
+  - GPX: veipunkter, ruter og spor.
+  - KML og KMZ: punkter, linjer, flater, MultiGeometry og gx:Track. Navn, beskrivelse, ExtendedData og farger fra stilene følger med.
+  - GeoJSON i WGS84.
+- **Grenser:** maks 15 MB og 20 000 objekter per fil.
+- **Lagring:** lagene lagres i planen (`S.egneLag`) og følger planen ved synkronisering og i skylagringen.
+- **Visning:** hvert lag får eget navn og egen farge og ligger i lagvelgeren (📌). Laget vises også i SkogIQ Felt. Trykk på et objekt for navn og opplysninger.
+- **Teknisk:** filene tolkes uten DOM (testes i Node), og KMZ pakkes ut med `DecompressionStream`.
 
 ## 🔌 API for integrasjoner (`api-v1.js`, `api-nokler.js`, `api-dok.js`, `js/admin-api.js`)
 
