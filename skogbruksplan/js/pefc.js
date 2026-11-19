@@ -2,6 +2,7 @@
 // Kravpunktene, tabellene og grenseverdiene her er hentet fra standardteksten. Modulen kontrollerer det som
 // kan kontrolleres med planens data, og gir sjekklister og dokumentasjon for resten. Ingen DOM – testes i Node.
 import { geoTilUtm, punktIGeometri } from './proj.js';
+import { harKantsone } from './kantsone.js';
 import { startTilstand, laavesteHogstalder, beregnetHogstklasse, hogstklasseFor, hkGrenser } from './model.js';
 
 export const STANDARD = { kode: 'PEFC N 02:2022', navn: 'Norsk PEFC Skogstandard', gjelderFra: '2023-03-01' };
@@ -332,9 +333,11 @@ export function kontroller(S, P = tomPefc(), { iAar = new Date().getFullYear() }
     const lauvEldre = b.treslag === 'L' && hk >= 4;
     const fuktig = naer('myr', 0).length || naer('vann', 15).length;
     if (hogst.length && (lauvEldre || fuktig)) leggTil(26, 'varsel', `Unngå drift i hekketiden mai–juli (${navnB(b)})`, lauvEldre ? 'Eldre lauvdominert skog (hogstklasse IV–V).' : 'Bestandet grenser mot myr, sumpskog eller vann (kantsone).', { bestandId: b.id });
-    // K27 Kantsone
+    // K27 Kantsone – beregnet 15 m buffer mot bekker, elver og vann (js/kantsone.js) for alle berørte tiltak
+    const berort = egne.filter((t) => ['sluttavvirkning', 'tynning', 'lukkethogst', 'markberedning', 'gjodsling', 'ungskogpleie', 'sproyting'].includes(t.type));
+    if (harKantsone(b) && berort.length) leggTil(27, 'varsel', `Hold kantsonen mot vann utenfor tiltaket i ${navnB(b)}`, `${String(b.kantsone.daa).replace('.', ',')} daa av bestandet ligger innenfor ${S.kantsone?.bredde || 15} m fra bekk, elv eller vann. Kantsonen skal være flersjiktet og normalt urørt: ingen flatehogst, markberedning, gjødsling eller sprøyting, og ingen kjøring (kryss på bru eller klopp). Bredere sone (25–30 m) i edellauv-, høgstaude-, storbregne- og sumpskog.`, { bestandId: b.id });
     const vann = naer('vann', 15);
-    if (hogst.length && vann.length) leggTil(27, 'varsel', `Sett igjen kantsone mot vann i ${navnB(b)}`, `${vann[0].navn || 'Bekk/vann'} ligger inntil bestandet. Kantsonen skal være flersjiktet og normalt urørt, ca. 10–15 m (25–30 m i edellauv-, høgstaude-, storbregne- og sumpskog, ned mot 5 m i ensjiktet furuskog og langs 1–2 m brede bekker). Hogst i kantsonen dokumenteres.`, { bestandId: b.id, objektId: vann[0].id });
+    if (!harKantsone(b) && hogst.length && vann.length) leggTil(27, 'varsel', `Sett igjen kantsone mot vann i ${navnB(b)}`, `${vann[0].navn || 'Bekk/vann'} ligger inntil bestandet. Kantsonen skal være flersjiktet og normalt urørt, ca. 10–15 m (25–30 m i edellauv-, høgstaude-, storbregne- og sumpskog, ned mot 5 m i ensjiktet furuskog og langs 1–2 m brede bekker). Hogst i kantsonen dokumenteres.`, { bestandId: b.id, objektId: vann[0].id });
     // K28 Myr og sumpskog
     const myr = [...obj('myr'), ...obj('naturtype').filter((o) => /sumpskog|myr/i.test(o.navn || ''))].filter((o) => avstand(b.geometri, o.geometri, 10) <= 10);
     if (hogst.length && myr.length) leggTil(28, 'varsel', `Myr eller sumpskog i eller ved ${navnB(b)}`, 'Bruk lukket hogst eller småflatehogst i sump- og myrskog og mot fastmark, og bevar en flersjiktet kantsone mot myra (gjelder ikke myrer under 2 daa).', { bestandId: b.id, objektId: myr[0].id });

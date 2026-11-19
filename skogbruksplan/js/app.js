@@ -66,6 +66,7 @@ import * as AF from './artsfilter.js';
 import * as JUL from './juletre.js';
 import { lagStolpeUi } from './stolpe-ui.js';
 import { lagOkLag } from './ok-kart.js';
+import * as KANT from './kantsone.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, settTreslagAndel, avvikHovedtreslag, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag } from './treslag.js';
 import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vegetasjon.js';
 
@@ -149,6 +150,7 @@ let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks.
 let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let kpLag = null; let rpLag = null; let eiendomGrenseLag = null; let naboLag = null; let ninLag = null; let artLag = null; let artsfunnLag = null; let kulturLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
+let kantsoneLag = null; let kantsoneHenter = false; const kantsoneFeilet = new Set(); // planer der hentingen feilet (prøves ikke igjen før «Oppdater kantsoner»)
 let etikettLag; let flyfotoAktiv = false; let okAktiv = false; /* ØK-kart som grunnkart: gjennomsiktige bestandsfarger */ let lagKontroll = null; let andreVisning = null;
 let satellitt = null; let grunnkart = {};
 
@@ -194,8 +196,10 @@ function initKart() {
   // Kulturminner (Riksantikvaren): lokaliteter, sikringssoner og ikoner. Klikk viser navn, vernestatus og lenker.
   kulturLag = L.tileLayer.wms(KULTUR.KART.url, { layers: KULTUR.KART.lag, format: 'image/png', transparent: true, opacity: 0.85, pane: 'analysePane', maxZoom: 20, attribution: 'Kulturminner © Riksantikvaren' });
   eiendomGrenseLag = eiendomGrenseLagRod(L, { pane: 'analysePane' }); // røde grenser (js/eiendomslag.js)
+  kantsoneLag = L.layerGroup(); // 💧 15 m kantsone mot bekker, elver og vann (js/kantsone.js) – på som standard
   fuktLag = L.tileLayer.wms(FUKT_WMS, { layers: FUKT_LAG, format: 'image/png', transparent: true, opacity: 0.75, pane: 'analysePane', attribution: 'Markfuktighet © NIBIO' });
   graa.addTo(kart);
+  kantsoneLag.addTo(kart);
   markslagLag = L.featureGroup().addTo(kart);
   bestandLag = L.featureGroup().addTo(kart);
   // Tiltak med egen flate (sporlogg/tegnet) over bestandene. Klikk går gjennom til bestandene og identifiseres der.
@@ -208,7 +212,7 @@ function initKart() {
   document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${monsterDefs('ms').replace('</defs>', `${misMonster('mis')}</defs>`)}</svg>`);
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'ØK-kart med høydekurver (N5)': ok, 'ØK førsteutgave (historisk)': okForste, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, '🌿 Naturtyper (NiN, Miljødirektoratet)': ninLag, '🦉 Arter av nasjonal forvaltningsinteresse': artLag, '🦋 Rødlistede artsfunn (Artskart)': artsfunnLag, '🏛 Kulturminner (Riksantikvaren)': kulturLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'ØK-kart med høydekurver (N5)': ok, 'ØK førsteutgave (historisk)': okForste, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '💧 Kantsone 15 m mot bekker, elver og vann': kantsoneLag, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, '🌿 Naturtyper (NiN, Miljødirektoratet)': ninLag, '🦉 Arter av nasjonal forvaltningsinteresse': artLag, '🦋 Rødlistede artsfunn (Artskart)': artsfunnLag, '🏛 Kulturminner (Riksantikvaren)': kulturLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
   // NiN-naturtyper og arter vises som standard i kartet i alle faner (som nøkkelbiotopene). Valget huskes.
   const NATUR_LS = 'skogiq-natur-lag';
@@ -322,6 +326,7 @@ function tegnLegend() {
   const vr = S.veier || {};
   if (fuktLag && kart.hasLayer(fuktLag)) html += `<b style="display:block;margin-top:6px">💧 Markfuktighet (dybde til grunnvann)</b>${FUKT_KLASSER.map((k) => rad(k.farge, k.leg)).join('')}<div class="hint" style="font-size:11px">Over 1 m: tørt (ikke farget). Våt mark gir sporskader.</div>`;
   if (artsfunnLag && kart.hasLayer(artsfunnLag) && S.artsfunn) html += `<b style="display:block;margin-top:6px">Rødlistede artsfunn</b>${Object.entries(AF.KATEGORI).map(([k, v]) => rad(v.farge, `${k} – ${v.navn}`)).join('')}<div class="hint" style="font-size:11px">Artskart, Artsdatabanken. Ingen funn ≠ ingen arter.</div>`;
+  if (kantsoneLag && kart.hasLayer(kantsoneLag) && S.kantsone?.geometri) html += `<b style="display:block;margin-top:6px">Vann</b>${rad('rgba(59,143,232,.45)', `Kantsone ${S.kantsone.bredde || 15} m mot bekk, elv og vann`)}`;
   if ((ninLag && kart.hasLayer(ninLag)) || (artLag && kart.hasLayer(artLag)) || (kulturLag && kart.hasLayer(kulturLag))) html += `<b style="display:block;margin-top:6px">Natur og kulturminner</b>${kart.hasLayer(ninLag) ? rad(NATUR.FARGE.nin, 'Naturtyper (NiN) – mørkere = høyere kvalitet') : ''}${kart.hasLayer(artLag) ? rad(NATUR.FARGE.art, 'Arter – funksjonsområder') : ''}${kart.hasLayer(kulturLag) ? rad(KULTUR.FARGE, 'Kulturminner (Riksantikvaren)') : ''}<div class="hint" style="font-size:11px">Klikk i kartet for naturtype, art og faktaark.</div>`;
   if (naboLag && kart.hasLayer(naboLag)) {
     const o = naboData?.oppsummert;
@@ -924,6 +929,7 @@ function visDetalj() {
       ${(() => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? `<div><b>${fmt(a.meter)} m</b><span>til nærmeste bilvei${a.meter > veiVisning.maks() ? ' – lang terrengtransport' : ''}</span></div>` : ''; })()}
     </div>
     ${treslagSeksjonHtml(b)}
+    ${KANT.harKantsone(b) ? `<div class="kantsone-linje"><b>💧 ${esc(KANT.kantsoneTekst(b, S.kantsone?.bredde))}</b><span>${esc(KANT.HENSYN)}</span></div>` : ''}
     ${stolpe().kortHtml(b)}
     ${artsSeksjonHtml(b)}
     ${b.markfukt ? (() => { const v = fuktVurdering(b.markfukt); return `<div class="bratt-linje fukt-${v.niva}"><div class="bratt-stolpe">${FUKT_KLASSER.map((k) => (b.markfukt.andeler[k.id] ? `<span style="flex:${b.markfukt.andeler[k.id]};background:${k.farge}" title="${esc(k.leg)}: ${Math.round(b.markfukt.andeler[k.id] * 100)} %"></span>` : '')).join('')}${b.markfukt.andeler.torr ? `<span style="flex:${b.markfukt.andeler.torr};background:#e6e1c8" title="Tørt: ${Math.round(b.markfukt.andeler.torr * 100)} %"></span>` : ''}</div><span>💧 ${esc(v.tekst)}</span></div>`; })() : ''}
@@ -1206,6 +1212,7 @@ function tiltakRadHtml(t, { velg = false } = {}) {
       <div class="info">${t.arealDaa != null && t.arealDaa < (b.areal || 0) - 0.05 ? `${fmt(t.arealDaa, 1)} av ${fmt(b.areal, 1)} daa` : `${fmt(b.areal, 1)} daa`} · ${b.treslag || ''}${b.bonitet ?? ''}${ok.m3 ? ` · ca. ${fmt(ok.m3)} m³` : ''} · ${ok.netto >= 0 ? 'netto' : 'kostnad'} ca. ${fmt(Math.abs(ok.netto))} kr${ok.skogfond ? ` · skogfond ${fmt(ok.skogfond)} kr` : ''}${t.kommentar ? ` · ${esc(t.kommentar)}` : ''}</div>
       ${begrunnelseHtml(t)}
       ${stolpe().tiltakHint(t)}
+      ${t.status !== 'utfort' && KANT.BERORTE_TILTAK.includes(t.type) && KANT.harKantsone(b) ? `<div class="kantsone-hint">💧 ${esc(String(b.kantsone.daa).replace('.', ','))} daa kantsone mot vann holdes utenfor – flersjiktet og urørt, ingen kjøring</div>` : ''}
       <div class="tr-handlinger">
         ${t.forslag ? '<button class="knapp liten primar" data-handling="godta" type="button">＋ Legg til i planen</button>' : `<button class="knapp liten utfort-knapp${utfort ? ' er-utfort' : ''}" data-handling="utfort" type="button" aria-pressed="${utfort}" title="${utfort ? 'Angre – sett tilbake til planlagt' : 'Marker tiltaket som utført'}">${utfort ? '↶ Angre utført' : '✓ Marker utført'}</button>`}
         ${kanOppdrag && oppdragstype(t.type) ? `<button class="knapp liten tr-tilbud" data-be-om-tilbud data-tiltak-id="${esc(t.id)}" type="button" title="Få pris på dette tiltaket fra en entreprenør, tømmerkjøper eller planteleverandør">📨 Be om tilbud</button><button class="knapp liten" data-handling="nytt-oppdrag" type="button" title="Lag et oppdrag med dette tiltaket – for bestilling, driftsveg og skiltplan">＋ Oppdrag</button>` : ''}
@@ -2196,7 +2203,7 @@ function endret({ kart: kartEndret = false, zoom = false } = {}) {
   frResultat = null;
   for (const b of S.bestand) for (const t of b.tiltak || []) if (!t.id) t.id = nyId('t'); // eldre importerte tiltak uten id
   lagreSnart();
-  if (kartEndret) { tegnBestandKart(zoom); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); } else oppdaterStiler();
+  if (kartEndret) { tegnBestandKart(zoom); tegnKantsone(); if (S.eiendom?.grense && !S.kantsone) setTimeout(() => sikreKantsone(), 0); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); } else oppdaterStiler();
   tegnOversikt();
   tegnBestandTabell();
   tegnTiltak();
@@ -2433,6 +2440,21 @@ async function tilMobil(id = S.planId) {
   d.querySelector('[data-m="lukk"]').onclick = () => d.close();
 }
 
+// 💧 Kantsone 15 m mot vann (js/kantsone.js): hentes automatisk for planer med eiendomsgrense som mangler den.
+function tegnKantsone() {
+  if (!kantsoneLag) return; kantsoneLag.clearLayers();
+  if (S.kantsone?.geometri) L.geoJSON(S.kantsone.geometri, { pane: 'analysePane', interactive: false, style: { color: '#1e6fd9', weight: 1, opacity: 0.9, dashArray: '3 3', fillColor: '#3b8fe8', fillOpacity: 0.32 } }).addTo(kantsoneLag);
+}
+async function sikreKantsone({ tving = false } = {}) {
+  const plan = S; if (!plan?.eiendom?.grense || (plan.kantsone && !tving) || kantsoneHenter || !navigator.onLine || (!tving && kantsoneFeilet.has(plan.planId))) return;
+  kantsoneHenter = true;
+  try {
+    const [turf, PC] = await Promise.all([lastTurf(), lastKlipping()]); if (!PC) return;
+    const r = await KANT.oppdaterKantsone(plan, { turf, PC });
+    if (S === plan) { endret({ kart: true }); melding(r.daa ? `💧 Kantsone 15 m mot vann er lagt inn: ${String(r.daa).replace('.', ',')} daa i ${r.bestand} bestand.` : '💧 Ingen bekker, elver eller vann på eiendommen – ingen kantsone.'); } else await lagrePlan({ ...plan, endret: new Date().toISOString() });
+  } catch (e) { kantsoneFeilet.add(plan.planId); if (tving) melding(`Kunne ikke hente kantsoner: ${e.message}`); } finally { kantsoneHenter = false; }
+}
+
 async function aapnePlan(id) {
   stoppDeling(); sisteDeling = null;
   if (id === S.planId) { visFane('oversikt'); zoomTilAlle(); return; }
@@ -2448,6 +2470,7 @@ async function aapnePlan(id) {
   visFane('oversikt');
   andreVisning?.tegn(); tegnPlanListe();
   melding(`Åpnet ${S.eiendom.navn || 'planen'}.`);
+  sikreKantsone();
   if (naboLag && kart.hasLayer(naboLag)) visNaboer();
   synkAktiv(); // hent endringer fra mobilen
 }
@@ -2631,6 +2654,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '🔒', tittel: 'Vilkår og personvern', under: 'Les erklæringen, last ned dataene dine eller slett kontoen', sok: 'personvern vilkår gdpr samtykke mine data innsyn slett konto eksport', utfor: () => window.open('personvern.html', '_blank', 'noopener') },
     { gruppe: 'Handlinger', ikon: '📣', tittel: 'Gi tilbakemelding', under: 'Stjerner, ros, barkbiller (feil) og forbedringsforslag', sok: 'tilbakemelding forslag forbedring feil ros klage idé ide stjerner fornøyd', utfor: () => apneTilbakemelding({ fane: aktivFaneNavn() }) },
     { gruppe: 'Handlinger', ikon: '🦋', tittel: 'Rødlistede artsfunn (Artskart)', under: 'Vis funn i kartet og vurder dem mot tiltakene (S1–S3)', sok: 'arter rødliste rødlistet artskart artsdatabanken artsfunn truet sårbar artsfilter hensyn', utfor: () => { if (!kart.hasLayer(artsfunnLag)) artsfunnLag.addTo(kart); else if (!S.artsfunn) hentArtsfunnForPlan(); } },
+    { gruppe: 'Handlinger', ikon: '💧', tittel: 'Oppdater kantsoner mot vann (15 m)', under: 'Hent bekker, elver og vann fra NVE og beregn kantsonen på nytt', sok: 'kantsone buffer bekk elv vann vassdrag 15 m', utfor: () => { if (!kart.hasLayer(kantsoneLag)) kantsoneLag.addTo(kart); sikreKantsone({ tving: true }); } },
     { gruppe: 'Handlinger', ikon: '🪵', tittel: 'Stolpepotensial', under: 'Furubestand med sannsynlige stolpetrær – og be om stolpebefaring', sok: 'stolpe stolper stolpevirke furu stolpebefaring stolpekjøper', utfor: () => { lukkJuletrær(); stolpe().vis(); } },
     ...(JUL.erJuletid() ? [{ gruppe: 'Handlinger', ikon: '🎄', tittel: 'Juletresjekken', under: 'Hvor finner du lettest et fint juletre?', sok: 'jul juletre juletrær gran nissen desember', utfor: () => visJuletrær() }] : []),
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål i kartet', under: 'Lengde, areal, omkrets og volum per treslag', sok: 'mål måle måleverktøy lengde areal avstand omkrets volum treslag kubikk daa linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('areal'); } },
@@ -2982,6 +3006,7 @@ async function start() {
   if (!lagret) lagreSnart();
   tegnPlanListe();
   if (!S.bestand.length) visFane('planer');
+  sikreKantsone(); // 💧 kantsone mot vann for planer som mangler den
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
   // Endringer fra SkogIQ Felt (registreringer, utførte tiltak) i planen som er åpen her: last planen inn på nytt.
   kanal?.addEventListener('message', async (m) => {

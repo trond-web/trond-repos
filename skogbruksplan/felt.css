@@ -299,3 +299,6 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 .np-steg li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; padding: 7px 9px; border-radius: 10px; background: var(--surface-2); }
 .np-steg li small { display: block; color: var(--muted); font-size: 12.5px; }
 .np-steg li.aktiv { outline: 2px solid var(--accent); } .np-steg li.ok > span { color: var(--accent); font-weight: 800; } .np-steg li.feil > span { color: #b4302f; }
+/* 💧 Kantsone mot vann */
+.kantsone-felt { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: rgba(59,143,232,.13); border-left: 4px solid #1e6fd9; display: grid; gap: 3px; font-size: 14px; }
+.kantsone-felt span { color: var(--muted); font-size: 13px; }

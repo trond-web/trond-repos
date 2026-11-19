@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.90.0 – 💧 Kantsone 15 m mot bekker, elver og vann (2026-11-19)
+
+*Nytt.* Alle planer får nå automatisk 15 m kantsone langs bekker, elver og vann (NVE og AR5) – også vann rett utenfor eiendomsgrensen. Kantsonen vises i kartet og i SkogIQ Felt, i bestandsinfo, på tiltakene og på arbeidsordren, og PEFC-kontrollen varsler for hogst, markberedning, gjødsling, ungskogpleie og sprøyting i kantsonen.
+
 ## 1.89.0 – ＋ Ny skogbruksplan rett fra kartet i SkogIQ Felt (2026-11-18)
 
 *Nytt.* Ute i skogen kan du nå lage skogbruksplan i SkogIQ Felt: trykk «📍 Der jeg står» eller «✛ Velg i kartet». Appen finner eiendommen hos Kartverket, viser grensen og lager planen med samme data som fullversjonen – vanligvis på under ett minutt.
