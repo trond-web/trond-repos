@@ -411,8 +411,8 @@ function visBestand(id, { zoom = false } = {}) {
 function kantsoneHtml(b) { return KANT.harKantsone(b) ? `<div class="kantsone-felt"><b>💧 ${esc(KANT.kantsoneTekst(b, P.kantsone?.bredde))}</b><span>${esc(KANT.HENSYN)}</span></div>` : ''; }
 // Henter kantsonen for planer som mangler den (krever nett).
 async function sikreKantsone() {
-  const plan = P; if (!plan?.eiendom?.grense || plan.kantsone || kantsoneHenter || !navigator.onLine) return; kantsoneHenter = true;
-  try { const [turf, PC] = await Promise.all([lastTurf(), lastKlipping()]); if (!PC) return; const r = await KANT.oppdaterKantsone(plan, { turf, PC }); await lagrePlan(plan); if (P === plan) { tegnPlan(false); if (r.daa) melding(`💧 Kantsone 15 m mot vann: ${String(r.daa).replace('.', ',')} daa`); } }
+  const plan = P; if (!plan?.eiendom?.grense || plan.kantsone?.bred || kantsoneHenter || !navigator.onLine) return; kantsoneHenter = true;
+  try { const [turf, PC] = await Promise.all([lastTurf(), lastKlipping()]); if (!PC) return; const r = await KANT.oppdaterKantsone(plan, { turf, PC }); await lagrePlan(plan); if (P === plan) { tegnPlan(false); if (r.daa) melding(`💧 Kantsone mot vann: ${String(r.daa).replace('.', ',')} daa`); } }
   catch { /* prøver igjen neste gang */ } finally { kantsoneHenter = false; }
 }
 function naturHtml(b) {

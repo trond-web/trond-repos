@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.91.0 – 💧 30 m kantsone i edellauv-, høgstaude-, storbregne- og sumpskog (2026-11-19)
+
+*Forbedret.* Kantsonen mot vann er nå 30 m i bestand med edellauvskog, høgstaude- og storbregneskog (eng-, ore- og flommarkskog) og sumpskog, slik PEFC krever – ellers 15 m. Den beregnes på nytt når du endrer vegetasjonstype, og eksisterende planer oppgraderes automatisk.
+
 ## 1.90.0 – 💧 Kantsone 15 m mot bekker, elver og vann (2026-11-19)
 
 *Nytt.* Alle planer får nå automatisk 15 m kantsone langs bekker, elver og vann (NVE og AR5) – også vann rett utenfor eiendomsgrensen. Kantsonen vises i kartet og i SkogIQ Felt, i bestandsinfo, på tiltakene og på arbeidsordren, og PEFC-kontrollen varsler for hogst, markberedning, gjødsling, ungskogpleie og sprøyting i kantsonen.

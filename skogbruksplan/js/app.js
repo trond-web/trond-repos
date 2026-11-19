@@ -326,7 +326,7 @@ function tegnLegend() {
   const vr = S.veier || {};
   if (fuktLag && kart.hasLayer(fuktLag)) html += `<b style="display:block;margin-top:6px">💧 Markfuktighet (dybde til grunnvann)</b>${FUKT_KLASSER.map((k) => rad(k.farge, k.leg)).join('')}<div class="hint" style="font-size:11px">Over 1 m: tørt (ikke farget). Våt mark gir sporskader.</div>`;
   if (artsfunnLag && kart.hasLayer(artsfunnLag) && S.artsfunn) html += `<b style="display:block;margin-top:6px">Rødlistede artsfunn</b>${Object.entries(AF.KATEGORI).map(([k, v]) => rad(v.farge, `${k} – ${v.navn}`)).join('')}<div class="hint" style="font-size:11px">Artskart, Artsdatabanken. Ingen funn ≠ ingen arter.</div>`;
-  if (kantsoneLag && kart.hasLayer(kantsoneLag) && S.kantsone?.geometri) html += `<b style="display:block;margin-top:6px">Vann</b>${rad('rgba(59,143,232,.45)', `Kantsone ${S.kantsone.bredde || 15} m mot bekk, elv og vann`)}`;
+  if (kantsoneLag && kart.hasLayer(kantsoneLag) && S.kantsone?.geometri) html += `<b style="display:block;margin-top:6px">Vann</b>${rad('rgba(59,143,232,.45)', `Kantsone mot bekk, elv og vann – ${S.kantsone.bredde || 15} m${S.kantsone.bred ? `, ${S.kantsone.bred} m i edellauv-, høgstaude-, storbregne- og sumpskog` : ''}`)}`;
   if ((ninLag && kart.hasLayer(ninLag)) || (artLag && kart.hasLayer(artLag)) || (kulturLag && kart.hasLayer(kulturLag))) html += `<b style="display:block;margin-top:6px">Natur og kulturminner</b>${kart.hasLayer(ninLag) ? rad(NATUR.FARGE.nin, 'Naturtyper (NiN) – mørkere = høyere kvalitet') : ''}${kart.hasLayer(artLag) ? rad(NATUR.FARGE.art, 'Arter – funksjonsområder') : ''}${kart.hasLayer(kulturLag) ? rad(KULTUR.FARGE, 'Kulturminner (Riksantikvaren)') : ''}<div class="hint" style="font-size:11px">Klikk i kartet for naturtype, art og faktaark.</div>`;
   if (naboLag && kart.hasLayer(naboLag)) {
     const o = naboData?.oppsummert;
@@ -973,6 +973,7 @@ function visDetalj() {
     satD.addEventListener('click', (e) => { const k = e.target.closest('[data-sat-aar]'); if (k) visSatellittAar(Number(k.dataset.satAar), b); });
   }
   $('#detaljSkjema').addEventListener('change', (e) => {
+    if (e.target.name === 'vegetasjon' && S.kantsone) setTimeout(() => sikreKantsone({ tving: true, stille: true }), 300); // ny vegetasjonstype kan gi 30 m kantsone
     const f = e.target; const navn = f.name;
     let v = f.type === 'checkbox' ? f.checked : f.value;
     if (['areal', 'alder', 'volumDaa', 'treantall', 'hoyde', 'bonitet', 'hogstklasse'].includes(navn)) v = v === '' ? null : Number(v);
@@ -2203,7 +2204,7 @@ function endret({ kart: kartEndret = false, zoom = false } = {}) {
   frResultat = null;
   for (const b of S.bestand) for (const t of b.tiltak || []) if (!t.id) t.id = nyId('t'); // eldre importerte tiltak uten id
   lagreSnart();
-  if (kartEndret) { tegnBestandKart(zoom); tegnKantsone(); if (S.eiendom?.grense && !S.kantsone) setTimeout(() => sikreKantsone(), 0); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); } else oppdaterStiler();
+  if (kartEndret) { tegnBestandKart(zoom); tegnKantsone(); if (S.eiendom?.grense && !S.kantsone?.bred) setTimeout(() => sikreKantsone(), 0); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); } else oppdaterStiler();
   tegnOversikt();
   tegnBestandTabell();
   tegnTiltak();
@@ -2445,13 +2446,13 @@ function tegnKantsone() {
   if (!kantsoneLag) return; kantsoneLag.clearLayers();
   if (S.kantsone?.geometri) L.geoJSON(S.kantsone.geometri, { pane: 'analysePane', interactive: false, style: { color: '#1e6fd9', weight: 1, opacity: 0.9, dashArray: '3 3', fillColor: '#3b8fe8', fillOpacity: 0.32 } }).addTo(kantsoneLag);
 }
-async function sikreKantsone({ tving = false } = {}) {
-  const plan = S; if (!plan?.eiendom?.grense || (plan.kantsone && !tving) || kantsoneHenter || !navigator.onLine || (!tving && kantsoneFeilet.has(plan.planId))) return;
+async function sikreKantsone({ tving = false, stille = false } = {}) {
+  const plan = S; if (!plan?.eiendom?.grense || (plan.kantsone?.bred && !tving) || kantsoneHenter || !navigator.onLine || (!tving && kantsoneFeilet.has(plan.planId))) return;
   kantsoneHenter = true;
   try {
     const [turf, PC] = await Promise.all([lastTurf(), lastKlipping()]); if (!PC) return;
     const r = await KANT.oppdaterKantsone(plan, { turf, PC });
-    if (S === plan) { endret({ kart: true }); melding(r.daa ? `💧 Kantsone 15 m mot vann er lagt inn: ${String(r.daa).replace('.', ',')} daa i ${r.bestand} bestand.` : '💧 Ingen bekker, elver eller vann på eiendommen – ingen kantsone.'); } else await lagrePlan({ ...plan, endret: new Date().toISOString() });
+    if (S === plan) { endret({ kart: true }); if (!stille) melding(r.daa ? `💧 Kantsone mot vann er lagt inn: ${String(r.daa).replace('.', ',')} daa i ${r.bestand} bestand (15 m, 30 m i edellauv-, høgstaude-, storbregne- og sumpskog).` : '💧 Ingen bekker, elver eller vann på eiendommen – ingen kantsone.'); } else await lagrePlan({ ...plan, endret: new Date().toISOString() });
   } catch (e) { kantsoneFeilet.add(plan.planId); if (tving) melding(`Kunne ikke hente kantsoner: ${e.message}`); } finally { kantsoneHenter = false; }
 }
 
@@ -2654,7 +2655,7 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '🔒', tittel: 'Vilkår og personvern', under: 'Les erklæringen, last ned dataene dine eller slett kontoen', sok: 'personvern vilkår gdpr samtykke mine data innsyn slett konto eksport', utfor: () => window.open('personvern.html', '_blank', 'noopener') },
     { gruppe: 'Handlinger', ikon: '📣', tittel: 'Gi tilbakemelding', under: 'Stjerner, ros, barkbiller (feil) og forbedringsforslag', sok: 'tilbakemelding forslag forbedring feil ros klage idé ide stjerner fornøyd', utfor: () => apneTilbakemelding({ fane: aktivFaneNavn() }) },
     { gruppe: 'Handlinger', ikon: '🦋', tittel: 'Rødlistede artsfunn (Artskart)', under: 'Vis funn i kartet og vurder dem mot tiltakene (S1–S3)', sok: 'arter rødliste rødlistet artskart artsdatabanken artsfunn truet sårbar artsfilter hensyn', utfor: () => { if (!kart.hasLayer(artsfunnLag)) artsfunnLag.addTo(kart); else if (!S.artsfunn) hentArtsfunnForPlan(); } },
-    { gruppe: 'Handlinger', ikon: '💧', tittel: 'Oppdater kantsoner mot vann (15 m)', under: 'Hent bekker, elver og vann fra NVE og beregn kantsonen på nytt', sok: 'kantsone buffer bekk elv vann vassdrag 15 m', utfor: () => { if (!kart.hasLayer(kantsoneLag)) kantsoneLag.addTo(kart); sikreKantsone({ tving: true }); } },
+    { gruppe: 'Handlinger', ikon: '💧', tittel: 'Oppdater kantsoner mot vann', under: 'Hent bekker, elver og vann fra NVE og beregn kantsonen på nytt (15 m, 30 m i edellauv-, høgstaude-, storbregne- og sumpskog)', sok: 'kantsone buffer bekk elv vann vassdrag 15 m', utfor: () => { if (!kart.hasLayer(kantsoneLag)) kantsoneLag.addTo(kart); sikreKantsone({ tving: true }); } },
     { gruppe: 'Handlinger', ikon: '🪵', tittel: 'Stolpepotensial', under: 'Furubestand med sannsynlige stolpetrær – og be om stolpebefaring', sok: 'stolpe stolper stolpevirke furu stolpebefaring stolpekjøper', utfor: () => { lukkJuletrær(); stolpe().vis(); } },
     ...(JUL.erJuletid() ? [{ gruppe: 'Handlinger', ikon: '🎄', tittel: 'Juletresjekken', under: 'Hvor finner du lettest et fint juletre?', sok: 'jul juletre juletrær gran nissen desember', utfor: () => visJuletrær() }] : []),
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål i kartet', under: 'Lengde, areal, omkrets og volum per treslag', sok: 'mål måle måleverktøy lengde areal avstand omkrets volum treslag kubikk daa linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('areal'); } },

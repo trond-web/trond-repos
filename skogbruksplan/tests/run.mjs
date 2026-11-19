@@ -3725,6 +3725,14 @@ test('Kantsone 15 m mot vann: henting fra NVE, buffer innenfor eiendommen, per b
     const S = { eiendom: { grense }, bestand: [vest, ost], markslag: [{ kategori: 'vann', geometri: { type: 'Polygon', coordinates: [[[11.0085, 60.004], [11.0095, 60.004], [11.0095, 60.005], [11.0085, 60.004]]] } }] };
     const r = await K.oppdaterKantsone(S, { turf, PC, hent }); assert.ok(r.daa > 0 && S.kantsone.bekker === 1 && S.kantsone.vann === 2 && S.kantsone.navn.includes('Bekken'));
     assert.ok(K.harKantsone(vest) && K.harKantsone(ost), 'AR5-tjernet gir kantsone også i øst');
+    assert.equal(vest.kantsone.bredde, 15);
+    // 30 m i edellauv-, høgstaude-, storbregne- og sumpskog (PEFC krav 27): vest som rik edellauvskog får dobbel bredde
+    const vest2 = { ...vest, kantsone: undefined, vegetasjon: { kode: '5b', navn: 'Rik edellauvskog' } }; const S2 = { eiendom: { grense }, bestand: [vest2, { ...ost, kantsone: undefined }], markslag: [] };
+    await K.oppdaterKantsone(S2, { turf, PC, hent }); assert.equal(vest2.kantsone.bredde, 30); assert.equal(vest2.kantsone.grunn, 'edellauvskog');
+    assert.ok(vest2.kantsone.daa > vest.kantsone.daa * 1.8 && vest2.kantsone.daa < vest.kantsone.daa * 2.2, `${vest2.kantsone.daa} mot ${vest.kantsone.daa}`);
+    assert.equal(S2.kantsone.bred, 30); assert.equal(S2.kantsone.bredeBestand, 1);
+    assert.match(K.kantsoneTekst(vest2), /\(30 m – edellauvskog\)/);
+    assert.deepEqual(['5a', '5b', '4c', '4e', '6c', '7c', '8c', '8d', '7b', '8b'].map((k) => K.bredFor({ vegetasjon: { kode: k } })), [30, 30, 30, 30, 30, 30, 30, 30, 15, 15]);
   }
   // Tekster og PEFC krav 27 for alle berørte tiltak (ikke bare hogst)
   const b = { id: 'x', nr: '7', areal: 20, treslag: 'G', bonitet: 14, alder: 60, geometri: { type: 'Polygon', coordinates: [[[11, 60], [11.001, 60], [11.001, 60.001], [11, 60]]] }, kantsone: { daa: 2.4, andel: 0.12 }, tiltak: [{ id: 't', type: 'markberedning', status: 'planlagt', aar: 2027 }] };
