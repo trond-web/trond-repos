@@ -1,6 +1,7 @@
 // «Si det rett ut»: tilbakemelding og forbedringsforslag med 1–5 stjerner, med litt skoghumor. Brukes i
 // fullversjonen (📣 i sidemenyen og kommandopaletten) og i SkogIQ Felt (Mer). Brukeren ser status og svar fra
-// administrator under «Mine». Serveren: tilbakemelding.js (/api/tilbakemelding). Stilene ligger her, så modulen
+// administrator under «Mine» – som en samtale der brukeren kan svare tilbake, med hele loggen. Uleste svar vises som
+// et merke på 📣-knappen (oppdaterMerke). Serveren: tilbakemelding.js (/api/tilbakemelding). Stilene ligger her, så modulen
 // virker likt i begge appene.
 import { API } from './plan-synk.js';
 import { VERSJON } from './versjon.js';
@@ -63,19 +64,40 @@ const CSS = `
 .tb-rad .st { color: #e0a100; letter-spacing: 1px; } .tb-rad p { margin: 0; white-space: pre-wrap; font-size: 14px; }
 .tb-pille { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 99px; background: #eef3ef; color: #1f6b4a; white-space: nowrap; }
 .tb-svar { background: #e6f0ea; border-radius: 10px; padding: 7px 10px; font-size: 13.5px; } .tb-svar b { display: block; font-size: 12px; color: #1f6b4a; }
-@media (prefers-color-scheme: dark) { .tb-dialog { background: #15241d; color: #e6efe9; } .tb-topp p, .tb-lofte, .tb-rad .meta { color: #a9bcb1; } .tb-lukk, .tb-faner, .tb-knapper .sekundar { background: #1b2d25; color: #e6efe9; } .tb-faner button[aria-selected="true"], .tb-typer button, .tb-dialog textarea, .tb-rad { background: #0e1a15; color: #e6efe9; border-color: #2a3d34; } .tb-typer button[aria-pressed="true"], .tb-svar { background: #1f3a2c; } .tb-lofte { background: #2a2a1e; } .tb-stjerne-tekst, .tb-svar b, .tb-pille { color: #8fd1ad; } .tb-pille { background: #1b2d25; } }
+.tb-rad.klikk { cursor: pointer; } .tb-rad.klikk:hover { border-color: #1f6b4a; } .tb-rad.uleste { border-color: #1f6b4a; box-shadow: 0 0 0 1px #1f6b4a inset; }
+.tb-ny { background: #c0392b; color: #fff; border-radius: 99px; font-size: 11.5px; font-weight: 800; padding: 1px 7px; }
+.tb-traad { display: grid; gap: 8px; max-height: 46vh; overflow: auto; padding: 2px; }
+.tb-boble { max-width: 86%; border-radius: 14px; padding: 8px 11px; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tb-boble small { display: block; font-size: 11.5px; opacity: .75; margin-bottom: 2px; white-space: normal; }
+.tb-boble.bruker { justify-self: end; background: #1f6b4a; color: #fff; border-bottom-right-radius: 4px; }
+.tb-boble.admin { justify-self: start; background: #e6f0ea; color: #10241c; border-bottom-left-radius: 4px; }
+.tb-hendelse { justify-self: center; font-size: 12px; color: #5d6d64; background: #eef3ef; border-radius: 99px; padding: 2px 10px; }
+.tb-tilbake { border: 0; background: none; color: #1f6b4a; font: inherit; font-weight: 700; cursor: pointer; padding: 0; justify-self: start; }
+.tb-skriv { display: grid; gap: 6px; } .tb-skriv textarea { min-height: 70px; }
+.tb-merke { position: absolute; top: -3px; right: -3px; min-width: 17px; height: 17px; border-radius: 99px; background: #c0392b; color: #fff; font: 800 10.5px/17px system-ui, sans-serif; text-align: center; padding: 0 4px; box-sizing: border-box; pointer-events: none; }
+@media (prefers-color-scheme: dark) { .tb-dialog { background: #15241d; color: #e6efe9; } .tb-topp p, .tb-lofte, .tb-rad .meta { color: #a9bcb1; } .tb-lukk, .tb-faner, .tb-knapper .sekundar { background: #1b2d25; color: #e6efe9; } .tb-faner button[aria-selected="true"], .tb-typer button, .tb-dialog textarea, .tb-rad { background: #0e1a15; color: #e6efe9; border-color: #2a3d34; } .tb-typer button[aria-pressed="true"], .tb-svar, .tb-boble.admin { background: #1f3a2c; color: #e6efe9; } .tb-hendelse { background: #1b2d25; color: #a9bcb1; } .tb-tilbake { color: #8fd1ad; } .tb-lofte { background: #2a2a1e; } .tb-stjerne-tekst, .tb-svar b, .tb-pille { color: #8fd1ad; } .tb-pille { background: #1b2d25; } }
 `;
 function sikreCss() { if (document.getElementById('tb-stil')) return; const s = document.createElement('style'); s.id = 'tb-stil'; s.textContent = CSS; document.head.appendChild(s); }
 
 // Åpner dialogen. fane = hvor i appen brukeren er (følger med tilbakemeldingen). visning: 'ny' | 'mine'.
-export function apneTilbakemelding({ fane = '', visning = 'ny' } = {}) {
+export function apneTilbakemelding({ fane = '', visning = 'ny', id = null } = {}) {
   if (typeof document === 'undefined' || document.querySelector('.tb-dialog')) return;
   sikreCss();
-  const st = { visning, stjerner: 0, type: 'forslag', tekst: '', feil: '', sender: false, takk: null, mine: null };
+  const st = { visning, stjerner: 0, type: 'forslag', tekst: '', feil: '', sender: false, takk: null, mine: null, apen: null, utkast: '' };
   const d = document.createElement('dialog'); d.className = 'tb-dialog'; d.setAttribute('aria-label', 'Tilbakemelding');
   document.body.appendChild(d);
-  const lukk = () => { d.close(); d.remove(); };
+  const lukk = () => { d.close(); d.remove(); oppdaterMerke(); };
   const hentMine = async () => { try { st.mine = (await kall('/api/tilbakemelding/mine')).liste; } catch (e) { st.mine = []; st.feil = e.message; } tegn(); };
+  const apneTraad = async (id) => {
+    st.apen = id; st.feil = ''; st.utkast = ''; tegn(); const x = st.mine?.find((y) => y.id === id);
+    if (x?.ulest) { x.ulest = 0; kall(`/api/tilbakemelding/${id}/lest`, { metode: 'POST' }).then(() => oppdaterMerke()).catch(() => {}); }
+  };
+  async function skriv() {
+    const ta = d.querySelector('[data-tb-melding]'); const tekst = (ta?.value || '').trim(); if (!tekst) return;
+    st.utkast = tekst; st.sender = true; st.feil = ''; tegn();
+    try { const r = await kall(`/api/tilbakemelding/${st.apen}/melding`, { metode: 'POST', kropp: { tekst } }); st.mine = st.mine.map((y) => (y.id === st.apen ? r.tilbakemelding : y)); st.utkast = ''; } catch (e) { st.feil = e.message; }
+    st.sender = false; tegn();
+  }
 
   function nyHtml() {
     if (st.takk) return `<div class="tb-takk"><div class="stor">${st.takk.stjerner === 5 ? '🏆' : st.takk.stjerner === 1 ? '🪚' : st.takk.type === 'feil' ? '🔦' : '🌲'}</div><b>Takk!</b><p style="margin:0">${esc(takkTekst(st.takk))}</p><p class="tb-lofte">${st.takk.type === 'forslag' ? 'Gode forslag som lar seg gjennomføre, løses i løpet av noen dager. Følg med under «Mine» – der ser du status og svar.' : 'Du ser status og eventuelle svar under «Mine».'}</p>
@@ -89,17 +111,33 @@ export function apneTilbakemelding({ fane = '', visning = 'ny' } = {}) {
       <div class="tb-feil" role="alert">${esc(st.feil)}</div>
       <div class="tb-knapper"><button type="button" class="sekundar" data-tb="lukk">Avbryt</button><button type="button" class="primar" data-tb="send" ${st.sender ? 'disabled' : ''}>${st.sender ? 'Sender …' : 'Send til skogen 🌲'}</button></div>`;
   }
+  function traadHtml(x) {
+    const tid = (t) => new Date(t).toLocaleString('nb-NO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return `<button type="button" class="tb-tilbake" data-tb="tilbake">‹ Alle tilbakemeldinger</button>
+      <div class="tb-rad"><div class="meta"><span>${TYPER[x.type]?.ikon || ''} ${esc(TYPER[x.type]?.navn || x.type)} ${x.stjerner ? `<span class="st" aria-label="${x.stjerner} stjerner">${stjerneTekst(x.stjerner)}</span>` : ''}</span><span class="tb-pille">${esc(STATUS[x.status] || x.status)}</span></div></div>
+      <div class="tb-traad" data-tb-traad>
+        <div class="tb-boble bruker"><small>Du · ${tid(x.tid)}</small>${x.tekst ? esc(x.tekst) : x.stjerner ? `${stjerneTekst(x.stjerner)}` : ''}</div>
+        ${(x.traad || []).map((m) => (m.fra === 'system' ? `<div class="tb-hendelse">${esc(m.tekst)} · ${tid(m.tid)}</div>` : `<div class="tb-boble ${m.fra === 'bruker' ? 'bruker' : 'admin'}"><small>${m.fra === 'bruker' ? 'Du' : `SkogIQ.ai${m.navn ? ` (${esc(m.navn)})` : ''}`} · ${tid(m.tid)}</small>${esc(m.tekst)}</div>`)).join('')}
+      </div>
+      <div class="tb-skriv"><textarea data-tb-melding maxlength="2000" placeholder="Skriv et svar eller still et spørsmål …" aria-label="Melding">${esc(st.utkast)}</textarea>
+        <div class="tb-feil" role="alert">${esc(st.feil)}</div>
+        <div class="tb-knapper"><button type="button" class="primar" data-tb="skriv" ${st.sender ? 'disabled' : ''}>${st.sender ? 'Sender …' : 'Send melding'}</button></div></div>`;
+  }
   function mineHtml() {
     if (!st.mine) return '<p>Henter …</p>';
+    const apen = st.apen && st.mine.find((x) => x.id === st.apen); if (apen) return traadHtml(apen);
     if (!st.mine.length) return `<p>Ingen tilbakemeldinger ennå. Skogen venter spent. 🌲</p>${st.feil ? `<div class="tb-feil">${esc(st.feil)}</div>` : ''}`;
-    return `<div class="tb-liste">${st.mine.map((x) => `<div class="tb-rad"><div class="meta"><span>${TYPER[x.type]?.ikon || ''} ${esc(TYPER[x.type]?.navn || x.type)} · ${dato(x.tid)} ${x.stjerner ? `<span class="st" aria-label="${x.stjerner} stjerner">${stjerneTekst(x.stjerner)}</span>` : ''}</span><span class="tb-pille">${esc(STATUS[x.status] || x.status)}</span></div>
-      ${x.tekst ? `<p>${esc(x.tekst)}</p>` : ''}${x.svar ? `<div class="tb-svar"><b>Svar fra SkogIQ.ai · ${dato(x.svarTid)}</b>${esc(x.svar)}</div>` : ''}</div>`).join('')}</div>`;
+    return `<div class="tb-liste">${st.mine.map((x) => { const meld = (x.traad || []).filter((m) => m.fra !== 'system'); const siste = meld.at(-1);
+      return `<div class="tb-rad klikk ${x.ulest ? 'uleste' : ''}" data-tb-apne="${esc(x.id)}" role="button" tabindex="0"><div class="meta"><span>${TYPER[x.type]?.ikon || ''} ${esc(TYPER[x.type]?.navn || x.type)} · ${dato(x.tid)} ${x.stjerner ? `<span class="st" aria-label="${x.stjerner} stjerner">${stjerneTekst(x.stjerner)}</span>` : ''}</span><span>${x.ulest ? `<span class="tb-ny">${x.ulest} nytt svar</span> ` : ''}<span class="tb-pille">${esc(STATUS[x.status] || x.status)}</span></span></div>
+      ${x.tekst ? `<p>${esc(x.tekst.length > 160 ? `${x.tekst.slice(0, 160)}…` : x.tekst)}</p>` : ''}${siste ? `<div class="tb-svar"><b>${siste.fra === 'bruker' ? 'Du' : 'SkogIQ.ai'} · ${dato(siste.tid)}</b>${esc(siste.tekst.length > 140 ? `${siste.tekst.slice(0, 140)}…` : siste.tekst)}</div>` : ''}
+      <div class="meta"><span>💬 ${meld.length ? `${meld.length} ${meld.length === 1 ? 'melding' : 'meldinger'}` : 'Ingen svar ennå'}</span><span>Åpne samtalen ›</span></div></div>`; }).join('')}</div>`;
   }
   function tegn() {
     d.innerHTML = `<div class="tb-inn"><div class="tb-topp"><div><h2>📣 Si det rett ut</h2><p>Skogen tåler litt vind. Ros, ris og gode idéer tas imot med takk.</p></div><button type="button" class="tb-lukk" data-tb="lukk" aria-label="Lukk">×</button></div>
-      <div class="tb-faner" role="tablist"><button type="button" role="tab" data-tb-vis="ny" aria-selected="${st.visning === 'ny'}">Gi tilbakemelding</button><button type="button" role="tab" data-tb-vis="mine" aria-selected="${st.visning === 'mine'}">Mine${st.mine?.length ? ` (${st.mine.length})` : ''}</button></div>
+      <div class="tb-faner" role="tablist"><button type="button" role="tab" data-tb-vis="ny" aria-selected="${st.visning === 'ny'}">Gi tilbakemelding</button><button type="button" role="tab" data-tb-vis="mine" aria-selected="${st.visning === 'mine'}">Mine${st.mine?.length ? ` (${st.mine.length})` : ''}${st.mine?.some((x) => x.ulest) ? ' <span class="tb-ny">nytt</span>' : ''}</button></div>
       ${st.visning === 'ny' ? nyHtml() : mineHtml()}</div>`;
     if (st.visning === 'ny' && !st.takk) setTimeout(() => d.querySelector('[data-tb-tekst]')?.focus({ preventScroll: true }), 0);
+    const tr = d.querySelector('[data-tb-traad]'); if (tr) tr.scrollTop = tr.scrollHeight;
   }
   async function send() {
     st.tekst = d.querySelector('[data-tb-tekst]')?.value || st.tekst; st.feil = '';
@@ -114,15 +152,36 @@ export function apneTilbakemelding({ fane = '', visning = 'ny' } = {}) {
   d.addEventListener('click', (e) => {
     const s = e.target.closest('[data-tb-stjerne]'); if (s) { st.tekst = d.querySelector('[data-tb-tekst]')?.value ?? st.tekst; const n = Number(s.dataset.tbStjerne); st.stjerner = st.stjerner === n ? 0 : n; tegn(); return; }
     const t = e.target.closest('[data-tb-type]'); if (t) { st.tekst = d.querySelector('[data-tb-tekst]')?.value ?? st.tekst; st.type = t.dataset.tbType; tegn(); return; }
-    const v = e.target.closest('[data-tb-vis]'); if (v) { st.tekst = d.querySelector('[data-tb-tekst]')?.value ?? st.tekst; st.visning = v.dataset.tbVis; st.takk = null; st.feil = ''; tegn(); if (st.visning === 'mine' && !st.mine) hentMine(); return; }
+    const v = e.target.closest('[data-tb-vis]'); if (v) { st.tekst = d.querySelector('[data-tb-tekst]')?.value ?? st.tekst; st.visning = v.dataset.tbVis; st.takk = null; st.feil = ''; st.apen = null; tegn(); if (st.visning === 'mine') hentMine(); return; }
+    const a = e.target.closest('[data-tb-apne]'); if (a) { apneTraad(a.dataset.tbApne); return; }
     const h = e.target.closest('[data-tb]')?.dataset.tb;
-    if (h === 'lukk') lukk(); else if (h === 'send') send(); else if (h === 'mine') { st.visning = 'mine'; st.takk = null; tegn(); hentMine(); }
+    if (h === 'lukk') lukk(); else if (h === 'send') send(); else if (h === 'skriv') skriv(); else if (h === 'tilbake') { st.apen = null; st.feil = ''; tegn(); hentMine(); } else if (h === 'mine') { st.visning = 'mine'; st.takk = null; tegn(); hentMine(); }
   });
   // Forhåndsvisning av stjerneteksten når musen er over en stjerne
   d.addEventListener('mouseover', (e) => { const s = e.target.closest('[data-tb-stjerne]'); const el = d.querySelector('[data-tb-stjerne-tekst]'); if (s && el) el.textContent = STJERNE_TEKST[s.dataset.tbStjerne]; });
   d.addEventListener('mouseout', (e) => { if (!e.target.closest('[data-tb-stjerne]')) return; const el = d.querySelector('[data-tb-stjerne-tekst]'); if (el) el.textContent = st.stjerner ? STJERNE_TEKST[st.stjerner] : 'Hvor fornøyd er du med SkogIQ.ai? (valgfritt)'; });
-  d.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); } });
+  d.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (st.apen) skriv(); else send(); }
+    if (e.key === 'Enter' && e.target.matches?.('[data-tb-apne]')) apneTraad(e.target.dataset.tbApne);
+  });
   d.addEventListener('close', () => d.remove());
   tegn(); d.showModal();
-  if (visning === 'mine') hentMine();
+  if (visning === 'mine') hentMine().then(() => { if (id) apneTraad(id); });
+}
+
+// Uleste svar fra SkogIQ.ai: et rødt merke på alle [data-tilbakemelding]-knapper (og elementer med
+// data-tb-merke). Klikk når det finnes uleste, åpner «Mine» i stedet for nytt skjema (se apneTilbakemelding).
+export let ulesteSvar = 0;
+export async function oppdaterMerke() {
+  if (typeof document === 'undefined') return 0;
+  try { ulesteSvar = (await kall('/api/tilbakemelding/uleste')).uleste || 0; } catch { return ulesteSvar; }
+  sikreCss();
+  for (const el of document.querySelectorAll('[data-tilbakemelding], [data-tb-merke]')) {
+    let m = el.querySelector(':scope > .tb-merke');
+    if (!ulesteSvar) { m?.remove(); continue; }
+    if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+    if (!m) { m = document.createElement('span'); m.className = 'tb-merke'; el.appendChild(m); }
+    m.textContent = ulesteSvar > 9 ? '9+' : String(ulesteSvar); m.title = `${ulesteSvar} nytt svar på tilbakemeldingene dine`;
+  }
+  return ulesteSvar;
 }

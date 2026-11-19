@@ -3934,6 +3934,48 @@ test('Tilbakemelding: stjerner, typer, spamgrense, mine, admin med status og sva
   assert.equal(Object.keys(U.STATUS).join(), 'ny,vurderes,planlagt,lost,avvist');
 });
 
+test('Tilbakemelding som samtale: tråd begge veier, statuslogg, uleste, gjenåpning, gamle svar og tilgang', async () => {
+  const { lagTilbakemelding, tilbakemeldingApi } = await import('../tilbakemelding.js');
+  let tid = Date.UTC(2026, 10, 19, 9); const tb = lagTilbakemelding({ naa: () => tid });
+  const x = tb.send('frode', { type: 'forslag', tekst: 'Import av gpx og kmz?' }, { navn: 'Frode' }).tilbakemelding;
+  assert.deepEqual(x.traad, []); assert.equal(tb.uleste('frode'), 0); assert.equal(tb.alle().uleste, 0, 'uleste for admin gjelder svar i tråden (nye saker har status «ny»)');
+  tid += 1000; tb.oppdater(x.id, { melding: 'Ja – kommer i 1.93.0!', status: 'lost', navn: 'Trond' });
+  const t1 = tb.mine('frode')[0].traad; assert.equal(t1.length, 2); assert.deepEqual(t1[0], { fra: 'admin', tekst: 'Ja – kommer i 1.93.0!', tid, navn: 'Trond' }); assert.deepEqual(t1[1], { fra: 'system', tekst: 'Status: Løst', tid });
+  assert.equal(tb.uleste('frode'), 1); assert.equal(tb.mine('frode')[0].ulest, 1); assert.equal(tb.alle().uleste, 0, 'lest av admin når admin svarer');
+  assert.equal(tb.mine('frode')[0].svar, 'Ja – kommer i 1.93.0!', 'siste svar for eldre klienter');
+  // Brukeren leser og svarer – saken åpnes igjen
+  tid += 1000; assert.ok(tb.lestBruker('frode', x.id).ok); assert.equal(tb.uleste('frode'), 0);
+  tid += 1000; const r = tb.skriv('frode', x.id, '  Kan den også lese GeoJSON?  '); assert.ok(r.ok);
+  assert.equal(r.tilbakemelding.status, 'vurderes'); assert.deepEqual(r.tilbakemelding.traad.slice(-2).map((m) => [m.fra, m.tekst]), [['bruker', 'Kan den også lese GeoJSON?'], ['system', 'Status: Vurderes (åpnet igjen)']]);
+  assert.equal(tb.alle().uleste, 1); assert.equal(tb.alle().liste[0].ulest, 1); assert.equal(tb.uleste('frode'), 0, 'egne meldinger er ikke uleste');
+  tid += 1000; tb.oppdater(x.id, { lest: true }); assert.equal(tb.alle().uleste, 0);
+  assert.equal(tb.skriv('kari', x.id, 'hei').status, 404, 'bare egen tråd'); assert.equal(tb.skriv('frode', x.id, '   ').status, 400);
+  // Status uten endring logges ikke; samme status to ganger gir én linje
+  tb.oppdater(x.id, { status: 'vurderes' }); assert.equal(tb.mine('frode')[0].traad.filter((m) => m.fra === 'system').length, 2);
+  // Sortering: siste aktivitet først
+  tid += 1000; const y = tb.send('frode', { stjerner: 5, type: 'ros' }).tilbakemelding; assert.equal(tb.mine('frode')[0].id, y.id);
+  tid += 1000; tb.oppdater(x.id, { melding: 'Ja, GeoJSON i WGS84 går også.' }); assert.equal(tb.mine('frode')[0].id, x.id);
+  // Eldre data med ett svar-felt blir tråd
+  const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path');
+  const fil = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tb-')), 'tb.json');
+  fs.writeFileSync(fil, JSON.stringify({ liste: [{ id: 'abc123abc123', bruker: 'ola', navn: 'Ola', stjerner: 4, type: 'forslag', tekst: 'Mørk modus', tid: 1, status: 'lost', svar: 'Fikset!', svarTid: 5 }] }));
+  const gml = lagTilbakemelding({ fil, naa: () => tid });
+  assert.deepEqual(gml.mine('ola')[0].traad, [{ fra: 'admin', tekst: 'Fikset!', tid: 5 }]); assert.equal(gml.uleste('ola'), 0, 'gamle svar regnes som lest');
+  // HTTP
+  const res = () => { const q = { writeHead(st) { q.st = st; }, end(z) { q.d = JSON.parse(z); q.ferdig?.(); } }; return q; };
+  const kjor = (metode, url, meg, kropp) => new Promise((ok) => { const h = {}; const q = res(); q.ferdig = () => ok(q); const req = { method: metode, url, headers: {}, on: (e, f) => { h[e] = f; if (e === 'end') setTimeout(() => { if (kropp) h.data?.(Buffer.from(JSON.stringify(kropp))); f(); }, 0); }, destroy() {} }; if (!tilbakemeldingApi(tb, { meg: () => meg }, req, q, url)) ok(null); });
+  const frode = { bruker: 'frode', navn: 'Frode', admin: false }; const kari = { bruker: 'kari', navn: 'Kari', admin: false }; const sjef = { bruker: 'sjef', navn: 'Trond', admin: true };
+  assert.equal((await kjor('GET', '/api/tilbakemelding/uleste', frode)).d.uleste, 1);
+  const m = await kjor('GET', '/api/tilbakemelding/mine', frode); assert.equal(m.d.uleste, 1); assert.equal(m.d.liste[0].traad.at(-1).tekst, 'Ja, GeoJSON i WGS84 går også.');
+  assert.equal((await kjor('POST', `/api/tilbakemelding/${x.id}/lest`, frode)).st, 200); assert.equal((await kjor('GET', '/api/tilbakemelding/uleste', frode)).d.uleste, 0);
+  assert.equal((await kjor('POST', `/api/tilbakemelding/${x.id}/melding`, frode, { tekst: 'Takk!' })).st, 201);
+  assert.equal((await kjor('POST', `/api/tilbakemelding/${x.id}/melding`, kari, { tekst: 'Snik' })).st, 404, 'andre kan ikke skrive i tråden');
+  assert.equal((await kjor('POST', `/api/tilbakemelding/${x.id}/melding`, null, { tekst: 'x' })).st, 401);
+  assert.equal((await kjor('GET', `/api/tilbakemelding/${x.id}/melding`, frode)).st, 405);
+  const adm = await kjor('PUT', `/api/admin/tilbakemelding/${x.id}`, sjef, { melding: 'Bare hyggelig!' }); assert.equal(adm.d.tilbakemelding.traad.at(-1).navn, 'Trond');
+  assert.equal((await kjor('PUT', `/api/admin/tilbakemelding/${x.id}`, frode, { melding: 'Jeg er admin' })).st, 403);
+});
+
 test('E-post via eget e-postprogram: mailto med riktig koding', async () => {
   const { mailto } = await import('../js/epost.js');
   const u = mailto({ til: 'ola@x.no', emne: 'Glemt passord – SkogIQ.ai', tekst: 'Hei!\n\nLinje 2 & mer?' });
@@ -4016,7 +4058,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
   '1.8': '1b41be6f78760f90',
-  '1.9': '95e150ddf143b146',
+  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {

@@ -63,7 +63,7 @@ import { mpTilUtm, mpTilGeo, fordelPaaBestand } from './sporlogg.js';
 import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { eiendomGrenseLag as eiendomGrenseLagRod } from './eiendomslag.js';
-import { apneTilbakemelding } from './tilbakemelding-ui.js';
+import { apneTilbakemelding, oppdaterMerke as tbMerke, ulesteSvar as tbUleste } from './tilbakemelding-ui.js';
 import * as AF from './artsfilter.js';
 import * as JUL from './juletre.js';
 import { lagStolpeUi } from './stolpe-ui.js';
@@ -899,7 +899,10 @@ function visOm() {
 
 // Tilbakemelding (📣 i sidemenyen): fanen brukeren står i følger med.
 function aktivFaneNavn() { return document.querySelector('.faner button.aktiv')?.dataset.fane || ''; }
-document.addEventListener('click', (e) => { if (e.target.closest('[data-tilbakemelding]')) apneTilbakemelding({ fane: aktivFaneNavn() }); });
+document.addEventListener('click', (e) => { if (e.target.closest('[data-tilbakemelding]')) apneTilbakemelding({ fane: aktivFaneNavn(), visning: tbUleste ? 'mine' : 'ny' }); });
+// Svar fra SkogIQ.ai på tilbakemeldinger: rødt merke på 📣 (sjekkes ved innlogging, hvert 5. minutt og når appen vises igjen)
+const startTbMerke = () => { tbMerke(); setInterval(() => { if (document.visibilityState === 'visible') tbMerke(); }, 5 * 60000); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') tbMerke(); }); };
+if (innloggetBruker()) startTbMerke(); else window.addEventListener('skogiq-innlogget', startTbMerke, { once: true });
 
 function visDetalj() {
   const boks = $('#bestandDetalj');
