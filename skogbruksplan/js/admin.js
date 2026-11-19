@@ -74,15 +74,18 @@ async function last() { if (document.activeElement?.matches?.('[data-tb-svar]') 
 // Tilbakemeldinger og forbedringsforslag (tilbakemelding.js): snitt av stjerner, fordeling, filter, status og svar.
 const TB_TYPE = { forslag: '💡 Forslag', feil: '🪲 Feil', ros: '🌸 Ros', annet: '🦉 Annet' };
 const TB_STATUS = { ny: '🌱 Ny', vurderes: '🔍 Vurderes', planlagt: '🪓 Planlagt', lost: '✅ Løst', avvist: '🍂 Avvist' };
-let tbFilter = { status: 'aapne', type: '' }; let tbData = null;
+let tbFilter = { status: 'aapne', type: '' }; let tbData = null; const tbUtkast = new Map(); // id → påbegynt svar (overlever oppdateringen hvert minutt)
 async function visTilbakemeldinger(ny = false) {
   let el = $('#tbKort'); if (!el) { el = document.createElement('div'); el.id = 'tbKort'; el.className = 'kort'; $('#innhold').prepend(el); }
   try { if (!tbData || ny !== 'lokal') tbData = await (await fetch(`${API}/api/admin/tilbakemelding`, { headers: hode(), credentials: 'same-origin', cache: 'no-store' })).json(); } catch { el.innerHTML = '<h2>Tilbakemeldinger</h2><p class="feil">Fikk ikke kontakt med serveren.</p>'; return; }
   const d = tbData; if (!d.liste) { el.innerHTML = `<h2>Tilbakemeldinger</h2><p class="hint">${esc(d.feil || 'Ikke tilgjengelig')}</p>`; return; }
   const maks = Math.max(1, ...d.fordeling);
-  const liste = d.liste.filter((x) => (tbFilter.status === 'aapne' ? !['lost', 'avvist'].includes(x.status) : !tbFilter.status || x.status === tbFilter.status) && (!tbFilter.type || x.type === tbFilter.type));
+  const venter = (x) => { const m = (x.traad || []).filter((y) => y.fra !== 'system'); return !m.length || m.at(-1).fra === 'bruker'; };
+  const liste = d.liste.filter((x) => (tbFilter.status === 'aapne' ? !['lost', 'avvist'].includes(x.status) || x.ulest : tbFilter.status === 'uleste' ? x.ulest : tbFilter.status === 'venter' ? venter(x) && !['lost', 'avvist'].includes(x.status) : !tbFilter.status || x.status === tbFilter.status) && (!tbFilter.type || x.type === tbFilter.type));
+  const ktid = (t) => new Date(t).toLocaleString('nb-NO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const boble = (fra, navn, tekst, t) => `<div style="max-width:85%;justify-self:${fra === 'admin' ? 'end' : 'start'};background:${fra === 'admin' ? 'var(--accent)' : 'var(--surface-2)'};color:${fra === 'admin' ? '#fff' : 'var(--text)'};border-radius:12px;padding:6px 10px;font-size:13.5px;white-space:pre-wrap;overflow-wrap:anywhere"><div style="font-size:11px;opacity:.8">${esc(navn)} · ${ktid(t)}</div>${esc(tekst)}</div>`;
   const stj = (n) => (n ? `<span style="color:#e0a100;letter-spacing:1px" aria-label="${n} stjerner">${'★'.repeat(n)}${'☆'.repeat(5 - n)}</span>` : '<span class="hint">ingen stjerner</span>');
-  el.innerHTML = `<h2>Tilbakemeldinger ${d.status.ny ? `<span class="pille glemt">${d.status.ny} nye</span>` : ''}</h2>
+  el.innerHTML = `<h2>Tilbakemeldinger ${d.status.ny ? `<span class="pille glemt">${d.status.ny} nye</span>` : ''} ${d.uleste ? `<span class="pille sperret">${d.uleste} med uleste svar</span>` : ''}</h2>
     <div class="tall">
       <div><b>${d.snitt != null ? `${String(d.snitt).replace('.', ',')} ★` : '–'}</b><span>snitt fornøydhet</span></div>
       <div><b>${tall(d.antall)}</b><span>tilbakemeldinger totalt</span></div>
@@ -90,26 +93,36 @@ async function visTilbakemeldinger(ny = false) {
       <div><b>${tall(d.status.lost)}</b><span>løst</span></div>
     </div>
     <div class="moduler" style="margin:12px 0">${[5, 4, 3, 2, 1].map((n) => `<div><span>${'★'.repeat(n)}</span><i style="width:${Math.max(2, (d.fordeling[n - 1] / maks) * 100)}%;background:#e0a100"></i><span class="hint">${d.fordeling[n - 1]}</span></div>`).join('')}</div>
-    <p style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px"><select data-tb-filter="status" aria-label="Status"><option value="aapne" ${tbFilter.status === 'aapne' ? 'selected' : ''}>Åpne</option><option value="" ${!tbFilter.status ? 'selected' : ''}>Alle</option>${Object.entries(TB_STATUS).map(([k, n]) => `<option value="${k}" ${tbFilter.status === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
+    <p style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px"><select data-tb-filter="status" aria-label="Status"><option value="aapne" ${tbFilter.status === 'aapne' ? 'selected' : ''}>Åpne</option><option value="uleste" ${tbFilter.status === 'uleste' ? 'selected' : ''}>Uleste svar fra bruker${d.uleste ? ` (${d.uleste})` : ''}</option><option value="venter" ${tbFilter.status === 'venter' ? 'selected' : ''}>Venter på svar fra oss</option><option value="" ${!tbFilter.status ? 'selected' : ''}>Alle</option>${Object.entries(TB_STATUS).map(([k, n]) => `<option value="${k}" ${tbFilter.status === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
       <select data-tb-filter="type" aria-label="Type"><option value="">Alle typer</option>${Object.entries(TB_TYPE).map(([k, n]) => `<option value="${k}" ${tbFilter.type === k ? 'selected' : ''}>${n}</option>`).join('')}</select></p>
-    ${liste.length ? `<div style="display:grid;gap:8px">${liste.map((x) => `<div style="border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:grid;gap:6px" data-tb-id="${esc(x.id)}">
-      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px"><span><b>${esc(TB_TYPE[x.type] || x.type)}</b> · ${stj(x.stjerner)} · <b>${esc(x.navn || x.bruker)}</b> <span class="hint">${esc(x.bruker)}</span></span><span class="hint">${new Date(x.tid).toLocaleString('nb-NO')}${x.fane ? ` · fane ${esc(x.fane)}` : ''}${x.versjon ? ` · v${esc(x.versjon)}` : ''}</span></div>
-      ${x.tekst ? `<div style="white-space:pre-wrap;font-size:14.5px">${esc(x.tekst)}</div>` : ''}
+    ${liste.length ? `<div style="display:grid;gap:8px">${liste.map((x) => `<div style="border:1px solid ${x.ulest ? 'var(--accent)' : 'var(--border)'};${x.ulest ? 'box-shadow:0 0 0 1px var(--accent) inset;' : ''}border-radius:12px;padding:10px 12px;display:grid;gap:8px" data-tb-id="${esc(x.id)}">
+      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px"><span><b>${esc(TB_TYPE[x.type] || x.type)}</b> · ${stj(x.stjerner)} · <b>${esc(x.navn || x.bruker)}</b> <span class="hint">${esc(x.bruker)}</span>${x.ulest ? ` <span class="pille sperret">${x.ulest} nytt svar</span>` : ''}</span><span class="hint">${new Date(x.tid).toLocaleString('nb-NO')}${x.fane ? ` · fane ${esc(x.fane)}` : ''}${x.versjon ? ` · v${esc(x.versjon)}` : ''}</span></div>
+      <div style="display:grid;gap:6px;max-height:340px;overflow:auto" data-tb-logg>
+        ${boble('bruker', x.navn || x.bruker, x.tekst || (x.stjerner ? '★'.repeat(x.stjerner) : ''), x.tid)}
+        ${(x.traad || []).map((m) => (m.fra === 'system' ? `<div style="justify-self:center;font-size:11.5px;color:var(--text-2);background:var(--surface-2);border-radius:99px;padding:1px 10px">${esc(m.tekst)} · ${ktid(m.tid)}</div>` : boble(m.fra, m.fra === 'admin' ? `SkogIQ.ai${m.navn ? ` (${m.navn})` : ''}` : (x.navn || x.bruker), m.tekst, m.tid))).join('')}
+      </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start"><select data-tb-status aria-label="Status">${Object.entries(TB_STATUS).map(([k, n]) => `<option value="${k}" ${x.status === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
-        <textarea data-tb-svar rows="2" placeholder="Svar til brukeren (vises under «Mine tilbakemeldinger»)" style="flex:1;min-width:220px;font:inherit;font-size:13px;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">${esc(x.svar)}</textarea>
-        <button type="button" data-tb-lagre>Lagre svar</button>${x.bruker ? ` <a href="mailto:${encodeURIComponent(x.bruker).replace(/%40/g, '@')}?subject=${encodeURIComponent('Tilbakemeldingen din om SkogIQ.ai')}" class="hint" style="align-self:center">✉ E-post</a>` : ''}</div>
-      ${x.svarTid ? `<span class="hint">Svart ${new Date(x.svarTid).toLocaleDateString('nb-NO')}</span>` : ''}</div>`).join('')}</div>` : '<p class="hint">Ingen tilbakemeldinger her. Stille i skogen. 🌲</p>'}`;
+        <textarea data-tb-svar rows="2" maxlength="2000" placeholder="Skriv til ${esc(x.navn || x.bruker)} – vises i samtalen under «Mine tilbakemeldinger» (Ctrl+Enter sender)" style="flex:1;min-width:220px;font:inherit;font-size:13px;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">${esc(tbUtkast.get(x.id) || '')}</textarea>
+        <button type="button" data-tb-lagre>Send svar</button>${x.ulest ? ' <button type="button" data-tb-lest>Merk som lest</button>' : ''}${x.bruker ? ` <a href="mailto:${encodeURIComponent(x.bruker).replace(/%40/g, '@')}?subject=${encodeURIComponent('Tilbakemeldingen din om SkogIQ.ai')}" class="hint" style="align-self:center">✉ E-post</a>` : ''}</div>
+      </div>`).join('')}</div>` : '<p class="hint">Ingen tilbakemeldinger her. Stille i skogen. 🌲</p>'}`;
+  rullLogger();
 }
+function rullLogger() { document.querySelectorAll('[data-tb-logg]').forEach((l) => { l.scrollTop = l.scrollHeight; }); }
 async function oppdaterTb(id, kropp) {
   const r = await fetch(`${API}/api/admin/tilbakemelding/${encodeURIComponent(id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...hode() }, credentials: 'same-origin', body: JSON.stringify(kropp) });
   const j = await r.json().catch(() => ({})); if (!r.ok) { alert(j.feil || 'Klarte ikke å lagre'); return; }
-  document.activeElement?.blur?.(); visTilbakemeldinger(true);
+  if (kropp.melding) tbUtkast.delete(id); document.activeElement?.blur?.(); visTilbakemeldinger(true);
 }
 document.addEventListener('change', (e) => {
   const f = e.target.closest('[data-tb-filter]'); if (f) { tbFilter[f.dataset.tbFilter] = f.value; visTilbakemeldinger('lokal'); return; }
   const s = e.target.closest('[data-tb-status]'); if (s) oppdaterTb(s.closest('[data-tb-id]').dataset.tbId, { status: s.value });
 });
-document.addEventListener('click', (e) => { const b = e.target.closest('[data-tb-lagre]'); if (!b) return; const rad = b.closest('[data-tb-id]'); oppdaterTb(rad.dataset.tbId, { svar: rad.querySelector('[data-tb-svar]').value }); });
+document.addEventListener('click', (e) => {
+  const l = e.target.closest('[data-tb-lest]'); if (l) { oppdaterTb(l.closest('[data-tb-id]').dataset.tbId, { lest: true }); return; }
+  const b = e.target.closest('[data-tb-lagre]'); if (!b) return; const rad = b.closest('[data-tb-id]'); const tekst = rad.querySelector('[data-tb-svar]').value.trim(); if (!tekst) return; oppdaterTb(rad.dataset.tbId, { melding: tekst });
+});
+document.addEventListener('input', (e) => { if (e.target.matches?.('[data-tb-svar]')) tbUtkast.set(e.target.closest('[data-tb-id]').dataset.tbId, e.target.value); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target.matches?.('[data-tb-svar]')) { e.preventDefault(); e.target.closest('[data-tb-id]').querySelector('[data-tb-lagre]').click(); } });
 
 // Sikkerhetskopi (backup.js): status, ta kopi nå og last ned en lokal kopi.
 let backupData = null;

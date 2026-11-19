@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.93.0** (2026-11-19) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.94.0** (2026-11-19) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -640,18 +640,27 @@ Dialogen heter «Si det rett ut». Den åpnes med 📣 nederst i sidemenyen, med
 - **Typer:** 💡 Forbedringsforslag, 🪲 Barkbille (feil), 🌸 Ros og 🦉 Annet, hver med sin egen hjelpetekst.
 - **Løftet ved forbedringsforslag:** gode forslag som lar seg gjennomføre, løses i løpet av noen dager.
 - **Takken** varierer med stjerner og type, for eksempel bålkaffe ved fem stjerner, motorsag ved én stjerne og lupe ved feil.
-- **«Mine»** viser status og svar fra administrator: 🌱 Spirer, 🔍 På befaring, 🪓 På hogstplanen, ✅ Hogd og levert og 🍂 Ble liggende i skogen.
+- **«Mine»** viser status: 🌱 Spirer, 🔍 På befaring, 🪓 På hogstplanen, ✅ Hogd og levert og 🍂 Ble liggende i skogen.
+- **Samtale:** hver tilbakemelding er en tråd.
+  - Brukeren og administrator kan skrive fram og tilbake, og begge ser hele loggen med tidspunkt.
+  - Statusendringer logges i tråden.
+  - Svarer brukeren på en løst eller avvist sak, åpnes den igjen («Vurderes»).
+  - Eldre svar ble første melding i tråden.
+- **Uleste svar:**
+  - Brukeren får et rødt merke på 📣 i fullversjonen, og på «Mer» og «Mine tilbakemeldinger» i SkogIQ Felt. Merket sjekkes ved innlogging, hvert 5. minutt og når appen vises igjen.
+  - Med uleste svar åpner 📣 rett på «Mine».
 - **Admin:**
   - snitt og fordeling av stjerner, og antall åpne og løste
-  - filter på status og type
-  - status og svar per tilbakemelding, og e-post via eget e-postprogram
+  - filter på status og type, «Uleste svar fra bruker» og «Venter på svar fra oss»
+  - hele samtalen per tilbakemelding, med svarfelt (Ctrl+Enter sender), status, «Merk som lest» og e-post via eget e-postprogram
+  - et påbegynt svar blir stående når siden oppdateres
   - med hver tilbakemelding følger fanen brukeren var i, og appversjonen
-- **Server (`/api/tilbakemelding`, `/api/admin/tilbakemelding`):**
+- **Server (`/api/tilbakemelding`, `/mine`, `/uleste`, `/:id/melding`, `/:id/lest`, `/api/admin/tilbakemelding`):**
   - krever innlogging
   - høyst 3000 tegn og 10 per time
   - lagres i `tilbakemeldinger.json` på volumet og er med i sikkerhetskopien
   - slettes og eksporteres sammen med kontoen
-  - er med i personvernerklæringen (versjon 1.3) og DPIA-en
+  - er med i personvernerklæringen (versjon 1.3, samtalen fra 1.10) og DPIA-en
 
 ## Eiendomsgrenser er røde
 

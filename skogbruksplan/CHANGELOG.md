@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.94.0 – 💬 Tilbakemeldinger blir en samtale (2026-11-19)
+
+*Forbedret.* Du kan nå svare tilbake på svar fra SkogIQ.ai, og hele samtalen vises med tidspunkt under 📣 › Mine – også når statusen endres. Nye svar gir et rødt merke på 📣 (og på «Mer» i SkogIQ Felt). Svarer du på en sak som er løst, åpnes den igjen. Personvernerklæringen er oppdatert (versjon 1.10).
+
 ## 1.93.0 – 📌 Egne kartlag fra GPX, KML og KMZ (2026-11-19)
 
 *Nytt.* Legg inn egne data som kartlag: mastefester og traséer fra Statnett eller nettselskapet, stier, poster, grøfter og annet. GPX (GPS/Garmin), KML/KMZ (Google Earth, Norgeskart) og GeoJSON leses inn under Data › Egne kartlag. Lagene lagres i planen, kan få navn og farge, slås av og på i lagvelgeren og vises også i SkogIQ Felt. Trykk på et objekt for navn og opplysninger. Takk for forslaget!
