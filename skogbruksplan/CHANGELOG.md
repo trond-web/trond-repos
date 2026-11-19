@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.0.0 – 🌲 SkogIQ.ai 2.0 (2026-11-19)
+
+*Nytt.* Ny hovedversjon. SkogIQ.ai har vokst fra skogbruksplan til en komplett plattform for skogeiendommen: plan fra gårds- og bruksnummer på under ett minutt, også rett fra kartet i SkogIQ Felt; tiltak, oppdrag og tilbud i nettverket; kantsone mot vann (15/30 m) og PEFC-kontroll; SkogIQ Skogkarakter, landbrukstakst og stolpepotensial; ØK-kart, egne kartlag fra GPX/KML/KMZ, virtuell skog og AR; skylagring på alle enhetene dine – og nå et åpent API for integrasjoner og tilbakemeldinger som en samtale. Takk til alle som har testet og kommet med forslag underveis!
+
 ## 1.94.0 – 💬 Tilbakemeldinger blir en samtale (2026-11-19)
 
 *Forbedret.* Du kan nå svare tilbake på svar fra SkogIQ.ai, og hele samtalen vises med tidspunkt under 📣 › Mine – også når statusen endres. Nye svar gir et rødt merke på 📣 (og på «Mer» i SkogIQ Felt). Svarer du på en sak som er løst, åpnes den igjen. Personvernerklæringen er oppdatert (versjon 1.10).
