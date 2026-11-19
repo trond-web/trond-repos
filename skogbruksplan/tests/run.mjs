@@ -4137,6 +4137,53 @@ test('Nettverk: statistikk, katalog uten e-post, koblinger begge veier, tilgang,
   assert.equal((await kjor('GET', '/api/nettverk/aktorer?q=hogst', 'ola@x.no')).kropp.aktorer.length, 1);
 });
 
+test('Egne kartlag: GPX, KML og KMZ (med stiler, ExtendedData, MultiGeometry) og GeoJSON blir lag i planen', async () => {
+  const EL = await import('../js/egne-lag.js');
+  const gpx = `<?xml version="1.0"?><gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1"><metadata><name>Mastefester</name></metadata>
+    <wpt lat="60.3501" lon="10.5602"><ele>412.3</ele><name>Mast 17</name><desc>Nytt fundament &amp; bardun</desc><sym>Flag</sym></wpt>
+    <rte><name>Kjørerute</name><rtept lat="60.1" lon="10.1"><name>A</name></rtept><rtept lat="60.2" lon="10.2"/></rte>
+    <trk><name>Trasé</name><trkseg><trkpt lat="60.35" lon="10.56"/><trkpt lat="60.351" lon="10.565"/></trkseg><trkseg><trkpt lat="60.36" lon="10.57"/><trkpt lat="60.37" lon="10.58"/></trkseg></trk></gpx>`;
+  const g = await EL.lesEgenFil('master.gpx', new TextEncoder().encode(gpx));
+  assert.equal(g.navn, 'Mastefester'); assert.deepEqual(g.antall, { punkt: 1, linjer: 2, flater: 0 });
+  const w = g.geojson.features[0]; assert.deepEqual(w.geometry.coordinates, [10.5602, 60.3501]);
+  assert.deepEqual(w.properties, { navn: 'Mast 17', beskrivelse: 'Nytt fundament & bardun', symbol: 'Flag', hoyde: 412 });
+  assert.equal(g.geojson.features[1].properties.navn, 'Kjørerute'); assert.equal(g.geojson.features[2].geometry.type, 'MultiLineString');
+  const kml = `<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Statnett tiltak</name>
+    <Style id="s1"><IconStyle><color>ff0000ff</color></IconStyle></Style><StyleMap id="m1"><Pair><key>normal</key><styleUrl>#s1</styleUrl></Pair></StyleMap>
+    <Folder><name>Master</name><Placemark><name>M1</name><styleUrl>#m1</styleUrl><ExtendedData><Data name="Eier"><value>Statnett</value></Data></ExtendedData><Point><coordinates>10.56,60.35,0</coordinates></Point></Placemark>
+    <Placemark><name><![CDATA[Ryddebelte]]></name><description><![CDATA[<b>40 m</b> bredde]]></description><Polygon><outerBoundaryIs><LinearRing><coordinates>10.5,60.3 10.6,60.3 10.6,60.4</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>
+    <Placemark><MultiGeometry><Point><coordinates>10.1,60.1</coordinates></Point><LineString><coordinates>10.1,60.1 10.2,60.2</coordinates></LineString></MultiGeometry></Placemark></Folder></Document></kml>`;
+  const k = await EL.lesEgenFil('tiltak.kml', new TextEncoder().encode(kml));
+  assert.equal(k.navn, 'Statnett tiltak'); assert.deepEqual(k.antall, { punkt: 2, linjer: 1, flater: 1 });
+  assert.deepEqual(k.geojson.features[0].properties, { navn: 'M1', data: { Eier: 'Statnett' }, farge: '#ff0000' });
+  assert.equal(k.geojson.features[1].properties.beskrivelse, '40 m bredde');
+  const ring = k.geojson.features[1].geometry.coordinates[0]; assert.deepEqual(ring[0], ring[ring.length - 1], 'ringen lukkes');
+  // KMZ: ZIP med et bilde først og doc.kml (deflate) etterpå
+  const zip = (filer) => {
+    const lok = []; const sentral = []; let off = 0;
+    for (const [navn, data, komp] of filer) {
+      const n = Buffer.from(navn); const d = komp ? zlib.deflateRawSync(data) : Buffer.from(data);
+      const h = Buffer.alloc(30); h.writeUInt32LE(0x04034b50, 0); h.writeUInt16LE(komp ? 8 : 0, 8); h.writeUInt32LE(d.length, 18); h.writeUInt32LE(data.length, 22); h.writeUInt16LE(n.length, 26);
+      const c = Buffer.alloc(46); c.writeUInt32LE(0x02014b50, 0); c.writeUInt16LE(komp ? 8 : 0, 10); c.writeUInt32LE(d.length, 20); c.writeUInt32LE(data.length, 24); c.writeUInt16LE(n.length, 28); c.writeUInt32LE(off, 42);
+      lok.push(h, n, d); sentral.push(c, n); off += 30 + n.length + d.length;
+    }
+    const cd = Buffer.concat(sentral); const e = Buffer.alloc(22); e.writeUInt32LE(0x06054b50, 0); e.writeUInt16LE(filer.length, 8); e.writeUInt16LE(filer.length, 10); e.writeUInt32LE(cd.length, 12); e.writeUInt32LE(off, 16);
+    return new Uint8Array(Buffer.concat([...lok, cd, e]));
+  };
+  const kmz = await EL.lesEgenFil('tiltak.kmz', zip([['files/ikon.png', Buffer.alloc(50, 1), false], ['doc.kml', Buffer.from(kml), true]]), { inflate: (d) => zlib.inflateRawSync(d) });
+  assert.deepEqual(kmz.antall, k.antall);
+  await assert.rejects(EL.lesEgenFil('x.kmz', zip([['a.txt', Buffer.from('hei'), false]])), /Fant ingen KML/);
+  await assert.rejects(EL.lesEgenFil('tom.gpx', new TextEncoder().encode('<gpx></gpx>')), /Fant ingen/);
+  await assert.rejects(EL.lesEgenFil('utm.geojson', new TextEncoder().encode(JSON.stringify({ type: 'Point', coordinates: [600000, 6700000] }))), /WGS84/);
+  const gj = await EL.lesEgenFil('poster.geojson', new TextEncoder().encode(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [10, 60] }, properties: { name: 'Post 1', nr: 1 } }] })));
+  assert.equal(gj.geojson.features[0].properties.navn, 'Post 1'); assert.equal(gj.geojson.features[0].properties.data.nr, '1');
+  const l1 = EL.nyttLag(g, { id: 'lag1', filnavn: 'master.gpx' }); const l2 = EL.nyttLag(k, { id: 'lag2', brukte: [l1.farge] });
+  assert.equal(l1.navn, 'Mastefester'); assert.notEqual(l1.farge, l2.farge); assert.equal(l1.synlig, true);
+  assert.match(EL.popupHtml(w.properties, l1), /Mast 17[\s\S]*412 moh/); assert.doesNotMatch(EL.popupHtml({ navn: '<script>' }), /<script>/);
+  assert.equal(EL.antallTekst(k.antall), '2 punkt, 1 linje, 1 flate');
+  assert.ok(EL.ER_EGET_LAG.test('A.KMZ') && !EL.ER_EGET_LAG.test('plan.sos'));
+});
+
 test('Versjonslogg: følger versjonsnummeret, er sortert, «nytt siden sist» og CHANGELOG.md er oppdatert', () => {
   assert.equal(LOGG.ENDRINGER[0].versjon, VERSJON, 'første oppføring er gjeldende versjon');
   for (let i = 1; i < LOGG.ENDRINGER.length; i++) { const a = LOGG.ENDRINGER[i - 1]; const b = LOGG.ENDRINGER[i]; assert.ok(LOGG.nyere(a.versjon, b.versjon), `${a.versjon} før ${b.versjon}`); assert.ok(a.dato >= b.dato, `dato ${a.dato} ≥ ${b.dato}`); }

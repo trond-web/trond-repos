@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 1.93.0 – 📌 Egne kartlag fra GPX, KML og KMZ (2026-11-19)
+
+*Nytt.* Legg inn egne data som kartlag: mastefester og traséer fra Statnett eller nettselskapet, stier, poster, grøfter og annet. GPX (GPS/Garmin), KML/KMZ (Google Earth, Norgeskart) og GeoJSON leses inn under Data › Egne kartlag. Lagene lagres i planen, kan få navn og farge, slås av og på i lagvelgeren og vises også i SkogIQ Felt. Trykk på et objekt for navn og opplysninger. Takk for forslaget!
+
 ## 1.92.0 – 🔌 API for integrasjoner (2026-11-19)
 
 *Nytt.* SkogIQ.ai har nå et dokumentert REST-API (/api/v1, OpenAPI 3.1) for regnskap, skogeierandelslag, ERP og andre systemer: planer, bestand (også GeoJSON), tiltak, oppdrag, feltregistreringer, kantsone, Skogkarakter og landbrukstakst. Administrator oppretter API-nøkler per bruker med lese- eller skrivetilgang, ser alle kall og kan trekke nøkler tilbake under Admin. Endringer fra API-et synkroniseres til appene. Personvernerklæringen er oppdatert (versjon 1.9) og må godtas på nytt.

@@ -1,6 +1,7 @@
 // SkogIQ Felt – mobilversjon med kartet i fokus: bestandsinfo, GPS, registreringer med bilde, tiltak som utføres i
 // felt og offline-kart. Bruker de samme planene (IndexedDB) som fullversjonen, og varsler den om endringer.
 import { innloggetBruker, gyldigToken } from './innlogging.js'; // først: økten følger med alle kall til serveren
+import { lagKartlag as egetKartlag } from './egne-lag.js';
 import { hent, lagre, listPlaner, hentPlan, lagrePlan, slettPlan } from './store.js';
 import { TRESLAG, HK_ROMERTALL, HK_NAVN, TILTAKSTYPER, STANDARD_INNSTILLINGER, startTilstand, nyId, rettFeilHogd } from './model.js';
 import { punktIGeometri, etikettPunkt, bbox } from './proj.js';
@@ -51,6 +52,7 @@ const lagPerBestand = new Map(); let bestandLag; let grenseLag; let regLag; let 
 let valgtId = null; let visning = 'kart';
 let gps = { watch: null, pos: null, folg: false, markor: null, sirkel: null };
 let nyPlan = null; // ny skogbruksplan fra kartet (js/felt-nyplan.js)
+let egneLag = null; // 📌 egne kartlag fra planen (GPX/KML/KMZ, js/egne-lag.js)
 let kantsoneLag = null; let kantsoneHenter = false; // 💧 15 m kantsone mot vann (js/kantsone.js)
 let installHendelse = null; let spor = null; let flate = null;
 let drone = null; let oppdrag = null; let uthevOppdrag = new Set(); let kandidatOppdrag = new Set(); // bestand i oppdraget som er åpent, og bestand som kan velges
@@ -178,6 +180,8 @@ function initKart() {
   misLag = L.featureGroup().addTo(kart);
   kantsoneLag = L.layerGroup().addTo(kart); // alltid synlig – gjelder all aktivitet i skogen
   if (ls.get(LS.natur) !== '0') naturLag.addTo(kart);
+  kart.createPane('egneLagPane'); kart.getPane('egneLagPane').style.zIndex = 460;
+  egneLag = L.layerGroup().addTo(kart);
   regLag = L.featureGroup().addTo(kart);
   etikettLag = L.layerGroup().addTo(kart);
   const etiketter = () => document.body.classList.toggle('skjul-etiketter', kart.getZoom() < 14);
@@ -196,6 +200,7 @@ function tegnPlan(zoom = false) {
   if (grenseLag) { grenseLag.remove(); grenseLag = null; }
   if (!P) return;
   kantsoneLag?.clearLayers(); if (P.kantsone?.geometri && kantsoneLag) L.geoJSON(P.kantsone.geometri, { pane: 'naturPane', interactive: false, style: { color: '#1e6fd9', weight: 1, opacity: 0.9, dashArray: '3 3', fillColor: '#3b8fe8', fillOpacity: 0.32 } }).addTo(kantsoneLag);
+  egneLag?.clearLayers(); for (const l of P.egneLag || []) if (l.synlig !== false && egneLag) egetKartlag(L, l, { pane: 'egneLagPane' }).addTo(egneLag);
   if (P.eiendom?.grense) grenseLag = L.geoJSON(P.eiendom.grense, { style: { color: '#d03b3b', weight: 2.5, dashArray: '8 5', fill: false }, interactive: false }).addTo(kart);
   for (const b of P.bestand) {
     if (!b.geometri) continue;
