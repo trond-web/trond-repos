@@ -1,6 +1,7 @@
 // Adminsiden (admin.html): hvem som har registrert seg, og hvor mye SkogIQ.ai brukes. Data fra /api/admin/oversikt
 // (auth.js). Bare for administratorer; andre sendes til appen av serveren.
 import { RAILWAY, gyldigToken } from './innlogging.js';
+import { lagAdminApi } from './admin-api.js';
 const ROLLENAVN = { skogeier: 'Skogeier', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', radgiver: 'Rådgiver / regnskapsfører', offentlig: 'Offentlig' };
 
 const API = /github\.io$/.test(location.hostname) ? RAILWAY : '';
@@ -67,7 +68,8 @@ function vis(d) {
       <p class="hint">Bruken telles per bruker og dag: sidevisninger, aktiv tid (minutter med klikk eller tastetrykk) og hvilke moduler som åpnes. Planene til brukerne lagres i skyen per bruker (antall og plass vises over), men innholdet vises ikke her. Sletter du en bruker, slettes også planene i skyen.</p></div>`;
 }
 
-async function last() { if (document.activeElement?.matches?.('[data-tb-svar]')) return; /* ikke oppdater mens et svar skrives */ try { const d = await hent(); if (d) { vis(d); visBackup(); visTilbakemeldinger(); } } catch (e) { $('#innhold').innerHTML = `<div class="kort feil">${esc(e.message)}</div>`; } }
+const adminApi = lagAdminApi({ API: /github\.io$/.test(location.hostname) ? RAILWAY : '', hode: () => (gyldigToken() ? { Authorization: `Bearer ${gyldigToken()}` } : {}) });
+async function last() { if (document.activeElement?.matches?.('[data-tb-svar]') || document.activeElement?.closest?.('#apiProv, #apiNyNokkel') || document.querySelector('dialog[open]')) return; /* ikke oppdater mens et svar skrives */ try { const d = await hent(); if (d) { vis(d); visBackup(); visTilbakemeldinger(); adminApi.vis(); } } catch (e) { $('#innhold').innerHTML = `<div class="kort feil">${esc(e.message)}</div>`; } }
 
 // Tilbakemeldinger og forbedringsforslag (tilbakemelding.js): snitt av stjerner, fordeling, filter, status og svar.
 const TB_TYPE = { forslag: '💡 Forslag', feil: '🪲 Feil', ros: '🌸 Ros', annet: '🦉 Annet' };

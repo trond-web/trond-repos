@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.91.0** (2026-11-19) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.92.0** (2026-11-19) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -772,6 +772,21 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
+
+## 🔌 API for integrasjoner (`api-v1.js`, `api-nokler.js`, `api-dok.js`, `js/admin-api.js`)
+
+SkogIQ.ai har et REST-API for andre systemer (regnskap, skogeierandelslag, ERP, GIS). Dokumentasjonen er en OpenAPI 3.1-spesifikasjon på `/api/v1/openapi.json`, og den vises også under **Admin › 📖 API-dokumentasjon** med eksempler, curl og «Prøv API-et».
+
+- **Nøkler:** administrator oppretter en nøkkel under **Admin › 🔌 API-nøkler**. Den gjelder én brukers egne planer, med lesetilgang eller lese- og skrivetilgang. Nøkkelen (`skiq_…`) vises én gang, og bare SHA-256 av hemmeligheten lagres. Nøkler kan trekkes tilbake, og de slettes når brukeren slettes.
+- **Bruk:** send nøkkelen som `Authorization: Bearer skiq_…` (eller `X-API-Key`). Grensen er 300 kall i minuttet per nøkkel. Hvert kall logges med tid, nøkkel, metode, sti og status, men ikke innholdet.
+- **Lese:** planer, hele planen, eiendom (GeoJSON), bestand (også GeoJSON), tiltak, oppdrag, registreringer, kantsone, Skogkarakter og landbrukstakst.
+- **Skrive:** du kan opprette, endre og slette tiltak, endre oppdragsstatus og legge inn feltregistreringer.
+  - En endring lagres som en ny versjon av planen i skylagringen og synkroniseres til appene.
+  - Send `If-Match` med planversjonen, så får du `409` i stedet for å overskrive andres endringer.
+
+```
+curl -H "Authorization: Bearer $SKOGIQ_NOKKEL" https://skogiq-production.up.railway.app/api/v1/planer
+```
 
 ## 💧 Kantsone 15 m mot bekker, elver og vann (`js/kantsone.js`)
 
