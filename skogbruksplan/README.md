@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.90.0** (2026-11-19) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.91.0** (2026-11-19) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -790,6 +790,16 @@ Vann rett utenfor eiendomsgrensen tas med, med ca. 60 m margin.
 - Resultatet lagres per bestand i `b.kantsone` (daa og andel) og for hele eiendommen i `S.kantsone`.
 
 **Når den hentes:** automatisk når planen vises og mangler kantsone, i fullversjonen og i Felt. En ny plan i Felt får kantsonen med en gang. Kommandoen «Oppdater kantsoner mot vann (15 m)» henter den på nytt.
+
+**30 m i sårbare skogtyper:** PEFC krav 27 krever bredere sone i edellauv-, høgstaude-, storbregne- og sumpskog. Disse vegetasjonstypene i bestandet gir derfor 30 m (`BRED_TYPER`):
+
+| Skogtype | Vegetasjonstyper |
+|---|---|
+| Edellauvskog | 5a, 5b |
+| Høgstaude- og storbregneskog | 4c, 4e, 4f, 6c, 7c |
+| Sumpskog | 8c, 8d |
+
+Den brede sonen beregnes bare innenfor slike bestand. Sonen beregnes på nytt når vegetasjonstypen endres. Planer med den gamle 15 m-sonen oppgraderes automatisk.
 
 **Vises:**
 - **Kart:** kartlaget «💧 Kantsone 15 m» er på som standard, med tegnforklaring. I Felt er det alltid synlig.
