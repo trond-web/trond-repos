@@ -3,6 +3,7 @@
 // Datagrunnlaget (PEFC-miljødata, veier, tømmerpriser) hentes i bakgrunnen etter at planen er åpnet.
 import { eiendomVed, eiendomGrense, kommuneFor, lagSkogbruksplan, GEN_STEG } from './plan-fra-kart.js';
 import { hentDatagrunnlag } from './datagrunnlag.js';
+import { oppdaterKantsone } from './kantsone.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (v, d = 0) => Number(v || 0).toLocaleString('nb-NO', { maximumFractionDigits: d });
@@ -10,8 +11,8 @@ function lastSkript(src, navn) {
   if (window[navn]) return Promise.resolve(window[navn]);
   return new Promise((ok, feil) => { const s = document.createElement('script'); s.src = src; s.onload = () => ok(window[navn]); s.onerror = () => feil(new Error('Kunne ikke laste geometribiblioteket. Sjekk nettforbindelsen.')); document.head.appendChild(s); });
 }
-const lastTurf = () => lastSkript('https://unpkg.com/@turf/turf@7.2.0/turf.min.js', 'turf');
-const lastKlipping = () => lastSkript('https://unpkg.com/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js', 'polygonClipping').catch(() => null);
+export const lastTurf = () => lastSkript('https://unpkg.com/@turf/turf@7.2.0/turf.min.js', 'turf');
+export const lastKlipping = () => lastSkript('https://unpkg.com/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js', 'polygonClipping').catch(() => null);
 
 export function initNyPlanFelt({ kart, L, aapneArk, lukkArk, melding, gpsPos, sikte, velgPlan, lagrePlan, hentPlan, aktivPlan, nyId, iAar = new Date().getFullYear() }) {
   let velger = false; let valgt = null; let grenseLag = null; let jobber = false;
@@ -53,6 +54,7 @@ export function initNyPlanFelt({ kart, L, aapneArk, lukkArk, melding, gpsPos, si
     try {
       const [turf, klipping] = await Promise.all([lastTurf(), lastKlipping()]);
       const ny = await lagSkogbruksplan(e, { turf, klipping, nyId, iAar, logg: (st, s, t) => { if (status[st]) { status[st] = { s, t }; tegnSteg(); } } });
+      try { await oppdaterKantsone(ny, { turf, PC: klipping }); } catch { /* kantsonen hentes ved neste åpning */ } // 💧 15 m mot vann
       await lagrePlan(ny); fjernGrense();
       const skog = ny.bestand.reduce((s, b) => s + (b.areal || 0), 0); const vol = ny.bestand.reduce((s, b) => s + (b.volumDaa || 0) * (b.areal || 0), 0);
       aapneArk(`<h2>✓ ${esc(ny.eiendom.navn)} er klar</h2>

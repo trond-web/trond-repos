@@ -22,7 +22,8 @@ import { apneTilbakemelding } from './tilbakemelding-ui.js';
 import * as JUL from './juletre.js';
 import * as STP from './stolpe.js';
 import { lagOkLag } from './ok-kart.js';
-import { initNyPlanFelt } from './felt-nyplan.js';
+import { initNyPlanFelt, lastTurf, lastKlipping } from './felt-nyplan.js';
+import * as KANT from './kantsone.js';
 import { TRESLAG_REKKE, TRESLAG_NAVN, TRESLAG_FARGE, volumPerTreslag, treslagKortHtml, visTreantallTreslag, treantallPerTreslag, settTreantallTreslag, settTreslagAndel, fordeling as tsFordeling, avvikHovedtreslag } from './treslag.js';
 import { STANDARD_VERDI } from './verdi.js';
 import { tetthet, hkTekst, tetthetNavn } from './tetthet.js';
@@ -50,6 +51,7 @@ const lagPerBestand = new Map(); let bestandLag; let grenseLag; let regLag; let 
 let valgtId = null; let visning = 'kart';
 let gps = { watch: null, pos: null, folg: false, markor: null, sirkel: null };
 let nyPlan = null; // ny skogbruksplan fra kartet (js/felt-nyplan.js)
+let kantsoneLag = null; let kantsoneHenter = false; // 💧 15 m kantsone mot vann (js/kantsone.js)
 let installHendelse = null; let spor = null; let flate = null;
 let drone = null; let oppdrag = null; let uthevOppdrag = new Set(); let kandidatOppdrag = new Set(); // bestand i oppdraget som er åpent, og bestand som kan velges
 let ungskogRed = null; // bestand der ungskogfeltene er åpne for registrering
@@ -174,6 +176,7 @@ function initKart() {
     L.tileLayer.wms(KULTUR.KART.url, { layers: KULTUR.KART.lag, format: 'image/png', transparent: true, opacity: 0.85, pane: 'naturPane', maxZoom: 20, attribution: 'Kulturminner © Riksantikvaren' }),
   ]);
   misLag = L.featureGroup().addTo(kart);
+  kantsoneLag = L.layerGroup().addTo(kart); // alltid synlig – gjelder all aktivitet i skogen
   if (ls.get(LS.natur) !== '0') naturLag.addTo(kart);
   regLag = L.featureGroup().addTo(kart);
   etikettLag = L.layerGroup().addTo(kart);
@@ -192,6 +195,7 @@ function tegnPlan(zoom = false) {
   bestandLag.clearLayers(); etikettLag.clearLayers(); lagPerBestand.clear();
   if (grenseLag) { grenseLag.remove(); grenseLag = null; }
   if (!P) return;
+  kantsoneLag?.clearLayers(); if (P.kantsone?.geometri && kantsoneLag) L.geoJSON(P.kantsone.geometri, { pane: 'naturPane', interactive: false, style: { color: '#1e6fd9', weight: 1, opacity: 0.9, dashArray: '3 3', fillColor: '#3b8fe8', fillOpacity: 0.32 } }).addTo(kantsoneLag);
   if (P.eiendom?.grense) grenseLag = L.geoJSON(P.eiendom.grense, { style: { color: '#d03b3b', weight: 2.5, dashArray: '8 5', fill: false }, interactive: false }).addTo(kart);
   for (const b of P.bestand) {
     if (!b.geometri) continue;
@@ -388,6 +392,7 @@ function visBestand(id, { zoom = false } = {}) {
       ${(() => { const mh = middelhoyde(b, { inn: inn() }); return `<div class="tall"><b>${fmt(mh.verdi, 1)}</b><span>m høyde${mh.kilde === 'registrert' ? ' (snitt bar/lauv)' : ''}</span></div>`; })()}
     </div>
     ${treslagFelt(b)}
+    ${kantsoneHtml(b)}
     ${naturHtml(b)}
     ${b.vegetasjon?.kode ? `<p class="hint">Vegetasjonstype ${esc(b.vegetasjon.kode)} ${esc(b.vegetasjon.navn || '')}</p>` : ''}
     ${b.merknad ? `<p class="hint">${esc(b.merknad)}</p>` : ''}
@@ -402,6 +407,14 @@ function visBestand(id, { zoom = false } = {}) {
 }
 
 // Naturverdier i bestandet (fra planens PEFC-datagrunnlag): nøkkelbiotoper, NiN-naturtyper og artsområder.
+// 💧 Kantsone mot vann i bestandet
+function kantsoneHtml(b) { return KANT.harKantsone(b) ? `<div class="kantsone-felt"><b>💧 ${esc(KANT.kantsoneTekst(b, P.kantsone?.bredde))}</b><span>${esc(KANT.HENSYN)}</span></div>` : ''; }
+// Henter kantsonen for planer som mangler den (krever nett).
+async function sikreKantsone() {
+  const plan = P; if (!plan?.eiendom?.grense || plan.kantsone || kantsoneHenter || !navigator.onLine) return; kantsoneHenter = true;
+  try { const [turf, PC] = await Promise.all([lastTurf(), lastKlipping()]); if (!PC) return; const r = await KANT.oppdaterKantsone(plan, { turf, PC }); await lagrePlan(plan); if (P === plan) { tegnPlan(false); if (r.daa) melding(`💧 Kantsone 15 m mot vann: ${String(r.daa).replace('.', ',')} daa`); } }
+  catch { /* prøver igjen neste gang */ } finally { kantsoneHenter = false; }
+}
 function naturHtml(b) {
   const nv = (P?.pefc?.objekter || []).filter((o) => ['noekkelbiotop', 'naturtype', 'artsomrade', 'kulturminne'].includes(o.type) && o.geometri && b.geometri && overlapper(b.geometri, o.geometri));
   if (!nv.length) return '';
@@ -689,7 +702,7 @@ async function velgPlan(id, { zoom = true } = {}) {
   if (rettFeilHogd(P.bestand)) await lagrePlanen(); // glissen skog som var satt som hogd (se model.js)
   $('#planNavn').textContent = P.eiendom?.navn || 'Plan';
   document.title = `${P.eiendom?.navn || 'Plan'} · SkogIQ Felt`;
-  valgtId = null; tegnPlan(zoom); gpsStripe(); spor?.tegnUtfort();
+  valgtId = null; tegnPlan(zoom); gpsStripe(); spor?.tegnUtfort(); sikreKantsone();
   synkInfo = null; synkNaa(); // hent endringer fra PC-en
 }
 async function visPlaner() {

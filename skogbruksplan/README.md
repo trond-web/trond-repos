@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 1.89.0** (2026-11-18) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 1.90.0** (2026-11-19) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -772,6 +772,32 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
+
+## 💧 Kantsone 15 m mot bekker, elver og vann (`js/kantsone.js`)
+
+Alle planer får en kantsone på 15 m langs bekker, elver og vann. Kantsonen skal være flersjiktet og normalt urørt, og gjelder all aktivitet i skogen. Grunnlaget er PEFC krav 27 («med utgangspunkt i 10–15 m») og vannressursloven § 11.
+
+**Datakilder:**
+- NVE Elvenett (ELVIS, også små bekker)
+- NVE Innsjødatabasen
+- AR5-vann i planen
+
+Vann rett utenfor eiendomsgrensen tas med, med ca. 60 m margin.
+
+**Beregning:**
+- Turf lager bufferen og polygon-clipping slår den sammen.
+- Selve vannflatene trekkes fra, og sonen klippes mot eiendommen.
+- Resultatet lagres per bestand i `b.kantsone` (daa og andel) og for hele eiendommen i `S.kantsone`.
+
+**Når den hentes:** automatisk når planen vises og mangler kantsone, i fullversjonen og i Felt. En ny plan i Felt får kantsonen med en gang. Kommandoen «Oppdater kantsoner mot vann (15 m)» henter den på nytt.
+
+**Vises:**
+- **Kart:** kartlaget «💧 Kantsone 15 m» er på som standard, med tegnforklaring. I Felt er det alltid synlig.
+- **Bestandsinfo:** areal, andel og hensyn, i fullversjonen og i Felt.
+- **Tiltak:** hint på hogst, markberedning, gjødsling, ungskogpleie, sprøyting og veibygging.
+- **Arbeidsordre:** egen seksjon og blått felt i kartet.
+
+**Kontroll:** PEFC krav 27 gir varsel for alle berørte tiltak i bestand med kantsone. Varselet teller også med i Skogkarakteren.
 
 ## ＋ Ny skogbruksplan i felt (`js/plan-fra-kart.js`, `js/felt-nyplan.js`)
 

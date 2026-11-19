@@ -3696,6 +3696,45 @@ test('Ny plan fra kartet (Felt): eiendom i punktet, grense uten festetomter, kom
   assert.match(f, /lagSkogbruksplan\(/); assert.match(f, /hentDatagrunnlag\(/); assert.match(les(new URL('../js/felt-app.js', import.meta.url), 'utf8'), /data-np="gps"/);
 });
 
+test('Kantsone 15 m mot vann: henting fra NVE, buffer innenfor eiendommen, per bestand, PEFC krav 27 og tekster', async () => {
+  const K = await import('../js/kantsone.js'); const PEFC = await import('../js/pefc.js');
+  // Henting: bekker (linjer) og vann (flater) i et område litt større enn eiendommen
+  const urler = []; const grense = { type: 'Polygon', coordinates: [[[11, 60], [11.01, 60], [11.01, 60.01], [11, 60.01], [11, 60]]] };
+  const hent = async (u) => { urler.push(u); return { ok: true, json: async () => (/Elvenett/.test(u) ? { features: [{ geometry: { type: 'LineString', coordinates: [[11.005, 59.99], [11.005, 60.02]] }, properties: { elvenavn: 'Bekken', objekttype: 'ElvBekk' } }, { geometry: null }] } : { features: [{ geometry: { type: 'Polygon', coordinates: [[[11.02, 60], [11.03, 60], [11.03, 60.01], [11.02, 60]]] }, properties: { navn: 'Tjernet' } }] }) }; };
+  const v = await K.hentVann(grense, { hent }); assert.deepEqual([v.linjer.length, v.linjer[0].navn, v.flater[0].navn], [1, 'Bekken', 'Tjernet']);
+  assert.ok(urler.every((u) => /f=geojson/.test(u)) && /geometry=10\.99/.test(urler[0]), 'boksen har marg rundt eiendommen');
+  assert.ok(K.BERORTE_TILTAK.includes('markberedning') && K.BERORTE_TILTAK.includes('sluttavvirkning')); assert.equal(K.BREDDE, 15);
+  // Geometri (polygon-clipping + enkel Turf-erstatning: rektangulær buffer og plant areal)
+  let PC; try { PC = (await import('polygon-clipping')).default; } catch { PC = null; }
+  if (PC) {
+    const mLat = 1 / 111320; const mLon = (lat) => 1 / (111320 * Math.cos((lat * Math.PI) / 180));
+    const bb = (g) => { const p = JSON.stringify(g.coordinates).match(/-?\d+\.?\d*/g).map(Number); const xs = p.filter((_, i) => i % 2 === 0); const ys = p.filter((_, i) => i % 2 === 1); return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]; };
+    const turf = {
+      buffer: (f, m) => { const [a, b, c, d] = bb(f.geometry); const dx = m * mLon(b); const dy = m * mLat; return { geometry: { type: 'Polygon', coordinates: [[[a - dx, b - dy], [c + dx, b - dy], [c + dx, d + dy], [a - dx, d + dy], [a - dx, b - dy]]] } }; },
+      area: (f) => { let s0 = 0; const ringer = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates; for (const poly of ringer) poly.forEach((r, ri) => { let a = 0; for (let i = 0; i < r.length - 1; i++) a += (r[i][0] * r[i + 1][1] - r[i + 1][0] * r[i][1]); s0 += (ri ? -1 : 1) * Math.abs(a / 2) / (mLon(60) * mLat); }); return s0; },
+    };
+    const sone = K.lagKantsone(v, grense, { turf, PC });
+    assert.equal(sone.type, 'MultiPolygon');
+    const daa = turf.area({ geometry: sone }) / 1000; const lengde = 0.01 * 111320; // bekken krysser hele eiendommen nord–sør
+    assert.ok(Math.abs(daa - (lengde * 30) / 1000) < 3, `ca. 30 m bred stripe langs bekken: ${daa}`);
+    // Bestand vest (inntil bekken) og øst (langt unna)
+    const vest = { id: 'v', nr: '1', areal: 278, geometri: { type: 'Polygon', coordinates: [[[11, 60], [11.005, 60], [11.005, 60.01], [11, 60.01], [11, 60]]] } };
+    const ost = { id: 'o', nr: '2', areal: 100, geometri: { type: 'Polygon', coordinates: [[[11.008, 60], [11.01, 60], [11.01, 60.01], [11.008, 60.01], [11.008, 60]]] } };
+    const per = K.kantsonePerBestand([vest, ost], sone, { turf, PC }); assert.ok(per.v && !per.o); assert.ok(per.v.daa > 15 && per.v.daa < 18, `${per.v.daa}`);
+    // Hele oppdateringen legger S.kantsone og b.kantsone inn i planen (AR5-vann tas med)
+    const S = { eiendom: { grense }, bestand: [vest, ost], markslag: [{ kategori: 'vann', geometri: { type: 'Polygon', coordinates: [[[11.0085, 60.004], [11.0095, 60.004], [11.0095, 60.005], [11.0085, 60.004]]] } }] };
+    const r = await K.oppdaterKantsone(S, { turf, PC, hent }); assert.ok(r.daa > 0 && S.kantsone.bekker === 1 && S.kantsone.vann === 2 && S.kantsone.navn.includes('Bekken'));
+    assert.ok(K.harKantsone(vest) && K.harKantsone(ost), 'AR5-tjernet gir kantsone også i øst');
+  }
+  // Tekster og PEFC krav 27 for alle berørte tiltak (ikke bare hogst)
+  const b = { id: 'x', nr: '7', areal: 20, treslag: 'G', bonitet: 14, alder: 60, geometri: { type: 'Polygon', coordinates: [[[11, 60], [11.001, 60], [11.001, 60.001], [11, 60]]] }, kantsone: { daa: 2.4, andel: 0.12 }, tiltak: [{ id: 't', type: 'markberedning', status: 'planlagt', aar: 2027 }] };
+  assert.equal(K.kantsoneTekst(b), '2,4 daa kantsone mot vann (15 m) – 12 % av bestandet'); assert.equal(K.kantsoneTekst({}), '');
+  const { STANDARD_INNSTILLINGER } = await import('../js/model.js');
+  const funn = PEFC.kontroller({ eiendom: {}, bestand: [b], innstillinger: STANDARD_INNSTILLINGER, kantsone: { bredde: 15 } }, PEFC.tomPefc(), { iAar: 2026 });
+  const k27 = funn.find((f) => f.krav === 27); assert.ok(k27, 'markberedning i bestand med kantsone gir varsel'); assert.match(k27.tekst, /2,4 daa.*15 m.*ingen kjøring/);
+  assert.ok(!PEFC.kontroller({ eiendom: {}, bestand: [{ ...b, tiltak: [] }], innstillinger: STANDARD_INNSTILLINGER }, PEFC.tomPefc(), { iAar: 2026 }).some((f) => f.krav === 27), 'ingen tiltak – ingen varsel');
+});
+
 test('Roller: rådgiver/regnskapsfører, og samme rolleliste på serveren, registreringen, dialogen, admin og nettverk', async () => {
   const A = await import('../auth.js'); const { readFileSync: les } = await import('node:fs');
   const nokler = Object.keys(A.BRUKERROLLER); assert.ok(nokler.includes('radgiver')); assert.equal(A.BRUKERROLLER.radgiver, 'Rådgiver / regnskapsfører');

@@ -184,7 +184,9 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
       ...(vr.stier || []).filter((x) => x.geometri).map((x) => ({ geometri: x.geometri, farge: VEISTIL.sti.farge })),
       ...(vr.punkter || []).filter((p) => p.type === 'velteplass' && p.geometri).map((p) => ({ geometri: p.geometri, farge: '#2a78d6' })),
       ...driftsvegUi.ekstra(o),
+      ...(plan.kantsone?.geometri ? [{ geometri: plan.kantsone.geometri, farge: '#3b8fe8' }] : []), // 💧 kantsone mot vann
     ];
+    const iKantsone = ls.filter(({ bestand: b }) => (b.kantsone?.daa || 0) >= 0.05).map(({ bestand: b }) => b).filter((b, i, l) => l.indexOf(b) === i);
     const kart = svgKart(plan, (b) => (ider.has(b.id) ? '#f39c4a' : '#eef0ea'), { bredde: 960, hoyde: 600, ekstra, markslag: false });
     const felt = ot.felt.filter((f) => o.felt?.[f.id] !== undefined && o.felt[f.id] !== '').map((f) => `<tr><th>${esc(f.navn)}</th><td>${esc(o.felt[f.id])}${f.enhet ? ` ${esc(f.enhet)}` : ''}</td></tr>`).join('');
     const tittel = `Arbeidsordre ${o.nr}`;
@@ -198,6 +200,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
       </tbody></table>
       ${o.merknad ? `<h2>Instruks</h2><p>${esc(o.merknad).replace(/\n/g, '<br>')}</p>` : ''}
       <h2>Kart</h2>${kart}<p class="hint"><span class="leg" style="background:#f39c4a"></span>bestand i oppdraget <span class="leg" style="background:#555"></span>bilvei <span class="leg" style="background:${VEISTIL.traktorvei.farge}"></span>traktorvei <span class="leg" style="background:${VEISTIL.sti.farge}"></span>sti <span class="leg" style="background:#2a78d6"></span>velteplass · rød stiplet linje: eiendomsgrense</p>
+      ${iKantsone.length ? `<h2>💧 Kantsone mot vann (${plan.kantsone?.bredde || 15} m)</h2><p><b>${iKantsone.map((b) => `Bestand ${esc(b.nr)}: ${fmt(b.kantsone.daa, 1)} daa`).join(' · ')}</b> (blått i kartet). Kantsonen skal være flersjiktet og normalt urørt: ingen flatehogst, markberedning, gjødsling eller sprøyting, og ingen kjøring – kryss bekker bare på bru eller klopp.</p>` : ''}
       <h2>Bestand</h2>
       <table><thead><tr><th>Bestand</th><th>Tiltak</th><th>År</th><th class="t">Daa</th><th>Treslag/bonitet</th><th class="t">Alder</th><th class="t">m³/daa</th><th class="t">Ca. m³</th><th>Merknad</th></tr></thead><tbody>
       ${ls.map(({ bestand: b, tiltak: t }) => { const ok = okonomi({ ...t, bestand: b }); return `<tr><td>${esc(b.nr)}</td><td>${esc(tiltakNavn(t.type))}</td><td>${t.aar}</td><td class="t">${fmt(b.areal, 1)}</td><td>${esc(b.treslag || '')}${b.bonitet ?? ''}</td><td class="t">${b.alder ?? ''}</td><td class="t">${b.volumDaa != null ? fmt(b.volumDaa, 1) : ''}</td><td class="t">${ok.m3 ? fmt(ok.m3) : ''}</td><td>${b.miljo ? '<b>Miljøfigur – hensyn</b> ' : ''}${esc(t.kommentar || '')}</td></tr>`; }).join('')}

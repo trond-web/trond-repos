@@ -1496,3 +1496,8 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .sk-ind.god { background: #dcefe3; color: #1f6b4a; } .sk-ind.middels { background: #fbf0cf; color: #7a5a00; } .sk-ind.svak { background: #f9dcd6; color: #9b2c22; } .sk-ind.ukjent { color: var(--text-2); }
 .sk-hist { display: flex; gap: 8px; flex-wrap: wrap; } .sk-hist div { display: grid; text-align: center; padding: 4px 10px; border-radius: 10px; background: var(--surface-2); font-size: 12px; } .sk-hist b { font-size: 18px; }
 @container (max-width: 520px) { .sk-topp { grid-template-columns: 1fr; justify-items: center; } .sk-sum { width: 100%; } .sk-omr { grid-template-columns: 1fr 70px 40px; } }
+
+/* 💧 Kantsone mot vann (js/kantsone.js) */
+.kantsone-linje { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, #3b8fe8 12%, var(--surface)); border-left: 4px solid #1e6fd9; display: grid; gap: 3px; font-size: 13px; }
+.kantsone-linje span { color: var(--text-2); font-size: 12.5px; }
+.kantsone-hint { font-size: 12.5px; margin: 4px 0; padding: 5px 9px; border-radius: 8px; background: color-mix(in srgb, #3b8fe8 13%, transparent); }

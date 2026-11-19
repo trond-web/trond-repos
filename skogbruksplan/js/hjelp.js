@@ -23,6 +23,7 @@ export const KAPITLER = [
     id: 'kart', ikon: '🗺️', tittel: 'Kart og kartlag',
     tekst: `<p>Kartet viser bestandene farget etter valget i <b>Farge etter</b> (hogstklasse, treslag, bonitet, alder, tiltak …).</p>
       <ul><li><b>Kartlag</b> (knappen med lag-ikonet) slår på bakgrunnskart, flyfoto, bratthet, markfuktighet, naturtyper, arter, kulturminner, naboeiendommer, kommunale planer og mer.</li>
+      <li><b>💧 Kantsone 15 m</b> langs alle bekker, elver og vann (NVE) vises blått i kartet og i SkogIQ Felt. Den skal være flersjiktet og urørt: ingen flatehogst, markberedning, gjødsling eller sprøyting, og ingen kjøring. Bestandet og tiltakene viser hvor mye kantsone som berøres, og den kommer med på arbeidsordren. Søk «kantsone» for å hente den på nytt.</li>
       <li><b>ØK-kart med høydekurver</b>: velg «ØK-kart med høydekurver (N5)» (eller den historiske førsteutgaven av ØK) under Kartlag. Bestandsfargene blir gjennomsiktige, så høydekurvene (5 m) synes. I SkogIQ Felt bytter du til ØK med kartlag-knappen.</li>
       <li><b>Trykk i kartet</b> på et bestand for detaljer, eller på et naturtype-, arts- eller kulturminneområde for faktaark.</li>
       <li><b>Tegnforklaringen</b> nede til venstre forklarer fargene. Den kan felles sammen.</li>
