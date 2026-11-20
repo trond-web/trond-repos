@@ -4473,3 +4473,30 @@ test('Språk: engelsk oversettelse med tall, segmenter, mønstre og setninger', 
   for (const [nb, en] of Object.entries(ORD)) { assert.ok(en && typeof en === 'string', nb); assert.equal(ant(nb), ant(en), `plassholdere: ${nb}`); }
   assert.ok(Object.keys(ORD).length > 3000);
 });
+
+test('Husdyr: gjødsel, lager, spredeareal, fôrbalanse og fordeling', async () => {
+  const H = await import('../js/husdyr.js'); const SP = await import('../js/skifteplan.js');
+  const sk = (id, areal, kultur) => ({ id, nr: id, areal, vekster: { 2027: { kultur } }, jordprove: {}, gjodsling: [] });
+  const S = { skifteplan: { aar: 2027, region: 'innland', skifter: [sk('a', 300, 'engNorm2'), sk('b', 80, 'beite'), sk('c', 100, 'bygg')], dyrehold: { dyr: [{ id: 'k', slag: 'melkeku', antall: 30 }, { id: 'h', slag: 'verpehone', antall: 500 }], lager: 300 } } };
+  const g = H.husdyrgjodsel(S, 2027);
+  assert.equal(g.rader[0].P, 420); assert.equal(g.rader[0].tonn, 840); assert.equal(Math.round(g.rader[0].tonnLager), 630);
+  assert.equal(g.areal, 480); assert.equal(g.grense, 2.8); assert.ok(Math.abs(g.arealBehov - g.P / 2.8) < 1e-9);
+  const funn = H.kontrollerHusdyr(S, 2027);
+  assert.ok(funn.some((f) => f.nivaa === 'avvik' && /gjødsellager/.test(f.tittel)), 'for lite lager');
+  assert.ok(funn.some((f) => /Gjødseljournal/.test(f.tittel)));
+  // Egne tall overstyrer standard
+  S.skifteplan.dyrehold.dyr[0].P = 10; assert.equal(H.husdyrgjodsel(S, 2027).rader[0].P, 300); delete S.skifteplan.dyrehold.dyr[0].P;
+  // Fôrbalanse: eng 300 daa × 500 FEm × 0,85
+  const f = H.forbalanse(S, 2027);
+  assert.equal(f.prod.vinter, 127500); assert.equal(f.behov.vinter, 30 * 3500 * 9 / 12); assert.equal(f.prod.korn, 50000);
+  assert.ok(f.balanse.grovfor > 0 || f.ekstraEngDaa > 0);
+  // Fordeling: bare skifter med vekst og ikke beite, innenfor fosforbehovet
+  const ford = H.fordelHusdyrgjodsel(S, 2027, { gjodselbehov: SP.gjodselbehov });
+  assert.ok(ford.length && ford.every((x) => x.skifteId !== 'b'));
+  for (const x of ford) S.skifteplan.skifter.find((s) => s.id === x.skifteId).gjodsling.push({ ...x.gjodsling, id: Math.random() });
+  for (const s of S.skifteplan.skifter.filter((x) => x.id !== 'b')) assert.ok(SP.sumGjodsling(s, 2027).P <= SP.gjodselbehov(s, 2027).P + 0.3, `P innenfor behov på ${s.id}`);
+  assert.ok(ford.some((x) => x.gjodsling.produkt === 'fjorfe'));
+  assert.ok(H.husdyrgjodsel(S, 2027).planTonn > 0);
+  // Uten dyr: ingen funn
+  assert.deepEqual(H.kontrollerHusdyr({ skifteplan: { skifter: [] } }, 2027), []);
+});

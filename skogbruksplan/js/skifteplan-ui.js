@@ -11,6 +11,8 @@ import { fmt } from './charts.js';
 import { signatur } from './versjon.js';
 import { lagMaskinUi } from './maskin-ui.js';
 import { lagDreneringUi } from './drenering-ui.js';
+import { lagHusdyrUi } from './husdyr-ui.js';
+import { kontrollerHusdyr } from './husdyr.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -313,7 +315,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
 
   function kravHtml() {
     const p = SP(); const a = aar(); const S = hentPlan();
-    const funn = kontroller(S, a);
+    const funn = [...kontroller(S, a), ...kontrollerHusdyr(S, a)].sort((x, y) => ['avvik', 'varsel', 'info', 'ok'].indexOf(x.nivaa) - ['avvik', 'varsel', 'info', 'ok'].indexOf(y.nivaa));
     return `<div class="kort"><div class="detalj-topp"><h3>Kontroll ${a}</h3>
         <label class="sp-region">Region <select data-sp-region>${Object.entries(REGIONER).map(([id, r]) => `<option value="${id}" ${p.region === id ? 'selected' : ''}>${esc(r.navn)}</option>`).join('')}</select></label></div>
         ${funn.length ? funn.map((f) => `<div class="sp-funn" style="--farge:${NIVAA[f.nivaa].farge}" ${f.skifteId ? `data-sp-skifte="${f.skifteId}"` : ''}><i>${NIVAA[f.nivaa].ikon}</i><div><b>${esc(f.tittel)}</b><div class="hint">${esc(f.tekst)}${f.kilde && KILDER[f.kilde] ? ` <a href="${esc(KILDER[f.kilde].url)}" target="_blank" rel="noopener">Kilde</a>` : ''}</div></div></div>`).join('') : '<p class="hint">Legg inn skifter for å kontrollere skifteplanen.</p>'}
@@ -337,7 +339,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
   function tegn() {
     const panel = $('#fane-skifteplan'); if (!panel) return;
     panel.querySelectorAll('[data-sp-under]').forEach((k) => k.classList.toggle('aktiv', k.dataset.spUnder === underfane));
-    const html = underfane === 'gjodsling' ? gjodslingHtml() : underfane === 'sproyting' ? sproytingHtml() : underfane === 'krav' ? kravHtml() : underfane === 'maskin' ? maskin.html(tegn) : skifterHtml();
+    const html = underfane === 'gjodsling' ? gjodslingHtml() : underfane === 'sproyting' ? sproytingHtml() : underfane === 'krav' ? kravHtml() : underfane === 'maskin' ? maskin.html(tegn) : underfane === 'husdyr' ? husdyr.html() : skifterHtml();
     $('#spInnhold').innerHTML = toppHtml() + html;
   }
 
@@ -385,6 +387,8 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
 
   // Maskin: data til og fra traktoren (John Deere / ISOBUS), se maskin-ui.js.
   const maskin = lagMaskinUi({ kart, hentPlan, SP, aar, lagre, melding, nyId });
+  // Husdyr: dyrehold, husdyrgjødsel og fôrbalanse, se husdyr-ui.js.
+  const husdyr = lagHusdyrUi({ SP, aar, hentPlan, lagre, melding, nyId, visGjodsling: () => { underfane = 'gjodsling'; tegn(); } });
   // Tilbake fra John Deere-innloggingen (jd-relay.js): vis Maskin-fanen.
   if (/[?&]jd=tilkoblet/.test(location.search)) {
     underfane = 'maskin'; setTimeout(() => melding('Koblet til John Deere Operations Center. Åpne Skifteplan › Maskin.'), 1500);
@@ -398,6 +402,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     const u = e.target.closest('[data-sp-under]'); if (u) { underfane = u.dataset.spUnder; tegn(); return; }
     const ul = e.target.closest('[data-sp-under-lenke]'); if (ul) { e.preventDefault(); underfane = ul.dataset.spUnderLenke; tegn(); return; }
     if (underfane === 'maskin' && await maskin.klikk(e)) return;
+    if (underfane === 'husdyr' && husdyr.klikk(e)) return;
     if (valgt && e.target.closest('[data-dr-k]') && await dren.klikk(e, finn(valgt), tegn)) return;
     const gh = e.target.closest('[data-sp-gh]');
     if (gh) {
@@ -457,6 +462,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
   });
   panel.addEventListener('change', (e) => {
     if (underfane === 'maskin' && maskin.endring(e)) return;
+    if (underfane === 'husdyr' && husdyr.endring(e)) return;
     if (valgt && e.target.dataset?.dr && finn(valgt) && dren.endring(e, finn(valgt))) return;
     const t = e.target; const p = SP(); const sk = finn(valgt);
     if (t.matches('[data-sp-aar]')) { p.aar = Number(t.value); lagre(); return; }

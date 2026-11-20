@@ -1537,3 +1537,17 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 /* 🌐 Språk (js/sprak.js) */
 .sprak-knapp { font: 800 12px/1 system-ui, sans-serif; letter-spacing: .04em; color: #c9d6cd; }
 .sprak-valg { display: inline-flex; gap: 6px; align-items: center; margin-top: 6px; font-size: 12.5px; } .sprak-valg select { font: inherit; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+
+/* 🐄 Husdyr (Skifteplan › Husdyr) */
+.hd-tabell select { max-width: 220px; }
+.hd-tall { width: 78px; text-align: right; }
+.hd-nokkel { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 12px 0 6px; }
+.hd-nokkel > div { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid var(--grid); border-radius: 10px; background: var(--surface-2); }
+.hd-nokkel b { font-size: 16px; }
+.hd-lager input { width: 90px; }
+.hd-ok { color: var(--accent); font-weight: 700; } .hd-ikke { color: var(--critical); font-weight: 700; }
+.hd-minus { color: var(--critical); }
+.hd-tips { margin: 8px 0 12px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 4px; }
+.hd-forut summary { cursor: pointer; font-weight: 600; margin-top: 8px; }
+/* Skifteplan har seks underfaner: la dem bryte til to linjer i stedet for å bli kuttet. */
+#fane-skifteplan .sb-under { flex-wrap: wrap; } #fane-skifteplan .sb-under button { flex: 1 1 auto; min-width: 72px; }
