@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.7.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.8.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -394,7 +394,7 @@ Trykk **«🧑‍🌾 Spør lederen»** i den virtuelle skogen, eller **høyre g
   - Grunnlaget er planens data og stedet du står. Planen sendes bare med i første spørsmål og bufres.
   - Svarene er korte og muntlige, høyst tre setninger, og strømmes ut mens de skrives.
 - **Visning:** svaret står på en tavle ved siden av lederen, så det kan leses i brillene, og i panelet på skjermen. Det leses opp med en norsk stemme som kjører på enheten (`localService`). Nettbaserte stemmer brukes ikke, fordi de sender teksten ut.
-- **Stemmestyring er ikke slått på:** talegjenkjenning i nettleseren sender lyden til nettleserleverandøren, som er en ny tredjepart. Den er klar i koden (`TALEGJENKJENNING = false`), men må godkjennes og føres inn i personvernerklæringen før den slås på.
+- **Snakk med lederen (🎙):** trykk 🎙 i panelet, eller hold inne venstre grep i VR, og still spørsmålet med stemmen. Talegjenkjenningen er nettleserens egen (Google i Chrome/Edge/Android, Apple i Safari, Meta i Quest-nettleseren), og lyden sendes dit. Første gang må brukeren si ja i en dialog som forklarer dette (lagres i `skogiq-tale-ok`). I VR ber lederen deg ta av brillene og trykke 🎙 én gang først. SkogIQ.ai lagrer verken lyd eller tekst. Behandlingen `tale` står i personvernerklæringen (versjon 1.13). Språket følger appen (norsk eller engelsk). Nettlesere uten talegjenkjenning (f.eks. Firefox) viser ikke 🎙.
 
 ## AR i felt – grenser, stier, miljø og kulturminner i terrenget (beta, SkogIQ Felt)
 

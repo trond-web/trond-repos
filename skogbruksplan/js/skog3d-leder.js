@@ -5,6 +5,7 @@
 // Svarlogikk: js/leder-svar.js (regelbasert lokalt, Claude med AI-nøkkel).
 import { FORSLAG, lokaltSvar, aiSvar } from './leder-svar.js';
 import { SDK_URL, MODELL, NOKKEL } from './assistent.js';
+import { sprak } from './sprak.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const STIL = `
@@ -19,9 +20,12 @@ export const STIL = `
 @media (max-width: 760px) { .skog3d .s3-leder { top: auto; bottom: 200px; } }
 `;
 
-// Talegjenkjenning i nettleseren sender lyden til nettleserleverandøren (Google, Apple, Meta …) – en ny tredjepart som
-// må inn i personvernerklæringen og godkjennes av eieren før den slås på. Til da: tekst, forslag og VR-meny.
-export const TALEGJENKJENNING = false;
+// Talegjenkjenning i nettleseren sender lyden til nettleserleverandøren (Google, Apple, Meta …). Godkjent av eieren og
+// ført inn i personvernerklæringen (behandling «tale», versjon 1.13). Brukeren må si ja én gang før mikrofonen brukes.
+export const TALEGJENKJENNING = true;
+export const LS_TALE_OK = 'skogiq-tale-ok';
+export const TALE_SAMTYKKE = 'Talegjenkjenning bruker nettleserens egen tjeneste. Lyden sendes til nettleserleverandøren (Google i Chrome, Edge og Android, Apple i Safari, Meta i Quest-nettleseren) for å gjøres om til tekst. SkogIQ.ai får bare teksten og lagrer ikke lyden. Vil du slå på tale?';
+function taleOk() { try { return localStorage.getItem(LS_TALE_OK) === '1'; } catch { return false; } }
 
 function lesNokkel() { try { return localStorage.getItem(NOKKEL) || ''; } catch { return ''; } }
 
@@ -127,7 +131,12 @@ export function lagLeder(THREE, { rot, scene, camera, dolly, hoyde, renderer, st
   }
   function startLytting() {
     if (!kanLytte || lytter) return;
-    lytter = new Tale(); lytter.lang = 'nb-NO'; lytter.interimResults = true; lytter.maxAlternatives = 1;
+    if (!taleOk()) {
+      if (renderer.xr.isPresenting) { tavle.tegn({ tittel: '🎙 Slå på tale først', tekst: 'Ta av brillene og trykk 🎙 i panelet én gang for å godta talegjenkjenning.' }); if (!leder.visible) vis(true); return; }
+      if (!window.confirm(TALE_SAMTYKKE)) return;
+      try { localStorage.setItem(LS_TALE_OK, '1'); } catch { /* privat modus: spør igjen neste gang */ }
+    }
+    lytter = new Tale(); lytter.lang = sprak() === 'en' ? 'en-GB' : 'nb-NO'; lytter.interimResults = true; lytter.maxAlternatives = 1;
     const mik = panel.querySelector('[data-l-mik]'); mik?.classList.add('lytter'); tavle.tegn({ tittel: '🎙 Jeg lytter …', tekst: 'Still spørsmålet ditt.' }); if (!leder.visible) vis(true);
     let tekst = '';
     lytter.onresult = (e) => { tekst = [...e.results].map((r) => r[0].transcript).join(' '); panel.querySelector('[data-l-input]').value = tekst; tavle.tegn({ tittel: '🎙 Jeg lytter …', tekst }); };
