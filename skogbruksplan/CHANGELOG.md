@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.9.0 – 🐄 Husdyr: gjødsel og fôrbalanse (2026-11-20)
+
+*Nytt.* Skifteplanen har fått fanen Husdyr. Legg inn dyrene på gården – melkekyr, ammekyr, ungdyr, sau, geit, hest, alpakka, høner, kylling, kalkun eller gris – så beregnes husdyrgjødsla: mengde, fosfor, om spredearealet holder mot fosforgrensen i gjødselforskriften, og om gjødsellageret er stort nok. «Fordel på skiftene» legger husdyrgjødsla inn i gjødslingsplanen etter fosforbehovet. Fôrbalansen viser behovet for vinterfôr, beite og kraftfôr mot avlingene på skiftene, med antall rundballer og hvor mye eng som eventuelt mangler. Tallene per dyr er typiske og kan justeres.
+
 ## 2.8.0 – 🎙 Snakk med SkogIQ-lederen (2026-11-20)
 
 *Nytt.* I den virtuelle skogen kan du nå stille spørsmål til SkogIQ-lederen med stemmen: trykk 🎙 i panelet, eller hold inne venstre grep med VR-briller. Talen gjøres om til tekst av nettleserens egen talegjenkjenning (Google, Apple eller Meta). Første gang må du si ja til det. SkogIQ.ai lagrer verken lyd eller tekst. Personvernerklæringen er oppdatert til versjon 1.13 med den nye behandlingen og tredjeparten, så alle må godta den på nytt ved neste innlogging.

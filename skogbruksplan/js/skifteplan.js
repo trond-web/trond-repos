@@ -78,6 +78,7 @@ export const HUSDYR = {
   svin: { navn: 'Svin, blautgjødsel (ca. 4,5 % TS)', N: 3.6, NH4: 2.4, P: 0.8, K: 2.0 },
   sau: { navn: 'Sau, fastgjødsel', N: 6.0, NH4: 1.0, P: 1.2, K: 6.0 },
   fjorfe: { navn: 'Fjørfe, tørr gjødsel', N: 20.0, NH4: 5.0, P: 6.0, K: 10.0 },
+  hest: { navn: 'Hest, fastgjødsel med strø', N: 5.0, NH4: 0.8, P: 1.0, K: 5.0 },
   biorest: { navn: 'Biorest', N: 4.0, NH4: 2.5, P: 0.5, K: 2.0 },
 };
 // Andel av ammonium-N som regnes som plantetilgjengelig etter spredemåte (forenklet).

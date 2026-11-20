@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.8.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.9.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -823,6 +823,19 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
+
+## 🐄 Husdyr – dyrehold, husdyrgjødsel og fôrbalanse (Skifteplan › Husdyr, `js/husdyr.js`, `js/husdyr-ui.js`)
+
+For gårder med melkekyr, ammekyr, ungdyr, okser, sau, geit, hest, ponni, alpakka/lama, verpehøner, slaktekylling, kalkun og gris.
+
+- **Dyrehold:** antall dyr per dyreslag (gjennomsnittlig antall, eller produsert per år for slaktekylling, kalkun og slaktegris), måneder innefôring, grovfôr og kraftfôr per dyr og fosfor per dyr. Tomme felt bruker typiske tall, og egne tall overstyrer. Lagres i planen (`S.skifteplan.dyrehold`) og følger synkroniseringen.
+- **Husdyrgjødsel:** mengde (tonn/år), N, P og K per dyreslag ut fra fosfor per dyr (1 gjødseldyrenhet = 14 kg P) og innholdet i gjødseltypen. Gjødsla deles i det som går til lager og det som havner på beitet.
+  - Spredeareal: fosfor per daa på skiftene med vekst sammenlignet med fosforgrensen i gjødselforskriften (fra 2027, strammes inn i 2030 og 2033), og hvor mange daa som trengs.
+  - Lager: behov for lagerkapasitet (standard 8 måneder, kan endres) sammenlignet med lageret ditt.
+  - **Fordel på skiftene:** foreslår husdyrgjødsel per skifte etter fosforbehovet. Tørr fjørfegjødsel samles på de minste skiftene. Mineralgjødsel for resten foreslås som før under Gjødsling.
+  - Funnene (for lite spredeareal eller lager, gjødseljournal over 75 kg P, gjødsel som ikke er lagt inn i planen) vises også under Krav.
+- **Fôrbalanse:** behov for vinterfôr, beite og kraftfôr sammenlignet med avlingen fra eng og grønnfôr (minus tap ved konservering), innmarksbeite (utnyttelse) og korn. Viser rundballer, overskudd eller underskudd og hvor mange daa eng som mangler. Forutsetningene kan justeres.
+- Alle tall per dyr er typiske anslag for norske forhold og bør tilpasses egen drift.
 
 ## 🌐 Engelsk språk (`js/sprak.js`, `js/sprak-en.js`)
 
