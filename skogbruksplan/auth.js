@@ -231,6 +231,12 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
     },
     meg(u) { const b = store?.hent(u); return b ? offentlig(b) : u ? { bruker: u, navn: u, epost: '', admin: erAdmin(u) } : null; },
     // Oversikt for administratoren: brukerne med bruk, og bruk per dag og per modul de siste «dager» dagene.
+    // «Skogen siste døgn» for alle innloggede: bare antall – ingen navn. timer[i] = antall med siste aktivitet for i–i+1 timer siden.
+    skogen() {
+      const t = naa(); const timer = Array(24).fill(0); let siste24 = 0; let naaAntall = 0;
+      for (const b of store ? store.alle() : []) { const d = t - (b.sistAktiv || 0); if (!b.sistAktiv || d > DAG || d < -60000) continue; siste24++; if (d <= 5 * 60000) naaAntall++; timer[Math.min(23, Math.max(0, Math.floor(d / 3600000)))]++; }
+      return { siste24, naa: naaAntall, timer };
+    },
     oversikt({ antallDager = 30 } = {}) {
       if (!store) return { brukere: [], dager: [], faner: {}, permanent: true };
       const dagliste = []; for (let i = antallDager - 1; i >= 0; i--) dagliste.push(dagNokkel(naa() - i * DAG));
@@ -273,7 +279,7 @@ const TILLATT_OPPHAV = /^(https:\/\/(skogiq-production\.up\.railway\.app|trond-w
 export const corsFor = (req) => { const o = req.headers.origin; return o && TILLATT_OPPHAV.test(o) ? { 'Access-Control-Allow-Origin': o, Vary: 'Origin' } : {}; };
 const ip = (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '?';
 const kapsel = (req, verdi, maxAlder) => `${OKT_NAVN}=${encodeURIComponent(verdi)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAlder}${req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : ''}`;
-const API_STIER = ['/api/logginn', '/api/loggut', '/api/meg', '/api/registrer', '/api/glemt', '/api/tilbakestill', '/api/passord', '/api/bruk', '/api/admin/oversikt', '/api/admin/bruker', '/api/samtykke', '/api/konto/eksport', '/api/konto/slett', '/api/konto/innstillinger'];
+const API_STIER = ['/api/logginn', '/api/loggut', '/api/meg', '/api/registrer', '/api/glemt', '/api/tilbakestill', '/api/passord', '/api/bruk', '/api/admin/oversikt', '/api/admin/bruker', '/api/samtykke', '/api/konto/eksport', '/api/konto/slett', '/api/konto/innstillinger', '/api/skogen'];
 // Lenke for nytt passord på samme adresse som forespørselen kom til (Railway), ikke en adresse klienten oppgir.
 const resetLenke = (req, token) => `${req.headers['x-forwarded-proto'] === 'https' || /railway\.app$/.test(req.headers.host || '') ? 'https' : 'http'}://${req.headers.host || 'localhost'}/logginn.html#tilbakestill=${token}`;
 
@@ -283,6 +289,7 @@ export function innloggingApi(inn, req, res, sti, ekstraHoder = {}) {
   const json = (status, obj, hoder = {}) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...corsFor(req), ...ekstraHoder, ...hoder }); res.end(JSON.stringify(obj)); };
   const okt = inn.fraForesporsel(req);
   if (sti === '/api/meg') { return json(inn.aktiv && !okt ? 401 : 200, { aktiv: inn.aktiv, registrering: inn.registrering, kodeKreves: inn.kodeKreves, epost: inn.epostAktiv, ...(okt ? inn.meg(okt.u) : { bruker: null }), utloper: okt?.exp || null }), true; }
+  if (sti === '/api/skogen') return json(okt ? 200 : 401, okt ? inn.skogen() : { feil: 'Logg inn i SkogIQ.ai', innlogging: true }), true;
   if (sti === '/api/admin/oversikt') {
     if (!okt || !inn.erAdmin(okt.u)) return json(okt ? 403 : 401, { feil: 'Bare for administrator', innlogging: !okt }), true;
     const n = Math.min(400, Math.max(7, Number(new URL(req.url, 'http://x').searchParams.get('dager')) || 30));

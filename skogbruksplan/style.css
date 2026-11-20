@@ -789,6 +789,7 @@ progress { accent-color: var(--accent); height: 8px; }
 .om-app span { font-family: var(--font-mono); font-size: 11px; }
 .rail-versjon { font: 500 10px var(--font-mono); color: #8a9a91; opacity: .85; text-align: center; margin-top: auto; padding-top: 6px; cursor: default; }
 @media (max-width: 860px) { .rail-versjon { display: none; } }
+@media (max-width: 860px) { .skogen-merke { display: none !important; } } /* 🌲 skogen siste døgn: bare i sidemenyen på PC – på mobil i SkogIQ Felt (Mer) */
 
 /* Kommuneanalyse: driftsforhold og kjøreskader */
 .kom-drift-kort { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 10px 0; background: var(--surface-2); }

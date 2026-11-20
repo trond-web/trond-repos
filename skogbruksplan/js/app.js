@@ -64,6 +64,7 @@ import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } 
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { eiendomGrenseLag as eiendomGrenseLagRod } from './eiendomslag.js';
 import { apneTilbakemelding, oppdaterMerke as tbMerke, ulesteSvar as tbUleste } from './tilbakemelding-ui.js';
+import { startSkogen } from './skogen-ui.js';
 import * as AF from './artsfilter.js';
 import * as JUL from './juletre.js';
 import { lagStolpeUi } from './stolpe-ui.js';
@@ -903,6 +904,8 @@ document.addEventListener('click', (e) => { if (e.target.closest('[data-tilbakem
 // Svar fra SkogIQ.ai på tilbakemeldinger: rødt merke på 📣 (sjekkes ved innlogging, hvert 5. minutt og når appen vises igjen)
 const startTbMerke = () => { tbMerke(); setInterval(() => { if (document.visibilityState === 'visible') tbMerke(); }, 5 * 60000); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') tbMerke(); }); };
 if (innloggetBruker()) startTbMerke(); else window.addEventListener('skogiq-innlogget', startTbMerke, { once: true });
+// 🌲 Skogen siste døgn: hvor mange som har vært i SkogIQ.ai (bare antall, js/skogen-ui.js)
+if (innloggetBruker()) startSkogen(); else window.addEventListener('skogiq-innlogget', () => startSkogen(), { once: true });
 
 function visDetalj() {
   const boks = $('#bestandDetalj');

@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.2.0 – 🌲 Hvor mange er i skogen? (2026-11-20)
+
+*Nytt.* Nederst i sidemenyen ser du nå hvor mange som har vært i SkogIQ.ai siste døgn, og hvor mange som er der akkurat nå (🌲 13 · 4 nå). Trykk for å se den lille skogen. I SkogIQ Felt ligger den under «Mer». Bare antall vises – aldri navn. Personvernerklæringen er oppdatert (versjon 1.11).
+
 ## 2.1.0 – 🌲 Skogen siste døgn (admin) (2026-11-20)
 
 *Nytt.* Admin-siden viser nå hvor mange som har vært pålogget de siste 24 timene – som en skog. Hver bruker er et tre langs en tidslinje, og de som er i skogen akkurat nå, står i lysningen og svaier i vinden. Himmelen følger klokka, og gjengen får sin egen beskrivelse, fra «én ensom tømmerhogger» til «årsmøte i skogeierlaget».

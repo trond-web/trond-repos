@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.10', dato: '2026-11-19', kreverGodkjenning: '1.9' };
+export const VILKAR = { versjon: '1.11', dato: '2026-11-20', kreverGodkjenning: '1.9' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -33,8 +33,8 @@ export const BEHANDLINGER = [
     opplysninger: 'Det du selv fyller ut: telefon, gård eller foretak, organisasjonsnummer, adresse, kommune, skogeierandelslag, en kort tekst om gården og eventuelt et profilbilde (beskåret og nedskalert i nettleseren).',
     grunnlag: 'avtale', lagring: 'Til du endrer det, eller kontoen slettes. Et byttet eller fjernet profilbilde slettes med en gang.', mottakere: 'Ingen. Navn, foretak, kommune, roller og profilbilde vises i Nettverk for dem du er koblet til, og i katalogen for innkjøpere og entreprenører. Profilbildet kan bare hentes av innloggede brukere.', api: ['/api/bilde'] },
   { id: 'bruk', navn: 'Bruksstatistikk', formaal: 'Se hvilke deler av løsningen som brukes, rette feil og prioritere videre utvikling. Administrator ser statistikken.',
-    opplysninger: 'Per dag: antall sidevisninger og serverkall, aktive minutter og hvilke faner du har åpnet. Ingen sporing på tvers av nettsteder og ingen reklame.',
-    grunnlag: 'interesse', lagring: '400 dager.', mottakere: 'Ingen.', api: ['/api/bruk', '/api/admin'] },
+    opplysninger: 'Per dag: antall sidevisninger og serverkall, aktive minutter og hvilke faner du har åpnet, og når du sist var aktiv. Innloggede brukere ser bare hvor mange som har vært aktive siste døgn og akkurat nå («Skogen siste døgn») – aldri navn. Ingen sporing på tvers av nettsteder og ingen reklame.',
+    grunnlag: 'interesse', lagring: '400 dager.', mottakere: 'Ingen.', api: ['/api/bruk', '/api/admin', '/api/skogen'] },
   { id: 'tilbakemelding', navn: 'Tilbakemeldinger og forslag', formaal: 'Ta imot ros, feilmeldinger og forbedringsforslag, ha en samtale med deg om dem og forbedre SkogIQ.ai.',
     opplysninger: 'Stjerner (1–5), type, teksten du skriver, hvilken del av appen du var i, appversjon, navnet ditt og e-postadressen (brukernavnet), og samtalen med administrator: meldingene begge veier, statusendringer og når meldingene er lest.',
     grunnlag: 'initiativ', lagring: 'Til du sletter kontoen, eller administrator sletter tilbakemeldingen.', mottakere: 'Bare administrator.', api: ['/api/tilbakemelding'] },

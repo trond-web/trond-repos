@@ -52,8 +52,16 @@ function tre(x, bunn, h, slag, farge, svai, tittel) {
   return `<g transform="translate(${x.toFixed(1)} ${bunn}) scale(${s.toFixed(2)})"><g class="${svai ? 'skog-svai' : ''}" style="animation-delay:${(-hash(tittel) * 3).toFixed(2)}s"><title>${esc(tittel)}</title>${kropp}</g></g>`;
 }
 
-// HTML for kortet. brukere = d.brukere fra /api/admin/oversikt.
-export function skogKort(brukere, { naa = Date.now(), timeNaa = new Date(naa).getHours() } = {}) {
+// Anonymt: fra tellingen i /api/skogen ({ siste24, naa, timer[24] }) til «brukere» uten navn – til visningen for alle.
+export function anonymeBrukere(s, naa = Date.now()) {
+  const ut = []; const n = Math.min(s?.naa || 0, s?.timer?.[0] || 0);
+  for (let k = 0; k < n; k++) ut.push({ bruker: `naa-${k}`, sistAktiv: naa - 60000 });
+  (s?.timer || []).forEach((c, i) => { for (let k = 0; k < c - (i === 0 ? n : 0); k++) ut.push({ bruker: `t${i}-${k}`, sistAktiv: naa - (i + (i === 0 ? 0.5 : (k + 1) / (c + 1))) * 3600000 }); });
+  return ut;
+}
+
+// HTML for kortet. brukere = d.brukere fra /api/admin/oversikt. anonym = uten navn (for alle brukere).
+export function skogKort(brukere, { naa = Date.now(), timeNaa = new Date(naa).getHours(), anonym = false } = {}) {
   const liste = iSkogen(brukere, naa); const naaListe = liste.filter((x) => x.naa); const g = gjeng(liste.length);
   const B = 720; const H = 160; const bunn = 138; const sky = himmel(timeNaa);
   // Tidslinjen (−24 t til nå) går fram til lysningen til høyre, der de som er i skogen akkurat nå, står på rekke.
@@ -66,7 +74,7 @@ export function skogKort(brukere, { naa = Date.now(), timeNaa = new Date(naa).ge
     const r = hash(x.bruker); const slag = r < 0.6 ? 'gran' : r < 0.82 ? 'furu' : 'bjork'; const alder = (naa - x.sist) / DOGN;
     const h = x.naa ? Math.max(44, Math.min(70, avst * 2.6)) : 34 + (1 - alder) * 22 + r * 8; const bakgrunn = x.naa ? 0 : r * 10 - 5;
     const farge = sky.natt ? { bar: '#123c2a', lys: '#1f5a3e', lauv: '#2c5a2a' } : x.naa ? { bar: '#1f6b4a', lys: '#4fae7a', lauv: '#5fa83f' } : { bar: '#2f7d55', lys: '#7cc49a', lauv: '#8ccf5f' };
-    return tre(xFor(x, r), bunn + bakgrunn * 0.6, h, slag, farge, x.naa, `${x.navn}${x.navn !== x.bruker ? ` (${x.bruker})` : ''} – ${x.naa ? 'i skogen nå 🌲' : siden(naa - x.sist)}`);
+    return tre(xFor(x, r), bunn + bakgrunn * 0.6, h, slag, farge, x.naa, `${anonym ? 'En skogbruker' : `${x.navn}${x.navn !== x.bruker ? ` (${x.bruker})` : ''}`} – ${x.naa ? 'i skogen nå 🌲' : anonym ? (naa - x.sist < 3600000 ? 'siste time' : `for ${Math.floor((naa - x.sist) / 3600000)}–${Math.floor((naa - x.sist) / 3600000) + 1} timer siden`) : siden(naa - x.sist)}`);
   }).join('');
   const stjerner = sky.natt ? Array.from({ length: 28 }, (_, i) => `<circle cx="${(hash(`s${i}`) * B).toFixed(0)}" cy="${(hash(`y${i}`) * 75).toFixed(0)}" r="${(0.6 + hash(`r${i}`)).toFixed(1)}" fill="#fff" opacity="${(0.4 + hash(`o${i}`) * 0.6).toFixed(2)}"/>`).join('') : '';
   const sol = sky.natt ? `<circle cx="520" cy="34" r="15" fill="#f4f1d6"/><circle cx="527" cy="29" r="13" fill="${sky.fra}"/>` : `<circle cx="520" cy="36" r="17" fill="#ffd34d" opacity=".95"/>`;
@@ -82,7 +90,7 @@ export function skogKort(brukere, { naa = Date.now(), timeNaa = new Date(naa).ge
     <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
       <div style="display:flex;gap:18px"><div><div class="skog-tall">${liste.length}</div><div class="hint">${liste.length === 1 ? 'skogbruker' : 'skogbrukere'} innom<br>siste 24 timer</div></div>
       <div><div class="skog-tall" style="color:#c98500">${naaListe.length}</div><div class="hint">i skogen<br>akkurat nå</div></div></div>
-      <div style="flex:1;min-width:220px;font-size:15px"><b>${g.ikon} ${esc(g.tekst)}</b>${naaListe.length ? `<div class="hint">Nå: ${naaListe.slice(0, 6).map((x) => esc(x.navn)).join(', ')}${naaListe.length > 6 ? ` og ${naaListe.length - 6} til` : ''} 🪓</div>` : ''}</div>
+      <div style="flex:1;min-width:220px;font-size:15px"><b>${g.ikon} ${esc(g.tekst)}</b>${naaListe.length && !anonym ? `<div class="hint">Nå: ${naaListe.slice(0, 6).map((x) => esc(x.navn)).join(', ')}${naaListe.length > 6 ? ` og ${naaListe.length - 6} til` : ''} 🪓</div>` : ''}</div>
     </div>
     <svg viewBox="0 0 ${B} ${H}" width="100%" role="img" aria-label="${liste.length} brukere siste døgn, ${naaListe.length} pålogget nå" style="display:block;border-radius:14px;max-height:220px">
       <defs><linearGradient id="skogHimmel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky.fra}"/><stop offset="1" stop-color="${sky.til}"/></linearGradient></defs>
@@ -95,5 +103,5 @@ export function skogKort(brukere, { naa = Date.now(), timeNaa = new Date(naa).ge
       ${traer || `<text x="${B / 2}" y="${bunn - 40}" text-anchor="middle" font-size="40">🦉</text>`}
       ${merker}
     </svg>
-    <p class="hint" style="margin:6px 0 0">Hvert tre er en bruker, plassert etter når de sist var aktive. Trærne i lysningen til høyre er i skogen nå (aktive siste 5 minutter) og svaier i vinden. Hold musen over et tre for å se hvem det er.</p>`;
+    <p class="hint" style="margin:6px 0 0">Hvert tre er en bruker, plassert etter når de sist var aktive. Trærne i lysningen til høyre er i skogen nå (aktive siste 5 minutter) og svaier i vinden. ${anonym ? 'Ingen navn vises – bare hvor mange.' : 'Hold musen over et tre for å se hvem det er.'}</p>`;
 }

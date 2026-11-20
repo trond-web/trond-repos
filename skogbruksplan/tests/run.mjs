@@ -3991,6 +3991,26 @@ test('Skogen siste døgn (admin): hvem som har vært innom, hvem som er der nå,
   assert.match(S.skogKort([], { naa, timeNaa: 2 }), /🦉/); assert.match(S.skogKort([], { naa, timeNaa: 2 }), /#0b1d3a/, 'nattehimmel');
 });
 
+test('Skogen siste døgn for alle: /api/skogen gir bare antall (ingen navn), krever innlogging, og anonym skog', async () => {
+  const { lagInnlogging, innloggingApi } = await import('../auth.js');
+  const { mkdtempSync } = await import('node:fs'); const { tmpdir } = await import('node:os'); const { join } = await import('node:path');
+  let tid = Date.UTC(2026, 10, 20, 12); const fil = join(mkdtempSync(join(tmpdir(), 'skogiq-')), 'brukere.json');
+  const inn = lagInnlogging({ registrering: true, fil, bruker: 'trond', passord: 'skog-og-mark', naa: () => tid });
+  for (const [u, min] of [['anne@x.no', 2], ['bjorn@x.no', 50], ['carl@x.no', 125], ['dag@x.no', 26 * 60]]) { tid = Date.UTC(2026, 10, 20, 12) - min * 60000; inn.registrer(u, { bruker: u, passord: 'granskogen-77', vilkar: PV_VILKAR.versjon, roller: ['skogeier'] }); inn.bruk(u, 'kall'); }
+  tid = Date.UTC(2026, 10, 20, 12);
+  const s = inn.skogen(); assert.equal(s.siste24, 3); assert.equal(s.naa, 1); assert.equal(s.timer.length, 24); assert.deepEqual(s.timer.slice(0, 3), [2, 0, 1]);
+  assert.ok(!JSON.stringify(s).includes('@'), 'ingen e-post eller navn');
+  const svar = (sti, cookie) => new Promise((ok) => { const r = { writeHead(st) { r.st = st; }, end(x) { r.d = JSON.parse(x); ok(r); } }; innloggingApi(inn, { method: 'GET', url: sti, headers: cookie ? { cookie } : {}, socket: {} }, r, sti); });
+  assert.equal((await svar('/api/skogen')).st, 401);
+  const token = inn.lagToken ? inn.lagToken('anne@x.no') : null;
+  if (token) { const r = await svar('/api/skogen', `skogiq_okt=${token}`); if (r.st === 200) assert.equal(r.d.siste24, 3); }
+  const S = await import('../js/admin-skog.js'); const naa = Date.UTC(2026, 10, 20, 12);
+  const anon = S.anonymeBrukere(s, naa); assert.equal(anon.length, 3); assert.equal(S.iSkogen(anon, naa).filter((x) => x.naa).length, 1);
+  const h = S.skogKort(anon, { naa, timeNaa: 12, anonym: true }); assert.match(h, /aria-label="3 brukere siste døgn, 1 pålogget nå"/); assert.match(h, /En skogbruker – i skogen nå/); assert.match(h, /En skogbruker – for 2–3 timer siden/);
+  assert.ok(!/naa-0|t0-|t2-/.test(h), 'ingen interne id-er i visningen'); assert.match(h, /Ingen navn vises/);
+  const U = await import('../js/skogen-ui.js'); assert.match(U.merkeHtml({ siste24: 12, naa: 3 }), /🌲 12[\s\S]*3 nå/); assert.match(U.merkeHtml({ siste24: 2, naa: 0 }), /siste døgn/); assert.match(U.merkeTittel({ siste24: 1, naa: 0 }), /1 skogbruker i SkogIQ/);
+});
+
 test('E-post via eget e-postprogram: mailto med riktig koding', async () => {
   const { mailto } = await import('../js/epost.js');
   const u = mailto({ til: 'ola@x.no', emne: 'Glemt passord – SkogIQ.ai', tekst: 'Hei!\n\nLinje 2 & mer?' });
@@ -4073,7 +4093,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
   '1.8': '1b41be6f78760f90',
-  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42',
+  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
