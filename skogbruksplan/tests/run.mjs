@@ -422,6 +422,36 @@ test('Egenskapssøk: bestand og tiltak, operatorer, alle/minst ett, bestandsfelt
   assert.ok(Object.keys(SO.feltFor('tiltak')).includes('b.hogstklasse')); assert.equal(SO.nyttVilkar('tiltak').felt, 'type');
 });
 
+test('SkogIQ-lederen (VR): lokale svar om stedet du står, stedstekst til AI og AI-kall med strømming', async () => {
+  const LS = await import('../js/leder-svar.js'); const { STANDARD_INNSTILLINGER: INN, beregnetHogstklasse, hkGrenser, laavesteHogstalder } = await import('../js/model.js');
+  const alderFor = (o, k) => { for (let x = 5; x < 150; x++) if (beregnetHogstklasse(x, laavesteHogstalder(o), 20, hkGrenser(o)) === k) return x; return null; };
+  const b = (o) => ({ id: o.nr, nr: o.nr, areal: 10, treslag: 'G', bonitet: 17, alder: 50, volumDaa: 20, treantall: 220, hoyde: 12, tiltak: [], ekstra: { OVERHOYDE: 13, MIDDELDIAMETER: 14 }, takstAar: 2026, ...o });
+  const tynn = b({ nr: '7', alder: alderFor({ treslag: 'G', bonitet: 17 }, 3) + 2, volumDaa: 18, tiltak: [{ id: 't', type: 'gjodsling', aar: 2027, status: 'planlagt' }] });
+  const moden = b({ nr: '9', alder: 110, volumDaa: 35, kantsone: { daa: 1.2, andel: 0.12, bredde: 15 } });
+  const S = { innstillinger: INN, bestand: [tynn, moden] }; const sted = (x, e = {}) => ({ b: x, S, inn: INN, iAar: 2026, helning: null, fukt: null, ...e });
+  assert.match(LS.lokaltSvar('Hva står jeg i?', sted(tynn)).tekst, /bestand 7: gran på bonitet 17, hogstklasse III/);
+  assert.match(LS.lokaltSvar('Trenger det tynning eller ungskogpleie?', sted(tynn)).tekst, /^Ja, trolig førstegangstynning: HK III/);
+  assert.match(LS.lokaltSvar('Når kan dette hogges?', sted(tynn)).tekst, /^Ikke ennå.*tidligst rundt 20\d\d/);
+  assert.match(LS.lokaltSvar('Når kan dette hogges?', sted(moden)).tekst, /^Bestandet er hogstmodent.*ikke planlagt ennå/);
+  assert.match(LS.lokaltSvar('Hva er tømmeret her verdt?', sted(moden)).tekst, /350 kubikk.*kroner i rotnetto/);
+  assert.match(LS.lokaltSvar('Hvilke tiltak er planlagt her?', sted(tynn)).tekst, /gjødsling 2027/);
+  assert.match(LS.lokaltSvar('Hvilke tiltak er planlagt her?', sted(moden)).tekst, /ingen planlagte tiltak/);
+  assert.match(LS.lokaltSvar('Er det miljøhensyn jeg må ta?', sted(moden)).tekst, /kantsone mot vann/);
+  assert.match(LS.lokaltSvar('Kan jeg kjøre med maskin her?', sted(tynn, { helning: 55, fukt: { navn: 'Våt mark', drift: 'Kjør bare på frossen mark.' } })).tekst, /svært bratt.*55 prosent.*våt mark/i);
+  assert.match(LS.lokaltSvar('Fortell noe om fuglene', sted(tynn)).tekst, /Spør meg gjerne om hogst/);
+  assert.match(LS.lokaltSvar('Hva står jeg i?', { S, nabo: true }).tekst, /utenfor planen/);
+  assert.match(LS.lokaltSvar('Hva står jeg i?', { S, flate: { kategori: 'jordbruk', beskrivelse: 'Fulldyrka jord' } }).tekst, /fulldyrka jord/);
+  assert.equal(LS.FORSLAG.length, 7); for (const f of LS.FORSLAG) assert.ok(LS.lokaltSvar(f, sted(moden)).tekst.length > 20, f);
+  assert.match(LS.stedTekst(sted(tynn, { helning: 12 })), /står i bestand 7 \(Gran, bonitet 17, HK III.*Helning der brukeren står: 12 %/);
+  // AI-kallet: plandata bare i første spørsmål, strømming, kort svar
+  const kall = []; const lagKlient = (svar) => ({ beta: { messages: { stream: (p) => { kall.push(p); const ev = svar.split(' ').map((w, i) => ({ type: 'content_block_delta', delta: { type: 'text_delta', text: (i ? ' ' : '') + w } })); return { async *[Symbol.asyncIterator]() { yield* ev; }, finalMessage: async () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: svar }] }) }; } } } });
+  const deler = []; const r1 = await LS.aiSvar(lagKlient('Ja, tynn i år.'), { sporsmal: 'Bør jeg tynne?', kontekst: 'PLAN', sted: sted(tynn), del: (t) => deler.push(t) });
+  assert.equal(r1.tekst, 'Ja, tynn i år.'); assert.ok(deler.length >= 3); assert.equal(kall[0].model, 'claude-opus-5-5'); assert.equal(kall[0].output_config.effort, 'low'); assert.equal(kall[0].fallbacks, 'default'); assert.match(kall[0].messages[0].content[0].text, /<plandata>\nPLAN/);
+  await LS.aiSvar(lagKlient('Ok.'), { sporsmal: 'Og her?', kontekst: 'PLAN', sted: sted(moden), historikk: [r1.melding, r1.svarMelding] });
+  assert.equal(kall[1].messages.length, 3); assert.doesNotMatch(kall[1].messages[2].content[0].text, /plandata/); assert.match(kall[1].messages[2].content[0].text, /bestand 9/);
+  await assert.rejects(LS.aiSvar({ beta: { messages: { stream: () => ({ async *[Symbol.asyncIterator]() {}, finalMessage: async () => ({ stop_reason: 'refusal', content: [] }) }) } } }, { sporsmal: 'x', kontekst: '', sted: sted(tynn) }), /avvist/);
+});
+
 test('kommuneanalyse: HTML-attributter kobles til id i rekkefølge', () => {
   const tab = (alder, gran) => `<table><tr><td>Bestandsalder</td><td><b>${alder}</b><td></td></tr><tr><td>Volum uten bark (m³/ha)</td><td><b>250</b></td></tr><tr><td>Prosentandel gran</td><td><b>${gran}</b><td></td></tr></table>`;
   const a = parseHtmlAlle(`<html>${tab(80, 90)}${tab(20, 10)}</html>`, ['11', '22']);
@@ -4243,7 +4273,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
   '1.8': '1b41be6f78760f90',
-  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c',
+  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {

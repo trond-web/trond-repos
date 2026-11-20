@@ -2,9 +2,9 @@
 // Planens data sendes med som grunnlag. API-nøkkelen lagres bare i denne nettleseren.
 import { lagKontekst } from './ai-kontekst.js';
 
-const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.131.0/+esm';
-const MODELL = 'claude-opus-5-5';
-const NOKKEL = 'skogiq-anthropic-nokkel';
+export const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.131.0/+esm';
+export const MODELL = 'claude-opus-5-5';
+export const NOKKEL = 'skogiq-anthropic-nokkel';
 
 const SYSTEM = `Du er SkogIQ-assistenten, en erfaren norsk skogbruksplanlegger og skogøkonom som hjelper en skogeier med å forstå og bruke skogbruksplanen sin.
 

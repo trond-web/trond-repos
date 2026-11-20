@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.6.0 – 🧑‍🌾 SkogIQ-lederen i den virtuelle skogen (2026-11-20)
+
+*Nytt.* I den virtuelle skogen (og med VR-briller) kan du hente fram SkogIQ-lederen og spørre om stedet du står: hva som står her, når det kan hogges, om det trenger tynning eller ungskogpleie, hva tømmeret er verdt, planlagte tiltak, miljøhensyn og om du kan kjøre med maskin. Svarene kommer fra planens data – og med AI-nøkkel kan du stille frie spørsmål. Svaret står på en tavle ved lederen og leses opp. I VR: høyre grep henter lederen, høyre stikke og avtrekker velger spørsmål. Personvernerklæringen er oppdatert (versjon 1.12).
+
 ## 2.5.0 – 🔎 Egenskapssøk på bestand og tiltak (2026-11-20)
 
 *Nytt.* Finn bestand og tiltak etter egenskaper – f.eks. «gran i hogstklasse III–IV på bonitet 14 eller bedre» eller «planlagte tynninger i år». Øverst i fanene Bestand og Tiltak: legg til vilkår, se antall, areal og volum, vis treffene i kartet og lagre søket. Lagrede søk følger planen og kan åpnes i SkogIQ Felt under Tiltak og Mer, der treffene utheves i kartet.

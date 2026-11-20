@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.5.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.6.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -374,6 +374,27 @@ område som ikke kan drives med vanlige maskiner. Knappen **⛰ Bratthet** slår
 - Øverst til venstre vises dataene for bestandet du står i: treslag, bonitet, hogstklasse med tetthet, alder, høyde, treantall og volum, og vegetasjonstypen.
 
 Dette er en tolkning av dataene, ikke en skanning. Enkelttrær fra laserdata kan legges inn senere.
+
+### 🧑‍🌾 SkogIQ-lederen i den virtuelle skogen (`js/skog3d-leder.js`, `js/leder-svar.js`)
+
+Trykk **«🧑‍🌾 Spør lederen»** i den virtuelle skogen, eller **høyre grep** i VR. Da kommer en skogbruksleder fram foran deg, i refleksvest og med SkogIQ-hjelm. Lederen ser på deg og nikker mens den snakker, og svarer på spørsmål om stedet du står.
+
+- **Spørsmål:** du kan velge mellom sju forslag:
+  - Hva står jeg i?
+  - Når kan dette hogges?
+  - Tynning eller ungskogpleie?
+  - Hva er tømmeret verdt?
+  - Planlagte tiltak
+  - Miljøhensyn
+  - Kan jeg kjøre med maskin?
+
+  Du kan også skrive et spørsmål selv. I VR velger du forslag med høyre stikke opp/ned og spør med høyre avtrekker.
+- **Svar fra planens data:** svarene regnes ut i nettleseren fra bestandet du står i, med hogstalder, skjøtselsbehov (`js/skjotsel.js`), rotnetto, tiltak, kantsone og miljøfigur, helning og markfuktighet. Det virker uten nett.
+- **Med AI-nøkkel** (samme som «Spør AI»): frie spørsmål besvares av Claude (Opus 5.5, lav effort for raske svar, med fallback ved avvisning).
+  - Grunnlaget er planens data og stedet du står. Planen sendes bare med i første spørsmål og bufres.
+  - Svarene er korte og muntlige, høyst tre setninger, og strømmes ut mens de skrives.
+- **Visning:** svaret står på en tavle ved siden av lederen, så det kan leses i brillene, og i panelet på skjermen. Det leses opp med en norsk stemme som kjører på enheten (`localService`). Nettbaserte stemmer brukes ikke, fordi de sender teksten ut.
+- **Stemmestyring er ikke slått på:** talegjenkjenning i nettleseren sender lyden til nettleserleverandøren, som er en ny tredjepart. Den er klar i koden (`TALEGJENKJENNING = false`), men må godkjennes og føres inn i personvernerklæringen før den slås på.
 
 ## AR i felt – grenser, stier, miljø og kulturminner i terrenget (beta, SkogIQ Felt)
 

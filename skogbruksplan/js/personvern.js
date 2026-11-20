@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.11', dato: '2026-11-20', kreverGodkjenning: '1.9' };
+export const VILKAR = { versjon: '1.12', dato: '2026-11-20', kreverGodkjenning: '1.9' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -62,8 +62,8 @@ export const BEHANDLINGER = [
     opplysninger: 'Kartutsnitt, koordinater og eiendomsnummer som slås opp. Nettleseren sender IP-adressen din til leverandørene, slik den gjør for alle nettsider.',
     grunnlag: 'avtale', lagring: 'SkogIQ.ai lagrer ikke oppslagene. Leverandørene har egne regler for logger.',
     mottakere: 'Offentlige kilder som Kartverket, NIBIO, Meteorologisk institutt, NVE, Miljødirektoratet, Artsdatabanken (artsfunn og rødliste), Statens vegvesen og Riksantikvaren. Vær- og flomdata fra NVE hentes via SkogIQ-serveren.', api: ['/api/nve'] },
-  { id: 'ai', navn: 'Spør AI', formaal: 'Svare på spørsmål om skogbruksplanen din.',
-    opplysninger: 'Spørsmålet ditt og et sammendrag av planen (eiendom, bestand, tiltak, økonomi og profilteksten om gården).',
+  { id: 'ai', navn: 'Spør AI og SkogIQ-lederen', formaal: 'Svare på spørsmål om skogbruksplanen din – i «Spør AI» og fra SkogIQ-lederen i den virtuelle skogen.',
+    opplysninger: 'Spørsmålet ditt og et sammendrag av planen (eiendom, bestand, tiltak, økonomi og profilteksten om gården). Fra SkogIQ-lederen også hvilket bestand du står i, helning og markfuktighet der. Uten AI-nøkkel svarer lederen fra planens data i nettleseren, og ingenting sendes.',
     grunnlag: 'initiativ', lagring: 'SkogIQ.ai lagrer ikke samtalen på serveren. Nøkkelen din lagres bare i nettleseren.',
     mottakere: 'Anthropic (USA), direkte fra nettleseren med din egen API-nøkkel, etter Anthropics vilkår. Brukes bare når du selv stiller et spørsmål.', api: [] },
   { id: 'api', navn: 'Integrasjons-API (API-nøkler)', formaal: 'La et system du bruker – for eksempel regnskap, skogeierandelslag, entreprenør eller eget fagsystem – hente og oppdatere dine skogbruksplaner (bestand, tiltak, oppdrag, registreringer og beregninger) automatisk.',
