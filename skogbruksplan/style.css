@@ -381,7 +381,13 @@ progress { accent-color: var(--accent); height: 8px; }
 /* Kommune */
 .kom-info { margin: 0 0 12px; }
 .kom-info .advarsel { color: var(--serious); }
-.kom-kategorier { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.kom-kategorier { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+@media (max-width: 1250px) { .kom-kategorier { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kom-treslag { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin: 2px 0 10px; }
+.kom-treslag button { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; padding: 6px 10px; font: inherit; font-size: 12.5px; cursor: pointer; text-align: left; display: grid; gap: 1px; }
+.kom-treslag button b { font-size: 13.5px; } .kom-treslag button span { color: var(--text-2); font-size: 11.5px; }
+.kom-treslag button.aktiv { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.kom-treslag .strek { display: block; height: 4px; border-radius: 2px; margin-top: 3px; background: var(--ts); }
 .kom-kategorier button {
   --kat: var(--accent);
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; cursor: pointer;

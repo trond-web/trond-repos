@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.3.0 – 🌲 Tynningsbehov i kommuneanalysen (2026-11-20)
+
+*Nytt.* Kommuneanalysen har fått en fjerde kategori: tynning i hogstklasse III og IV. Den finner tett produksjonsskog på god nok bonitet (ut fra treantall og grunnflate i SR16) før skogen blir for høy, og anslår uttak og rotnetto. Fordelingen på gran, furu og lauv vises øverst – trykk for å se bare ett treslag – og listen kan sorteres på treslag. Kriteriene kan justeres.
+
 ## 2.2.0 – 🌲 Hvor mange er i skogen? (2026-11-20)
 
 *Nytt.* Nederst i sidemenyen ser du nå hvor mange som har vært i SkogIQ.ai siste døgn, og hvor mange som er der akkurat nå (🌲 13 · 4 nå). Trykk for å se den lille skogen. I SkogIQ Felt ligger den under «Mer». Bare antall vises – aldri navn. Personvernerklæringen er oppdatert (versjon 1.11).

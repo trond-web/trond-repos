@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.2.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.3.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -2286,13 +2286,16 @@ Hver plan har sitt eget veiregister:
 
 ## Kommuneanalyse (fanen «Kommune»)
 
-Går gjennom alle SR16-skogflatene i en kommune og finner tre typer områder:
+Går gjennom alle SR16-skogflatene i en kommune og finner fire typer områder:
 
 | Kategori | Standardkriterier (kan endres i appen) |
 |---|---|
 | **Sluttavvirkning** | Alder ≥ laveste hogstalder for treslag og bonitet, og volum ≥ 15 m³/daa. Bartre. Estimert rotnetto vises. |
 | **Lukket hogst** | Gran, alder ≥ 80 % av hogstalder, bonitet ≤ 17, volum ≥ 10 m³/daa, og flersjiktet (middelhøyde/overhøyde ≤ 0,84) eller blandingsskog (< 75 % gran). Gir bledning eller gruppehogst. Furu som er hogstmoden på bonitet ≤ 14 gir frøtre- eller skjermstilling. |
 | **Ungskogpleie** | Høyde 1,5–7 m, bonitet ≥ 11, og ≥ 30 % lauv eller tett (≥ 100 trær/daa i SR16, som undervurderer småtrær). |
+| **Tynning (HK III–IV)** | Hogstklasse III, eller IV med alder under 85 % av laveste hogstalder (HK ut fra alder og bonitet, som i planene). Bonitet ≥ 14 gran, ≥ 11 furu, ≥ 17 lauv. Overhøyde 10–21 m. Tett: ≥ 150 trær/daa (SR16, over 5 cm) eller grunnflate ≥ 28 m²/ha (fra treantall og middeldiameter). Førstegangstynning når overhøyden er under 15 m i HK III. Uttaket er anslått til 25 % av volumet, med rotnetto ut fra tynningskostnaden. |
+
+**Tynning per treslag:** under tynning vises arealet, antall flater, uttaket og andelen for gran, furu og lauv. Trykk på et treslag for å vise bare det. «Sorter: treslag» sorterer listen på gran, furu og lauv, og deretter anbefalt rekkefølge (uttak og grunnflate). Eksporten (GeoJSON og CSV) har hogstklasse, overhøyde, grunnflate og uttak.
 
 Skogflater i naturvernområder (Miljødirektoratet) og MiS-nøkkelbiotoper får aldri forslag om hogst. Klikk på en flate,
 velg «Finn eiendom» for å se gårds- og bruksnummer fra matrikkelen, og «Lag skogbruksplan» for å lage plan for eiendommen.

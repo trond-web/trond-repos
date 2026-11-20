@@ -149,7 +149,7 @@
     <div class="fane" id="fane-kommune" hidden>
       <div class="kort">
         <h3>Finn skogområder i en kommune</h3>
-        <p class="hint">Går gjennom alle skogflatene i SR16 for kommunen og finner hogstmoden skog, skog egnet for lukket hogst og ungskog som trenger pleie. Verneområder og nøkkelbiotoper holdes utenfor hogstforslagene. Første gang tar det rundt ett minutt og laster ned 20–40 MB. Resultatet lagres på enheten.</p>
+        <p class="hint">Går gjennom alle skogflatene i SR16 for kommunen og finner hogstmoden skog, skog egnet for lukket hogst, ungskog som trenger pleie og tett skog i hogstklasse III–IV med tynningsbehov. Verneområder og nøkkelbiotoper holdes utenfor hogstforslagene. Første gang tar det rundt ett minutt og laster ned 20–40 MB. Resultatet lagres på enheten.</p>
         <form id="komSkjema" class="verktoyrad">
           <input id="komKommune" list="kommuneListe" placeholder="Kommune, f.eks. Nannestad" autocomplete="off" required aria-label="Kommune">
           <button id="komBtn" class="knapp primar" type="submit">Analyser kommunen</button>
@@ -168,14 +168,16 @@
           <button type="button" role="tab" data-kategori="hogst"><span class="navn">Sluttavvirkning</span><span class="tall"></span><span class="under"></span></button>
           <button type="button" role="tab" data-kategori="lukket"><span class="navn">Lukket hogst</span><span class="tall"></span><span class="under"></span></button>
           <button type="button" role="tab" data-kategori="ungskog"><span class="navn">Ungskogpleie</span><span class="tall"></span><span class="under"></span></button>
+          <button type="button" role="tab" data-kategori="tynning"><span class="navn">Tynning (HK III–IV)</span><span class="tall"></span><span class="under"></span></button>
         </div>
         <div class="kort">
           <p id="komBeskrivelse" class="hint" style="margin-top:0"></p>
           <div id="komSum" class="nokkeltall"></div>
+          <div id="komPerTreslag" class="kom-treslag" hidden></div>
           <div class="verktoyrad">
             <select id="komTreslag" aria-label="Treslag"><option value="">Alle treslag</option><option value="G">Gran</option><option value="F">Furu</option><option value="L">Lauv</option></select>
             <select id="komVeiMaks" aria-label="Avstand til bilvei" title="Avstand fra flaten til nærmeste bilvei (NVDB)"><option value="0">Alle avstander til vei</option><option value="100">Inntil 100 m fra vei</option><option value="250">Inntil 250 m fra vei</option><option value="500">Inntil 500 m fra vei</option><option value="1000">Inntil 1 km fra vei</option><option value="2000">Inntil 2 km fra vei</option></select>
-            <select id="komSorter" aria-label="Sorter"><option value="poeng">Sorter: anbefalt</option><option value="areal">Sorter: størst areal</option><option value="vei">Sorter: nærmest vei</option><option value="rotnetto">Sorter: høyest rotnetto</option></select>
+            <select id="komSorter" aria-label="Sorter"><option value="poeng">Sorter: anbefalt</option><option value="areal">Sorter: størst areal</option><option value="vei">Sorter: nærmest vei</option><option value="treslag">Sorter: treslag (gran, furu, lauv)</option><option value="rotnetto">Sorter: høyest rotnetto</option></select>
             <label class="avkrysning"><input type="checkbox" id="komEiendom" checked> Eiendomsgrenser og gnr/bnr i kartet</label>
             <label class="avkrysning" title="Skjul flater som berører NiN-naturtyper eller arter av nasjonal forvaltningsinteresse"><input type="checkbox" id="komUtenNatur"> Skjul flater med naturtyper/arter</label>
             <label class="avkrysning" title="Skjul flater med fredede kulturminner (sikringssoner, Riksantikvaren)"><input type="checkbox" id="komUtenKultur"> Skjul flater med kulturminner</label>

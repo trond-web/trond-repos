@@ -1,6 +1,6 @@
 // Fanen «Kommune»: analyse av en hel kommune med kart, liste, kriterier og kobling til planlaging for eiendommen.
 import { eiendomGrenseLag } from './eiendomslag.js';
-import { hentKommunedata, hentMis, klassifiser, oppsummer, eiendomIPunkt, STANDARD_KRITERIER } from './kommuneanalyse.js';
+import { hentKommunedata, hentMis, klassifiser, oppsummer, perTreslag, eiendomIPunkt, STANDARD_KRITERIER, TRESLAG_REKKEFOLGE } from './kommuneanalyse.js';
 import { TRESLAG } from './model.js';
 import { lagreVerdi, hentVerdi } from './store.js';
 import { fmt } from './charts.js';
@@ -22,13 +22,18 @@ const KATEGORIER = {
   hogst: { navn: 'Sluttavvirkning', farge: '#eb6834', tekst: 'Hogstmoden skog med nok volum til at sluttavvirkning er aktuelt.' },
   lukket: { navn: 'Lukket hogst', farge: '#2a78d6', tekst: 'Skog der bledning, gruppehogst eller skjerm-/frøtrestilling kan være et alternativ til flatehogst.' },
   ungskog: { navn: 'Ungskogpleie', farge: '#1baf7a', tekst: 'Ungskog som er tett eller lauvdominert og trolig trenger rydding.' },
+  tynning: { navn: 'Tynning', farge: '#c99a00', tekst: 'Tett produksjonsskog i hogstklasse III og IV på god nok bonitet, der tynning gir bedre tilvekst og tømmerkvalitet. Uttaket er anslått til 25 % av volumet. Fordelt på treslag under – trykk for å vise bare ett treslag.' },
 };
+const TS_FARGE = { G: '#1f6b4a', F: '#c0782b', L: '#8cbf3f' };
 const KRITERIE_FELT = [
   ['minAreal', 'Minste areal (daa)', 0.5], ['hogstMinVolum', 'Hogst: minste volum (m³/daa)', 1],
   ['lukketMaksBonitetGran', 'Lukket: høyeste bonitet gran', 1], ['lukketMaksHoydeforhold', 'Lukket: maks middelhøyde/overhøyde', 0.01], ['lukketMaksAndelGran', 'Lukket: blandingsskog under % gran', 5],
   ['lukketMinAlderAndel', 'Lukket: minste andel av hogstalder', 0.05], ['lukketMaksBonitetFuru', 'Lukket: høyeste bonitet furu', 1],
   ['ungMinHoyde', 'Ungskog: laveste høyde (m)', 0.5], ['ungMaksHoyde', 'Ungskog: høyeste høyde (m)', 0.5],
   ['ungMinAndelLauv', 'Ungskog: minste andel lauv (%)', 5], ['ungMinTreantall', 'Ungskog: tett fra (trær/daa)', 10], ['ungMinBonitet', 'Ungskog: laveste bonitet', 1],
+  ['tynnMinBonitetGran', 'Tynning: laveste bonitet gran', 1], ['tynnMinBonitetFuru', 'Tynning: laveste bonitet furu', 1], ['tynnMinBonitetLauv', 'Tynning: laveste bonitet lauv (99 = ingen)', 1],
+  ['tynnMinOverhoyde', 'Tynning: laveste overhøyde (m)', 1], ['tynnMaksOverhoyde', 'Tynning: høyeste overhøyde (m)', 1],
+  ['tynnMinTreantall', 'Tynning: tett fra (trær/daa)', 10], ['tynnMinGrunnflate', 'Tynning: eller grunnflate fra (m²/ha)', 1], ['tynnMaksAlderAndel', 'Tynning: HK IV under andel av hogstalder', 0.05],
   ['maksAvstandVei', 'Maks avstand til bilvei (m, 0 = alle)', 50],
 ];
 
@@ -96,6 +101,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     if (sortering === 'areal') liste = liste.slice().sort((a, b) => b.areal - a.areal);
     else if (sortering === 'vei') liste = liste.slice().sort((a, b) => (a.veiAvstand ?? 1e9) - (b.veiAvstand ?? 1e9) || b.areal - a.areal);
     else if (sortering === 'rotnetto') liste = liste.slice().sort((a, b) => (b.rotnetto || 0) - (a.rotnetto || 0));
+    else if (sortering === 'treslag') liste = liste.slice().sort((a, b) => (TRESLAG_REKKEFOLGE[a.treslag] ?? 9) - (TRESLAG_REKKEFOLGE[b.treslag] ?? 9) || b.poeng - a.poeng);
     if (kategori === 'hogst' && harDrift()) {
       oppdaterDrift(liste);
       if (bareDrivbar) liste = liste.filter((f) => f.drift?.naa && f.drift.naa.risiko < 50);
@@ -109,7 +115,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     return `<div class="kom-popup"><b>${k.navn}</b>${f.metode ? ` – ${esc(f.metode)}` : ''}<br>
       ${desimal(f.areal)} daa · ${TRESLAG[f.treslag] || ''} (${esc(f.dominerende || '')}) · bonitet ${f.bonitet ?? '–'}<br>
       Alder ${f.alder !== null ? Math.round(f.alder) : '–'} år · ${desimal(f.volumDaa)} m³/daa · høyde ${desimal(f.hoyde)} m · ${f.treantall ? Math.round(f.treantall) : '–'} trær/daa<br>
-      ${f.rotnetto ? `Rotnetto ca. ${fmt(f.rotnetto)} kr<br>` : ''}${veiLinje(f)}${naturLinjer(f)}<span class="hint">${esc(f.grunn)}${f.maaleaar ? ` · SR16 målt ${f.maaleaar}` : ''}</span><br>
+      ${f.hk ? `Hogstklasse ${f.hk === 3 ? 'III' : 'IV'} · overhøyde ${desimal(f.overhoyde ?? f.hoyde)} m${f.grunnflate ? ` · grunnflate ${desimal(f.grunnflate, 0)} m²/ha` : ''}${f.diameter ? ` · ${desimal(f.diameter, 0)} cm` : ''}<br>Uttak ca. ${fmt(f.uttakM3)} m³ (25 %)<br>` : ''}${f.rotnetto ? `Rotnetto ca. ${fmt(f.rotnetto)} kr${f.hk ? ' (tynning)' : ''}<br>` : ''}${veiLinje(f)}${naturLinjer(f)}<span class="hint">${esc(f.grunn)}${f.maaleaar ? ` · SR16 målt ${f.maaleaar}` : ''}</span><br>
       ${kategori === 'hogst' && f.drift ? driftPopup(f) : ''}
       <div class="kom-eiendom" data-eiendom-for="${esc(f.id)}">${eiendomHtml(f)}</div></div>`;
   }
@@ -262,14 +268,26 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     tegnDriftKort(liste);
     $('#komBeskrivelse').textContent = KATEGORIER[kategori].tekst;
     $('#komSum').innerHTML = `<div><b>${fmt(o.antall)}</b><span>flater</span></div><div><b>${fmt(o.areal)} daa</b><span>areal</span></div>
-      <div><b>${fmt(o.volum)} m³</b><span>volum</span></div>${kategori === 'hogst' ? `<div><b>${desimal(o.rotnetto / 1e6, 1)} mill</b><span>kr rotnetto (est.)</span></div>` : ''}`;
+      <div><b>${fmt(o.volum)} m³</b><span>volum</span></div>${kategori === 'tynning' ? `<div><b>${fmt(o.uttak)} m³</b><span>uttak i tynning (est.)</span></div>` : ''}${kategori === 'hogst' || kategori === 'tynning' ? `<div><b>${desimal(o.rotnetto / 1e6, 1)} mill</b><span>kr rotnetto (est.)</span></div>` : ''}`;
+    tegnPerTreslag();
     const vis = liste.slice(0, 150);
     $('#komListe').innerHTML = vis.length ? vis.map((f, i) => `<button type="button" class="kom-rad" data-flate="${esc(f.id)}">
       <span class="nr">${i + 1}</span>
-      <span><b>${desimal(f.areal)} daa · ${TRESLAG[f.treslag] || ''} ${f.bonitet ?? ''}</b> · ${f.alder !== null ? Math.round(f.alder) : '–'} år · ${desimal(f.volumDaa)} m³/daa${f.rotnetto ? ` · ca. ${fmt(f.rotnetto / 1000)} k kr` : ''}${f.veiAvstand !== undefined ? ` · 🛣 ${esc(avstandTekst(f.veiAvstand))}` : ''}${data.naturFlater?.[f.id] ? ` · <span class="kom-natur-merke" title="${esc(data.naturFlater[f.id].map((o) => NATUR.tekst(o)).join('; '))}">${data.naturFlater[f.id].some((o) => o.type === 'nin') ? '🌿' : ''}${data.naturFlater[f.id].some((o) => o.type === 'art') ? '🦉' : ''} naturverdi</span>` : ''}${data.kulturFlater?.[f.id] ? ` · <span class="kom-kultur-merke" title="${esc(data.kulturFlater[f.id].map((k) => k.navn).join('; '))}">🏛 kulturminne</span>` : ''}<small class="kom-gnr" data-gnr>${gnrTekst(f) ? `Gnr/bnr ${esc(gnrTekst(f))}` : ''}</small>${f.metode ? ` · ${esc(f.metode)}` : ''}<br><span class="hint">${esc(f.grunn)}</span>${kategori === 'hogst' && f.drift ? `<br><span class="kom-risiko" style="--farge:${f.drift.naa?.nivaa.farge || '#999'}">${esc(f.drift.naa?.nivaa.navn || 'Ukjent')}${f.drift.naa ? ` · ${f.drift.naa.risiko}` : ''}</span> <span class="hint">${esc(SESONG[f.drift.statisk.sesong].navn)} · ${esc(f.drift.statisk.grunner.slice(0, 2).join(' · '))}${f.drift.beste && f.drift.beste.dato !== valgtDag && f.drift.naa?.risiko >= 30 ? ` · bedre ${ukedag(f.drift.beste.dato)}` : ''}</span>` : ''}</span>
+      <span><b>${desimal(f.areal)} daa · ${TRESLAG[f.treslag] || ''} ${f.bonitet ?? ''}${f.hk ? ` · HK ${f.hk === 3 ? 'III' : 'IV'}` : ''}</b> · ${f.alder !== null ? Math.round(f.alder) : '–'} år · ${desimal(f.volumDaa)} m³/daa${f.hk ? ` · ${f.treantall ? `${Math.round(f.treantall)} trær/daa` : ''}${f.grunnflate ? ` · G ${Math.round(f.grunnflate)} m²/ha` : ''} · uttak ${fmt(f.uttakM3)} m³` : ''}${f.rotnetto ? ` · ca. ${fmt(f.rotnetto / 1000)} k kr` : ''}${f.veiAvstand !== undefined ? ` · 🛣 ${esc(avstandTekst(f.veiAvstand))}` : ''}${data.naturFlater?.[f.id] ? ` · <span class="kom-natur-merke" title="${esc(data.naturFlater[f.id].map((o) => NATUR.tekst(o)).join('; '))}">${data.naturFlater[f.id].some((o) => o.type === 'nin') ? '🌿' : ''}${data.naturFlater[f.id].some((o) => o.type === 'art') ? '🦉' : ''} naturverdi</span>` : ''}${data.kulturFlater?.[f.id] ? ` · <span class="kom-kultur-merke" title="${esc(data.kulturFlater[f.id].map((k) => k.navn).join('; '))}">🏛 kulturminne</span>` : ''}<small class="kom-gnr" data-gnr>${gnrTekst(f) ? `Gnr/bnr ${esc(gnrTekst(f))}` : ''}</small>${f.metode ? ` · ${esc(f.metode)}` : ''}<br><span class="hint">${esc(f.grunn)}</span>${kategori === 'hogst' && f.drift ? `<br><span class="kom-risiko" style="--farge:${f.drift.naa?.nivaa.farge || '#999'}">${esc(f.drift.naa?.nivaa.navn || 'Ukjent')}${f.drift.naa ? ` · ${f.drift.naa.risiko}` : ''}</span> <span class="hint">${esc(SESONG[f.drift.statisk.sesong].navn)} · ${esc(f.drift.statisk.grunner.slice(0, 2).join(' · '))}${f.drift.beste && f.drift.beste.dato !== valgtDag && f.drift.naa?.risiko >= 30 ? ` · bedre ${ukedag(f.drift.beste.dato)}` : ''}</span>` : ''}</span>
     </button>`).join('') + (liste.length > vis.length ? `<p class="hint">Viser de ${vis.length} største av ${fmt(liste.length)}. Alle vises i kartet og i eksporten.</p>` : '')
       : '<div class="tom">Ingen flater oppfyller kriteriene.</div>';
     fyllEiendommer(vis);
+  }
+
+  // Fordeling på treslag (alle flater i kategorien, før treslagsfilteret). Trykk = vis bare det treslaget.
+  function tegnPerTreslag() {
+    const el = $('#komPerTreslag'); if (!el) return;
+    if (kategori !== 'tynning') { el.hidden = true; el.innerHTML = ''; return; }
+    const ts = $('#komTreslag').value; const fordeling = perTreslag(resultat.tynning); const sum = Object.values(fordeling).reduce((s, x) => s + x.areal, 0) || 1;
+    el.hidden = false;
+    el.innerHTML = ['G', 'F', 'L'].map((t) => { const x = fordeling[t] || { antall: 0, areal: 0, uttak: 0 };
+      return `<button type="button" data-kom-ts="${t}" class="${ts === t ? 'aktiv' : ''}" style="--ts:${TS_FARGE[t]}" ${x.antall ? '' : 'disabled'} title="Vis bare ${TRESLAG[t].toLowerCase()}"><b>${TRESLAG[t]} · ${fmt(x.areal)} daa</b><span>${fmt(x.antall)} flater · ${fmt(x.uttak)} m³ uttak · ${Math.round((x.areal / sum) * 100)} %</span><i class="strek" style="width:${Math.max(4, (x.areal / sum) * 100)}%"></i></button>`; }).join('')
+      + (ts ? '<button type="button" data-kom-ts=""><b>Alle treslag</b><span>vis alle igjen</span></button>' : '');
   }
 
   function tegnDriftKort(liste) {
@@ -414,7 +432,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
       KATEGORI: KATEGORIER[kategori].navn, METODE: f.metode || null, AREAL_DAA: +f.areal.toFixed(1), TRESLAG: f.treslag, SKOGTYPE: f.dominerende,
       BONITET: f.bonitet, ALDER: f.alder !== null ? Math.round(f.alder) : null, VOLUM_DAA: f.volumDaa !== null ? +f.volumDaa.toFixed(1) : null,
       MIDDELHOYDE: f.hoyde !== null ? +f.hoyde.toFixed(1) : null, TREANTALL_DAA: f.treantall !== null ? Math.round(f.treantall) : null,
-      ROTNETTO_KR: f.rotnetto ? Math.round(f.rotnetto) : null, AVSTAND_BILVEI_M: f.veiAvstand ?? null, NATURTYPER_NIN: (data.naturFlater?.[f.id] || []).filter((o) => o.type === 'nin').map((o) => NATUR.tekst(o)).join('; ') || null, ARTER: (data.naturFlater?.[f.id] || []).filter((o) => o.type === 'art').map((o) => NATUR.tekst(o)).join('; ') || null, KULTURMINNER: (data.kulturFlater?.[f.id] || []).map((k) => k.navn).join('; ') || null, GNR_BNR: gnrTekst(f) || null, KOMMUNENR: data.kommune?.nr || null, BEGRUNNELSE: f.grunn, SR16_MAALEAAR: f.maaleaar, SR16_ID: f.id,
+      ROTNETTO_KR: f.rotnetto ? Math.round(f.rotnetto) : null, ...(f.hk ? { HOGSTKLASSE: f.hk, OVERHOYDE: f.overhoyde ?? f.hoyde, GRUNNFLATE_M2_HA: f.grunnflate ? Math.round(f.grunnflate) : null, UTTAK_M3: Math.round(f.uttakM3) } : {}), AVSTAND_BILVEI_M: f.veiAvstand ?? null, NATURTYPER_NIN: (data.naturFlater?.[f.id] || []).filter((o) => o.type === 'nin').map((o) => NATUR.tekst(o)).join('; ') || null, ARTER: (data.naturFlater?.[f.id] || []).filter((o) => o.type === 'art').map((o) => NATUR.tekst(o)).join('; ') || null, KULTURMINNER: (data.kulturFlater?.[f.id] || []).map((k) => k.navn).join('; ') || null, GNR_BNR: gnrTekst(f) || null, KOMMUNENR: data.kommune?.nr || null, BEGRUNNELSE: f.grunn, SR16_MAALEAAR: f.maaleaar, SR16_ID: f.id,
       ...(kategori === 'hogst' && f.drift ? {
         PRIORITET: f.prioritet ?? null, KJORESKADERISIKO: f.drift.naa?.risiko ?? null, DRIFTSFORHOLD: f.drift.naa?.nivaa.navn ?? null, DATO: valgtDag,
         GRUNNRISIKO: f.drift.statisk.poeng, DRIFTSSESONG: SESONG[f.drift.statisk.sesong].navn, VAT_ANDEL_PST: f.drift.dtw ? Math.round(vatAndel(f.drift.dtw) * 100) : null,
@@ -451,6 +469,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
   $('#komUtenKultur').addEventListener('change', (e) => { utenKultur = e.target.checked; if (utenKultur && !data?.kultur) melding('Kulturminner hentes – listen filtreres når de er klare.'); tegnListe(); tegnKart(); });
   $('#komUtenNatur').addEventListener('change', (e) => { utenNatur = e.target.checked; if (utenNatur && !data?.natur) melding('Naturtyper og arter hentes – listen filtreres når de er klare.'); tegnListe(); tegnKart(); });
   $('#komSorter').addEventListener('change', (e) => { sortering = e.target.value; tegnListe(); tegnKart(); });
+  $('#komPerTreslag')?.addEventListener('click', (e) => { const b = e.target.closest('[data-kom-ts]'); if (!b) return; $('#komTreslag').value = b.dataset.komTs; tegnListe(); tegnKart(); });
   $('#komEiendom').addEventListener('change', (e) => { if (e.target.checked && aktiv) eiendomLag.addTo(kart); else eiendomLag.remove(); tegnLegend(); });
   kart.on('zoomend', () => { if (aktiv && resultat) tegnLegend(); });
   $('#komNullstill').addEventListener('click', () => { kriterier = { ...STANDARD_KRITERIER }; KRITERIE_FELT.forEach(([k]) => { $(`#krit-${k}`).value = kriterier[k]; }); settVeiValg(); oppdater(); });
