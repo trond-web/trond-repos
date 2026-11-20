@@ -40,6 +40,7 @@ ol { padding-left: 22px; margin: 8px 0; } li { margin: 6px 0; }
 .steg { margin-top: 12px; padding: 12px 14px; background: rgba(127, 209, 164, .1); border-radius: 12px; font-size: 16px; }
 .tom { color: var(--dempet); padding: 30px 10px; text-align: center; font-size: 18px; }
 </style>
+<script type="module">import { startSprak, kobleSprakKnapper } from './js/sprak.js'; startSprak(); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => kobleSprakKnapper()); else kobleSprakKnapper();</script>
 </head>
 <body>
 <header><span class="logo">Skog<b>IQ</b></span><span class="tag">Kontroller · beta</span><span class="status" id="status">Kobler til …</span></header>

@@ -2744,7 +2744,7 @@ function kobleHendelser() {
     dra = null;
   });
   // Versjon og utvikler
-  for (const el of $$('[data-om-app]')) el.innerHTML = `<div class="om-kort"><b>🌲 ${OM.tittel}</b><p>${OM.kort}</p><p><a href="#" data-om-vis>Les mer</a> · Kontakt: ${kontaktHtml()}</p></div><b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span> · <a href="#" data-hva-nytt>Hva er nytt?</a> · <a href="#" data-hjelp="kom-i-gang">Brukerveiledning</a><br>Utviklet av ${UTVIKLER}<br><span data-bruker-info></span><a href="#" data-logg-ut>Logg ut</a>`;
+  for (const el of $$('[data-om-app]')) el.innerHTML = `<div class="om-kort"><b>🌲 ${OM.tittel}</b><p>${OM.kort}</p><p><a href="#" data-om-vis>Les mer</a> · Kontakt: ${kontaktHtml()}</p></div><b>${APPNAVN}</b> versjon ${VERSJON} <span>(${UTGITT})</span> · <a href="#" data-hva-nytt>Hva er nytt?</a> · <a href="#" data-hjelp="kom-i-gang">Brukerveiledning</a><br>Utviklet av ${UTVIKLER}<br><span data-bruker-info></span><a href="#" data-logg-ut>Logg ut</a><br><label class="sprak-valg">🌐 Språk / Language <select data-sprak-velg></select></label>`;
   document.addEventListener('click', (e) => { if (e.target.closest('[data-om-vis]')) { e.preventDefault(); visOm(); } });
   visBruker();
   $('#railVersjon').textContent = `v${VERSJON}`; $('#railVersjon').title = `${signatur()} – klikk for å se hva som er nytt`;

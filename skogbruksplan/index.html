@@ -17,6 +17,7 @@
 <script>try { if (localStorage.getItem('skogiq-start-felt') === '1' && !/[?&]full\b/.test(location.search)) location.replace('felt.html'); } catch (e) {}</script>
 <link rel="apple-touch-icon" href="ikon-180.png">
 <script>try { const t = localStorage.getItem('skogiq-tema'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<script type="module">import { startSprak, kobleSprakKnapper } from './js/sprak.js'; startSprak(); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => kobleSprakKnapper()); else kobleSprakKnapper();</script>
 </head>
 <body>
 <aside class="rail">
@@ -47,6 +48,7 @@
   <button class="tema-knapp tilbakemelding-knapp" type="button" data-tilbakemelding title="Gi tilbakemelding eller forbedringsforslag" aria-label="Gi tilbakemelding"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4a1 1 0 0 0 1 1h2l5 4V5L7 9H5a1 1 0 0 0-1 1Z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg></button>
   <button class="tema-knapp profil-knapp" type="button" data-bytt-passord data-profil-knapp hidden title="Min profil" aria-label="Min profil"><span></span></button>
   <button type="button" class="rail-versjon" id="railVersjon" title="" data-hva-nytt></button>
+  <button class="tema-knapp sprak-knapp" type="button" data-sprak-bytt>EN</button>
   <button class="tema-knapp" id="temaBtn" type="button" title="Bytt mellom lyst og mørkt tema" aria-label="Bytt tema">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>
   </button>
