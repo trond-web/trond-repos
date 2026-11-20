@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.4.0 – 🌱 Ungskogpleie og tynning i Innsikt (2026-11-20)
+
+*Nytt.* Oversikten foreslår nå hvilke bestand som trolig trenger ungskogpleie (HK II) og tynning (HK III–IV) – med areal, bestandsnummer og anslått uttak og rotnetto. «Legg inn tiltak» legger tiltakene rett inn i planen, og «Vis i kartet» farger bestandene etter skjøtselsbehov. Reglene er de samme som i kommuneanalysen. Takk for forslaget!
+
 ## 2.3.1 – 🏎 Kommuneanalysen tåler store kommuner (2026-11-20)
 
 *Rettet.* Kommuneanalysen kunne få siden til å henge i flere minutter – og krasje, særlig på mobil – i store skogkommuner. Sjekken mot nøkkelbiotoper, verneområder, naturtyper, kulturminner og avstand til vei bruker nå et romlig rutenett og går i biter, analysen lagres kompakt, og bytte mellom fanene går mange ganger raskere. Ringsaker (60 000 skogflater): fra over to minutter frys til et par sekunder. Takk for meldingen!

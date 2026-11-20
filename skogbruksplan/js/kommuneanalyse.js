@@ -7,7 +7,9 @@
 // Modulen bruker ikke DOM og kan kjøres i både nettleser og Node.
 import { geoTilUtm, arealM2, punktIGeometri, lagBoksIndeks } from './proj.js';
 import { placemarkGeometri } from './kml.js';
-import { laavesteHogstalder, STANDARD_INNSTILLINGER, treslagFraSR16, SR16_TRESLAG_TEKST, beregnetHogstklasse, hkGrenser, rotnettoPerM3 } from './model.js';
+import { laavesteHogstalder, STANDARD_INNSTILLINGER, treslagFraSR16, SR16_TRESLAG_TEKST } from './model.js';
+import { SKJOTSEL_KRITERIER, vurderUngskog, vurderTynning, grunnflate } from './skjotsel.js';
+export { grunnflate };
 
 const KARTVERKET = 'https://api.kartverket.no';
 const NIBIO = 'https://wms.nibio.no/cgi-bin';
@@ -25,23 +27,10 @@ export const STANDARD_KRITERIER = {
   lukketMaksAndelGran: 75,     // eller blandingsskog: gran under denne andelen (%), resten furu/lauv
   lukketMinVolum: 10,
   lukketMaksBonitetFuru: 14,   // furu på lav bonitet: frøtre- eller skjermstilling
-  ungMinHoyde: 1.5, ungMaksHoyde: 7,  // m
-  ungMinTreantall: 100,        // trær per daa – SR16 ser dårlig småtrær, så tallet er lavere enn ved feltregistrering
-  ungMinAndelLauv: 30,         // % lauv i ungskogen – lauvoppslag som konkurrerer med bartrærne
-  ungMinBonitet: 11,           // på svært lav bonitet er ungskogpleie sjelden lønnsomt
+  ...SKJOTSEL_KRITERIER,        // ungskogpleie og tynning – felles med planens innsikt (js/skjotsel.js)
   maksAvstandVei: 0,           // m til nærmeste bilvei (NVDB) – 0 = ingen grense (kommune-vei.js)
-  // Tynning i hogstklasse III–IV (Skogkurs/skogeierlagene: tynning lønner seg på middels og god bonitet, i tett skog,
-  // fra ca. 10–12 m overhøyde og før skogen blir så høy at stormfellingsrisikoen øker – særlig i gran).
-  tynnMinBonitetGran: 14, tynnMinBonitetFuru: 11, tynnMinBonitetLauv: 17, // lauv: bare de beste bjørkelokalitetene
-  tynnMinOverhoyde: 10,        // m – førstegangstynning fra ca. 10–12 m overhøyde
-  tynnMaksOverhoyde: 21,       // m – høyere skog: stormfelling og lite tilvekst igjen
-  tynnMinTreantall: 150,       // trær/daa over 5 cm (SR16) – tett skog
-  tynnMinGrunnflate: 28,       // m²/ha – eller høy grunnflate (fra treantall og middeldiameter)
-  tynnMaksAlderAndel: 0.85,    // HK IV: bare når alderen er under denne andelen av laveste hogstalder
 };
 export const TRESLAG_REKKEFOLGE = { G: 0, F: 1, L: 2 };
-// Grunnflate (m²/ha) fra treantall per daa og grunnflateveid middeldiameter (cm).
-export const grunnflate = (treantallDaa, diameterCm) => (treantallDaa > 0 && diameterCm > 0 ? treantallDaa * 10 * Math.PI * (diameterCm / 200) ** 2 : null);
 
 // ---------- nett ----------
 async function hentData(hent, url, type = 'text', tidsavbrudd = 60000, forsok = 4) {
@@ -318,30 +307,12 @@ export function klassifiser(flater, k = STANDARD_KRITERIER, inn = STANDARD_INNST
     const min = laavesteHogstalder({ treslag: f.treslag, bonitet: f.bonitet }, inn);
     const vernet = f.mis || f.vern;
     const forhold = f.hoyde && f.overhoyde ? f.hoyde / f.overhoyde : null;
-    const grunner = [];
-
-    // Ungskogpleie
-    if (f.hoyde !== null && f.hoyde >= k.ungMinHoyde && f.hoyde <= k.ungMaksHoyde && f.bonitet >= k.ungMinBonitet) {
-      const lauv = f.andel ? f.andel.L : (f.treslag === 'L' ? 100 : null);
-      if (lauv !== null && lauv >= k.ungMinAndelLauv) grunner.push(`${Math.round(lauv)} % lauv`);
-      if (f.treantall >= k.ungMinTreantall) grunner.push(`tett (${Math.round(f.treantall)} trær/daa i SR16)`);
-      if (grunner.length) ungskog.push({ ...f, grunn: `Ungskog ${f.hoyde.toFixed(1).replace('.', ',')} m høy, bonitet ${f.bonitet}: ${grunner.join(', ')}`, poeng: f.areal * f.bonitet });
-    }
+    // Ungskogpleie (felles regel med planens innsikt, js/skjotsel.js)
+    const u = vurderUngskog(f, k); if (u) ungskog.push({ ...f, grunn: u.grunn, poeng: f.areal * f.bonitet });
     if (vernet || !min || f.alder === null) continue;
 
-    // Tynning i hogstklasse III og IV
-    const hk = beregnetHogstklasse(f.alder, min, f.volumDaa, hkGrenser({ treslag: f.treslag, bonitet: f.bonitet }, inn));
-    const minBon = { G: k.tynnMinBonitetGran, F: k.tynnMinBonitetFuru, L: k.tynnMinBonitetLauv }[f.treslag] ?? k.tynnMinBonitetGran;
-    const oh = f.overhoyde ?? f.hoyde; const gf = grunnflate(f.treantall, f.diameter);
-    const tett = (f.treantall ?? 0) >= k.tynnMinTreantall || (gf ?? 0) >= k.tynnMinGrunnflate;
-    if ((hk === 3 || (hk === 4 && f.alder < k.tynnMaksAlderAndel * min)) && f.bonitet >= minBon && oh !== null && oh >= k.tynnMinOverhoyde && oh <= k.tynnMaksOverhoyde && tett && f.volumDaa > 0) {
-      const uttak = f.volumDaa * f.areal * (inn.tynningUttak ?? 0.25);
-      const forste = hk === 3 && oh < 15;
-      const tetthet = [(f.treantall ?? 0) >= k.tynnMinTreantall && `${Math.round(f.treantall)} trær/daa`, gf && `grunnflate ${Math.round(gf)} m²/ha`].filter(Boolean).join(', ');
-      tynning.push({ ...f, minAlder: min, hk, grunnflate: gf, uttakM3: uttak, rotnetto: uttak * rotnettoPerM3(f.treslag, inn, true),
-        metode: forste ? 'Førstegangstynning' : 'Tynning', grunn: `HK ${hk === 3 ? 'III' : 'IV'}, ${{ G: 'gran', F: 'furu', L: 'lauv' }[f.treslag]} bonitet ${f.bonitet}, overhøyde ${oh.toFixed(0)} m, ${tetthet}`,
-        poeng: uttak * (1 + Math.max(0, ((gf ?? 0) - k.tynnMinGrunnflate) / 20)) });
-    }
+    // Tynning i hogstklasse III og IV (felles regel med planens innsikt, js/skjotsel.js)
+    const t = vurderTynning(f, k, inn); if (t) tynning.push({ ...f, ...t });
 
     // Sluttavvirkning
     if (f.alder >= min && f.volumDaa >= k.hogstMinVolum && (f.treslag !== 'L' || k.hogstTaMedLauv)) {

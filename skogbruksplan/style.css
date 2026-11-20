@@ -272,6 +272,7 @@ progress { accent-color: var(--accent); height: 8px; }
 }
 .innsikt-kort .prikk { width: 10px; height: 10px; border-radius: 50%; background: var(--farge, var(--accent)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--farge, var(--accent)) 18%, transparent); }
 .innsikt-kort b { display: block; font-weight: 600; }
+.innsikt-knapper { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
 .innsikt-kort span { color: var(--text-2); font-size: 12.5px; }
 
 /* Tabeller */

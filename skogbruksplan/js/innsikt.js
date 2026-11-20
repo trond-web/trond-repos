@@ -1,6 +1,7 @@
 // SkogIQ-innsikt: regelbaserte funn beregnet fra planens egne data. Ingen språkmodell – hvert funn
 // kan spores tilbake til en regel her, og hvert har en handling som tar brukeren dit det kan følges opp.
-import { startTilstand, laavesteHogstalder, rotnettoPerM3, foreslaaTiltak, sammendrag, TILTAKSTYPER, hogstklasseAvvik } from './model.js';
+import { startTilstand, laavesteHogstalder, rotnettoPerM3, sammendrag, TILTAKSTYPER, hogstklasseAvvik } from './model.js';
+import { skjotselsbehov } from './skjotsel.js';
 
 const FARGE = { handling: 'var(--signal)', advarsel: 'var(--serious)', info: 'var(--accent)', god: 'var(--good)' };
 const tall = (v, d = 0) => Number(v).toLocaleString('nb-NO', { maximumFractionDigits: d });
@@ -53,9 +54,16 @@ export function lagInnsikt(S, { iAar = new Date().getFullYear(), terrengtranspor
   const hogd = S.bestand.filter((b) => /hogd/.test(b.merknad || ''));
   if (hogd.length) ut.push({ vekt: 80, type: 'advarsel', tittel: `${hogd.length} bestand er trolig hogd siden forrige takst`, tekst: `${tall(hogd.reduce((s, b) => s + (b.areal || 0), 0))} daa der SR16 viser lite volum. Kontroller i felt og vurder foryngelse.`, handling: { tekst: 'Vis bestand', id: `bestand:${hogd[0].id}` } });
 
-  // 4. Ungskogpleie
-  const ung = S.bestand.filter((b) => foreslaaTiltak(b, inn, iAar).some((f) => f.type === 'ungskogpleie'));
-  if (ung.length) ut.push({ vekt: 60, type: 'handling', tittel: `${ung.length} bestand kan trenge ungskogpleie`, tekst: `${tall(ung.reduce((s, b) => s + (b.areal || 0), 0))} daa ungskog. Pleie nå gir bedre kvalitet og tilvekst senere.`, handling: { tekst: 'Foreslå tiltak', id: 'foresla' } });
+  // 4. Skjøtselsbehov: ungskogpleie (HK II) og tynning (HK III–IV) – samme regler som kommuneanalysen (js/skjotsel.js)
+  const behov = skjotselsbehov(S, { inn });
+  const daa = (l) => tall(l.reduce((s, x) => s + (x.b.areal || 0), 0));
+  const nr = (l) => l.slice(0, 4).map((x) => x.b.nr).filter(Boolean).join(', ') + (l.length > 4 ? ' …' : '');
+  if (behov.ungskog.length) ut.push({ vekt: 82, type: 'handling', tittel: `${behov.ungskog.length} bestand trenger trolig ungskogpleie`, tekst: `${daa(behov.ungskog)} daa tett eller lauvdominert ungskog (bestand ${nr(behov.ungskog)}). Pleie nå gir bedre kvalitet og tilvekst senere.`, handling: { tekst: 'Legg inn tiltak', id: 'skjotsel:ungskog' }, handling2: { tekst: 'Vis i kartet', id: 'farge:skjotsel' } });
+  if (behov.tynning.length) {
+    const m3 = behov.tynning.reduce((s, x) => s + x.uttakM3, 0); const kr = behov.tynning.reduce((s, x) => s + x.rotnetto, 0);
+    const forste = behov.tynning.filter((x) => x.metode === 'Førstegangstynning').length;
+    ut.push({ vekt: 81, type: 'handling', tittel: `${behov.tynning.length} bestand trenger trolig tynning`, tekst: `${daa(behov.tynning)} daa tett skog i HK III–IV (bestand ${nr(behov.tynning)})${forste ? `, ${forste} førstegangstynning` : ''}. Uttak ca. ${tall(m3)} m³${kr > 0 ? ` og ${tall(kr / 1000)} k kr i rotnetto` : ''}.`, handling: { tekst: 'Legg inn tiltak', id: 'skjotsel:tynning' }, handling2: { tekst: 'Vis i kartet', id: 'farge:skjotsel' } });
+  }
 
   // 5. Terrengtransport
   if (terrengtransport) {
