@@ -4500,3 +4500,28 @@ test('Husdyr: gjødsel, lager, spredeareal, fôrbalanse og fordeling', async () 
   // Uten dyr: ingen funn
   assert.deepEqual(H.kontrollerHusdyr({ skifteplan: { skifter: [] } }, 2027), []);
 });
+
+test('KSL: husdyrkapitlene og automatisk valg ut fra dyreholdet', async () => {
+  for (const nr of [30, 31, 32, 35, 40, 50, 51, 52, 53, 54, 70]) { const k = KSL.KSL_KAPITLER.find((x) => x.nr === nr); assert.ok(k && k.sporsmal.length && k.versjon, `kapittel ${nr}`); for (const q of k.sporsmal) assert.ok(q.tekst.length > 15, q.nr); }
+  assert.ok(KSL.sporsmal('31.1.1').dok);
+  const S = { skifteplan: { skifter: [], dyrehold: { dyr: [{ slag: 'melkeku', antall: 20 }, { slag: 'verpehone', antall: 300 }, { slag: 'alpakka', antall: 0 }] } } };
+  assert.deepEqual(KSL.sikreKsl(S).kapitler, [1, 10, 30, 31, 35, 50, 51]);
+  S.ksl.fravalgt = [35]; S.ksl.kapitler = S.ksl.kapitler.filter((x) => x !== 35); S.skifteplan.dyrehold.dyr.push({ slag: 'slaktegris', antall: 100 });
+  assert.deepEqual(KSL.sikreKsl(S).kapitler, [1, 10, 30, 31, 40, 50, 51], 'fravalgte kapitler kommer ikke tilbake');
+});
+
+test('Husdyr: beiteplan med beitetrykk, utnyttelse og dekning', async () => {
+  const H = await import('../js/husdyr.js');
+  const S = { skifteplan: { aar: 2027, skifter: [{ id: 'b', nr: '7', areal: 40, vekster: { 2027: { kultur: 'beite' } } }, { id: 'e', nr: '2', areal: 100, vekster: { 2027: { kultur: 'engNorm2' } } }],
+    dyrehold: { dyr: [{ id: 's', slag: 'sau', antall: 60 }, { id: 'h', slag: 'verpehone', antall: 100 }], beiting: [
+      { id: '1', skifteId: 'b', dyrId: 's', fra: '2027-05-15', til: '2027-06-20' }, { id: '2', skifteId: null, navn: 'Fjellet', dyrId: 's', fra: '2027-06-21', til: '2027-09-05' }, { id: '3', skifteId: 'e', dyrId: 's', antall: 200, fra: '2027-09-06', til: '2027-10-10' }] } } };
+  const b = H.beiteplan(S, 2027);
+  assert.equal(b.perioder[0].dager, 37); assert.equal(b.perioder[1].kapasitet, null, 'utmark har ingen kapasitet');
+  assert.ok(Math.abs(b.perioder[0].behov - 60 * 450 / 365 * 37) < 1e-6);
+  assert.ok(Math.abs(H.beitekapasitet(S.skifteplan.skifter[0], 2027) - 300 * 40 * 0.75) < 1e-6);
+  assert.equal(b.dekning.length, 1, 'høner på 12 mnd inne har ingen beitesesong');
+  const f = H.kontrollerBeite(S, 2027);
+  assert.ok(f.some((x) => /Skifte 2: for høyt beitetrykk 6\.9\.–10\.10\./.test(x.tittel)), 'overbeitet høstbeite');
+  S.skifteplan.dyrehold.beiting.push({ id: '4', skifteId: 'b', dyrId: null, fra: '2027-07-01', til: '2027-06-01' });
+  assert.equal(H.kontrollerBeite(S, 2027).filter((x) => /mangler/.test(x.tittel)).length, 2);
+});

@@ -2,6 +2,7 @@
 // dokumentarkiv og automatisk dokumentasjon fra resten av planen (skifteplan, gjødslingsplan, sprøytejournal,
 // kulturminner). Ingen DOM – kan testes i Node. Kravpunktene ligger i ksl-standard.js.
 import { KSL_KAPITLER } from './ksl-standard.js';
+import { kslKapitlerFor } from './husdyr.js';
 import { aktiveSkifter, kontroller as skifteKontroller, avstandTilVann, IPV } from './skifteplan.js';
 
 export { KSL_KAPITLER };
@@ -64,6 +65,9 @@ export function tomKsl() {
 export function sikreKsl(S) {
   S.ksl = { ...tomKsl(), ...(S.ksl || {}) };
   if (!S.ksl.kapitler.includes(15) && S.skifteplan?.skifter?.length && !S.ksl.kapitlerValgt) S.ksl.kapitler = [...S.ksl.kapitler, 15];
+  // Husdyrkapitlene legges til ut fra dyreholdet (Skifteplan › Husdyr), unntatt de brukeren selv har tatt bort.
+  const fra = S.ksl.fravalgt || []; const nye = kslKapitlerFor(S).filter((n) => !S.ksl.kapitler.includes(n) && !fra.includes(n));
+  if (nye.length) S.ksl.kapitler = [...S.ksl.kapitler, ...nye].sort((a, b) => a - b);
   return S.ksl;
 }
 

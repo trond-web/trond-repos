@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.9.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.10.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -835,6 +835,13 @@ For gårder med melkekyr, ammekyr, ungdyr, okser, sau, geit, hest, ponni, alpakk
   - **Fordel på skiftene:** foreslår husdyrgjødsel per skifte etter fosforbehovet. Tørr fjørfegjødsel samles på de minste skiftene. Mineralgjødsel for resten foreslås som før under Gjødsling.
   - Funnene (for lite spredeareal eller lager, gjødseljournal over 75 kg P, gjødsel som ikke er lagt inn i planen) vises også under Krav.
 - **Fôrbalanse:** behov for vinterfôr, beite og kraftfôr sammenlignet med avlingen fra eng og grønnfôr (minus tap ved konservering), innmarksbeite (utnyttelse) og korn. Viser rundballer, overskudd eller underskudd og hvor mange daa eng som mangler. Forutsetningene kan justeres.
+- **Beiteplan:** beiteperioder per skifte (innmarksbeite, eller eng som høstbeite med 25 % av årsavlingen) eller i utmark/fellesbeite, med dyr, antall og datoer.
+  - Beitetrykk i hver periode: fôrbehovet sammenlignet med det beitet gir. Over ca. 115 % gir et varsel om nedbeiting.
+  - Hvor godt hvert innmarksbeite utnyttes gjennom sesongen. Under 40 % gir et varsel om at graset blir gammelt.
+  - Om hele beitesesongen for hvert dyreslag er planlagt.
+  - Beite i utmark og høstbeite fra beiteplanen regnes med i fôrbalansen.
+  - Beitekart for utmark fra NIBIO (`wms.nibio.no/cgi-bin/beite`): beitelag (grenser og navn), tapsprosent for sau og lam, og sau per km². Kartlagene slås på i beiteplanen eller under Skifter › Kartlag fra NIBIO. Lenke til Rovbase for rovviltskader.
+- **KSL for husdyr:** sjekklistene for kapittel 30 Drøvtyggere (inkludert lama og alpakka), 31 Storfe, 32 Småfe, 35 Melk, 40 Svin, 50 Fjørfe, 51 Eggproduksjon, 52 Oppal fjørfe, 53 Slaktekylling, 54 Kalkun, ender og gjess og 70 Hest i næring. De er lest ut av de offisielle PDF-ene fra Stiftelsen Norsk Mat (versjon 2026.3–2026.10), og spørsmål som krever dokumentasjon er merket. Kapitlene krysses av automatisk ut fra dyreholdet (melkeku gir 30, 31 og 35, høner gir 50 og 51 osv.). Kapitler brukeren tar bort, kommer ikke tilbake. Selve sjekklistene er bare på norsk.
 - Alle tall per dyr er typiske anslag for norske forhold og bør tilpasses egen drift.
 
 ## 🌐 Engelsk språk (`js/sprak.js`, `js/sprak-en.js`)
