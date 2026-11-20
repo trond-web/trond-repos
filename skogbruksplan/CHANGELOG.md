@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.1.0 – 🌲 Skogen siste døgn (admin) (2026-11-20)
+
+*Nytt.* Admin-siden viser nå hvor mange som har vært pålogget de siste 24 timene – som en skog. Hver bruker er et tre langs en tidslinje, og de som er i skogen akkurat nå, står i lysningen og svaier i vinden. Himmelen følger klokka, og gjengen får sin egen beskrivelse, fra «én ensom tømmerhogger» til «årsmøte i skogeierlaget».
+
 ## 2.0.0 – 🌲 SkogIQ.ai 2.0 (2026-11-19)
 
 *Nytt.* Ny hovedversjon. SkogIQ.ai har vokst fra skogbruksplan til en komplett plattform for skogeiendommen: plan fra gårds- og bruksnummer på under ett minutt, også rett fra kartet i SkogIQ Felt; tiltak, oppdrag og tilbud i nettverket; kantsone mot vann (15/30 m) og PEFC-kontroll; SkogIQ Skogkarakter, landbrukstakst og stolpepotensial; ØK-kart, egne kartlag fra GPX/KML/KMZ, virtuell skog og AR; skylagring på alle enhetene dine – og nå et åpent API for integrasjoner og tilbakemeldinger som en samtale. Takk til alle som har testet og kommet med forslag underveis!

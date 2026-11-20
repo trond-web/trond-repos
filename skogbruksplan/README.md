@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.0.0** (2026-11-19) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.1.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -682,6 +682,15 @@ Serveren sender ikke e-post så lenge Resend (`EPOST_NOKKEL` og `EPOST_FRA`) ikk
   - Chat og katalog viser aldri e-postadresser, så der finnes det ingen e-postknapp.
 
 Settes `EPOST_NOKKEL` og `EPOST_FRA` senere, sendes «Glemt passord» automatisk.
+
+## 🌲 Skogen siste døgn (admin, `js/admin-skog.js`)
+
+Øverst i admin vises en skog over hvem som har vært pålogget de siste 24 timene. Den bygger på `sistAktiv` fra `/api/admin/oversikt` og bruker ingen nye data.
+
+- **Tidslinjen:** hver bruker er et tre (gran, furu eller bjørk – fast per bruker), plassert etter når brukeren sist var aktiv, fra −24 t til nå. Hold musen over et tre for å se navn og tidspunkt.
+- **Lysningen:** brukere som har vært aktive de siste 5 minuttene, står i lysningen «I skogen nå» og svaier i vinden.
+- **Gjengen:** antallet får sin egen tekst, fra 🦉 «Stille i skogen» og 🪓 «én ensom tømmerhogger» via elgjaktlag og dugnad til 🎪 årsmøte i skogeierlaget og 🌊 tømmerfløting i Glomma.
+- **Himmelen** følger klokka: morgen, dag, kveld og natt med måne og stjerner.
 
 ## Sikkerhetskopi (`backup.js`, admin.html, `verktoy/gjenopprett-backup.mjs`)
 
