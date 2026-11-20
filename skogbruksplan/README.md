@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.4.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.5.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -802,6 +802,20 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
+
+## 🔎 Egenskapssøk på bestand og tiltak (`js/sok.js`, `js/sok-ui.js`)
+
+Øverst i fanene **Bestand** og **Tiltak** ligger «🔎 Egenskapssøk». Det åpnes også fra kommandopaletten (Ctrl + K → «Egenskapssøk»).
+- **Vilkår:** et søk bygges av vilkår, og du velger om alle må stemme eller minst ett.
+  - Tall: =, ≠, >, ≥, <, ≤ og mellom.
+  - Valg: er, er ikke og er en av.
+  - Ja/nei.
+  - Tekst: inneholder, er og inneholder ikke.
+- **Bestand:** treslag, hogstklasse, bonitet, alder, areal, volum per daa og totalt, treantall, middelhøyde, vegetasjonstype, hogstmoden, skjøtselsbehov (ungskogpleie og tynning), har planlagte tiltak, miljøfigur, kantsone, bestandsnummer, teig og merknad.
+- **Tiltak:** type, år, status, prioritet, egen flate og kommentar, og alle bestandsegenskapene («Bestand: …»).
+- **Treff:** antall, areal og volum. Bestandslisten viser bare treffene, og tiltakssøket har egen liste. «🗺 Vis i kartet» uthever og zoomer.
+- **Lagre søk:** søket lagres i planen (`S.sok`) og følger planen ved synkronisering. De lagrede søkene vises som knapper og kan åpnes og slettes.
+- **SkogIQ Felt:** «🔎 Lagrede søk» ligger under **Tiltak** og **Mer**. Å åpne et søk uthever treffene i kartet (magenta), zoomer dit og viser listen. Trykk på et bestand eller tiltak for å gå dit, og «Fjern utheving» rydder.
 
 ## 📌 Egne kartlag – GPX, KML, KMZ og GeoJSON (`js/egne-lag.js`, `js/egne-lag-ui.js`)
 

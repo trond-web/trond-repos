@@ -21,6 +21,7 @@ import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } 
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { apneTilbakemelding, oppdaterMerke as tbMerke } from './tilbakemelding-ui.js';
 import { startSkogen, tegnSkogen } from './skogen-ui.js';
+import { kjorSok, beskrivSok } from './sok.js';
 import * as JUL from './juletre.js';
 import * as STP from './stolpe.js';
 import { lagOkLag } from './ok-kart.js';
@@ -56,6 +57,7 @@ let nyPlan = null; // ny skogbruksplan fra kartet (js/felt-nyplan.js)
 let egneLag = null; // 📌 egne kartlag fra planen (GPX/KML/KMZ, js/egne-lag.js)
 let kantsoneLag = null; let kantsoneHenter = false; // 💧 15 m kantsone mot vann (js/kantsone.js)
 let installHendelse = null; let spor = null; let flate = null;
+let uthevSok = new Set(); let aktivtSok = null; // 🔎 lagret egenskapssøk som er åpent (js/sok.js)
 let drone = null; let oppdrag = null; let uthevOppdrag = new Set(); let kandidatOppdrag = new Set(); // bestand i oppdraget som er åpent, og bestand som kan velges
 let ungskogRed = null; // bestand der ungskogfeltene er åpne for registrering
 let tsRed = null; // bestand der treslagsfordelingen endres
@@ -194,6 +196,7 @@ function initKart() {
 
 function stil(b) {
   const h = hk(b); const valgt = b.id === valgtId; const fly = lagNavn === 'flyfoto'; const ut = uthevOppdrag.has(b.id); const kand = !ut && kandidatOppdrag.has(b.id);
+  if (!valgt && !ut && !kand && uthevSok.has(b.id)) return { color: '#e5007d', weight: 3, dashArray: null, opacity: 1, fillColor: '#e5007d', fillOpacity: 0.4 };
   return { color: valgt ? '#ffd400' : ut || kand ? '#ff6a00' : fly ? '#f5f06a' : '#1b1c19', weight: valgt ? 4 : ut ? 3.5 : kand ? 2.5 : fly ? 1.6 : 1.1, dashArray: kand ? '6 5' : null, opacity: 0.95, fillColor: ut ? '#ff6a00' : h ? HK_FARGER[h - 1] : '#999', fillOpacity: ut ? 0.45 : fly ? 0.25 : h ? (lagNavn === 'ok' ? 0.5 : 0.8) : 0.1 };
 }
 function tegnPlan(zoom = false) {
@@ -428,13 +431,37 @@ function naturHtml(b) {
 }
 
 // ---------- tiltak ----------
+// 🔎 Lagrede søk fra fullversjonen (P.sok): liste, og åpning som uthever treffene i kartet og viser dem i en liste.
+function lagredeSokHtml() {
+  const l = P?.sok || [];
+  if (!l.length) return '';
+  return `<h3>🔎 Lagrede søk</h3><div class="liste">${l.map((s) => `<button type="button" class="rad ${aktivtSok?.id === s.id ? 'aktiv' : ''}" data-sok-apne="${esc(s.id)}"><div><div class="tittel">${s.mal === 'tiltak' ? '✅' : '🌲'} ${esc(s.navn)}</div><div class="under">${esc(beskrivSok(s))}</div></div><span aria-hidden="true">›</span></button>`).join('')}</div>`;
+}
+function apneSok(id) {
+  const s = (P?.sok || []).find((x) => x.id === id); if (!s) return;
+  const r = kjorSok(P, s); aktivtSok = s; uthevSok = r.ider; oppdaterStiler();
+  const lag = [...r.ider].map((x) => lagPerBestand.get(x)).filter(Boolean);
+  if (lag.length) kart.fitBounds(L.featureGroup(lag).getBounds(), { maxZoom: 16, padding: [40, 40], paddingBottomRight: [40, window.innerHeight * 0.45] });
+  const tall = (v, d = 0) => Number(v || 0).toLocaleString('nb-NO', { maximumFractionDigits: d });
+  const rader = s.mal === 'tiltak'
+    ? r.tiltak.slice(0, 100).map(({ b, t }) => tiltakRad(b, t, true)).join('')
+    : r.bestand.slice(0, 150).map((b) => `<button type="button" class="rad" data-bestand="${esc(b.id)}"><div><div class="tittel">Bestand ${esc(b.nr)}</div><div class="under">${tall(b.areal, 1)} daa · ${esc(TRESLAG[b.treslag] || '')} ${b.bonitet ?? ''} · HK ${hk(b) ? HK_ROMERTALL[hk(b)] ?? hk(b) : '–'}</div></div><span aria-hidden="true">›</span></button>`).join('');
+  aapneArk(`<h2>🔎 ${esc(s.navn)}</h2><p class="hint">${esc(beskrivSok(s))}</p>
+    <p><b>${tall(r.sum.antall)} ${s.mal === 'tiltak' ? 'tiltak' : 'bestand'}</b>${s.mal === 'tiltak' ? ` i ${tall(r.sum.bestand)} bestand` : ''} · ${tall(r.sum.areal, 1)} daa · ${tall(r.sum.volum)} m³ – uthevet i kartet.</p>
+    <div class="knapper"><button type="button" class="knapp" data-h="sok-fjern">Fjern utheving</button><button type="button" class="knapp" data-h="sok-alle">Alle søk</button></div>
+    <div class="liste">${rader || '<div class="tom">Ingen treff i denne planen.</div>'}</div>`, { hoy: true });
+}
+function visLagredeSok() {
+  aapneArk(`<h2>🔎 Lagrede søk</h2>${lagredeSokHtml() || '<p class="hint">Ingen lagrede søk i denne planen ennå. Lag et egenskapssøk under Bestand eller Tiltak i fullversjonen og trykk «Lagre søk» – så kommer det hit.</p>'}${aktivtSok ? '<div class="knapper"><button type="button" class="knapp" data-h="sok-fjern">Fjern utheving</button></div>' : ''}`);
+}
+
 function visTiltak() {
   const alle = (P?.bestand || []).flatMap((b) => nesteTiltak(b).map((t) => ({ b, t })));
   const naa = alle.filter((x) => (x.t.aar || IAAR) <= IAAR + 1);
   const senere = alle.filter((x) => (x.t.aar || IAAR) > IAAR + 1).slice(0, 30);
   const nylig = (P?.bestand || []).flatMap((b) => (b.tiltak || []).filter((t) => t.status === 'utfort' && t.utfortDato && t.utfortDato.slice(0, 4) >= String(IAAR - 1)).map((t) => ({ b, t })));
   const liste = (l) => l.map(({ b, t }) => tiltakRad(b, t, true)).join('');
-  aapneArk(`<h2>Tiltak</h2><p class="hint">Trykk på et tiltak for å se bestandet i kartet. Kryss av når det er gjort – det lagres med dagens dato.</p>
+  aapneArk(`<h2>Tiltak</h2><p class="hint">Trykk på et tiltak for å se bestandet i kartet. Kryss av når det er gjort – det lagres med dagens dato.</p>${lagredeSokHtml()}
     <div class="knapper"><button type="button" class="knapp primar" data-h="sporlogg">Registrer utført tiltak med sporlogg</button></div>
     <h3>I år og neste år (${naa.length})</h3><div class="liste">${liste(naa) || '<div class="tom">Ingen tiltak de to neste årene.</div>'}</div>
     ${senere.length ? `<h3>Senere</h3><div class="liste">${liste(senere)}</div>` : ''}
@@ -703,7 +730,7 @@ function tegnRegSkjemaPos() {
 async function velgPlan(id, { zoom = true } = {}) {
   const plan = await hentPlan(id);
   if (!plan) { melding('Fant ikke planen.'); return; }
-  P = plan; P.registreringer = P.registreringer || []; ls.set(LS.plan, id);
+  P = plan; P.registreringer = P.registreringer || []; ls.set(LS.plan, id); uthevSok = new Set(); aktivtSok = null;
   for (const b of P.bestand) for (const t of b.tiltak || []) if (!t.id) t.id = nyId('t'); // eldre importerte tiltak uten id
   if (rettFeilHogd(P.bestand)) await lagrePlanen(); // glissen skog som var satt som hogd (se model.js)
   $('#planNavn').textContent = P.eiendom?.navn || 'Plan';
@@ -736,6 +763,7 @@ function visMer() {
   const installert = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   setTimeout(() => { tbMerke(); tegnSkogen(); }, 0); // merket på «Mine tilbakemeldinger» og skogen siste døgn
   aapneArk(`<h2>Mer</h2>
+    ${lagredeSokHtml() || '<h3>🔎 Lagrede søk</h3><p class="hint">Lag et egenskapssøk under Bestand eller Tiltak i fullversjonen og trykk «Lagre søk» – så kan du åpne det her.</p>'}
     <h3>📣 Si det rett ut</h3>
     <p class="hint">Ros, barkbiller (feil) eller en god idé? Gi stjerner og skriv noen ord. Gode forslag som lar seg gjennomføre, løses i løpet av noen dager.</p>
     <button type="button" class="skogen-linje" data-skogen="linje" hidden></button>
@@ -826,6 +854,7 @@ function kobleHendelser() {
     const plan = e.target.closest('[data-plan]'); if (plan) { await velgPlan(plan.dataset.plan); lukkArk(); return; }
     const en = e.target.closest('[data-endre]'); if (en) { e.stopPropagation(); const [bid, tid] = en.dataset.endre.split('|'); visEndreTiltak(bid, tid); return; }
     const ut = e.target.closest('[data-utfort]'); if (ut) { e.stopPropagation(); const [bid, tid] = ut.dataset.utfort.split('|'); settUtfort(bid, tid); return; }
+    const sa = e.target.closest('[data-sok-apne]'); if (sa) { apneSok(sa.dataset.sokApne); return; }
     const bk = e.target.closest('[data-bestand-kort]'); if (bk) { visBestand(bk.dataset.bestandKort); return; }
     const tk = e.target.closest('[data-tiltakkort]'); if (tk) { const [bid, tid] = tk.dataset.tiltakkort.split('|'); visTiltakKort(bid, tid, { zoom: true }); return; }
     const kh = e.target.closest('[data-kort]')?.dataset.kort;
@@ -848,6 +877,8 @@ function kobleHendelser() {
     const steg = e.target.closest('[data-ts-steg]');
     if (steg) { const [t, d] = steg.dataset.tsSteg.split('|'); const inp = document.querySelector(`[data-ts-andel="${t}"]`); inp.value = Math.max(0, Math.min(100, (Number(String(inp.value).replace(',', '.')) || 0) + Number(d))); tsSum(); return; }
     const h = e.target.closest('[data-h]')?.dataset.h; if (!h) return;
+    if (h === 'sok-fjern') { uthevSok = new Set(); aktivtSok = null; oppdaterStiler(); lukkArk(); return; }
+    if (h === 'sok-alle') { visLagredeSok(); return; }
     if (h === 'tilbakemelding' || h === 'tilbakemelding-mine') { apneTilbakemelding({ fane: 'felt', visning: h === 'tilbakemelding' ? 'ny' : 'mine' }); return; }
     if (h === 'hent-kode') { hentFraPc($('#hentKode')?.value); return; }
     if (h === 'synk') { await synkNaa({ stille: false }); if (!$('#ark').hidden) visPlaner(); return; }

@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.5.0 – 🔎 Egenskapssøk på bestand og tiltak (2026-11-20)
+
+*Nytt.* Finn bestand og tiltak etter egenskaper – f.eks. «gran i hogstklasse III–IV på bonitet 14 eller bedre» eller «planlagte tynninger i år». Øverst i fanene Bestand og Tiltak: legg til vilkår, se antall, areal og volum, vis treffene i kartet og lagre søket. Lagrede søk følger planen og kan åpnes i SkogIQ Felt under Tiltak og Mer, der treffene utheves i kartet.
+
 ## 2.4.0 – 🌱 Ungskogpleie og tynning i Innsikt (2026-11-20)
 
 *Nytt.* Oversikten foreslår nå hvilke bestand som trolig trenger ungskogpleie (HK II) og tynning (HK III–IV) – med areal, bestandsnummer og anslått uttak og rotnetto. «Legg inn tiltak» legger tiltakene rett inn i planen, og «Vis i kartet» farger bestandene etter skjøtselsbehov. Reglene er de samme som i kommuneanalysen. Takk for forslaget!

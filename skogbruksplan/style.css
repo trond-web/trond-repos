@@ -1509,3 +1509,27 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .kantsone-linje { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, #3b8fe8 12%, var(--surface)); border-left: 4px solid #1e6fd9; display: grid; gap: 3px; font-size: 13px; }
 .kantsone-linje span { color: var(--text-2); font-size: 12.5px; }
 .kantsone-hint { font-size: 12.5px; margin: 4px 0; padding: 5px 9px; border-radius: 8px; background: color-mix(in srgb, #3b8fe8 13%, transparent); }
+
+/* 🔎 Egenskapssøk (js/sok-ui.js) */
+.sok-panel { padding: 10px 12px; margin-bottom: 10px; }
+.sok-panel summary { cursor: pointer; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-weight: 700; list-style: none; }
+.sok-panel summary::-webkit-details-marker { display: none; }
+.sok-panel summary::after { content: '▾'; margin-left: auto; color: var(--text-2); }
+.sok-panel[open] summary::after { content: '▴'; }
+.sok-panel summary .hint { font-weight: 400; font-size: 12.5px; }
+.sok-lagrede { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+.sok-chip { display: inline-flex; border: 1px solid var(--border); border-radius: 99px; overflow: hidden; background: var(--surface); }
+.sok-chip.aktiv { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.sok-chip button { border: 0; background: none; color: inherit; font: inherit; font-size: 12.5px; padding: 4px 9px; cursor: pointer; }
+.sok-chip button + button { padding: 4px 8px 4px 2px; color: var(--text-2); }
+.sok-vilkarliste { display: grid; gap: 6px; margin-top: 8px; }
+.sok-vilkar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.sok-vilkar select, .sok-vilkar input, .sok-verktoy select, .sok-lagre input { font: inherit; font-size: 13px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); max-width: 100%; }
+.sok-flere { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; }
+.sok-verktoy { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+.sok-sum { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 13.5px; }
+.sok-knapper { display: flex; gap: 6px; margin-left: auto; }
+.sok-lagre { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; } .sok-lagre input { flex: 1; min-width: 180px; }
+.sok-liste { display: grid; gap: 4px; margin-top: 8px; max-height: 320px; overflow: auto; }
+.sok-rad { text-align: left; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 13px; cursor: pointer; }
+.sok-rad:hover { border-color: var(--accent); }
