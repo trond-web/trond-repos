@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.8.0 – 🎙 Snakk med SkogIQ-lederen (2026-11-20)
+
+*Nytt.* I den virtuelle skogen kan du nå stille spørsmål til SkogIQ-lederen med stemmen: trykk 🎙 i panelet, eller hold inne venstre grep med VR-briller. Talen gjøres om til tekst av nettleserens egen talegjenkjenning (Google, Apple eller Meta). Første gang må du si ja til det. SkogIQ.ai lagrer verken lyd eller tekst. Personvernerklæringen er oppdatert til versjon 1.13 med den nye behandlingen og tredjeparten, så alle må godta den på nytt ved neste innlogging.
+
 ## 2.7.0 – 🌐 SkogIQ.ai på engelsk (2026-11-20)
 
 *Nytt.* Hele løsningen kan nå brukes på engelsk – fullversjonen, SkogIQ Felt, rapporter, utskrifter, admin og innloggingen. Norsk er fortsatt standard. Bytt med EN/NO-knappen i sidemenyen, under 🌐 Språk / Language i Om-boksen, i SkogIQ Felt under Mer › Innstillinger, eller med EN-knappen på innloggingssiden. Valget huskes i nettleseren. Data fra eksterne kilder (stedsnavn, naturtype- og kulturminnebeskrivelser), tekst i 3D/VR og AI-svar er fortsatt på norsk. Ingen nye tredjeparter – ordboken ligger i appen.

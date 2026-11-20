@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.12', dato: '2026-11-20', kreverGodkjenning: '1.9' };
+export const VILKAR = { versjon: '1.13', dato: '2026-11-20', kreverGodkjenning: '1.13' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -66,6 +66,10 @@ export const BEHANDLINGER = [
     opplysninger: 'Spørsmålet ditt og et sammendrag av planen (eiendom, bestand, tiltak, økonomi og profilteksten om gården). Fra SkogIQ-lederen også hvilket bestand du står i, helning og markfuktighet der. Uten AI-nøkkel svarer lederen fra planens data i nettleseren, og ingenting sendes.',
     grunnlag: 'initiativ', lagring: 'SkogIQ.ai lagrer ikke samtalen på serveren. Nøkkelen din lagres bare i nettleseren.',
     mottakere: 'Anthropic (USA), direkte fra nettleseren med din egen API-nøkkel, etter Anthropics vilkår. Brukes bare når du selv stiller et spørsmål.', api: [] },
+  { id: 'tale', navn: 'Talegjenkjenning hos SkogIQ-lederen', formaal: 'Gjøre om spørsmål du sier til SkogIQ-lederen i den virtuelle skogen (også med VR-briller) til tekst.',
+    opplysninger: 'Lyden fra mikrofonen mens du holder inne eller har trykket 🎙. Teksten behandles videre som et vanlig spørsmål (se «Spør AI og SkogIQ-lederen»).',
+    grunnlag: 'initiativ', lagring: 'SkogIQ.ai lagrer verken lyd eller tekst. Nettleserleverandøren behandler lyden etter sine egne vilkår.',
+    mottakere: 'Nettleserleverandøren sin talegjenkjenning, direkte fra nettleseren: Google (Chrome, Edge, Android), Apple (Safari) eller Meta (Quest-nettleseren). Brukes bare når du har sagt ja og selv trykker 🎙 eller holder inne grepet.', api: [] },
   { id: 'api', navn: 'Integrasjons-API (API-nøkler)', formaal: 'La et system du bruker – for eksempel regnskap, skogeierandelslag, entreprenør eller eget fagsystem – hente og oppdatere dine skogbruksplaner (bestand, tiltak, oppdrag, registreringer og beregninger) automatisk.',
     opplysninger: 'Planene dine i skylagringen, slik de er. For hver nøkkel: navn, hvilken bruker den gjelder, tilgang (lese eller lese og skrive), når den ble laget og av hvilken administrator, og når den sist ble brukt. For hvert kall: tid, nøkkel, metode, adresse og status (ikke innholdet). Selve nøkkelen lagres bare som en kryptografisk sjekksum.',
     grunnlag: 'avtale', lagring: 'Nøkler til de trekkes tilbake eller kontoen slettes. De siste 1000 kallene logges.',
@@ -88,6 +92,7 @@ export const TREDJEPARTER = [
   { navn: 'Resend', rolle: 'Sender e-post for glemt passord, når e-post er slått på (databehandler)', land: 'USA, EUs standardavtaler (SCC).' },
   { navn: 'jsDelivr, unpkg og Google Fonts', rolle: 'Programbiblioteker og skrifttyper som nettleseren henter', land: 'Globale nettverk. Ser IP-adressen din.' },
   { navn: 'Anthropic', rolle: 'Spør AI, bare med din egen API-nøkkel', land: 'USA.' },
+  { navn: 'Nettleserens talegjenkjenning (Google, Apple, Meta)', rolle: 'Gjør tale til tekst hos SkogIQ-lederen, bare når du har sagt ja og trykker 🎙', land: 'USA. Etter nettleserleverandørens vilkår.' },
   { navn: 'Deere & Company', rolle: 'John Deere Operations Center, bare når du kobler til', land: 'USA.' },
   { navn: 'Offentlige kartkilder', rolle: 'Kartverket, NIBIO, MET, NVE, Miljødirektoratet, Artsdatabanken, Statens vegvesen, Riksantikvaren m.fl.', land: 'Norge.' },
 ];

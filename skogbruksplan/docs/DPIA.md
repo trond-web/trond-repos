@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Utkast til godkjenning hos behandlingsansvarlig |
 | **Dato** | 2026-11-11 |
-| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.12 (`js/personvern.js`) |
+| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.13 (`js/personvern.js`) |
 | **Behandlingsansvarlig** | Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no. Organisasjonsnummer legges inn når foretak er etablert |
 | **Neste gjennomgang** | Ved endringene i kapittel 8, og senest 2027-11-11 |
 
@@ -64,6 +64,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | John Deere (`jd`) | Tilgangsnøkler til Operations Center | Brukerens initiativ | Til brukeren kobler fra |
 | Kart og offentlige data (`offentlig`) | Koordinater og eiendomsnummer i oppslag; IP-adressen hos leverandørene | Avtale | Lagres ikke av SkogIQ.ai |
 | Spør AI (`ai`) | Spørsmål og plansammendrag til Anthropic, med brukerens egen nøkkel | Brukerens initiativ | Lagres ikke på serveren |
+| Talegjenkjenning (`tale`) | Lyd fra mikrofonen til nettleserleverandørens talegjenkjenning (Google, Apple, Meta), bare etter ja i appen og når brukeren trykker 🎙 | Brukerens initiativ | Lagres ikke av SkogIQ.ai; leverandørens vilkår gjelder |
 | Integrasjons-API (`api`) | Planer i skylagringen via API-nøkkel; nøkkelmetadata og logg over kall (uten innhold) | Avtale | Til nøkkelen trekkes tilbake / kontoen slettes; logg 1000 kall |
 | SkogIQ Skogkarakter (`skogkarakter`) | Karakter A–E og poeng per område, beregnet i nettleseren fra planens data; ett øyeblikksbilde per år i planen | Avtale | Sammen med planen |
 | Lagring i nettleseren (`lokal`) | Planer, kartfliser, innstillinger, økt | Avtale | På enheten |
@@ -72,7 +73,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 - Nettleseren snakker med SkogIQ-serveren (HTTPS, Bearer-token eller HttpOnly-kapsel).
 - Serveren lagrer data i JSON-filer på et Railway-volum.
 - Nettleseren henter kart og fagdata direkte fra offentlige kilder.
-- Valgfrie integrasjoner: Anthropic (fra nettleseren), John Deere (via serveren) og Resend (e-post for glemt passord, via serveren).
+- Valgfrie integrasjoner: Anthropic (fra nettleseren), nettleserens talegjenkjenning (Google, Apple eller Meta, fra nettleseren), John Deere (via serveren) og Resend (e-post for glemt passord, via serveren).
 - **Sikkerhetskopi** (`backup.js`): hele datamappen pakkes, komprimeres og krypteres (AES-256-GCM) én gang i døgnet. Kopiene ligger på volumet (7 stykker) og, når det er satt opp, i S3-kompatibel lagring i EU utenfor Railway (30 stykker). Nøkkelen (`BACKUP_NOKKEL`) oppbevares utenfor Railway, og kopier sendes aldri ut ukryptert.
 
 ## 3. Nødvendighet og proporsjonalitet
@@ -123,6 +124,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | R14 | Fritekst i tilbakemeldinger kan inneholde personopplysninger om andre (`tilbakemelding`) | Bare administrator ser tilbakemeldingene; teksten er begrenset til 3000 tegn og 10 per time; slettes med kontoen; administrator kan slette enkeltmeldinger | L | L | **Lav** |
 | R15 | Skogkarakteren brukes som rangering eller profilering av skogeieren (`skogkarakter`) | Beregnes i nettleseren fra eierens egne data og vises bare for eieren; ingen sammenligning med andre og ingen visning for kjøpere, kommune eller andre; deles bare når eieren selv skriver ut karakterbeviset eller laster ned stempelet; forklarbare indikatorer, «ukjent» gir ikke minuspoeng; erklæringen 1.8 krever ny godkjenning | L | M | **Lav**. Deling uten eierens handling, sammenligning eller bruk for andre krever ny vurdering (kap. 8 punkt 2) |
 | R16 | Uautorisert tilgang til en skogeiers planer via integrasjons-API-et, lekket nøkkel eller for vid tilgang (`api`) | Nøkkel opprettes bare av administrator etter avtale med brukeren og gjelder én brukers egne planer; lese- eller skrivetilgang; bare SHA-256 av hemmeligheten lagres; vises én gang; kan trekkes tilbake; 300 kall/min; alle kall logges (uten innhold); skrivinger blir ny planversjon (kan rulles tilbake fra historikken); If-Match mot overskriving; slettes med kontoen; erklæring 1.9 krever ny godkjenning | L | M | **Lav–middels**. Systemnøkler med tilgang til flere brukere, eller utlevering til nye mottakere uten brukerens avtale, krever ny vurdering og databehandleravtale |
+| R17 | Stemmeopptak til nettleserleverandør i USA (`tale`) | Av til brukeren sier ja i en egen dialog som forklarer hvor lyden går; lytter bare mens brukeren trykker 🎙 eller holder inne grepet; SkogIQ.ai lagrer verken lyd eller tekst; tekstfelt og forslag virker uten tale | L | M | **Lav**. Ikke særlige kategorier; stemmen brukes ikke til å identifisere noen. |
 
 **Samlet restrisiko:** lav, bortsett fra **R6** (middels til lagring utenfor Railway er satt opp) og **R7/R11** (lav–middels) inntil tiltakene under er gjennomført. Ingen restrisiko er høy, så forhåndsdrøfting med Datatilsynet (art. 36) er ikke nødvendig.
 
@@ -159,7 +161,7 @@ Vurderingen skal oppdateres, og vil trolig bli **påkrevd**, hvis noe av dette i
 3. **KI på serveren** med SkogIQ.ai sin nøkkel og brukernes data, eller KI som tar avgjørelser.
 4. **Kontinuerlig posisjonssporing** av personer eller maskiner.
 5. **Stor skala**, for eksempel avtaler med skogeierandelslag eller kommuner som omfatter mange tusen skogeiere, eller import av eierregistre.
-6. **Nye tredjeparter** som mottar personopplysninger, eller lagring utenfor EU/EØS. Integrasjons-API-et (versjon 1.9) gir bare tilgang til én brukers egne planer etter avtale med brukeren (R16). Nøkler som gir tilgang til flere brukeres data, for eksempel for skogeierandelslag, krever ny DPIA-vurdering og databehandleravtale.
+6. **Nye tredjeparter** som mottar personopplysninger, eller lagring utenfor EU/EØS. Integrasjons-API-et (versjon 1.9) gir bare tilgang til én brukers egne planer etter avtale med brukeren (R16). Nøkler som gir tilgang til flere brukeres data, for eksempel for skogeierandelslag, krever ny DPIA-vurdering og databehandleravtale. Talegjenkjenning hos SkogIQ-lederen (versjon 1.13) sender lyd til nettleserleverandøren bare etter ja fra brukeren og lagres ikke av SkogIQ.ai (R17).
 7. **Særlige kategorier** eller opplysninger om barn.
 8. **Vesentlige endringer** i vilkår og personvernerklæring, det vil si ny `VILKAR.versjon` med `kreverGodkjenning`.
 
