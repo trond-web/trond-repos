@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.7.0 – 🌐 SkogIQ.ai på engelsk (2026-11-20)
+
+*Nytt.* Hele løsningen kan nå brukes på engelsk – fullversjonen, SkogIQ Felt, rapporter, utskrifter, admin og innloggingen. Norsk er fortsatt standard. Bytt med EN/NO-knappen i sidemenyen, under 🌐 Språk / Language i Om-boksen, i SkogIQ Felt under Mer › Innstillinger, eller med EN-knappen på innloggingssiden. Valget huskes i nettleseren. Data fra eksterne kilder (stedsnavn, naturtype- og kulturminnebeskrivelser), tekst i 3D/VR og AI-svar er fortsatt på norsk. Ingen nye tredjeparter – ordboken ligger i appen.
+
 ## 2.6.0 – 🧑‍🌾 SkogIQ-lederen i den virtuelle skogen (2026-11-20)
 
 *Nytt.* I den virtuelle skogen (og med VR-briller) kan du hente fram SkogIQ-lederen og spørre om stedet du står: hva som står her, når det kan hogges, om det trenger tynning eller ungskogpleie, hva tømmeret er verdt, planlagte tiltak, miljøhensyn og om du kan kjøre med maskin. Svarene kommer fra planens data – og med AI-nøkkel kan du stille frie spørsmål. Svaret står på en tavle ved lederen og leses opp. I VR: høyre grep henter lederen, høyre stikke og avtrekker velger spørsmål. Personvernerklæringen er oppdatert (versjon 1.12).

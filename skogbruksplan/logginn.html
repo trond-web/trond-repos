@@ -46,9 +46,11 @@
   .roller.mangler .rolle-valg label { border-color: var(--danger); }
   [hidden] { display: none !important; }
 </style>
+<script type="module">import { startSprak, kobleSprakKnapper } from './js/sprak.js'; startSprak(); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => kobleSprakKnapper()); else kobleSprakKnapper();</script>
 </head>
 <body>
 <main>
+  <button type="button" data-sprak-bytt class="sprak-lenke" style="position:absolute;top:14px;right:14px;border:1px solid rgba(0,0,0,.15);background:transparent;border-radius:99px;padding:4px 12px;font:600 13px system-ui,sans-serif;cursor:pointer;color:inherit">EN</button>
   <h1 class="logo">Skog<b>IQ</b>.ai</h1>
   <div class="faner" role="tablist" id="faner" hidden>
     <button type="button" role="tab" aria-selected="true" data-fane="inn">Logg inn</button>

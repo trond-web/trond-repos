@@ -35,6 +35,7 @@
   @media (max-width: 560px) { dl { grid-template-columns: 1fr; gap: 0 0; } dd { margin-bottom: 8px; } .pv-tabell thead { display: none; } .pv-tabell tr { display: grid; padding: 8px 0; border-bottom: 1px solid var(--border); } .pv-tabell td { border: 0; padding: 1px 0; } .pv-tabell td:first-child { font-weight: 700; } }
   @media print { body { background: #fff; padding: 0; } main { border: 0; } .pv-beh { break-inside: avoid; } details > :not(summary) { display: block; } }
 </style>
+<script type="module">import { startSprak, kobleSprakKnapper } from './js/sprak.js'; startSprak(); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => kobleSprakKnapper()); else kobleSprakKnapper();</script>
 </head>
 <body>
 <main>

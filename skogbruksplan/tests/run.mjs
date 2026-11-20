@@ -4454,3 +4454,22 @@ test('Versjonslogg: følger versjonsnummeret, er sortert, «nytt siden sist» og
 
 await Promise.all(venter);
 console.log(`\n${ok} tester bestått`);
+
+test('Språk: engelsk oversettelse med tall, segmenter, mønstre og setninger', async () => {
+  const { lagOversetter, normaliser } = await import('../js/sprak.js');
+  const { ORD } = await import('../js/sprak-en.js');
+  assert.equal(normaliser('Alder 95 år, 1 200 m³').k, 'Alder {0} år, {1} m³');
+  const mangler = new Set();
+  const o = lagOversetter({ 'Areal {0} daa': 'Area {0} daa', 'Bestand': 'Stands', 'Åpnet *.': 'Opened *.', 'Hei.': 'Hi.', 'Ha det.': 'Bye.' }, { mangler });
+  assert.equal(o.oversett('Areal 12,5 daa'), 'Area 12,5 daa');
+  assert.equal(o.oversett('🌲 Bestand'), '🌲 Stands');
+  assert.equal(o.oversett('Bestand · Areal 3 daa'), 'Stands · Area 3 daa');
+  assert.equal(o.oversett('Åpnet Bestand.'), 'Opened Stands.');
+  assert.equal(o.oversett('Hei. Ha det.'), 'Hi. Bye.');
+  assert.equal(o.oversett('Ukjent tekst'), 'Ukjent tekst');
+  assert.ok(mangler.has('Ukjent tekst'));
+  // Ordboka: gyldige nøkler, ingen tomme oversettelser og like mange plassholdere.
+  const ant = (s) => (s.match(/\{\d+\}/g) || []).length;
+  for (const [nb, en] of Object.entries(ORD)) { assert.ok(en && typeof en === 'string', nb); assert.equal(ant(nb), ant(en), `plassholdere: ${nb}`); }
+  assert.ok(Object.keys(ORD).length > 3000);
+});

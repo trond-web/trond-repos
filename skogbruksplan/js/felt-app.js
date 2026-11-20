@@ -785,6 +785,7 @@ function visMer() {
     <h3>Installer</h3>
     ${installert ? '<p>✓ SkogIQ Felt er installert på enheten.</p>' : installHendelse ? '<div class="knapper"><button type="button" class="knapp primar" data-h="installer">Installer SkogIQ Felt</button></div><p class="hint">Appen legges på hjemskjermen og åpnes i fullskjerm.</p>' : ios ? '<p>Trykk på <b>Del</b> <span aria-hidden="true">⬆︎</span> i Safari og velg <b>Legg til på Hjem-skjerm</b>.</p>' : '<p class="hint">Bruk «Installer app» / «Legg til på startskjermen» i nettleserens meny.</p>'}
     <h3>Innstillinger</h3>
+    <label class="bryter"><span>🌐 Språk / Language</span><select data-sprak-velg></select></label>
     <label class="bryter"><span>Start alltid i mobilversjonen</span><input type="checkbox" id="startFelt" ${ls.get(LS.start) === '1' ? 'checked' : ''}></label>
     <div class="knapper"><a class="knapp" href="./?full">Åpne fullversjonen</a><button type="button" class="knapp" data-logg-ut>Logg ut</button></div>
     <h3>🌲 ${esc(OM.tittel)}</h3><div class="om-tekst">${omHtml()}</div>
