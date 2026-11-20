@@ -3976,6 +3976,21 @@ test('Tilbakemelding som samtale: tråd begge veier, statuslogg, uleste, gjenåp
   assert.equal((await kjor('PUT', `/api/admin/tilbakemelding/${x.id}`, frode, { melding: 'Jeg er admin' })).st, 403);
 });
 
+test('Skogen siste døgn (admin): hvem som har vært innom, hvem som er der nå, gjeng-tekst og tre per bruker', async () => {
+  const S = await import('../js/admin-skog.js'); const naa = Date.UTC(2026, 10, 20, 12);
+  const b = [
+    { bruker: 'a@x.no', navn: 'Anne', sistAktiv: naa - 60000 }, { bruker: 'b@x.no', navn: 'Bjørn', sistAktiv: naa - 3 * 3600000 },
+    { bruker: 'c@x.no', navn: 'C', sistAktiv: naa - 25 * 3600000 }, { bruker: 'd@x.no', navn: 'D', sistAktiv: null }, { bruker: 'e@x.no', navn: '<Eva>', sistAktiv: naa - 4 * 60000 },
+  ];
+  const l = S.iSkogen(b, naa); assert.deepEqual(l.map((x) => x.navn), ['Anne', '<Eva>', 'Bjørn']); assert.deepEqual(l.map((x) => x.naa), [true, true, false]);
+  assert.equal(S.siden(30000), 'akkurat nå'); assert.equal(S.siden(12 * 60000), 'for 12 min siden'); assert.equal(S.siden(3600000), 'for 1 time siden'); assert.equal(S.siden(5 * 3600000), 'for 5 timer siden');
+  assert.match(S.gjeng(0).tekst, /ugla/); assert.match(S.gjeng(1).tekst, /ensom/); assert.match(S.gjeng(6).tekst, /elgjaktlag/); assert.match(S.gjeng(500).tekst, /bygda/);
+  const h = S.skogKort(b, { naa, timeNaa: 12 }); assert.match(h, /aria-label="3 brukere siste døgn, 2 pålogget nå"/);
+  assert.equal((h.match(/<title>/g) || []).length, 3, 'ett tre per bruker'); assert.equal((h.match(/class="skog-svai"/g) || []).length, 2, 'de som er der nå, svaier');
+  assert.match(h, /Bjørn \(b@x\.no\) – for 3 timer siden/); assert.ok(!h.includes('<Eva>') && h.includes('&lt;Eva&gt;'), 'navn escapes');
+  assert.match(S.skogKort([], { naa, timeNaa: 2 }), /🦉/); assert.match(S.skogKort([], { naa, timeNaa: 2 }), /#0b1d3a/, 'nattehimmel');
+});
+
 test('E-post via eget e-postprogram: mailto med riktig koding', async () => {
   const { mailto } = await import('../js/epost.js');
   const u = mailto({ til: 'ola@x.no', emne: 'Glemt passord – SkogIQ.ai', tekst: 'Hei!\n\nLinje 2 & mer?' });

@@ -2,6 +2,7 @@
 // (auth.js). Bare for administratorer; andre sendes til appen av serveren.
 import { RAILWAY, gyldigToken } from './innlogging.js';
 import { lagAdminApi } from './admin-api.js';
+import { skogKort } from './admin-skog.js';
 const ROLLENAVN = { skogeier: 'Skogeier', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', radgiver: 'Rådgiver / regnskapsfører', offentlig: 'Offentlig' };
 
 const API = /github\.io$/.test(location.hostname) ? RAILWAY : '';
@@ -48,6 +49,7 @@ function vis(d) {
   const faner = Object.entries(d.faner).sort((a, b) => b[1] - a[1]); const fMaks = Math.max(1, ...faner.map((f) => f[1]));
   $('#innhold').innerHTML = `
     ${d.permanent ? '' : '<div class="varsel">⚠ Brukerne lagres ikke permanent på serveren (BRUKER_FIL er ikke satt). Registreringer og statistikk forsvinner ved neste utrulling. Koble et Railway-volum til /data og sett BRUKER_FIL=/data/brukere.json.</div>'}
+    <div class="kort" id="skogKort">${skogKort(d.brukere)}</div>
     <div class="kort"><div class="tall">
       <div><b>${tall(d.totalt)}</b><span>registrerte brukere</span></div>
       <div><b>${tall(d.aktiveIdag)}</b><span>aktive i dag</span></div>
