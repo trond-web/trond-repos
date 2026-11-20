@@ -44,7 +44,7 @@ export function initKsl({ hentPlan, endret, melding, nyId, iAar, visFane }) {
         <label>Ansvarlig for KSL og HMS <input id="kslAnsvarlig" value="${esc(ksl.ansvarlig)}" placeholder="Navn"></label>
         <h4 class="undertittel">Sjekklister som gjelder gården</h4>
         <div class="ksl-kapitler">${KSL_KAPITLER.map((k) => `<label class="avkrysning"><input type="checkbox" data-ksl-kap="${k.nr}" ${ksl.kapitler.includes(k.nr) ? 'checked' : ''} ${k.nr === 1 || k.nr === 10 ? 'disabled' : ''}> <span><b>${k.nr} ${esc(k.navn)}</b> <span class="hint">versjon ${esc(k.versjon)} · ${k.sporsmal.length} spørsmål, ${k.sporsmal.filter((q) => q.dok).length} med dokumentasjonskrav</span></span></label>`).join('')}</div>
-        <p class="hint">Kapittel 1 og 10 gjelder alle gårder. Husdyr-, potet- og hagebrukskapitlene finnes på ksl.no og er ikke med her.</p>
+        <p class="hint">Kapittel 1 og 10 gjelder alle gårder. Husdyrkapitlene (30–70) krysses av automatisk ut fra dyreholdet under Skifteplan › Husdyr. Potet-, grønnsak- og hagebrukskapitlene finnes på ksl.no og er ikke med her.</p>
         <div class="knapperad"><button class="knapp primar" type="button" data-ksl-gaa="revisjon">Gå til egenrevisjon ${aar}</button><button class="knapp" type="button" data-ksl-h="skriv">Skriv ut KSL-mappe</button></div>
         <p class="fotnote">Kilder: <a href="${KSL_KILDER.standard.url}" target="_blank" rel="noopener">${esc(KSL_KILDER.standard.navn)}</a>. Egenrevisjonen registreres i tillegg på ksl.no.</p>
       </div>`;
@@ -226,7 +226,7 @@ export function initKsl({ hentPlan, endret, melding, nyId, iAar, visFane }) {
     if (under === 'krav' && kravUi.endring(e, tegn)) return;
     const f = e.target; const ksl = K();
     if (f.id === 'kslAnsvarlig') { ksl.ansvarlig = f.value.trim(); lagre(); return; }
-    if (f.dataset.kslKap) { const n = Number(f.dataset.kslKap); ksl.kapitler = f.checked ? [...new Set([...ksl.kapitler, n])].sort((a, b) => a - b) : ksl.kapitler.filter((x) => x !== n); ksl.kapitlerValgt = true; lagre(); return; }
+    if (f.dataset.kslKap) { const n = Number(f.dataset.kslKap); ksl.kapitler = f.checked ? [...new Set([...ksl.kapitler, n])].sort((a, b) => a - b) : ksl.kapitler.filter((x) => x !== n); ksl.kapitlerValgt = true; ksl.fravalgt = f.checked ? (ksl.fravalgt || []).filter((x) => x !== n) : [...new Set([...(ksl.fravalgt || []), n])]; lagre(); return; }
     if (f.id === 'kslAar') { aar = Number(f.value); tegn(); return; }
     if (f.id === 'kslFilter') { filter = f.value; tegn(); return; }
     if (f.hasAttribute('data-ksl-kommentar')) { const q = f.closest('[data-nr]'); const r = revisjon(ksl, aar, { nyId }); r.svar[q.dataset.nr] = { ...r.svar[q.dataset.nr], kommentar: f.value }; endret({ kart: false }); return; }

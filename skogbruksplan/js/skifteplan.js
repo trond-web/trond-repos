@@ -267,12 +267,16 @@ export function skifterFraMarkslag(plan, figurer, { iAar, nyId, minDaa = 1 } = {
 // ---------- jordsmonn (NIBIO WMS) ----------
 const JORDSMONN = 'https://wms.nibio.no/cgi-bin/jordsmonn_harmonisert';
 const EROSJON = 'https://wms.nibio.no/cgi-bin/jordsmonn_erosjonsrisiko';
+const BEITE = 'https://wms.nibio.no/cgi-bin/beite'; // organisert beitebruk i utmark (beitelag, sluppet og tapt)
 export const JORDSMONN_KARTLAG = {
   tekstur: { navn: 'Jordsmonn: tekstur i overflaten', url: JORDSMONN, lag: 'Tekstur' },
   drenering: { navn: 'Jordsmonn: naturlig drenering', url: JORDSMONN, lag: 'Drenering' },
   begrensning: { navn: 'Jordsmonn: mest begrensende egenskap', url: JORDSMONN, lag: 'Begrensning' },
   erosjon: { navn: 'Erosjonsrisiko ved høstpløying', url: EROSJON, lag: 'Erosjonsrisiko_flateerosjon' },
   drag: { navn: 'Drågerosjon', url: EROSJON, lag: 'Drag' },
+  beitelag: { navn: 'Beite: beitelag i utmark (grenser og navn)', url: BEITE, lag: 'Beitelaggrenser,Beitelagnamn', attr: 'Beitelag © NIBIO' },
+  beitetap: { navn: 'Beite: tapsprosent sau og lam i beitelaget', url: BEITE, lag: 'Tapsprosent_sau_lam', attr: 'Beitelag © NIBIO' },
+  sautetthet: { navn: 'Beite: sau per km² i utmark', url: BEITE, lag: 'Sau_per_km2', attr: 'Beitelag © NIBIO' },
 };
 function gfiUrl(base, lag, [lon, lat]) {
   const d = 0.0008;

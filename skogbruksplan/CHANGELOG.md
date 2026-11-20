@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.10.0 – 🌿 Beiteplan og KSL for husdyr (2026-11-20)
+
+*Nytt.* Husdyr-fanen i Skifteplan har fått beiteplan: legg inn når og hvor dyrene beiter – på innmarksbeite, eng (høstbeite) eller i utmark – og se beitetrykket i hver periode, hvor godt beitene utnyttes, og om hele beitesesongen er dekket. Beitekart fra NIBIO viser beitelagene i utmark, tapsprosent for sau og lam og antall sau per km². KSL har fått sjekklistene for husdyr: drøvtyggere (også lama og alpakka), storfe, småfe, melk, svin, fjørfe, egg, oppal, slaktekylling, kalkun og hest i næring. De krysses av automatisk ut fra dyreholdet.
+
 ## 2.9.0 – 🐄 Husdyr: gjødsel og fôrbalanse (2026-11-20)
 
 *Nytt.* Skifteplanen har fått fanen Husdyr. Legg inn dyrene på gården – melkekyr, ammekyr, ungdyr, sau, geit, hest, alpakka, høner, kylling, kalkun eller gris – så beregnes husdyrgjødsla: mengde, fosfor, om spredearealet holder mot fosforgrensen i gjødselforskriften, og om gjødsellageret er stort nok. «Fordel på skiftene» legger husdyrgjødsla inn i gjødslingsplanen etter fosforbehovet. Fôrbalansen viser behovet for vinterfôr, beite og kraftfôr mot avlingene på skiftene, med antall rundballer og hvor mye eng som eventuelt mangler. Tallene per dyr er typiske og kan justeres.

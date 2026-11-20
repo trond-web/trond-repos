@@ -1551,3 +1551,10 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .hd-forut summary { cursor: pointer; font-weight: 600; margin-top: 8px; }
 /* Skifteplan har seks underfaner: la dem bryte til to linjer i stedet for å bli kuttet. */
 #fane-skifteplan .sb-under { flex-wrap: wrap; } #fane-skifteplan .sb-under button { flex: 1 1 auto; min-width: 72px; }
+.hd-navn { width: 100%; margin-top: 4px; }
+.hd-trykk { font-weight: 700; padding: 2px 7px; border-radius: 99px; background: var(--surface-2); }
+.hd-trykk.hoy { color: #fff; background: var(--critical); } .hd-trykk.lav { color: #8a5a00; background: #fff1cc; } .hd-trykk.ok { color: var(--accent-ink); background: var(--accent); }
+.hd-beiter { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin: 6px 0 10px; }
+.hd-beiter > div { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--grid); border-radius: 10px; }
+.hd-stolpe { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; } .hd-stolpe i { display: block; height: 100%; background: var(--accent); }
+.hd-stolpe i.hoy { background: var(--critical); } .hd-stolpe i.lav { background: #e0a800; }
