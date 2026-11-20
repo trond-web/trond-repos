@@ -22,6 +22,7 @@ import { initKommune } from './kommune-ui.js';
 import { initVeier } from './veier-ui.js';
 import { lagInnsikt } from './innsikt.js';
 import { skjotselsbehov, skjotselsTiltak } from './skjotsel.js';
+import { initSok } from './sok-ui.js';
 import { initKommando } from './kommando.js';
 import { initPefc } from './pefc-ui.js';
 import { delFlate, nyttNr } from './del.js';
@@ -635,7 +636,7 @@ function angreDeling() {
 
 // ---------------------------------------------------------------- faner
 let kommuneVisning = null;
-let veiVisning = null; let egneLagVisning = null; // 📌 egne kartlag (GPX/KML/KMZ, js/egne-lag-ui.js)
+let veiVisning = null; let sokVisning = null; /* 🔎 egenskapssøk (js/sok-ui.js) */ let egneLagVisning = null; // 📌 egne kartlag (GPX/KML/KMZ, js/egne-lag-ui.js)
 let pefcVisning = null;
 let verdiVisning = null; let takstVisning = null; let skogkarakter = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null; let maaling = null; let nettverk = null;
 let aiVisning = null;
@@ -659,7 +660,7 @@ function visFane(navn) {
   $('.kartverktoy').hidden = navn === 'kommune';
   $$('.faner button').forEach((b) => b.classList.toggle('aktiv', b.dataset.fane === navn));
   $$('.fane').forEach((f) => { f.hidden = f.id !== `fane-${navn}`; });
-  if (navn !== 'tiltak' && navn !== 'karbon' && uthevet.size) { uthevet = new Set(); oppdaterStiler(); }
+  if (navn !== 'tiltak' && navn !== 'karbon' && navn !== 'bestand' && uthevet.size) { uthevet = new Set(); oppdaterStiler(); } // bestand: treff fra egenskapssøket
   if (navn === 'tiltak' && !$('#oppdragPanel').hidden) oppdragVisning?.tegn();
   if (navn === 'data') { hprVisning?.tegn(); tegnAjourPanel(); }
   if (navn === 'ksl') kslVisning?.vis();
@@ -783,7 +784,9 @@ function tegnOversikt() {
 function tegnBestandTabell() {
   const sok = $('#bestandSok').value.trim().toLowerCase();
   const fHk = $('#bestandFilterHk').value; const fTs = $('#bestandFilterTs').value;
+  const utvalg = sokVisning?.utvalg();
   const rader = S.bestand.filter((b) => {
+    if (utvalg && !utvalg.has(b.id)) return false;
     if (fHk && String(hk(b)) !== fHk) return false;
     if (fTs && b.treslag !== fTs) return false;
     if (sok && !`${b.nr} ${b.teig} ${b.merknad}`.toLowerCase().includes(sok)) return false;
@@ -2231,7 +2234,7 @@ function endret({ kart: kartEndret = false, zoom = false } = {}) {
   frResultat = null;
   for (const b of S.bestand) for (const t of b.tiltak || []) if (!t.id) t.id = nyId('t'); // eldre importerte tiltak uten id
   lagreSnart();
-  if (kartEndret) { tegnBestandKart(zoom); tegnKantsone(); if (S.eiendom?.grense && !S.kantsone?.bred) setTimeout(() => sikreKantsone(), 0); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); egneLagVisning?.oppdater(); } else oppdaterStiler();
+  if (kartEndret) { tegnBestandKart(zoom); tegnKantsone(); if (S.eiendom?.grense && !S.kantsone?.bred) setTimeout(() => sikreKantsone(), 0); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); egneLagVisning?.oppdater(); sokVisning?.tegn(); } else oppdaterStiler();
   tegnOversikt();
   tegnBestandTabell();
   tegnTiltak();
@@ -2689,6 +2692,8 @@ function kommandoValg(q) {
     { gruppe: 'Kart', ikon: '📏', tittel: 'Mål avstand (lengde)', sok: 'mål avstand lengde meter linjal', utfor: () => { if (tegning) stoppTegning(); maaling?.start('lengde'); } },
     { gruppe: 'Handlinger', ikon: '📬', tittel: 'Mine tilbudsforespørsler', under: 'Se sendte forespørsler og tilbudene du har fått', sok: 'tilbud svar mine forespørsler mottatt sendt anbud', utfor: () => { visFane('tiltak'); visTiltakVisning('oppdrag'); oppdragVisning?.lukk(); oppdragVisning?.tegn(); } },
     { gruppe: 'Handlinger', ikon: '📨', tittel: 'Be om tilbud', under: 'Få pris fra entreprenør, tømmerkjøper eller planteleverandør – i tre steg', sok: 'tilbud pris entreprenør tømmerkjøper anbud forespørsel bestille jobb oppdrag hogst planting', utfor: () => hurtigTilbud?.start() },
+    { gruppe: 'Handlinger', ikon: '🔎', tittel: 'Egenskapssøk på bestand', under: 'Finn bestand etter treslag, hogstklasse, bonitet, alder, volum, skjøtselsbehov … og lagre søket', sok: 'egenskapssøk søk filter utvalg spørring bestand hogstklasse bonitet treslag lagre søk felt', utfor: () => { visFane('bestand'); sokVisning?.apne('bestand'); } },
+    { gruppe: 'Handlinger', ikon: '🔎', tittel: 'Egenskapssøk på tiltak', under: 'Finn tiltak etter type, år, status, prioritet og bestandets egenskaper', sok: 'egenskapssøk søk filter tiltak år status prioritet lagre søk', utfor: () => { visFane('tiltak'); sokVisning?.apne('tiltak'); } },
     { gruppe: 'Handlinger', ikon: '🔄', tittel: 'Ajourfør planen fra hogstmaskindata (HPR)', under: 'Les inn hpr-fil: del bestand, oppdater egenskaper og tiltak', sok: 'hpr hogstmaskin ajourfør ajourføring stanford produksjonsfil hogd flate bestandsgrense oppdater plan', utfor: () => { visFane('data'); setTimeout(() => $('#ajourPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } },
     { gruppe: 'Kart', ikon: '🌲', tittel: 'Vis hogstmaskindata i kartet', sok: 'hpr stammer hogd flate kartlag hogstmaskin', utfor: () => { if ((S.hogstdata || []).length) ajourVisning?.visLagret(); else melding('Ingen hogstmaskindata er lest inn ennå. Bruk Data › Ajourfør planen fra hogstmaskindata.'); } },
     { gruppe: 'Hjelp', ikon: '❓', tittel: 'Brukerveiledning', under: 'Slik bruker du SkogIQ.ai – steg for steg', sok: 'hjelp brukerveiledning veiledning manual hvordan bruke guide', utfor: () => visHjelp('kom-i-gang') },
@@ -2746,6 +2751,12 @@ function kobleHendelser() {
   visNyttSidenSist();
   initKommando({ hentValg: kommandoValg });
   $('#genSkjema').addEventListener('submit', startGenerering);
+  sokVisning = initSok({
+    hentPlan: () => S, endret, melding, nyId, velgBestand: (id) => velgBestand(id), oppdaterListe: () => tegnBestandTabell(),
+    uthev: (ider) => { uthevet = new Set(ider); oppdaterStiler(); },
+    zoomTil: (ider) => { const l = ider.map((id) => lagPerBestand.get(id)).filter(Boolean); if (l.length) kart.fitBounds(L.featureGroup(l).getBounds(), { ...synligPadding(kart, 40), maxZoom: 16 }); },
+  });
+  sokVisning.tegn();
   egneLagVisning = initEgneLag({ L, kart, lagKontroll: () => lagKontroll, hentPlan: () => S, endret, melding, nyId, panel: $('#egneLagPanel') });
   egneLagVisning.oppdater();
   veiVisning = initVeier({

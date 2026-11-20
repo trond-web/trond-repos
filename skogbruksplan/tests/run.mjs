@@ -379,6 +379,49 @@ test('Skjøtselsbehov i planen: ungskogpleie og tynning i innsikten, samme regle
   const etter = SK.skjotselsbehov(S); assert.equal(etter.tynning.length + etter.ungskog.length, 0);
 });
 
+test('Egenskapssøk: bestand og tiltak, operatorer, alle/minst ett, bestandsfelt i tiltakssøk, beskrivelse og lagring', async () => {
+  const SO = await import('../js/sok.js'); const { STANDARD_INNSTILLINGER: INN } = await import('../js/model.js');
+  const b = (o) => ({ id: o.nr, areal: 10, treslag: 'G', bonitet: 17, alder: 50, volumDaa: 20, treantall: 120, hoyde: 15, tiltak: [], ekstra: {}, takstAar: 2026, merknad: '', ...o });
+  const S = { innstillinger: INN, bestand: [
+    b({ nr: '1', treslag: 'G', bonitet: 17, areal: 12, merknad: 'Vindfall langs bekken', tiltak: [{ id: 'a', type: 'tynning', aar: 2027, status: 'planlagt', prioritet: 2 }, { id: 'b', type: 'ungskogpleie', aar: 2020, status: 'utfort' }] }),
+    b({ nr: '2', treslag: 'F', bonitet: 11, areal: 30, miljo: true, tiltak: [{ id: 'c', type: 'sluttavvirkning', aar: 2026, status: 'planlagt', prioritet: 1, kommentar: 'Selges til Glommen' }] }),
+    b({ nr: '3', treslag: 'L', bonitet: 14, areal: 5, alder: 120, volumDaa: 15 }),
+    b({ nr: '4-2', treslag: 'G', bonitet: 20, areal: 8, alder: 90, volumDaa: 40 }),
+  ] };
+  const ider = (r) => r.bestand.map((x) => x.nr);
+  const sok = (vilkar, o = {}) => SO.kjorSok(S, { mal: 'bestand', logikk: 'alle', vilkar, ...o });
+  assert.deepEqual(ider(sok([])), ['1', '2', '3', '4-2'], 'tomt søk gir alle');
+  assert.deepEqual(ider(sok([{ felt: 'treslag', op: 'er', verdi: 'G' }])), ['1', '4-2']);
+  assert.deepEqual(ider(sok([{ felt: 'treslag', op: 'ikke', verdi: 'G' }])), ['2', '3']);
+  assert.deepEqual(ider(sok([{ felt: 'treslag', op: 'en av', verdi: ['F', 'L'] }])), ['2', '3']);
+  assert.deepEqual(ider(sok([{ felt: 'bonitet', op: '≥', verdi: '14' }, { felt: 'areal', op: '<', verdi: '10' }])), ['3', '4-2']);
+  assert.deepEqual(ider(sok([{ felt: 'bonitet', op: '≥', verdi: '20' }, { felt: 'miljo', op: 'ja' }], { logikk: 'minst' })), ['2', '4-2']);
+  assert.deepEqual(ider(sok([{ felt: 'areal', op: 'mellom', verdi: '8', verdi2: '12' }])), ['1', '4-2']);
+  assert.deepEqual(ider(sok([{ felt: 'areal', op: 'mellom', verdi: '9,5', verdi2: '' }])), ['1', '2'], 'desimalkomma og åpen øvre grense');
+  assert.deepEqual(ider(sok([{ felt: 'merknad', op: 'inneholder', verdi: 'BEKK' }])), ['1']);
+  assert.deepEqual(ider(sok([{ felt: 'nr', op: 'inneholder', verdi: '4-' }])), ['4-2']);
+  assert.deepEqual(ider(sok([{ felt: 'planlagt', op: 'nei' }])), ['3', '4-2']);
+  assert.deepEqual(ider(sok([{ felt: 'hogstmoden', op: 'ja' }])).includes('4-2'), true);
+  assert.deepEqual(ider(sok([{ felt: 'bonitet', op: '>', verdi: '' }])).length, 4, 'tom verdi begrenser ikke');
+  assert.equal(ider(sok([{ felt: 'treslag', op: 'en av', verdi: [] }])).length, 4, '«en av» uten avkrysning begrenser ikke');
+  const r = sok([{ felt: 'treslag', op: 'er', verdi: 'G' }]); assert.equal(r.sum.antall, 2); assert.equal(r.sum.areal, 20); assert.ok(r.sum.volum > 0); assert.deepEqual([...r.ider], ['1', '4-2']);
+  // Tiltakssøk, også med bestandets egenskaper
+  const tr = SO.kjorSok(S, { mal: 'tiltak', vilkar: [{ felt: 'status', op: 'er', verdi: 'planlagt' }, { felt: 'aar', op: '≤', verdi: '2027' }] });
+  assert.deepEqual(tr.tiltak.map((x) => x.t.id), ['c', 'a'], 'sortert på år'); assert.equal(tr.sum.bestand, 2); assert.equal(tr.sum.areal, 42);
+  assert.deepEqual(SO.kjorSok(S, { mal: 'tiltak', vilkar: [{ felt: 'b.treslag', op: 'er', verdi: 'F' }] }).tiltak.map((x) => x.t.id), ['c']);
+  assert.deepEqual(SO.kjorSok(S, { mal: 'tiltak', vilkar: [{ felt: 'kommentar', op: 'inneholder', verdi: 'glommen' }] }).tiltak.map((x) => x.t.id), ['c']);
+  assert.deepEqual(SO.kjorSok(S, { mal: 'tiltak', vilkar: [{ felt: 'prioritet', op: 'en av', verdi: ['1', '2'] }] }).tiltak.length, 2);
+  // Beskrivelse og lagring
+  assert.equal(SO.beskrivSok({ mal: 'bestand', vilkar: [{ felt: 'hogstklasse', op: 'er', verdi: '3' }, { felt: 'bonitet', op: '≥', verdi: '14' }] }), 'Hogstklasse er HK III og Bonitet ≥ 14');
+  assert.equal(SO.beskrivSok({ mal: 'tiltak', logikk: 'minst', vilkar: [{ felt: 'type', op: 'en av', verdi: ['tynning', 'ungskogpleie'] }, { felt: 'flate', op: 'nei' }] }), 'Tiltakstype er en av Tynning / Ungskogpleie eller Har egen flate: nei');
+  assert.equal(SO.beskrivSok({ mal: 'bestand', vilkar: [] }), 'Alle bestand');
+  const lagret = SO.rensSok({ mal: 'bestand', logikk: 'alle', vilkar: [{ felt: 'treslag', op: 'er', verdi: 'G' }, { felt: 'ukjent', op: 'er', verdi: 'x' }] }, { id: 'sok1', navn: '  Granbestand  ', naa: '2026-11-20' });
+  assert.deepEqual(lagret, { id: 'sok1', navn: 'Granbestand', mal: 'bestand', logikk: 'alle', vilkar: [{ felt: 'treslag', op: 'er', verdi: 'G' }], laget: '2026-11-20', endret: '2026-11-20' });
+  assert.equal(SO.rensSok({ mal: 'tiltak', vilkar: [{ felt: 'aar', op: '=', verdi: '2027' }] }, { id: 'x', navn: '' }).navn, 'År = 2027');
+  assert.deepEqual(ider(SO.kjorSok(S, JSON.parse(JSON.stringify(lagret)))), ['1', '4-2'], 'lagret søk (som i Felt) gir samme svar');
+  assert.ok(Object.keys(SO.feltFor('tiltak')).includes('b.hogstklasse')); assert.equal(SO.nyttVilkar('tiltak').felt, 'type');
+});
+
 test('kommuneanalyse: HTML-attributter kobles til id i rekkefølge', () => {
   const tab = (alder, gran) => `<table><tr><td>Bestandsalder</td><td><b>${alder}</b><td></td></tr><tr><td>Volum uten bark (m³/ha)</td><td><b>250</b></td></tr><tr><td>Prosentandel gran</td><td><b>${gran}</b><td></td></tr></table>`;
   const a = parseHtmlAlle(`<html>${tab(80, 90)}${tab(20, 10)}</html>`, ['11', '22']);
