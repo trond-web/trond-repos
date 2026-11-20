@@ -8,7 +8,7 @@ import { STANDARD_INNSTILLINGER, normaliserBestand, framskriv, foreslaaForEiendo
 import { lesGeojson, lesCsv, lesSosi, slaaSammen } from '../js/importers.js';
 import { lagDemo } from '../js/demo.js';
 import { finnKommune, ryddKanterOgHull, genererPlan } from '../js/generator.js';
-import { klassifiser, parseHtmlAlle, pakkUtKmz, parseKml } from '../js/kommuneanalyse.js';
+import { klassifiser, parseHtmlAlle, pakkUtKmz, parseKml, STANDARD_KRITERIER as STANDARD_KRIT } from '../js/kommuneanalyse.js';
 import zlib from 'node:zlib';
 import { pefcAlder, avstand, kontroller, kravStatus, klareringStatus, tomPefc, KRAVPUNKTER, ROVFUGLER, arealDaa } from '../js/pefc.js';
 import { jordverdi, bestandsverdi, verdiberegning, kalibrerPriser, folsomhet, STANDARD_VERDI } from '../js/verdi.js';
@@ -270,6 +270,39 @@ test('kommuneanalyse: klassifisering', () => {
   assert.deepEqual(ider(r.lukket), ['furu-skjerm', 'lukket-blandet']);
   assert.deepEqual(ider(r.ungskog), ['ung-lauv']);
   assert.ok(r.hogst[0].rotnetto > 0);
+});
+
+test('kommuneanalyse: tynningsbehov i hogstklasse III og IV, per treslag og sortering', async () => {
+  const { klassifiser: kl, perTreslag, oppsummer: opp, grunnflate, TRESLAG_REKKEFOLGE } = await import('../js/kommuneanalyse.js');
+  const { beregnetHogstklasse, hkGrenser, laavesteHogstalder } = await import('../js/model.js');
+  const hk = (o) => beregnetHogstklasse(o.alder, laavesteHogstalder(o), o.volumDaa, hkGrenser(o));
+  // Finn en alder i HK III for gran G17 og furu F14, og HK IV
+  const alderFor = (o, klasse) => { for (let a = 5; a < 150; a++) if (hk({ ...o, alder: a, volumDaa: 20 }) === klasse) return a; return null; };
+  const g3 = alderFor({ treslag: 'G', bonitet: 17 }, 3); const g4 = alderFor({ treslag: 'G', bonitet: 17 }, 4); const f3 = alderFor({ treslag: 'F', bonitet: 14 }, 3);
+  assert.ok(g3 && g4 && f3);
+  const r = kl([
+    flate({ id: 'gran-tett', alder: g3 + 2, overhoyde: 13, hoyde: 11, treantall: 220, volumDaa: 18 }),
+    flate({ id: 'gran-grunnflate', alder: g3 + 2, overhoyde: 16, treantall: 120, diameter: 18, volumDaa: 22 }),
+    flate({ id: 'gran-glissen', alder: g3 + 2, overhoyde: 16, treantall: 80, diameter: 14, volumDaa: 12 }),
+    flate({ id: 'gran-lav-bonitet', bonitet: 11, alder: alderFor({ treslag: 'G', bonitet: 11 }, 3) + 1, overhoyde: 12, treantall: 250, volumDaa: 12 }),
+    flate({ id: 'gran-for-hoy', alder: g3 + 2, overhoyde: 23, treantall: 250, volumDaa: 30 }),
+    flate({ id: 'gran-for-lav', alder: g3, overhoyde: 8, treantall: 300, volumDaa: 8 }),
+    flate({ id: 'gran-hk4', alder: g4 + 1, overhoyde: 18, treantall: 200, volumDaa: 25 }),
+    flate({ id: 'furu-tett', treslag: 'F', bonitet: 14, alder: f3 + 3, overhoyde: 12, treantall: 200, volumDaa: 14, andel: { G: 5, F: 90, L: 5 } }),
+    flate({ id: 'lauv-middels', treslag: 'L', bonitet: 14, alder: 30, overhoyde: 14, treantall: 250, volumDaa: 12 }),
+    flate({ id: 'gran-mis', alder: g3 + 2, overhoyde: 13, treantall: 220, volumDaa: 18, mis: true }),
+  ]);
+  const ider = r.tynning.map((f) => f.id).sort();
+  assert.deepEqual(ider, ['furu-tett', 'gran-grunnflate', 'gran-hk4', 'gran-tett']);
+  const t = r.tynning.find((f) => f.id === 'gran-tett'); assert.equal(t.hk, 3); assert.equal(t.metode, 'Førstegangstynning'); assert.ok(Math.abs(t.uttakM3 - 18 * 10 * 0.25) < 1e-9); assert.ok(t.rotnetto > 0);
+  assert.match(t.grunn, /HK III, gran bonitet 17, overhøyde 13 m, 220 trær\/daa/);
+  assert.equal(r.tynning.find((f) => f.id === 'gran-hk4').hk, 4); assert.equal(r.tynning.find((f) => f.id === 'gran-hk4').metode, 'Tynning');
+  assert.ok(Math.abs(grunnflate(120, 18) - 30.54) < 0.01); assert.equal(grunnflate(null, 18), null);
+  assert.ok(!r.hogst.some((f) => f.id.startsWith('gran-hk4')), 'ikke både tynning og sluttavvirkning');
+  // Lauv bare på høy bonitet (standard 17) – kan senkes
+  assert.deepEqual(kl([flate({ id: 'l', treslag: 'L', bonitet: 14, alder: 30, overhoyde: 14, treantall: 250, volumDaa: 12 })], { ...STANDARD_KRIT, tynnMinBonitetLauv: 11 }).tynning.map((f) => f.id), hk({ treslag: 'L', bonitet: 14, alder: 30, volumDaa: 12 }) === 3 ? ['l'] : []);
+  const pt = perTreslag(r.tynning); assert.equal(pt.G.antall, 3); assert.equal(pt.F.antall, 1); assert.ok(!pt.L); assert.ok(Math.abs(pt.G.areal - 30) < 1e-9);
+  assert.ok(opp(r.tynning).uttak > 0); assert.deepEqual(Object.keys(TRESLAG_REKKEFOLGE), ['G', 'F', 'L']);
 });
 
 test('kommuneanalyse: HTML-attributter kobles til id i rekkefølge', () => {
