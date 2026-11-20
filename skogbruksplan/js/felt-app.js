@@ -20,6 +20,7 @@ import { STATUSER, skjemaVerdier, endreTiltak, slettTiltak, slettTekst } from '.
 import { erUngskog, ungskogData, effektFor, settUngskog, fraSr16, middelhoyde } from './ungskog.js';
 import { ungskogHtml, effektHtml } from './effekt-html.js';
 import { apneTilbakemelding, oppdaterMerke as tbMerke } from './tilbakemelding-ui.js';
+import { startSkogen, tegnSkogen } from './skogen-ui.js';
 import * as JUL from './juletre.js';
 import * as STP from './stolpe.js';
 import { lagOkLag } from './ok-kart.js';
@@ -733,10 +734,11 @@ function visMer() {
   const offline = P ? ls.get(LS.offline + P.planId) : null;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
   const installert = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-  setTimeout(() => tbMerke(), 0); // merket på «Mine tilbakemeldinger»
+  setTimeout(() => { tbMerke(); tegnSkogen(); }, 0); // merket på «Mine tilbakemeldinger» og skogen siste døgn
   aapneArk(`<h2>Mer</h2>
     <h3>📣 Si det rett ut</h3>
     <p class="hint">Ros, barkbiller (feil) eller en god idé? Gi stjerner og skriv noen ord. Gode forslag som lar seg gjennomføre, løses i løpet av noen dager.</p>
+    <button type="button" class="skogen-linje" data-skogen="linje" hidden></button>
     <div class="knapper"><button type="button" class="knapp primar" data-h="tilbakemelding">Gi tilbakemelding</button><button type="button" class="knapp" data-h="tilbakemelding-mine" data-tb-merke>Mine tilbakemeldinger</button></div>
     <h3>Offline</h3>
     <p>${navigator.onLine ? 'Du er på nett.' : '<b>Du er uten nett.</b> Planer, registreringer og tiltak lagres på telefonen.'} Appen og planene virker uten dekning. Kartet virker offline der du har lastet det ned.</p>
@@ -970,6 +972,7 @@ async function start() {
   // Svar fra SkogIQ.ai på tilbakemeldinger: rødt merke på «Mer» og «Mine tilbakemeldinger»
   const startTbMerke = () => { tbMerke(); setInterval(() => { if (document.visibilityState === 'visible') tbMerke(); }, 5 * 60000); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') tbMerke(); }); };
   if (innloggetBruker()) startTbMerke(); else window.addEventListener('skogiq-innlogget', startTbMerke, { once: true });
+  if (innloggetBruker()) startSkogen(); else window.addEventListener('skogiq-innlogget', () => startSkogen(), { once: true });
   const kodeILenke = new URLSearchParams(location.search).get('kode');
   if (kodeILenke) { history.replaceState(null, '', location.pathname); if (await hentFraPc(kodeILenke)) { await spor.gjenoppta(); return registrerSw(); } }
   if (id) { await velgPlan(id); await spor.gjenoppta(); } else visPlaner();
