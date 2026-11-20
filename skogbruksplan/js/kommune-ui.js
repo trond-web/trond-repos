@@ -1,14 +1,14 @@
 // Fanen «Kommune»: analyse av en hel kommune med kart, liste, kriterier og kobling til planlaging for eiendommen.
 import { eiendomGrenseLag } from './eiendomslag.js';
-import { hentKommunedata, hentMis, klassifiser, oppsummer, perTreslag, eiendomIPunkt, STANDARD_KRITERIER, TRESLAG_REKKEFOLGE } from './kommuneanalyse.js';
+import { hentKommunedata, hentMis, klassifiser, oppsummer, perTreslag, eiendomIPunkt, STANDARD_KRITERIER, TRESLAG_REKKEFOLGE, merkMisOgVern, pakkKommunedata, pakkUtKommunedata } from './kommuneanalyse.js';
 import { TRESLAG } from './model.js';
 import { lagreVerdi, hentVerdi } from './store.js';
 import { fmt } from './charts.js';
 import { misMonster, misKartlag, misLegendStil, merkerVedZoom } from './miljokart.js';
-import { arealM2, punktIGeometri } from './proj.js';
+import { arealM2, boksFor } from './proj.js';
 import * as NATUR from './naturdata.js';
 import * as KULTUR from './kulturminner.js';
-import { hentVeinett, avstanderTilVei, avstandTekst, LANG_TERRENGTRANSPORT, VEI_KILDE } from './kommune-vei.js';
+import { hentVeinett, avstanderTilVeiStegvis, avstandTekst, LANG_TERRENGTRANSPORT, VEI_KILDE } from './kommune-vei.js';
 import {
   analyserFlater, hentMarkVaer, hentMetNedbor, celleFor, risikoNaa, besteDag, prioriter, forholdOppsummert,
   SESONG, NAA, BAEREEVNE, DTW_KLASSER, KILDER as DRIFT_KILDER, vatAndel, naaNivaa,
@@ -61,7 +61,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
   // Egen rute og SVG-renderer for nøkkelbiotopene (skravur krever SVG), over hogstflatene.
   kart.createPane('komMisPane'); kart.getPane('komMisPane').style.zIndex = 450; kart.getPane('komMisPane').style.pointerEvents = 'none';
   const misRenderer = L.svg({ pane: 'komMisPane' });
-  let misMerker = null; let stoppMisMerker = null;
+  let misMerker = null; let stoppMisMerker = null; let misCache = {};
   if (!document.getElementById('mis-skravur')) document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${misMonster('mis')}</defs></svg>`);
   const arealDaa = (g) => arealM2(g) / 1000;
   const lag = L.layerGroup();
@@ -137,20 +137,19 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     if (!data || naturHenter || (data.natur && !tving)) return;
     naturHenter = true; const d = data; naturStatus = 'Henter NiN-naturtyper og arter fra Miljødirektoratet …'; visNaturStatus();
     try {
-      const pts = []; const gaa = (k) => (typeof k[0] === 'number' ? pts.push(k) : k.forEach(gaa)); gaa(d.kommune.geometri.coordinates);
-      const bb = [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))];
+      const bb = boksFor(d.kommune.geometri);
       const n = await NATUR.hentForBoks(bb, { framdrift: (p) => { naturStatus = p.tekst; visNaturStatus(); } });
       naturStatus = 'Sjekker hvilke flater som berører naturtyper og arter …'; visNaturStatus(); await new Promise((ok) => setTimeout(ok, 30));
-      const merket = NATUR.merkFlater(d.flater, n);
+      const merket = await NATUR.merkFlaterStegvis(d.flater, n, { framdrift: (a) => { naturStatus = `Sjekker hvilke flater som berører naturtyper og arter … ${Math.round(a * 100)} %`; visNaturStatus(); } });
       d.naturFlater = Object.fromEntries(merket); d.naturGeo = n;
       d.natur = { hentet: new Date().toISOString(), nin: n.nin.length, art: n.art.length, flater: merket.size };
       // Fredede kulturminner (sikringssoner, Riksantikvaren) for kommunen.
       naturStatus = 'Henter kulturminner fra Riksantikvaren …'; visNaturStatus();
       try {
-        const km = await KULTUR.hentForBoks(bb); const mk = KULTUR.merkFlater(d.flater, km);
+        const km = await KULTUR.hentForBoks(bb); const mk = await KULTUR.merkFlaterStegvis(d.flater, km, { framdrift: (a) => { naturStatus = `Sjekker kulturminner … ${Math.round(a * 100)} %`; visNaturStatus(); } });
         d.kulturFlater = Object.fromEntries(mk); d.kulturGeo = km; d.kultur = { hentet: new Date().toISOString(), antall: km.length, flater: mk.size };
       } catch (e) { d.kultur = null; naturStatus = ''; melding(`Kulturminner kunne ikke hentes: ${e.message}`, 5000); }
-      if (data === d) { naturStatus = ''; lagre(); oppdater(); }
+      if (data === d) { naturStatus = ''; lagreSnart(); oppdater(); }
     } catch (e) { naturStatus = `Klarte ikke å hente naturtyper og arter: ${e.message}`; } finally { naturHenter = false; visNaturStatus(); }
   }
   function visNaturStatus() {
@@ -197,7 +196,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     };
     await Promise.all([arbeider(), arbeider(), arbeider(), arbeider()]);
   }
-  let lagreTimer = null; const lagreSnart = () => { clearTimeout(lagreTimer); lagreTimer = setTimeout(() => lagre(), 2000); };
+  let lagreTimer = null; const lagreSnart = () => { clearTimeout(lagreTimer); lagreTimer = setTimeout(() => lagre(), 4000); };
   // Avstand til bilvei for alle flatene (NVDB, hele kommunen). Gjøres én gang per analyse og lagres.
   async function beregnVei({ tving = false } = {}) {
     if (!data || veiHenter || (data.vei && !tving)) return;
@@ -206,10 +205,10 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
       const nett = await hentVeinett(d.kommune.nr, { framdrift: (p) => { veiStatus = p.tekst; visVeiStatus(); } });
       veiStatus = 'Beregner avstand til vei for hver flate …'; visVeiStatus();
       await new Promise((ok) => setTimeout(ok, 30));
-      const av = avstanderTilVei(d.flater, nett.linjer);
+      const av = await avstanderTilVeiStegvis(d.flater, nett.linjer, { framdrift: (a) => { veiStatus = `Beregner avstand til vei for hver flate … ${Math.round(a * 100)} %`; visVeiStatus(); } });
       for (const f of d.flater) f.veiAvstand = av.has(f.id) ? av.get(f.id) : null;
       d.vei = { hentet: nett.hentet, antall: nett.antall };
-      if (data === d) { veiStatus = ''; lagre(); oppdater(); }
+      if (data === d) { veiStatus = ''; lagreSnart(); oppdater(); }
     } catch (e) { veiStatus = `Klarte ikke å hente veinettet: ${e.message}`; } finally { veiHenter = false; visVeiStatus(); }
   }
   function visVeiStatus() {
@@ -233,21 +232,21 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     L.geoJSON(data.kommune.geometri, { style: { color: '#1b1c19', weight: 2, fill: false }, interactive: false, renderer }).addTo(lag);
     const farge = KATEGORIER[kategori].farge;
     const drift = kategori === 'hogst' && harDrift();
-    for (const f of filtrert()) {
-      const fc = drift ? (f.drift?.naa?.nivaa.farge || farge) : farge;
-      const l = L.geoJSON(f.geometri, { bubblingMouseEvents: false, style: { color: fc, weight: drift && f.drift ? 1.5 : 1, fillColor: fc, fillOpacity: drift && !f.drift ? 0.25 : 0.6 }, renderer });
-      l.bindPopup(() => popupHtml(f), { maxWidth: 300 });
-      l.on('popupopen', () => visEiendomIPopup(f));
-      l.addTo(lag);
-      flateLag.set(f.id, l);
-    }
+    // Ett samlet lag for alle flatene (raskt også med tusenvis av flater); hver flate får egen popup.
+    const liste = filtrert(); const perId = new Map(liste.map((f) => [f.id, f]));
+    L.geoJSON({ type: 'FeatureCollection', features: liste.map((f) => ({ type: 'Feature', id: f.id, properties: { id: f.id }, geometry: f.geometri })) }, {
+      bubblingMouseEvents: false, renderer,
+      style: (ft) => { const f = perId.get(ft.properties.id); const fc = drift ? (f.drift?.naa?.nivaa.farge || farge) : farge; return { color: fc, weight: drift && f.drift ? 1.5 : 1, fillColor: fc, fillOpacity: drift && !f.drift ? 0.25 : 0.6 }; },
+      onEachFeature: (ft, l) => { const f = perId.get(ft.properties.id); l.bindPopup(() => popupHtml(f), { maxWidth: 300 }); l.on('popupopen', () => visEiendomIPopup(f)); flateLag.set(f.id, l); },
+    }).addTo(lag);
     for (const [type, liste] of Object.entries(data.naturGeo || {})) for (const o of liste) L.geoJSON(o.geometri, { style: { color: NATUR.FARGE[type], weight: 1.2, fillColor: NATUR.FARGE[type], fillOpacity: 0.12, dashArray: type === 'art' ? '3 3' : null }, interactive: false, renderer }).addTo(vernLag);
     for (const k of data.kulturGeo || []) L.geoJSON(k.geometri, { style: { color: KULTUR.FARGE, weight: 1.5, fillColor: KULTUR.FARGE, fillOpacity: 0.25 }, interactive: false, renderer }).addTo(vernLag);
     for (const v of data.vern) if (v.geometri) L.geoJSON(v.geometri, { style: { color: '#d03b3b', weight: 1.5, dashArray: '5 4', fill: false }, interactive: false, renderer }).addTo(vernLag);
     // Nøkkelbiotoper: felles MiS-stil med skravur (SVG) og «MiS»-merke når man zoomer inn.
     stoppMisMerker?.();
-    const mis = misKartlag(L, data.mis.map((g, i) => ({ id: `mis${i}`, type: 'mis', navn: 'Nøkkelbiotop (MiS)', geometri: g, areal: arealDaa(g) })), { pane: 'komMisPane', renderer: misRenderer });
-    mis.flater.addTo(vernLag); misMerker = mis.merker;
+    // Nøkkelbiotopene endres ikke når kategori eller filter endres – lag kartlaget én gang per analyse (etikettpunktene er tunge).
+    if (misCache.d !== data || misCache.n !== data.mis.length) misCache = { d: data, n: data.mis.length, lag: misKartlag(L, data.mis.map((g, i) => ({ id: `mis${i}`, type: 'mis', navn: 'Nøkkelbiotop (MiS)', geometri: g, areal: arealDaa(g) })), { pane: 'komMisPane', renderer: misRenderer }) };
+    const mis = misCache.lag; mis.flater.addTo(vernLag); misMerker = mis.merker;
     if (aktiv) stoppMisMerker = merkerVedZoom(kart, misMerker, 13);
     tegnLegend();
   }
@@ -352,7 +351,8 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     valgtDag = idagIso(); driftArbeider = '';
     if (!stille) { lagre(); tegnListe(); tegnKart(); }
   }
-  async function lagre() { try { await lagreVerdi(`kommune:${data.kommune.nr}`, data); } catch { /* valgfritt */ } }
+  // Lagres pakket (js/kommuneanalyse.js) – ellers fryser siden i flere sekunder for store kommuner.
+  async function lagre(d = data) { if (!d) return; try { await lagreVerdi(`kommune:${d.kommune.nr}`, pakkKommunedata(d)); } catch { /* valgfritt */ } }
   function settDtw(på) {
     visDtw = på;
     if (på && !dtwLag) dtwLag = L.tileLayer.wms('https://wms.nibio.no/cgi-bin/markfuktighetskart', { layers: 'markfuktighetsklasser', format: 'image/png', transparent: true, opacity: 0.7, attribution: 'Markfuktighet © NIBIO' });
@@ -371,9 +371,9 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     if (d.misV2) return false;
     try {
       d.mis = await hentMis(d.kommune.geometri);
-      for (const f of d.flater) f.mis = d.mis.some((m) => punktIGeometri(f.senter, m));
+      merkMisOgVern(d.flater, d.mis, d.vern || []);
       d.misV2 = true;
-      try { await lagreVerdi(`kommune:${d.kommune.nr}`, d); } catch { /* valgfritt */ }
+      await lagre(d);
       return true;
     } catch { return false; }
   }
@@ -400,8 +400,10 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     if (!k) { melding('Fant ikke kommunen. Skriv navnet eller det firesifrede kommunenummeret.'); return; }
     const tvungen = e?.submitter?.id === 'komOppdater';
     if (!tvungen) {
-      const lagret = await hentVerdi(`kommune:${k.nr}`);
-      if (lagret) { visResultat(lagret, true); return; }
+      let lagret = null; try { lagret = pakkUtKommunedata(await hentVerdi(`kommune:${k.nr}`)); } catch { /* ødelagt lager – hent på nytt */ }
+      if (lagret?.flater?.length && lagret.kommune?.geometri) {
+        try { visResultat({ vern: [], mis: [], ...lagret }, true); return; } catch (err) { console.error('Lagret kommuneanalyse kunne ikke vises – henter på nytt', err); melding('Den lagrede analysen kunne ikke åpnes – henter data på nytt.', 5000); }
+      }
     }
     const knapp = $('#komBtn');
     knapp.disabled = true; knapp.textContent = 'Analyserer …';
@@ -413,7 +415,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
           if (p.andel !== undefined) $('#komFramdriftBar').value = p.andel;
         },
       });
-      try { await lagreVerdi(`kommune:${k.nr}`, d); } catch { /* lagring er valgfri */ }
+      await lagre(d);
       visResultat(d, false);
       melding(`Analysen av ${d.kommune.navn} er ferdig.`);
     } catch (err) {

@@ -4,6 +4,7 @@
 //   * arter som er rødlistet (CR, EN, VU, NT), prioriterte arter, eller viktige funksjonsområder (hi, spill, yngle)
 // Ingen DOM – kan testes i Node.
 import { overlapper } from './pefc.js';
+import { lagBoksIndeks, boksFor, stegvis } from './proj.js';
 
 export const MD = 'https://kart.miljodirektoratet.no/arcgis';
 export const KART = {
@@ -95,17 +96,16 @@ export async function hentForBoks(bb, { hent = fetch, framdrift = () => {} } = {
   return ut;
 }
 
-const boks = (g) => { const p = []; const gaa = (k) => (typeof k[0] === 'number' ? p.push(k) : k.forEach(gaa)); gaa(g.coordinates); return [Math.min(...p.map((q) => q[0])), Math.min(...p.map((q) => q[1])), Math.max(...p.map((q) => q[0])), Math.max(...p.map((q) => q[1]))]; };
-const krysser = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
 // Hvilke naturtyper og arter som overlapper hver flate. Gir Map flateId → [{ type, id, navn, … }] (uten geometri).
-export function merkFlater(flater, natur) {
-  const alle = [...(natur.nin || []), ...(natur.art || [])].map((o) => ({ o, bb: boks(o.geometri) }));
-  const ut = new Map();
-  for (const f of flater) {
-    if (!f.geometri) continue;
-    const fb = boks(f.geometri); const treff = [];
-    for (const { o, bb } of alle) if (krysser(fb, bb) && overlapper(f.geometri, o.geometri)) { const { geometri, ...rest } = o; treff.push(rest); }
+function merker(natur, ut) {
+  const indeks = lagBoksIndeks([...(natur.nin || []), ...(natur.art || [])].filter((o) => o.geometri));
+  return (f) => {
+    if (!f.geometri) return;
+    const fb = boksFor(f.geometri); if (!fb) return; const treff = [];
+    for (const o of indeks.sok(fb)) if (overlapper(f.geometri, o.geometri)) { const { geometri, ...rest } = o; treff.push(rest); }
     if (treff.length) ut.set(f.id, treff);
-  }
-  return ut;
+  };
 }
+export function merkFlater(flater, natur) { const ut = new Map(); const m = merker(natur, ut); for (const f of flater) m(f); return ut; }
+// Som merkFlater, men i biter – siden svarer underveis (store kommuner).
+export async function merkFlaterStegvis(flater, natur, { framdrift } = {}) { const ut = new Map(); await stegvis(flater, merker(natur, ut), { framdrift }); return ut; }
