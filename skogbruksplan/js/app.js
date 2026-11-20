@@ -21,6 +21,7 @@ import { genererPlan, hentKommuner, finnKommune } from './generator.js';
 import { initKommune } from './kommune-ui.js';
 import { initVeier } from './veier-ui.js';
 import { lagInnsikt } from './innsikt.js';
+import { skjotselsbehov, skjotselsTiltak } from './skjotsel.js';
 import { initKommando } from './kommando.js';
 import { initPefc } from './pefc-ui.js';
 import { delFlate, nyttNr } from './del.js';
@@ -272,6 +273,7 @@ function rampe(verdi, min, maks) {
   return steg[Math.round(t * (steg.length - 1))];
 }
 const TILTAK_FARGER = { hogst: '#eb6834', kultur: '#1baf7a', annet: '#2a78d6' };
+const SKJOTSEL_FARGER = { ungskog: '#1baf7a', tynning: '#c99a00' }; let skjotselCache = null; // nullstilles ved hver tegning
 
 function fargeFor(b) {
   const modus = $('#fargeEtter').value;
@@ -280,6 +282,7 @@ function fargeFor(b) {
   if (modus === 'bonitet') return rampe(b.bonitet, 6, 26);
   if (modus === 'vegetasjon') return b.vegetasjon?.kode ? vegFarge(b.vegetasjon.kode) : null;
   if (modus === 'volum') return rampe(startTilstand(b).volumDaa, 0, 45);
+  if (modus === 'skjotsel') { const s = skjotselCache || (skjotselCache = (() => { const r = skjotselsbehov(S); return new Map([...r.ungskog.map((x) => [x.b.id, 'ungskog']), ...r.tynning.map((x) => [x.b.id, 'tynning'])]); })()); return SKJOTSEL_FARGER[s.get(b.id)] || null; }
   if (modus === 'tiltak') {
     const t = (b.tiltak || []).filter((x) => x.status !== 'utfort').sort((x, y) => x.aar - y.aar)[0];
     return t ? TILTAK_FARGER[TILTAKSTYPER[t.type]?.gruppe || 'annet'] : null;
@@ -320,6 +323,7 @@ function tegnLegend() {
   } else if (modus === 'volum') html = '<b>Volum m³/daa</b>' + [0, 10, 20, 30, 45].map((v) => rad(rampe(v, 0, 45), v === 45 ? '45+' : `${v}`)).join('');
   else if (modus === 'terreng') html = '<b>Avstand til bilvei</b>' + [0, 250, 500, 750, 1000].map((v) => rad(rampe(v, 0, 1000), v === 1000 ? '1000 m +' : `${v} m`)).join('') + rad('transparent;border:1px solid #999', 'Ingen veier registrert');
   else if (/risiko$/.test(modus)) html = `<b>${$('#fargeEtter').selectedOptions[0].textContent}</b>` + [...RISIKONIVAA].reverse().map((n) => rad(n.farge, n.navn)).join('') + '<div class="hint" style="font-size:11px">Se Skogbrand → Forebygging</div>';
+  else if (modus === 'skjotsel') html = '<b>Skjøtselsbehov</b>' + rad(SKJOTSEL_FARGER.ungskog, 'Ungskogpleie (HK II)') + rad(SKJOTSEL_FARGER.tynning, 'Tynning (HK III–IV)') + rad('transparent;border:1px solid #999', 'Ikke behov, eller tiltak er planlagt');
   else if (modus === 'tiltak') html = '<b>Første planlagte tiltak</b>' + rad(TILTAK_FARGER.hogst, 'Hogst') + rad(TILTAK_FARGER.kultur, 'Skogkultur') + rad(TILTAK_FARGER.annet, 'Annet') + rad('transparent;border:1px solid #999', 'Ingen');
   const kat = [...new Set((S.markslag || []).map((f) => f.kategori))];
   const mis = misFigurer(S);
@@ -448,7 +452,7 @@ function tegnBestandKart(zoom = false) {
   tegnMarkslag(); tegnArtsfunn();
   bestandLag.clearLayers(); lagPerBestand.clear(); etikettLag.clearLayers(); etikettPerBestand.clear();
   if (bratthetLag && kart.hasLayer(bratthetLag) && bratthetFor !== S) visBratthet(); // annen plan lastet: tegn bratthet på nytt
-  terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null;
+  terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null; skjotselCache = null;
   if (grenseLag) { grenseLag.remove(); grenseLag = null; }
   if (S.eiendom.grense) {
     grenseLag = L.geoJSON(S.eiendom.grense, { style: { color: '#d03b3b', weight: 2.5, dashArray: '8 5', fill: false }, interactive: false }).addTo(kart);
@@ -471,7 +475,7 @@ function tegnBestandKart(zoom = false) {
 
 function oppdaterStiler() {
   tegnMis(true);
-  terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null;
+  terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null; skjotselCache = null;
   for (const b of S.bestand) { lagPerBestand.get(b.id)?.setStyle(stilFor(b)); etikettPerBestand.get(b.id)?.setContent(etikettHtml(b)); }
   tegnLegend();
 }
@@ -677,7 +681,7 @@ function visFane(navn) {
 function tegnInnsikt() {
   const liste = lagInnsikt(S, { iAar: IAAR, pefcFunn: pefcVisning?.funn(), motorEndringer: S.motor ? aktuelleEndringer().filter((e) => e.leggTil.length || e.fjern.length).length : 0, skogbrand: { ...skadeOppsummering(S), brann: S.skogbrand?.data?.brann?.dager?.[0]?.nivaa || null }, skifteplan: skifteplanVisning?.oppsummering() || null, ksl: kslVisning?.varsler() || [], karbon: karbonVisning?.varsler() || [], terrengtransport: S.veier?.veier?.length && veiVisning ? veiVisning.terrengtransport() : null, maksTerreng: veiVisning?.maks() ?? 500 });
   $('#innsikt').hidden = !liste.length;
-  $('#innsiktListe').innerHTML = liste.slice(0, 4).map((i) => `<div class="innsikt-kort" style="--farge:${i.farge}"><span class="prikk"></span><div><b>${esc(i.tittel)}</b><span>${esc(i.tekst)}</span></div>${i.handling ? `<button type="button" class="knapp liten" data-innsikt="${esc(i.handling.id)}">${esc(i.handling.tekst)}</button>` : ''}</div>`).join('');
+  $('#innsiktListe').innerHTML = liste.slice(0, 4).map((i) => `<div class="innsikt-kort" style="--farge:${i.farge}"><span class="prikk"></span><div><b>${esc(i.tittel)}</b><span>${esc(i.tekst)}</span></div>${i.handling ? `<span class="innsikt-knapper"><button type="button" class="knapp liten" data-innsikt="${esc(i.handling.id)}">${esc(i.handling.tekst)}</button>${i.handling2 ? `<button type="button" class="knapp liten" data-innsikt="${esc(i.handling2.id)}">${esc(i.handling2.tekst)}</button>` : ''}</span>` : ''}</div>`).join('');
 }
 
 function utforHandling(id) {
@@ -686,6 +690,16 @@ function utforHandling(id) {
   else if (type === 'foresla') { visFane('tiltak'); kjorMotor(motorForhand || S.motor || {}); }
   else if (type === 'bestand') { velgBestand(verdi); visFane('bestand'); }
   else if (type === 'farge') { $('#fargeEtter').value = verdi; oppdaterStiler(); if (erMobil()) settArk('lav'); }
+  else if (type === 'skjotsel') leggInnSkjotsel(verdi);
+}
+// «Legg inn tiltak» fra innsikten: ungskogpleie eller tynning i bestandene som trolig trenger det (js/skjotsel.js).
+function leggInnSkjotsel(type) {
+  const forslag = skjotselsTiltak(skjotselsbehov(S), type, IAAR); if (!forslag.length) return;
+  const navn = type === 'ungskog' ? 'ungskogpleie' : 'tynning';
+  if (!confirm(`Legge inn ${navn} som planlagt tiltak i ${forslag.length} bestand? Du kan endre eller slette tiltakene under Tiltak.`)) return;
+  const naa = new Date().toISOString();
+  for (const { bid, tiltak } of forslag) { const b = finnBestand(bid); if (b) (b.tiltak ||= []).push({ ...tiltak, id: nyId('t'), endret: naa }); }
+  endret({ kart: true }); melding(`${forslag.length} tiltak med ${navn} er lagt inn.`); visFane('tiltak');
 }
 
 function tegnArealfordeling() {

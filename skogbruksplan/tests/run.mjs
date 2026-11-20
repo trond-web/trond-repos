@@ -348,6 +348,37 @@ test('Store kommuner: romlig indeks gir samme svar som full gjennomgang, og steg
   let kall = 0; await P.stegvis(Array.from({ length: 5000 }), () => kall++, { hver: 1000, framdrift: (x) => fr.push(x) }); assert.equal(kall, 5000); assert.ok(fr.includes(1));
 });
 
+test('Skjøtselsbehov i planen: ungskogpleie og tynning i innsikten, samme regler som kommuneanalysen, og tiltak', async () => {
+  const SK = await import('../js/skjotsel.js'); const { lagInnsikt } = await import('../js/innsikt.js');
+  const { STANDARD_INNSTILLINGER: INN, beregnetHogstklasse, hkGrenser, laavesteHogstalder } = await import('../js/model.js');
+  const alderFor = (o, klasse) => { for (let x = 5; x < 150; x++) if (beregnetHogstklasse(x, laavesteHogstalder(o), 20, hkGrenser(o)) === klasse) return x; return null; };
+  const g3 = alderFor({ treslag: 'G', bonitet: 17 }, 3);
+  const best = (o) => ({ id: o.nr, nr: o.nr, areal: 10, treslag: 'G', bonitet: 17, alder: g3 + 2, volumDaa: 18, treantall: 220, hoyde: 12, tiltak: [], ekstra: { OVERHOYDE: 13, MIDDELDIAMETER: 14 }, takstAar: 2026, ...o });
+  const S = { innstillinger: INN, bestand: [
+    best({ nr: '1' }),                                                         // tynning
+    best({ nr: '2', tiltak: [{ id: 't', type: 'tynning', aar: 2027, status: 'planlagt' }] }), // allerede planlagt
+    best({ nr: '3', miljo: true }),                                            // miljøfigur
+    best({ nr: '4', alder: 12, volumDaa: 2, hoyde: 4, treantall: 40, treslagAndel: { G: 0.5, F: 0, L: 0.5 }, ekstra: { KILDE: 'SR16' } }), // ungskog, lauv
+    best({ nr: '5', alder: 12, volumDaa: 2, hoyde: 4, treantall: 40, treslagAndel: { G: 1, F: 0, L: 0 }, ekstra: { KILDE: 'SR16' } }),     // ren, glissen
+    best({ nr: '6', treantall: 90, ekstra: { OVERHOYDE: 16, MIDDELDIAMETER: 22 } }), // tynning via grunnflate (90 · 10 · π · 0,11² ≈ 34 m²/ha)
+  ] };
+  const r = SK.skjotselsbehov(S);
+  assert.deepEqual(r.tynning.map((x) => x.b.nr).sort(), ['1', '6']); assert.deepEqual(r.ungskog.map((x) => x.b.nr), ['4']);
+  assert.match(r.ungskog[0].grunn, /50 % lauv/); assert.equal(r.tynning.find((x) => x.b.nr === '1').metode, 'Førstegangstynning');
+  // Samme regel som kommuneanalysen for samme skog
+  const f = SK.bestandSomFlate(S.bestand[0], INN); const k = SK.vurderTynning({ ...f, hk: undefined }, SK.SKJOTSEL_KRITERIER, INN);
+  assert.equal(k.hk, f.hk); assert.equal(k.grunn, r.tynning.find((x) => x.b.nr === '1').grunn);
+  const ins = lagInnsikt(S, { iAar: 2026 });
+  const ty = ins.find((i) => /trenger trolig tynning/.test(i.tittel)); const un = ins.find((i) => /ungskogpleie/.test(i.tittel));
+  assert.ok(ty && un); assert.equal(ty.handling.id, 'skjotsel:tynning'); assert.equal(ty.handling2.id, 'farge:skjotsel'); assert.match(ty.tittel, /^2 bestand/); assert.match(ty.tekst, /bestand 1, 6|bestand 6, 1/);
+  assert.ok(ins.indexOf(ty) < 4 && ins.indexOf(un) < 4, 'vises blant de fire øverste når det ikke er mer alvorlige funn');
+  const tt = SK.skjotselsTiltak(r, 'tynning', 2026); assert.equal(tt.length, 2); assert.equal(tt[0].tiltak.type, 'tynning'); assert.equal(tt[0].tiltak.aar, 2027); assert.equal(tt[0].tiltak.status, 'planlagt');
+  assert.equal(SK.skjotselsTiltak(r, 'ungskog', 2026)[0].tiltak.type, 'ungskogpleie');
+  // Når tiltakene er lagt inn, forsvinner funnet
+  for (const { bid, tiltak } of [...tt, ...SK.skjotselsTiltak(r, 'ungskog', 2026)]) S.bestand.find((b) => b.id === bid).tiltak.push({ ...tiltak, id: `x${bid}` });
+  const etter = SK.skjotselsbehov(S); assert.equal(etter.tynning.length + etter.ungskog.length, 0);
+});
+
 test('kommuneanalyse: HTML-attributter kobles til id i rekkefølge', () => {
   const tab = (alder, gran) => `<table><tr><td>Bestandsalder</td><td><b>${alder}</b><td></td></tr><tr><td>Volum uten bark (m³/ha)</td><td><b>250</b></td></tr><tr><td>Prosentandel gran</td><td><b>${gran}</b><td></td></tr></table>`;
   const a = parseHtmlAlle(`<html>${tab(80, 90)}${tab(20, 10)}</html>`, ['11', '22']);

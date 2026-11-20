@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.3.1** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.4.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -14,6 +14,14 @@ og i mørkt tema blir også topografikartet mørkt. Skrifter: Bricolage Grotesqu
 **Innsikt** på oversikten er regelbaserte funn fra planens egne data (`js/innsikt.js`). Eksempler er hogstmoden skog uten
 planlagt hogst, forfalte tiltak, bestand som trolig er hogd siden takst, ungskogpleie, terrengtransport, veistatus og
 CO₂. Hvert funn har en handling som tar deg dit det kan følges opp. Det brukes ingen språkmodell.
+
+**Skjøtselsbehov i Innsikt (`js/skjotsel.js`):** «N bestand trenger trolig ungskogpleie» og «N bestand trenger trolig tynning». Reglene er de samme som i kommuneanalysen:
+- **Ungskogpleie:** HK II, 1,5–7 m høy, bonitet ≥ 11, og lauvdominert (≥ 30 % lauv) eller tett.
+- **Tynning:** HK III, eller IV før 85 % av hogstalderen, bonitet G14/F11/L17, 10–21 m overhøyde, og ≥ 150 trær/daa eller grunnflate ≥ 28 m²/ha (fra SR16-treantall og middeldiameter).
+
+Miljøfigurer og bestand med tiltaket allerede planlagt telles ikke. Innsikten viser areal, bestandsnummer og anslått uttak og rotnetto ved tynning. Knappene:
+- **«Legg inn tiltak»** legger tiltaket inn i bestandene: ungskogpleie i år, og tynning neste år.
+- **«Vis i kartet»** farger kartet etter «Skjøtselsbehov». Den fargen kan også velges under «Farge etter».
 
 En nettleserapp for å forvalte egen skogbruksplan: kart, bestandsliste, tiltaksplan,
 framskriving av volum og økonomi, og feltregistrering med GPS. Den kjører i nettleseren uten server og
