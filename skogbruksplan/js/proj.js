@@ -160,6 +160,43 @@ export function bbox(geoms) {
   return minx === Infinity ? null : [minx, miny, maxx, maxy];
 }
 
+// Grensende boks [minx, miny, maxx, maxy] for én geometri – uten Math.min(...liste), som feiler for store geometrier.
+export function boksFor(g) {
+  let a = Infinity; let b = Infinity; let c = -Infinity; let d = -Infinity;
+  const gaa = (k) => { if (typeof k[0] === 'number') { if (k[0] < a) a = k[0]; if (k[0] > c) c = k[0]; if (k[1] < b) b = k[1]; if (k[1] > d) d = k[1]; } else for (const x of k) gaa(x); };
+  if (g?.coordinates) gaa(g.coordinates); else if (g?.geometries) for (const x of g.geometries) { const bb = boksFor(x); if (bb) { a = Math.min(a, bb[0]); b = Math.min(b, bb[1]); c = Math.max(c, bb[2]); d = Math.max(d, bb[3]); } }
+  return a === Infinity ? null : [a, b, c, d];
+}
+export const kryssBoks = (p, q) => p[0] <= q[2] && q[0] <= p[2] && p[1] <= q[3] && q[1] <= p[3];
+// Romlig indeks (rutenett) over elementer med boks, så oppslag bare ser på det som ligger i nærheten.
+// sok(boks) → kandidater hvis boks krysser (hver høyst én gang). finnPunkt(pt, geomFor) → første som inneholder punktet.
+// Celle i grader (0,02° ≈ 1–2 km i Norge).
+export function lagBoksIndeks(liste, boksAv = (x) => boksFor(x.geometri ?? x), celle = 0.02) {
+  const nett = new Map(); const elementer = [];
+  const nokkel = (i, j) => i * 1e6 + j;
+  for (const x of liste) {
+    const bb = boksAv(x); if (!bb) continue; const e = { x, bb }; elementer.push(e);
+    for (let i = Math.floor(bb[0] / celle); i <= Math.floor(bb[2] / celle); i++) for (let j = Math.floor(bb[1] / celle); j <= Math.floor(bb[3] / celle); j++) { const k = nokkel(i, j); const l = nett.get(k); if (l) l.push(e); else nett.set(k, [e]); }
+  }
+  function sok(bb) {
+    const ut = []; const sett = new Set();
+    for (let i = Math.floor(bb[0] / celle); i <= Math.floor(bb[2] / celle); i++) for (let j = Math.floor(bb[1] / celle); j <= Math.floor(bb[3] / celle); j++) {
+      for (const e of nett.get(nokkel(i, j)) || []) if (!sett.has(e) && kryssBoks(bb, e.bb)) { sett.add(e); ut.push(e.x); }
+    }
+    return ut;
+  }
+  return { sok, finnPunkt: (pt, geomFor = (x) => x.geometri ?? x) => sok([pt[0], pt[1], pt[0], pt[1]]).find((x) => punktIGeometri(pt, geomFor(x))) || null, antall: elementer.length };
+}
+
+// Går gjennom en lang liste i biter og gir nettleseren pusterom mellom bitene, så siden ikke henger.
+// fn(x, i) kalles for hvert element; framdrift(andel) etter hver bit. Uten nettleser (Node) går det like fort.
+export async function stegvis(liste, fn, { hver = 1500, framdrift = null } = {}) {
+  for (let i = 0; i < liste.length; i++) {
+    fn(liste[i], i);
+    if ((i + 1) % hver === 0) { framdrift?.((i + 1) / liste.length); await new Promise((ok) => setTimeout(ok, 0)); }
+  }
+}
+
 // Punkt godt inne i flaten (for etiketter): det punktet som ligger lengst fra kantene, funnet med
 // grovt rutenett og to forfininger. For multipolygon brukes den største delen. Gir [lon, lat].
 export function etikettPunkt(geom) {

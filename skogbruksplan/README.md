@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.3.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.3.1** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -2305,6 +2305,8 @@ Teknisk: kommunen deles i ruter på 2,5 × 2,5 km. For hver rute hentes geometri
 attributter som gzip-komprimert HTML fra NIBIOs WMS (`RADIUS=bbox`). Det er rundt åtte ganger mindre data enn GML.
 Rekkefølgen i HTML- og tekstsvaret er kontrollert mot GML. Hele Nannestad (22 000 flater) tar under ett minutt.
 SR16-dataene for Nannestad er stort sett fra 2015. Skog kan være hogd siden, så kontroller mot flyfoto.
+
+**Store kommuner:** romlig rutenett (`lagBoksIndeks` i `js/proj.js`) for nøkkelbiotoper, verneområder, naturtyper og kulturminner, beskjæring i veisøket og stegvis behandling (`stegvis`) med framdrift, så siden svarer underveis. Analysen lagres pakket (`pakkKommunedata`: koordinatene i én `Float64Array`), og nøkkelbiotopene tegnes én gang per analyse. Ringsaker (59 559 flater, 3,8 mill. punkter): lengste frys gikk fra over 2 minutter til ca. 3 sekunder, lokal lagring fra ca. 18 til ca. 1 sekund, og fanebytte fra 3–6 til under 1 sekund.
 
 SR16s treslagskode er 1 grandominert, 2 furudominert, 3 barblanding, 4 blanding og 5 lauvdominert. Der andelen per
 treslag finnes, brukes den.

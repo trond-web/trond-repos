@@ -4,6 +4,7 @@
 // Ingen DOM – kan testes i Node.
 import { hentKulturminner } from './pefc-data.js';
 import { overlapper } from './pefc.js';
+import { lagBoksIndeks, boksFor, stegvis } from './proj.js';
 
 export const KART = { url: 'https://kart.ra.no/wms/kulturminner2', lag: 'Lokaliteter,Sikringssoner,Lokalitetsikoner' };
 export const FARGE = '#9a5b2b';
@@ -34,15 +35,14 @@ export const erFredet = (k) => /fredet/i.test(k.vern || '');
 export async function hentForBoks(bb, { hent = fetch } = {}) {
   return (await hentKulturminner(bb, { hent })).map((k) => ({ type: 'kulturminne', id: k.kildeId, navn: k.navn, lenke: k.lenke || null, geometri: k.geometri }));
 }
-const boks = (g) => { const p = []; const gaa = (k) => (typeof k[0] === 'number' ? p.push(k) : k.forEach(gaa)); gaa(g.coordinates); return [Math.min(...p.map((q) => q[0])), Math.min(...p.map((q) => q[1])), Math.max(...p.map((q) => q[0])), Math.max(...p.map((q) => q[1]))]; };
 // Hvilke kulturminner som ligger i eller berører hver flate. Map flateId → [{ id, navn, lenke }].
-export function merkFlater(flater, kulturminner) {
-  const alle = kulturminner.filter((k) => k.geometri).map((k) => ({ k, bb: boks(k.geometri) }));
-  const ut = new Map();
-  for (const f of flater) {
-    if (!f.geometri) continue; const fb = boks(f.geometri); const treff = [];
-    for (const { k, bb } of alle) if (fb[0] <= bb[2] && bb[0] <= fb[2] && fb[1] <= bb[3] && bb[1] <= fb[3] && overlapper(f.geometri, k.geometri)) { const { geometri, ...rest } = k; treff.push(rest); }
+function merker(kulturminner, ut) {
+  const indeks = lagBoksIndeks(kulturminner.filter((k) => k.geometri));
+  return (f) => {
+    if (!f.geometri) return; const fb = boksFor(f.geometri); if (!fb) return; const treff = [];
+    for (const k of indeks.sok(fb)) if (overlapper(f.geometri, k.geometri)) { const { geometri, ...rest } = k; treff.push(rest); }
     if (treff.length) ut.set(f.id, treff);
-  }
-  return ut;
+  };
 }
+export function merkFlater(flater, kulturminner) { const ut = new Map(); const m = merker(kulturminner, ut); for (const f of flater) m(f); return ut; }
+export async function merkFlaterStegvis(flater, kulturminner, { framdrift } = {}) { const ut = new Map(); await stegvis(flater, merker(kulturminner, ut), { framdrift }); return ut; }

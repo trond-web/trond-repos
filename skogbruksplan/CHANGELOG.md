@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.3.1 – 🏎 Kommuneanalysen tåler store kommuner (2026-11-20)
+
+*Rettet.* Kommuneanalysen kunne få siden til å henge i flere minutter – og krasje, særlig på mobil – i store skogkommuner. Sjekken mot nøkkelbiotoper, verneområder, naturtyper, kulturminner og avstand til vei bruker nå et romlig rutenett og går i biter, analysen lagres kompakt, og bytte mellom fanene går mange ganger raskere. Ringsaker (60 000 skogflater): fra over to minutter frys til et par sekunder. Takk for meldingen!
+
 ## 2.3.0 – 🌲 Tynningsbehov i kommuneanalysen (2026-11-20)
 
 *Nytt.* Kommuneanalysen har fått en fjerde kategori: tynning i hogstklasse III og IV. Den finner tett produksjonsskog på god nok bonitet (ut fra treantall og grunnflate i SR16) før skogen blir for høy, og anslår uttak og rotnetto. Fordelingen på gran, furu og lauv vises øverst – trykk for å se bare ett treslag – og listen kan sorteres på treslag. Kriteriene kan justeres.

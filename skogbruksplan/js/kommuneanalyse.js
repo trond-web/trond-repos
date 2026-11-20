@@ -5,7 +5,7 @@
 //   * tynningsbehov i hogstklasse III og IV (tett produksjonsskog på god nok bonitet, før den blir for høy)
 // Skogflater i MiS-nøkkelbiotoper og naturvernområder holdes utenfor hogstforslagene.
 // Modulen bruker ikke DOM og kan kjøres i både nettleser og Node.
-import { geoTilUtm, arealM2, punktIGeometri } from './proj.js';
+import { geoTilUtm, arealM2, punktIGeometri, lagBoksIndeks } from './proj.js';
 import { placemarkGeometri } from './kml.js';
 import { laavesteHogstalder, STANDARD_INNSTILLINGER, treslagFraSR16, SR16_TRESLAG_TEKST, beregnetHogstklasse, hkGrenser, rotnettoPerM3 } from './model.js';
 
@@ -230,8 +230,11 @@ export async function hentKommunedata(kommune, { hent = fetch, framdrift = () =>
   } catch { /* vernedata er valgfritt */ }
 
   framdrift({ steg: 'tolk', tekst: 'Klargjør skogflater …' });
-  const ut = [];
+  const ut = []; let n = 0; const totalt = flater.size;
+  // Gi nettleseren pusterom underveis, så siden ikke «henger» i store kommuner (titusenvis av flater).
+  const pust = () => new Promise((ok) => setTimeout(ok, 0));
   for (const [gid, { attr: a, geometri }] of flater) {
+    if (++n % 4000 === 0) { framdrift({ steg: 'tolk', tekst: `Klargjør skogflater … ${n.toLocaleString('nb-NO')} av ${totalt.toLocaleString('nb-NO')}`, andel: n / totalt }); await pust(); }
     const c = senter(geometri);
     if (!punktIGeometri(c, grense.geometri)) continue; // flater som hører til nabokommunen
     const num = (k, f = 1) => { const v = parseFloat(a[k]); return Number.isFinite(v) ? v * f : null; };
@@ -247,12 +250,48 @@ export async function hentKommunedata(kommune, { hent = fetch, framdrift = () =>
     });
   }
   const misListe = [...mis.values()];
-  for (const f of ut) {
-    f.mis = misListe.some((m) => punktIGeometri(f.senter, m));
-    const v = vern.find((o) => o.geometri && punktIGeometri(f.senter, o.geometri));
+  framdrift({ steg: 'tolk', tekst: 'Sjekker nøkkelbiotoper og verneområder …' }); await pust();
+  merkMisOgVern(ut, misListe, vern);
+  return { kommune: grense, flater: ut, mis: misListe, misV2: true, vern, hentet: new Date().toISOString(), ruter: alleRuter.length };
+}
+
+// ---------- kompakt lagring ----------
+// En kommuneanalyse kan ha millioner av koordinatpunkter (Ringsaker: 60 000 flater, 3,8 mill. punkter). Som vanlige
+// tabeller tar det flere sekunder å lagre i IndexedDB (nettleseren kopierer hver liten tabell), og siden fryser.
+// Geometrien pakkes derfor i én Float64Array (koordinater) og én Int32Array (struktur), som kopieres på et øyeblikk.
+// Struktur per flate: [type (0 = Polygon, 1 = MultiPolygon), antall polygoner, for hver: antall ringer, for hver: antall punkter].
+export function pakkKommunedata(d) {
+  if (!d?.flater || d.geoPakket) return d;
+  let np = 0; let ns = 0;
+  for (const f of d.flater) { const pol = f.geometri?.type === 'Polygon' ? [f.geometri.coordinates] : f.geometri?.coordinates || []; ns += 2; for (const p of pol) { ns += 1 + p.length; for (const r of p) np += r.length; } }
+  const k = new Float64Array(np * 2); const st = new Int32Array(ns); let ki = 0; let si = 0;
+  for (const f of d.flater) {
+    const g = f.geometri; const pol = g?.type === 'Polygon' ? [g.coordinates] : g?.coordinates || [];
+    st[si++] = g?.type === 'MultiPolygon' ? 1 : 0; st[si++] = pol.length;
+    for (const p of pol) { st[si++] = p.length; for (const r of p) { st[si++] = r.length; for (const [x, y] of r) { k[ki++] = x; k[ki++] = y; } } }
+  }
+  return { ...d, flater: d.flater.map(({ geometri, ...rest }) => rest), geoPakket: { k, st } };
+}
+export function pakkUtKommunedata(d) {
+  if (!d?.geoPakket) return d;
+  const { k, st } = d.geoPakket; let ki = 0; let si = 0;
+  const flater = d.flater.map((f) => {
+    const type = st[si++]; const np = st[si++]; const pol = [];
+    for (let p = 0; p < np; p++) { const nr = st[si++]; const ringer = []; for (let r = 0; r < nr; r++) { const n = st[si++]; const ring = new Array(n); for (let i = 0; i < n; i++) { ring[i] = [k[ki], k[ki + 1]]; ki += 2; } ringer.push(ring); } pol.push(ringer); }
+    return { ...f, geometri: type === 1 ? { type: 'MultiPolygon', coordinates: pol } : { type: 'Polygon', coordinates: pol[0] || [] } };
+  });
+  const { geoPakket, ...rest } = d;
+  return { ...rest, flater };
+}
+
+// Merker flatene som ligger i en nøkkelbiotop (f.mis) eller et verneområde (f.vern), med romlig indeks.
+export function merkMisOgVern(flater, misListe = [], vern = []) {
+  const mi = lagBoksIndeks(misListe, undefined); const vi = lagBoksIndeks(vern.filter((o) => o.geometri));
+  for (const f of flater) {
+    f.mis = !!mi.finnPunkt(f.senter, (g) => g);
+    const v = vi.finnPunkt(f.senter);
     f.vern = v ? `${v.verneform || 'Verneområde'}: ${v.navn}` : null;
   }
-  return { kommune: grense, flater: ut, mis: misListe, misV2: true, vern, hentet: new Date().toISOString(), ruter: alleRuter.length };
 }
 
 // Nøkkelbiotoper (MiS) for hele kommunen – brukes for å oppdatere lagrede analyser.

@@ -305,6 +305,49 @@ test('kommuneanalyse: tynningsbehov i hogstklasse III og IV, per treslag og sort
   assert.ok(opp(r.tynning).uttak > 0); assert.deepEqual(Object.keys(TRESLAG_REKKEFOLGE), ['G', 'F', 'L']);
 });
 
+test('Store kommuner: romlig indeks gir samme svar som full gjennomgang, og stegvis matching gir pusterom', async () => {
+  const P = await import('../js/proj.js'); const { merkMisOgVern } = await import('../js/kommuneanalyse.js');
+  const V = await import('../js/kommune-vei.js'); const N = await import('../js/naturdata.js'); const KU = await import('../js/kulturminner.js');
+  const ruteGeo = (x, y, s = 0.004) => ({ type: 'Polygon', coordinates: [[[x, y], [x + s, y], [x + s, y + s], [x, y + s], [x, y]]] });
+  // 30 × 30 flater og 25 «MiS»/naturflater spredt over et område på ca. 0,4 × 0,4 grader
+  const flater = []; for (let i = 0; i < 30; i++) for (let j = 0; j < 30; j++) { const x = 10 + i * 0.013; const y = 60 + j * 0.013; flater.push({ id: `${i}-${j}`, geometri: ruteGeo(x, y), senter: [x + 0.002, y + 0.002] }); }
+  const mis = []; for (let k = 0; k < 25; k++) mis.push(ruteGeo(10 + (k % 5) * 0.08 + 0.001, 60 + Math.floor(k / 5) * 0.08 + 0.001, 0.02));
+  const vern = [{ navn: 'Testreservatet', verneform: 'Naturreservat', geometri: ruteGeo(10.2, 60.2, 0.05) }];
+  merkMisOgVern(flater, mis, vern);
+  for (const f of flater) { assert.equal(f.mis, mis.some((m) => P.punktIGeometri(f.senter, m)), f.id); assert.equal(f.vern, P.punktIGeometri(f.senter, vern[0].geometri) ? 'Naturreservat: Testreservatet' : null, f.id); }
+  assert.ok(flater.some((f) => f.mis) && flater.some((f) => f.vern));
+  // Indeksen finner alle som krysser, hver én gang
+  const ix = P.lagBoksIndeks(mis, (g) => P.boksFor(g)); const sp = [10.05, 60.05, 10.2, 60.2];
+  assert.deepEqual(ix.sok(sp).length, mis.filter((m) => P.kryssBoks(sp, P.boksFor(m))).length);
+  assert.deepEqual(P.boksFor({ type: 'MultiPolygon', coordinates: [[[[1, 2], [3, 4], [0, 9]]]] }), [0, 2, 3, 9]);
+  const stor = { type: 'Polygon', coordinates: [Array.from({ length: 300000 }, (_, i) => [10 + Math.sin(i) * 0.1, 60 + Math.cos(i) * 0.1])] };
+  assert.ok(P.boksFor(stor)[0] < 10, 'ingen RangeError for store geometrier');
+  // Stegvis = samme svar, med framdrift
+  const n = { nin: mis.slice(0, 10).map((g, i) => ({ id: `n${i}`, type: 'nin', navn: 'X', geometri: g })), art: [] };
+  const fr = []; const a = N.merkFlater(flater, n); const b = await N.merkFlaterStegvis(flater, n, { framdrift: (x) => fr.push(x) });
+  assert.deepEqual([...a.keys()].sort(), [...b.keys()].sort()); assert.ok(a.size > 0);
+  const km = mis.slice(10, 14).map((g, i) => ({ id: `k${i}`, navn: 'Gravfelt', geometri: g }));
+  assert.deepEqual([...KU.merkFlater(flater, km).keys()].sort(), [...(await KU.merkFlaterStegvis(flater, km)).keys()].sort());
+  const veier = [[[600000, 6650000], [620000, 6690000]], [[605000, 6700000], [640000, 6660000]]].map((l) => l.map(([x, y]) => [x, y]));
+  const v1 = V.avstanderTilVei(flater, veier); const v2 = await V.avstanderTilVeiStegvis(flater, veier);
+  assert.deepEqual([...v1.entries()], [...v2.entries()]);
+  // Den nye beskjæringen gir samme svar som et rått søk mot alle segmenter
+  const seg = veier.flatMap((l) => l.slice(1).map((p, i) => [...l[i], ...p]));
+  for (const f of flater.slice(0, 120)) {
+    const pk = V.kantpunkter(f.geometri); let best = Infinity;
+    for (const [ax, ay, bx, by] of seg) for (const [px, py] of pk) { const dx = bx - ax; const dy = by - ay; const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy))); best = Math.min(best, Math.hypot(px - ax - t * dx, py - ay - t * dy)); }
+    assert.equal(v1.get(f.id), best <= V.MAKS_AVSTAND ? Math.round(best / 10) * 10 : null, f.id);
+  }
+  // Kompakt lagring: geometrien pakkes i typede tabeller og pakkes ut likt
+  const { pakkKommunedata, pakkUtKommunedata } = await import('../js/kommuneanalyse.js');
+  const multi = { id: 'm', geometri: { type: 'MultiPolygon', coordinates: [[[[1, 2], [3, 4], [5, 6], [1, 2]], [[1.5, 2.5], [2, 3], [1.5, 2.5]]], [[[7, 8], [9, 10], [7, 8]]]] }, senter: [1, 2], treslag: 'G' };
+  const d0 = { kommune: { nr: '1' }, flater: [...flater.slice(0, 50), multi], mis };
+  const pk = pakkKommunedata(d0); assert.ok(pk.geoPakket.k instanceof Float64Array && pk.geoPakket.st instanceof Int32Array); assert.equal(pk.flater[0].geometri, undefined); assert.ok(d0.flater[0].geometri, 'originalen er urørt');
+  const ut = pakkUtKommunedata(structuredClone(pk)); assert.deepEqual(ut.flater, d0.flater); assert.equal(ut.geoPakket, undefined); assert.deepEqual(ut.mis, mis);
+  assert.equal(pakkUtKommunedata(d0), d0, 'upakket (eldre lagring) brukes som før'); assert.equal(pakkKommunedata(pk), pk);
+  let kall = 0; await P.stegvis(Array.from({ length: 5000 }), () => kall++, { hver: 1000, framdrift: (x) => fr.push(x) }); assert.equal(kall, 5000); assert.ok(fr.includes(1));
+});
+
 test('kommuneanalyse: HTML-attributter kobles til id i rekkefølge', () => {
   const tab = (alder, gran) => `<table><tr><td>Bestandsalder</td><td><b>${alder}</b><td></td></tr><tr><td>Volum uten bark (m³/ha)</td><td><b>250</b></td></tr><tr><td>Prosentandel gran</td><td><b>${gran}</b><td></td></tr></table>`;
   const a = parseHtmlAlle(`<html>${tab(80, 90)}${tab(20, 10)}</html>`, ['11', '22']);
