@@ -63,6 +63,7 @@ a { color: var(--aksent); }
 
 .topp { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
 h1 { font-size: 26px; margin: 0; letter-spacing: -0.02em; }
+h1 .logo { width: 40px; height: 40px; border-radius: 10px; vertical-align: -9px; margin-right: 10px; }
 h2 { font-size: 18px; margin: 0 0 8px; }
 h3 { font-size: 15px; margin: 20px 0 6px; }
 .under { margin: 2px 0 0; color: var(--dempet); font-size: 14px; }

@@ -73,7 +73,7 @@ jobs:
           cp -r tommerplan/. _site/tommerplan/
           cp -r nannestad-naering/. _site/nannestad-naering/
           # Snøvill-ranking: bare appen og rankingfilene publiseres, ikke innsamlingen og rådataene per løp
-          cp snovill-ranking/index.html snovill-ranking/app.js snovill-ranking/style.css snovill-ranking/icon.svg _site/snovill-ranking/
+          cp snovill-ranking/index.html snovill-ranking/app.js snovill-ranking/style.css snovill-ranking/icon.svg snovill-ranking/icon-180.png _site/snovill-ranking/
           mkdir -p _site/snovill-ranking/data
           cp snovill-ranking/data/*.json _site/snovill-ranking/data/
           # Gammel adresse (/langlop-ranking/) sender videre til den nye
