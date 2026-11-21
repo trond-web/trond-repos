@@ -1,4 +1,4 @@
-# Langløpsrankingen
+# Snøvill-ranking
 
 Rangering av løpere i turrenn og langløp på ski, med egne lister for menn og kvinner.
 Resultatene samles inn automatisk, og rankingen regnes ut på nytt hver gang siden publiseres

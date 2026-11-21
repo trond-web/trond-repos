@@ -72,7 +72,7 @@ jobs:
           cp -r harehund-skogsprotokoll/. _site/harehund-skogsprotokoll/
           cp -r tommerplan/. _site/tommerplan/
           cp -r nannestad-naering/. _site/nannestad-naering/
-          # Langløpsrankingen: bare appen og rankingfilene publiseres, ikke innsamlingen og rådataene per løp
+          # Snøvill-ranking: bare appen og rankingfilene publiseres, ikke innsamlingen og rådataene per løp
           cp langlop-ranking/index.html langlop-ranking/app.js langlop-ranking/style.css langlop-ranking/icon.svg _site/langlop-ranking/
           mkdir -p _site/langlop-ranking/data
           cp langlop-ranking/data/*.json _site/langlop-ranking/data/
@@ -82,7 +82,7 @@ jobs:
           # Tester, verktøy og serverfiler (Railway) publiseres ikke på GitHub Pages
           rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/gran-kommune/tests _site/gran-kommune/data/hent-data.mjs _site/gran-turveier/tests _site/gran-turveier/README.md _site/gran-turveier/data/hent-data.mjs _site/gran-turveier/data/ruter.mjs _site/gran-turveier/data/png.mjs _site/borsradar/analyse _site/borsradar/data/innsidehandel.json _site/harehund-skogsprotokoll/tests _site/harehund-skogsprotokoll/README.md _site/tommerplan/tests _site/tommerplan/README.md _site/nannestad-naering/tests _site/nannestad-naering/verktoy
 
-      # Langløpsrankingen: løpsresultatene tas vare på mellom kjøringene i Actions-cachen,
+      # Snøvill-ranking: løpsresultatene tas vare på mellom kjøringene i Actions-cachen,
       # så bare nye og ferske løp hentes. Resultatene i repoet (sesongen 2025/26) er utgangspunktet.
       # Øk versjonen (v2, v3 ...) når reglene for hvilke løp som er med endres, så alt sjekkes på nytt.
       - name: Restore langløpsresultater
@@ -94,7 +94,7 @@ jobs:
 
       # Henter nye resultater fra EQ Timing, Birken, Vasaloppet og Ski Classics og regner ut rankingen.
       # Feiler det, publiseres rankingen som ligger i repoet.
-      - name: Langløpsrankingen
+      - name: Snøvill-ranking
         continue-on-error: true
         timeout-minutes: 30
         run: |

@@ -1,6 +1,6 @@
 "use strict";
 
-// Langløpsrankingen: viser rankingfilene som innsamlingen (innsamling/hent.mjs) lager.
+// Snøvill-ranking: viser rankingfilene som innsamlingen (innsamling/hent.mjs) lager.
 // Feltene i rankingfilen: løper = [navn, klubb, nasjon, født, poeng, antallLøp, bestePlass, resultater]
 //                         resultat = [løpsindeks, plass, tid i tideler, poeng, teller (1/0)]
 
