@@ -12,7 +12,7 @@ import { signatur } from './versjon.js';
 import { lagMaskinUi } from './maskin-ui.js';
 import { lagDreneringUi } from './drenering-ui.js';
 import { lagHusdyrUi } from './husdyr-ui.js';
-import { kontrollerHusdyr, kontrollerBeite } from './husdyr.js';
+import { kontrollerHusdyr, kontrollerBeite, kontrollerRom } from './husdyr.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -315,7 +315,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
 
   function kravHtml() {
     const p = SP(); const a = aar(); const S = hentPlan();
-    const funn = [...kontroller(S, a), ...kontrollerHusdyr(S, a), ...kontrollerBeite(S, a)].sort((x, y) => ['avvik', 'varsel', 'info', 'ok'].indexOf(x.nivaa) - ['avvik', 'varsel', 'info', 'ok'].indexOf(y.nivaa));
+    const funn = [...kontroller(S, a), ...kontrollerHusdyr(S, a), ...kontrollerBeite(S, a), ...kontrollerRom(S)].sort((x, y) => ['avvik', 'varsel', 'info', 'ok'].indexOf(x.nivaa) - ['avvik', 'varsel', 'info', 'ok'].indexOf(y.nivaa));
     return `<div class="kort"><div class="detalj-topp"><h3>Kontroll ${a}</h3>
         <label class="sp-region">Region <select data-sp-region>${Object.entries(REGIONER).map(([id, r]) => `<option value="${id}" ${p.region === id ? 'selected' : ''}>${esc(r.navn)}</option>`).join('')}</select></label></div>
         ${funn.length ? funn.map((f) => `<div class="sp-funn" style="--farge:${NIVAA[f.nivaa].farge}" ${f.skifteId ? `data-sp-skifte="${f.skifteId}"` : ''}><i>${NIVAA[f.nivaa].ikon}</i><div><b>${esc(f.tittel)}</b><div class="hint">${esc(f.tekst)}${f.kilde && KILDER[f.kilde] ? ` <a href="${esc(KILDER[f.kilde].url)}" target="_blank" rel="noopener">Kilde</a>` : ''}</div></div></div>`).join('') : '<p class="hint">Legg inn skifter for å kontrollere skifteplanen.</p>'}

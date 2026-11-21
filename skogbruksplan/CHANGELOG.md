@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.11.0 – 🏠 Plass i fjøset og 💰 produksjonstilskudd (2026-11-21)
+
+*Nytt.* Husdyr-fanen viser nå om det er plass nok i fjøset, sauehuset, stallen eller hønsehuset. Kravene er hentet fra forskriftene om storfe, småfe, høns og kalkun og svin, og der forskriften ikke har tall per dyr, brukes vanlige anbefalinger. Du ser hvor mange dyr til det er plass til, og får varsel om båsfjøs som må legges om til løsdrift innen 2034. Driftsbygninger kan hentes fra landbrukstaksten. Nytt er også et anslag på produksjonstilskudd med Landbruksdirektoratets satser for 2025: husdyr, driftstilskudd, beite og utmarksbeite, areal per sone, kulturlandskap og avløsning. I tillegg er det rettet en feil i den engelske versjonen: tekster med kolon og parentes, som «Fjøset: for lite plass (…)», ble ikke oversatt.
+
 ## 2.10.0 – 🌿 Beiteplan og KSL for husdyr (2026-11-20)
 
 *Nytt.* Husdyr-fanen i Skifteplan har fått beiteplan: legg inn når og hvor dyrene beiter – på innmarksbeite, eng (høstbeite) eller i utmark – og se beitetrykket i hver periode, hvor godt beitene utnyttes, og om hele beitesesongen er dekket. Beitekart fra NIBIO viser beitelagene i utmark, tapsprosent for sau og lam og antall sau per km². KSL har fått sjekklistene for husdyr: drøvtyggere (også lama og alpakka), storfe, småfe, melk, svin, fjørfe, egg, oppal, slaktekylling, kalkun og hest i næring. De krysses av automatisk ut fra dyreholdet.

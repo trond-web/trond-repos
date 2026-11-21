@@ -4466,6 +4466,8 @@ test('Språk: engelsk oversettelse med tall, segmenter, mønstre og setninger', 
   assert.equal(o.oversett('Bestand · Areal 3 daa'), 'Stands · Area 3 daa');
   assert.equal(o.oversett('Åpnet Bestand.'), 'Opened Stands.');
   assert.equal(o.oversett('Hei. Ha det.'), 'Hi. Bye.');
+  const o2 = lagOversetter({ 'for lite plass ({0} m²)': 'too little space ({0} m²)' });
+  assert.equal(o2.oversett('Fjøset: for lite plass (12 m²)'), 'Fjøset: too little space (12 m²)', 'avsluttende parentes i siste ledd');
   assert.equal(o.oversett('Ukjent tekst'), 'Ukjent tekst');
   assert.ok(mangler.has('Ukjent tekst'));
   // Ordboka: gyldige nøkler, ingen tomme oversettelser og like mange plassholdere.
@@ -4524,4 +4526,26 @@ test('Husdyr: beiteplan med beitetrykk, utnyttelse og dekning', async () => {
   assert.ok(f.some((x) => /Skifte 2: for høyt beitetrykk 6\.9\.–10\.10\./.test(x.tittel)), 'overbeitet høstbeite');
   S.skifteplan.dyrehold.beiting.push({ id: '4', skifteId: 'b', dyrId: null, fra: '2027-07-01', til: '2027-06-01' });
   assert.equal(H.kontrollerBeite(S, 2027).filter((x) => /mangler/.test(x.tittel)).length, 2);
+});
+
+test('Husdyr: plass i dyrerom og produksjonstilskudd (satser 2025)', async () => {
+  const H = await import('../js/husdyr.js');
+  assert.equal(H.trinnvis(30, H.PT.husdyr.melkeku), 14 * 8933 + 16 * 7211);
+  assert.equal(H.trinnvis(30, H.PT.smaaMelk), 23 * 3590 - 7 * 2949);
+  assert.equal(H.ptRegion('1119'), 'jaeren'); assert.equal(H.ptRegion('1804'), 'nord'); assert.equal(H.ptRegion('3401'), 'ovrig');
+  const kl = H.plassFor({ slag: 'slaktekylling', antall: 70000 });
+  assert.equal(kl.samtidig, 10000); assert.ok(Math.abs(kl.m2 - 1.9 / 36) < 1e-9); assert.equal(kl.kilde, 'forskrift');
+  assert.ok(Math.abs(H.plassFor({ slag: 'verpehone', antall: 900 }).areal - 100) < 1e-9, '9 høner per m²');
+  const S = { eiendom: { kommunenr: '3401' }, skifteplan: { aar: 2026, skifter: [{ id: 'a', areal: 300, vekster: { 2026: { kultur: 'engNorm2' } } }, { id: 'c', areal: 100, vekster: { 2026: { kultur: 'bygg' } } }],
+    dyrehold: { dyr: [{ id: 'k', slag: 'melkeku', antall: 30 }, { id: 's', slag: 'sau', antall: 80 }], beiting: [{ id: 1, skifteId: null, dyrId: 's', fra: '2026-06-20', til: '2026-09-05' }],
+      rom: [{ id: 'r', navn: 'Fjøset', areal: 180, type: 'basfjos', dyr: ['k'] }], tilskudd: { sone: '5A' } } } };
+  const d = H.dyrerom(S); assert.equal(d.rom[0].trengs, 210); assert.equal(d.rom[0].ledig, -5);
+  const f = H.kontrollerRom(S); assert.ok(f.some((x) => /for lite plass/.test(x.tittel))); assert.ok(f.some((x) => /båsfjøs/.test(x.tittel)));
+  const t = H.produksjonstilskudd(S, 2026); const b = (navn) => t.poster.find((p) => p.navn.startsWith(navn))?.belop;
+  assert.equal(b('Melkeku'), 14 * 8933 + 16 * 7211); assert.equal(b('Sau'), 75 * 2105 + 5 * 1565);
+  assert.equal(b('Driftstilskudd til melkeproduksjon (kumelk)'), 344300, 'sone 5A = sone 5');
+  assert.equal(b('Arealtilskudd grovfôr'), 300 * 390); assert.equal(b('Kulturlandskapstilskudd'), 400 * 300);
+  assert.equal(b('Utmarksbeitetilskudd, sau'), 80 * 581);
+  assert.equal(t.avlosning, 139100, 'avløsertilskudd er begrenset til maks');
+  assert.equal(t.sum, t.poster.reduce((s, p) => s + p.belop, 0));
 });

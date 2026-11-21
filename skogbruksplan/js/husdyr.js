@@ -200,3 +200,146 @@ export function kontrollerBeite(S, aar) {
   }
   return ut;
 }
+
+// ---------- Plass i dyrerom ----------
+// m2 = areal per dyr som står samtidig. kilde: 'forskrift' = minstekrav i forskriften, 'veiledende' = vanlig anbefaling
+// (forskriften har ikke et tall per dyr). For dyr som telles som produsert per år: dyr samtidig = antall ÷ innsett,
+// og arealet per dyr = levendevekt ved slakt ÷ maks dyretetthet (kg/m²).
+export const FORSKRIFTER = {
+  storfe: { navn: 'Forskrift om hold av storfe', url: 'https://lovdata.no/dokument/SF/forskrift/2004-04-22-665' },
+  smafe: { navn: 'Forskrift om velferd for småfe', url: 'https://lovdata.no/dokument/SF/forskrift/2005-02-18-160' },
+  hons: { navn: 'Forskrift om hold av høns og kalkun', url: 'https://lovdata.no/dokument/SF/forskrift/2001-12-12-1494' },
+  svin: { navn: 'Forskrift om hold av svin', url: 'https://lovdata.no/dokument/SF/forskrift/2003-02-18-175' },
+  hest: { navn: 'Forskrift om velferd for hest', url: 'https://lovdata.no/dokument/SF/forskrift/2005-07-01-505' },
+};
+export const PLASS = {
+  melkeku: { m2: 7, kilde: 'veiledende', forskrift: 'storfe', tekst: 'Løsdrift: minst én liggebås per dyr (§ 22). Ca. 7 m² per ku med gangareal er vanlig.' },
+  ammeku: { m2: 7, kilde: 'veiledende', forskrift: 'storfe', tekst: 'Ku med kalv i løsdrift. Kalvegjemme med tett gulv på minst 0,7 m² per kalv (§ 23).' },
+  ungdyr: { m2: 2.0, kilde: 'forskrift', forskrift: 'storfe', tekst: 'Fellesbinge: minst 1,5 m² fritt areal per kalv under 150 kg, 1,8 m² for 150–220 kg og 2,0 m² over 220 kg (§ 23). Eldre ungdyr trenger mer.' },
+  okse: { m2: 3.0, kilde: 'veiledende', forskrift: 'storfe', tekst: 'Minst 2,0 m² for kalv over 220 kg (§ 23). Ca. 3 m² per okse er vanlig.' },
+  sau: { m2: 0.8, kilde: 'veiledende', forskrift: 'smafe', tekst: 'Alle dyrene skal kunne ligge samtidig (§ 11). Ca. 0,7–0,9 m² per søye, mer i lammingstida.' },
+  geit: { m2: 0.8, kilde: 'veiledende', forskrift: 'smafe', tekst: 'Alle dyrene skal kunne ligge samtidig (§ 11). Ca. 0,8 m² per geit.' },
+  hest: { m2: 9, kilde: 'veiledende', forskrift: 'hest', tekst: 'Boks på ca. 9 m² for en vanlig hest ((2 × mankehøyden)² er en vanlig tommelfingerregel).' },
+  ponni: { m2: 6, kilde: 'veiledende', forskrift: 'hest', tekst: 'Boks på ca. 6 m² for ponni.' },
+  alpakka: { m2: 1.5, kilde: 'veiledende', forskrift: null, tekst: 'Ingen egen forskrift. Ca. 1,5 m² per dyr innendørs.' },
+  verpehone: { m2: 1 / 9, kilde: 'forskrift', forskrift: 'hons', tekst: 'Frittgående: høyst 9 høner per m² bruksareal (§ 25).' },
+  slaktekylling: { innsett: 7, vekt: 1.9, tetthet: 36, kilde: 'forskrift', forskrift: 'hons', tekst: 'Høyst 36 kg levendevekt per m² med dyrevelferdsprogram, ellers 25 kg/m² (§ 35a). Regnet med 7 innsett i året og 1,9 kg ved slakt.' },
+  kalkun: { innsett: 2.5, vekt: 10, tetthet: 44, kilde: 'forskrift', forskrift: 'hons', tekst: 'Høyst 44 kg/m² når snittvekten er over 7 kg (38 kg/m² under 7 kg) (§ 36). Regnet med 2,5 innsett i året og 10 kg ved slakt.' },
+  purke: { m2: 2.25, kilde: 'forskrift', forskrift: 'svin', tekst: 'Purker i grupper på 6–40: minst 2,25 m² fritt areal per purke. Fødebinger minst 6 m² (§ 25).' },
+  slaktegris: { innsett: 3.3, vekt: 110, m2: 0.8, kilde: 'forskrift', forskrift: 'svin', tekst: 'Minst 0,80 m² fritt areal per gris på 85–110 kg (§ 26). Regnet med 3,3 innsett i året.' },
+};
+// Areal per dyr (m²) og antall dyr samtidig for en rad i dyreholdet.
+export function plassFor(rad) {
+  const v = verdier(rad); const p = PLASS[rad.slag] || { m2: 1, kilde: 'veiledende' }; const n = Number(rad.antall) || 0;
+  const m2 = tallEller(rad.m2, p.tetthet ? p.vekt / p.tetthet : p.m2);
+  const samtidig = v.per === 'produsert' ? n / (tallEller(rad.innsett, p.innsett) || 1) : n;
+  return { ...p, m2, samtidig, areal: samtidig * m2, egen: rad.m2 !== '' && rad.m2 != null };
+}
+// Rom: { id, navn, areal (m² bruksareal/fritt areal), type: 'losdrift'|'basfjos'|'annet', dyr: [rad-id] }.
+export const nyttRom = (nyId, navn = '') => ({ id: nyId ? nyId('rom') : `rom${Math.random().toString(36).slice(2, 9)}`, navn, areal: null, type: 'losdrift', dyr: [] });
+export function dyrerom(S) {
+  const dh = S?.skifteplan?.dyrehold; const rader = (dh?.dyr || []).filter((r) => Number(r.antall) > 0);
+  const behov = rader.map((r) => ({ id: r.id, slag: r.slag, navn: verdier(r).navn, ikon: verdier(r).ikon, ...plassFor(r) }));
+  const rom = (dh?.rom || []).map((rm) => {
+    const her = behov.filter((b) => (rm.dyr || []).includes(b.id)); const trengs = her.reduce((s, b) => s + b.areal, 0); const areal = Number(rm.areal) || 0;
+    // Ledig plass: hvor mange flere av dyreslaget som tar mest plass (bare når rommet har ett dyreslag).
+    const ledig = her.length === 1 && areal ? Math.floor((areal - trengs) / her[0].m2) : null;
+    return { ...rm, her, trengs, arealTall: areal, andel: areal ? trengs / areal : null, ledig };
+  });
+  const iRom = new Set(rom.flatMap((r) => r.dyr || []));
+  return { behov, rom, utenRom: behov.filter((b) => !iRom.has(b.id) && verdier((dh.dyr || []).find((r) => r.id === b.id)).inne > 0) };
+}
+export function kontrollerRom(S) {
+  const d = dyrerom(S); const ut = [];
+  const push = (nivaa, tittel, tekst) => ut.push({ nivaa, tema: 'husdyr', tittel, tekst, skifteId: null, kilde: null });
+  for (const r of d.rom) {
+    if (!r.arealTall || !r.her.length) continue;
+    const forskrift = r.her.some((b) => b.kilde === 'forskrift');
+    if (r.andel > 1) push(forskrift ? 'avvik' : 'varsel', `${r.navn || 'Dyrerom'}: for lite plass (${Math.round(r.trengs)} m² trengs, ${Math.round(r.arealTall)} m² finnes)`, `${forskrift ? 'Minstekravet i forskriften er ikke oppfylt for' : 'Under vanlig anbefaling for'} ${r.her.map((b) => b.navn.toLowerCase()).join(', ')}. Færre dyr, mer areal eller færre dyr per innsett.`);
+    if (r.type === 'basfjos' && r.her.some((b) => DYRESLAG[b.slag]?.gruppe === 'Storfe')) push('varsel', `${r.navn || 'Dyrerom'}: båsfjøs for storfe`, 'Storfe skal holdes i løsdrift. Båsfjøs bygd før 22. april 2004 må være lagt om til løsdrift innen 1. januar 2034 (forskrift om hold av storfe § 32).');
+  }
+  return ut;
+}
+
+// ---------- Produksjonstilskudd ----------
+// Endelige satser for søknadsåret 2025 (utbetalt 2026), Landbruksdirektoratet. Trinn: [til og med antall, kr per dyr].
+export const PT_KILDE = { navn: 'Landbruksdirektoratet: produksjonstilskudd og avløsertilskudd – endelige satser 2025', url: 'https://www.landbruksdirektoratet.no/nb/jordbruk/ordninger-for-jordbruk/produksjonstilskudd-og-avlosertilskudd-i-jordbruket/produksjonstilskudd-og-avlosertilskudd--endelige-satser', aar: 2025 };
+export const PT = {
+  husdyr: {
+    melkeku: [[14, 8933], [30, 7211], [50, 5684], [Infinity, 4857]],
+    ammeku: [[50, 6166], [Infinity, 2166]],
+    ovrigStorfe: [[Infinity, 1647]],
+    melkegeit: [[125, 1719], [Infinity, 695]],
+    sau: [[75, 2105], [150, 1565], [Infinity, 211]],
+    avlsgris: { jaeren: [[35, 484]], nord: [[35, 994]], ovrig: [[35, 633]] },
+    slaktegris: { jaeren: [[1400, 20]], nord: [[1400, 24]], ovrig: [[1400, 24]] },
+    verpehone: { jaeren: [[1000, 14], [7500, 14]], nord: [[1000, 28], [7500, 14]], ovrig: [[1000, 14], [7500, 14]] },
+  },
+  smaaMelk: [[23, 3590], [50, -2949]], // 6–50 melkekyr
+  driftMelk: { '1-4': 291100, 5: 344300, '6-7': 373000, perKuUnder5: { '1-4': 58220, 5: 68860, '6-7': 74600 } },
+  driftGeit: { foretak: 346130, perGeit: 12820, grense: 27 },
+  driftStorfe: { '1-4': { perDyr: 7132, foretak: 285280 }, '5-7': { perDyr: 9412, foretak: 376480 } },
+  beite: { smaa: 131, stor: 1001 }, // sau, lam, geit, kje, alpakka / storfe, hest, lama
+  utmark: { stor: 1763, smaa: 581 },
+  kulturlandskap: 300,
+  areal: { 1: { grovfor: 50, korn: 309 }, 2: { grovfor: 50, korn: 442 }, 3: { grovfor: 160, korn: 442 }, 4: { grovfor: 180, korn: 552 }, '5A': { grovfor: 390, korn: 572 }, '5B': { grovfor: 445, korn: 572 }, 6: { grovfor: 460, korn: 572 }, 7: { grovfor: 506, korn: 572 } },
+  avlosning: { melkeku: 5336, ammeku: 1473, ovrigStorfe: 889, melkegeit: 1229, sau: 612, avlsgris: 1759, slaktegris: 60, verpehone: 15.45, hest: 1759, ponni: 1759, kalkun: 5.38, slaktekylling: 0.66, maks: 139100, min: 5000 },
+};
+export const SONER = ['1', '2', '3', '4', '5A', '5B', '6', '7'];
+const KAT = { melkeku: 'melkeku', ammeku: 'ammeku', ungdyr: 'ovrigStorfe', okse: 'ovrigStorfe', sau: 'sau', geit: 'melkegeit', purke: 'avlsgris', slaktegris: 'slaktegris', verpehone: 'verpehone' };
+const STOR = new Set(['melkeku', 'ammeku', 'ungdyr', 'okse', 'hest', 'ponni']); const SMAA = new Set(['sau', 'geit', 'alpakka']);
+export function trinnvis(antall, trinn) {
+  let rest = antall; let fra = 0; let sum = 0;
+  for (const [til, sats] of trinn) { const n = Math.max(0, Math.min(rest, til - fra)); sum += n * sats; rest -= n; fra = til; if (rest <= 0) break; }
+  return sum;
+}
+export function ptRegion(kommunenr) {
+  const k = String(kommunenr || '').padStart(4, '0');
+  if (['1103', '1108', '1119', '1120', '1121', '1122', '1124', '1127'].includes(k)) return 'jaeren';
+  if (['18', '55', '56'].includes(k.slice(0, 2))) return 'nord';
+  return 'ovrig';
+}
+// Anslag på produksjonstilskudd for dyreholdet og arealene i skifteplanen. Tar ikke med bunnfradrag, økologisk drift,
+// bevaringsverdige raser, regionale miljøtilskudd eller maksimalt antall støtteberettigede dyr.
+export function produksjonstilskudd(S, aar) {
+  const plan = S?.skifteplan; const dh = plan?.dyrehold; const pt = dh?.tilskudd || {};
+  const sone = SONER.includes(String(pt.sone)) ? String(pt.sone) : '3'; const region = pt.region || ptRegion(S?.eiendom?.kommunenr);
+  const antall = {}; for (const r of dh?.dyr || []) if (Number(r.antall) > 0) antall[r.slag] = (antall[r.slag] || 0) + Number(r.antall);
+  const poster = []; const post = (gruppe, navn, belop, grunnlag = '') => { if (belop) poster.push({ gruppe, navn, belop: Math.round(belop), grunnlag }); };
+  const kat = {}; for (const [slag, n] of Object.entries(antall)) if (KAT[slag]) kat[KAT[slag]] = (kat[KAT[slag]] || 0) + n;
+  for (const [k, n] of Object.entries(kat)) {
+    const t = PT.husdyr[k]; const trinn = Array.isArray(t) ? t : t[region];
+    const navn = { melkeku: 'Melkeku', ammeku: 'Ammeku', ovrigStorfe: 'Øvrig storfe', melkegeit: 'Melkegeit og melkesau', sau: 'Sau', avlsgris: 'Avlsgris', slaktegris: 'Slaktegris', verpehone: 'Verpehøne' }[k];
+    post('Husdyrtilskudd', navn, trinnvis(n, trinn), `${Math.round(n)} dyr`);
+  }
+  const ku = antall.melkeku || 0;
+  if (ku >= 6 && ku <= 50) post('Husdyrtilskudd', 'Tilskudd til små og mellomstore melkebruk', trinnvis(ku, PT.smaaMelk), `${ku} melkekyr`);
+  const dsone = ['5A', '5B'].includes(sone) ? 5 : ['6', '7'].includes(sone) ? '6-7' : '1-4';
+  if (ku) post('Driftstilskudd', 'Driftstilskudd til melkeproduksjon (kumelk)', ku >= 5 ? PT.driftMelk[dsone] : ku * PT.driftMelk.perKuUnder5[dsone], ku >= 5 ? 'per foretak' : `${ku} kyr`);
+  const geit = antall.geit || 0;
+  if (geit) post('Driftstilskudd', 'Driftstilskudd til melkeproduksjon (geitemelk)', geit >= PT.driftGeit.grense ? PT.driftGeit.foretak : geit * PT.driftGeit.perGeit, geit >= 27 ? 'per foretak' : `${geit} geiter`);
+  const amme = antall.ammeku || 0; const ds = dsone === '1-4' ? PT.driftStorfe['1-4'] : PT.driftStorfe['5-7'];
+  if (!ku && amme >= 6) post('Driftstilskudd', 'Driftstilskudd til spesialisert storfeproduksjon', amme >= 40 ? ds.foretak : amme * ds.perDyr, amme >= 40 ? 'per foretak' : `${amme} ammekyr`);
+  // Beite: dyr som er ute minst 12 uker (16 uker for storfe i melkeproduksjon) – her: inne høyst 9 måneder.
+  let smaaBeite = 0; let storBeite = 0;
+  for (const r of dh?.dyr || []) { if (!(Number(r.antall) > 0) || verdier(r).inne > 9) continue; if (STOR.has(r.slag)) storBeite += Number(r.antall); else if (SMAA.has(r.slag)) smaaBeite += Number(r.antall); }
+  post('Beite', 'Beitetilskudd, storfe og hest', storBeite * PT.beite.stor, `${storBeite} dyr`);
+  post('Beite', 'Beitetilskudd, sau, geit og alpakka', smaaBeite * PT.beite.smaa, `${smaaBeite} dyr`);
+  // Utmarksbeite: dyr i beiteplanen som er i utmark minst 5 uker.
+  const utm = { stor: 0, smaa: 0 };
+  for (const p of beiteplan(S, aar).perioder) if (!p.skifte && p.dager >= 35 && p.dyr) { const slag = (dh.dyr.find((r) => r.id === p.dyrId) || {}).slag; if (STOR.has(slag)) utm.stor += p.antall; else if (SMAA.has(slag) && slag !== 'alpakka') utm.smaa += p.antall; }
+  post('Beite', 'Utmarksbeitetilskudd, storfe og hest', utm.stor * PT.utmark.stor, `${utm.stor} dyr`);
+  post('Beite', 'Utmarksbeitetilskudd, sau, geit og lam', utm.smaa * PT.utmark.smaa, `${utm.smaa} dyr (fra beiteplanen)`);
+  // Areal fra skifteplanen.
+  let grovfor = 0; let korn = 0; let jordbruk = 0;
+  for (const sk of plan?.skifter || []) { const k = KULTURER[sk.vekster?.[aar]?.kultur]; if (!k || k.utenGjodsel) continue; jordbruk += sk.areal || 0; if (['eng', 'beite', 'gronnfor'].includes(k.gruppe)) grovfor += sk.areal || 0; else if (k.gruppe === 'korn') korn += sk.areal || 0; }
+  const as = PT.areal[sone];
+  post('Areal', `Arealtilskudd grovfôr (sone ${sone})`, grovfor * as.grovfor, `${Math.round(grovfor * 10) / 10} daa`);
+  post('Areal', `Arealtilskudd korn (sone ${sone})`, korn * as.korn, `${Math.round(korn * 10) / 10} daa`);
+  post('Areal', 'Kulturlandskapstilskudd', jordbruk * PT.kulturlandskap, `${Math.round(jordbruk * 10) / 10} daa`);
+  // Avløsning: grunnlaget dekker dokumenterte utgifter til avløsning, høyst 139 100 kr og minst 5 000 kr.
+  let avl = 0; for (const [slag, n] of Object.entries(antall)) { const k = KAT[slag] || slag; const sats = PT.avlosning[k]; if (sats) avl += n * sats; }
+  const avlosning = avl >= PT.avlosning.min ? Math.min(avl, PT.avlosning.maks) : 0;
+  const sum = poster.reduce((s, p) => s + p.belop, 0);
+  return { poster, sum, avlosning: Math.round(avlosning), avlosningGrunnlag: Math.round(avl), sone, region, satserAar: PT_KILDE.aar, areal: { grovfor, korn, jordbruk } };
+}
