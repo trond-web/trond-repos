@@ -31,7 +31,7 @@ export const karakterFor = (poeng) => KARAKTERER.find((x) => poeng >= x.min) || 
 export const MIN_DEKNING = 50; // under dette er karakteren foreløpig
 export const KILDER = [
   { navn: 'Forskrift om berekraftig skogbruk (foryngelse etter hogst)', url: 'https://lovdata.no/dokument/SF/forskrift/2006-06-07-593' },
-  { navn: 'Norsk PEFC Skogstandard (PEFC N 02:2022)', url: 'https://www.pefcnorge.org/' },
+  { navn: 'Norsk PEFC Skogstandard (PEFC N 02:2022)', url: 'https://www.pefc.no/' },
   { navn: 'Landbruksdirektoratet: Kartlegging av foryngelse og miljøhensyn ved hogst', url: 'https://www.landbruksdirektoratet.no/nb/filarkiv/rapporter/Kartlegging%20av%20foryngelse%20og%20milj%C3%B8hensyn%20ved%20hogst%202024%20Rapport%202025%2028.pdf' },
 ];
 

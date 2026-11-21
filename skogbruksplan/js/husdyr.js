@@ -1,28 +1,28 @@
 // 🐄 Husdyr på gården: dyrehold, husdyrgjødsel (mengde, fosfor, lager og spredeareal) og fôrbalanse (grovfôr, beite og
 // kraftfôr mot avlingene i skifteplanen). Dyreholdet ligger i skifteplanen (S.skifteplan.dyrehold). Ingen DOM.
 // Tallene per dyr er typiske anslag (forenklet etter Gjødslingshåndboka og tidligere gjødseldyrenheter, 1 GDE = 14 kg P)
-// og kan justeres per dyreslag i appen.
-import { KULTURER, HUSDYR, aktiveSkifter, fosforgrense } from './skifteplan.js';
+// og kan justeres per dyreslag i appen. Fosfor per dyr (P) er normtallene i vedlegg 1 til gjødselforskriften (endret mai 2026).
+import { KULTURER, HUSDYR, aktiveSkifter, fosforgrense, P_FRA } from './skifteplan.js';
 
 // P = kg fosfor i gjødsla per dyr og år. gjodsel = type i HUSDYR. inne = måneder innefôring (resten på beite).
 // grovfor = FEm grovfôr per dyr og år (inkludert beite). kraftfor = kg kraftfôr per dyr og år.
 // ksl = KSL-kapitlene (sjekklister) som gjelder dyreslaget. Hest i næring (70) gjelder bare når hestene inngår i næring.
 // per = hva antallet gjelder (plass = gjennomsnittlig antall dyr, produsert = dyr produsert per år).
 export const DYRESLAG = {
-  melkeku: { navn: 'Melkeku', ikon: '🐄', gruppe: 'Storfe', per: 'plass', P: 14, gjodsel: 'storfe', inne: 9, grovfor: 3500, kraftfor: 2000, ksl: [30, 31, 35] },
-  ammeku: { navn: 'Ammeku med kalv', ikon: '🐂', gruppe: 'Storfe', per: 'plass', P: 11, gjodsel: 'storfe', inne: 8, grovfor: 2700, kraftfor: 200, ksl: [30, 31] },
+  melkeku: { navn: 'Melkeku', ikon: '🐄', gruppe: 'Storfe', per: 'plass', P: 15, gjodsel: 'storfe', inne: 9, grovfor: 3500, kraftfor: 2000, ksl: [30, 31, 35] },
+  ammeku: { navn: 'Ammeku med kalv', ikon: '🐂', gruppe: 'Storfe', per: 'plass', P: 8, gjodsel: 'storfe', inne: 8, grovfor: 2700, kraftfor: 200, ksl: [30, 31] },
   ungdyr: { navn: 'Ungdyr storfe (kvige)', ikon: '🐮', gruppe: 'Storfe', per: 'plass', P: 5, gjodsel: 'storfe', inne: 8, grovfor: 1500, kraftfor: 300, ksl: [30, 31] },
   okse: { navn: 'Okse til slakt', ikon: '🐂', gruppe: 'Storfe', per: 'plass', P: 5, gjodsel: 'storfe', inne: 12, grovfor: 1800, kraftfor: 900, ksl: [30, 31] },
   sau: { navn: 'Sau, vinterfôret (med lam)', ikon: '🐑', gruppe: 'Småfe', per: 'plass', P: 2, gjodsel: 'sau', inne: 7, grovfor: 450, kraftfor: 60, ksl: [30, 32] },
   geit: { navn: 'Melkegeit', ikon: '🐐', gruppe: 'Småfe', per: 'plass', P: 2, gjodsel: 'sau', inne: 9, grovfor: 600, kraftfor: 250, ksl: [30, 32, 35] },
-  hest: { navn: 'Hest', ikon: '🐎', gruppe: 'Hest', per: 'plass', P: 7, gjodsel: 'hest', inne: 7, grovfor: 2800, kraftfor: 300, ksl: [70] },
-  ponni: { navn: 'Ponni / lettere hest', ikon: '🐴', gruppe: 'Hest', per: 'plass', P: 4, gjodsel: 'hest', inne: 7, grovfor: 1700, kraftfor: 100, ksl: [70] },
-  alpakka: { navn: 'Alpakka / lama', ikon: '🦙', gruppe: 'Andre', per: 'plass', P: 1.5, gjodsel: 'sau', inne: 6, grovfor: 350, kraftfor: 30, ksl: [30] },
-  verpehone: { navn: 'Verpehøne', ikon: '🐔', gruppe: 'Fjørfe', per: 'plass', P: 0.175, gjodsel: 'fjorfe', inne: 12, grovfor: 0, kraftfor: 42, ksl: [50, 51] },
-  slaktekylling: { navn: 'Slaktekylling', ikon: '🐤', gruppe: 'Fjørfe', per: 'produsert', P: 0.012, gjodsel: 'fjorfe', inne: 12, grovfor: 0, kraftfor: 3.5, ksl: [50, 53] },
-  kalkun: { navn: 'Kalkun', ikon: '🦃', gruppe: 'Fjørfe', per: 'produsert', P: 0.09, gjodsel: 'fjorfe', inne: 12, grovfor: 0, kraftfor: 28, ksl: [50, 54] },
-  purke: { navn: 'Avlspurke (med smågris)', ikon: '🐖', gruppe: 'Svin', per: 'plass', P: 5.6, gjodsel: 'svin', inne: 12, grovfor: 0, kraftfor: 1300, ksl: [40] },
-  slaktegris: { navn: 'Slaktegris', ikon: '🐷', gruppe: 'Svin', per: 'produsert', P: 0.78, gjodsel: 'svin', inne: 12, grovfor: 0, kraftfor: 250, ksl: [40] },
+  hest: { navn: 'Hest', ikon: '🐎', gruppe: 'Hest', per: 'plass', P: 7.5, gjodsel: 'hest', inne: 7, grovfor: 2800, kraftfor: 300, ksl: [70] },
+  ponni: { navn: 'Ponni / lettere hest', ikon: '🐴', gruppe: 'Hest', per: 'plass', P: 7.5, gjodsel: 'hest', inne: 7, grovfor: 1700, kraftfor: 100, ksl: [70] },
+  alpakka: { navn: 'Alpakka / lama', ikon: '🦙', gruppe: 'Andre', per: 'plass', P: 2, gjodsel: 'sau', inne: 6, grovfor: 350, kraftfor: 30, ksl: [30] },
+  verpehone: { navn: 'Verpehøne', ikon: '🐔', gruppe: 'Fjørfe', per: 'plass', P: 0.12, gjodsel: 'fjorfe', inne: 12, grovfor: 0, kraftfor: 42, ksl: [50, 51] },
+  slaktekylling: { navn: 'Slaktekylling', ikon: '🐤', gruppe: 'Fjørfe', per: 'produsert', P: 0.0086, gjodsel: 'fjorfe', inne: 12, grovfor: 0, kraftfor: 3.5, ksl: [50, 53] },
+  kalkun: { navn: 'Kalkun', ikon: '🦃', gruppe: 'Fjørfe', per: 'produsert', P: 0.106, gjodsel: 'fjorfe', inne: 12, grovfor: 0, kraftfor: 28, ksl: [50, 54] },
+  purke: { navn: 'Avlspurke (med smågris)', ikon: '🐖', gruppe: 'Svin', per: 'plass', P: 8.1, gjodsel: 'svin', inne: 12, grovfor: 0, kraftfor: 1300, ksl: [40] },
+  slaktegris: { navn: 'Slaktegris', ikon: '🐷', gruppe: 'Svin', per: 'produsert', P: 0.37, gjodsel: 'svin', inne: 12, grovfor: 0, kraftfor: 250, ksl: [40] },
 };
 // Forutsetninger for fôrbalansen (kan overstyres i dyrehold.forutsetninger).
 export const FORUTSETNINGER = { tapKonservering: 15, beiteUtnyttelse: 75, femPerRundball: 230, lagerKrav: 8 };
@@ -50,14 +50,14 @@ export function husdyrgjodsel(S, aar) {
   const aktive = plan ? aktiveSkifter(plan, aar) : [];
   const areal = aktive.reduce((s, x) => s + (x.areal || 0), 0);
   const region = plan?.region || 'innland';
-  const grense = fosforgrense(Math.max(aar, 2027), region);
+  const grense = fosforgrense(aar, region); const grenseFra = fosforgrense(Math.max(aar, P_FRA), region);
   const P = sum('P');
   // Husdyrgjødsel som er lagt inn i gjødslingsplanen for året (tonn og kg P).
   let planTonn = 0; let planP = 0;
   for (const sk of plan?.skifter || []) for (const g of sk.gjodsling || []) if (g.type === 'husdyr' && Number(g.aar) === aar) { const t = (Number(g.mengde) || 0) * (sk.areal || 0); planTonn += t; planP += t * ((g.innhold || HUSDYR[g.produkt] || {}).P || 0); }
   return {
     rader, P, N: sum('N'), K: sum('K'), tonn: sum('tonn'), tonnLager: sum('tonnLager'), Pbeite: sum('Pbeite'), lagerBehov: sum('lagerBehov'), lager: dh?.lager === '' || dh?.lager == null ? null : Number(dh.lager), lagerKrav: f.lagerKrav,
-    areal, PperDaa: areal ? P / areal : null, grense, grenseAar: Math.max(aar, 2027), arealBehov: grense ? P / grense : null, planTonn, planP,
+    areal, PperDaa: areal ? P / areal : null, grense, grenseAar: aar, grenseFra, aarFra: Math.max(aar, P_FRA), arealBehov: grense ? P / grense : null, arealBehovFra: grenseFra ? P / grenseFra : null, planTonn, planP,
   };
 }
 
@@ -103,8 +103,9 @@ export function kontrollerHusdyr(S, aar) {
   const push = (nivaa, tittel, tekst) => ut.push({ nivaa, tema: 'husdyr', tittel, tekst, skifteId: null, kilde: 'gjodselforskrift' });
   const f1 = (x) => (Math.round(x * 10) / 10).toLocaleString('nb-NO');
   if (!g.areal) push('varsel', 'Husdyrgjødsel uten spredeareal', `Dyreholdet gir ca. ${Math.round(g.P)} kg fosfor i året, men ingen skifter har vekst i ${aar}. Legg inn vekster, eller avtal spredeareal hos andre.`);
-  else if (g.grense && g.PperDaa > g.grense) push('avvik', `For lite spredeareal for husdyrgjødsla (${f1(g.PperDaa)} kg P/daa)`, `Husdyrgjødsla gir ca. ${Math.round(g.P)} kg P på ${f1(g.areal)} daa. Fosforgrensen fra ${g.grenseAar} er ${f1(g.grense)} kg P/daa i snitt – det trengs ca. ${f1(g.arealBehov)} daa, eller avtale om å levere gjødsel.`);
-  else if (g.grense && g.PperDaa > g.grense * 0.85) push('varsel', `Nær fosforgrensen (${f1(g.PperDaa)} av ${f1(g.grense)} kg P/daa)`, 'Lite rom for mineralgjødsel med fosfor. Grensene strammes inn i 2030 og 2033.');
+  else if (g.grense && g.PperDaa > g.grense) push('avvik', `For lite spredeareal for husdyrgjødsla (${f1(g.PperDaa)} kg P/daa)`, `Husdyrgjødsla gir ca. ${Math.round(g.P)} kg P på ${f1(g.areal)} daa. Fosforgrensen i ${g.grenseAar} er ${f1(g.grense)} kg P/daa – det trengs ca. ${f1(g.arealBehov)} daa, eller avtale om å levere gjødsel.`);
+  else if (g.aarFra > aar && g.grenseFra && g.PperDaa > g.grenseFra) push('varsel', `For lite spredeareal fra ${g.aarFra} (${f1(g.PperDaa)} kg P/daa)`, `Grensen er ${f1(g.grense)} kg P/daa fram til ${g.aarFra}, men blir ${f1(g.grenseFra)} kg P/daa fra 1. januar ${g.aarFra}. Da trengs ca. ${f1(g.arealBehovFra)} daa.`);
+  else if (g.grense && g.PperDaa > g.grense * 0.85) push('varsel', `Nær fosforgrensen (${f1(g.PperDaa)} av ${f1(g.grense)} kg P/daa)`, 'Lite rom for mineralgjødsel med fosfor. Grensene strammes inn i 2028, 2030 og 2033.');
   if (g.lager != null && g.lagerBehov > g.lager) push('avvik', `For lite gjødsellager (${Math.round(g.lager)} av ca. ${Math.round(g.lagerBehov)} m³)`, `Lageret bør romme gjødsla for ${g.lagerKrav} måneder. Husk også nedbør og vaskevann i åpne lagre.`);
   else if (g.lager == null && g.tonnLager > 5) push('info', 'Legg inn størrelsen på gjødsellageret', `Behovet er anslått til ca. ${Math.round(g.lagerBehov)} m³ for ${g.lagerKrav} måneder.`);
   if (g.P > 75) push('info', 'Gjødseljournal kan være påkrevd', `Dyreholdet gir ca. ${Math.round(g.P)} kg P i året. Leverer du fra deg eller tar imot husdyrgjødsel med mer enn 75 kg fosfor, skal det føres journal (§ 27).`);
@@ -210,7 +211,7 @@ export const FORSKRIFTER = {
   smafe: { navn: 'Forskrift om velferd for småfe', url: 'https://lovdata.no/dokument/SF/forskrift/2005-02-18-160' },
   hons: { navn: 'Forskrift om hold av høns og kalkun', url: 'https://lovdata.no/dokument/SF/forskrift/2001-12-12-1494' },
   svin: { navn: 'Forskrift om hold av svin', url: 'https://lovdata.no/dokument/SF/forskrift/2003-02-18-175' },
-  hest: { navn: 'Forskrift om velferd for hest', url: 'https://lovdata.no/dokument/SF/forskrift/2005-07-01-505' },
+  hest: { navn: 'Forskrift om velferd for hest', url: 'https://lovdata.no/dokument/SF/forskrift/2005-06-02-505' },
 };
 export const PLASS = {
   melkeku: { m2: 7, kilde: 'veiledende', forskrift: 'storfe', tekst: 'Løsdrift: minst én liggebås per dyr (§ 22). Ca. 7 m² per ku med gangareal er vanlig.' },

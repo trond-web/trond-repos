@@ -10,7 +10,7 @@ import { teksturGruppe, KULTURER } from './skifteplan.js';
 
 export const KILDER = {
   praksis: { navn: 'NLR Østafjells: Praktisk drenering – teori og økonomi (2023)', url: 'https://ringerike.kommune.no/globalassets/bilder-blokker-og-filarkiv/bilder-og-dokumenter/samfunn/landbruk/praktisk-drenering-teori-og-okonomi-februar-2023.pdf' },
-  tilskudd: { navn: 'Statsforvalteren: Tilskudd til drenering av jordbruksjord', url: 'https://www.statsforvalteren.no/agder/landbruk-og-mat/tilskot-innan-jordbruk-og-skogbruk/tilskudd-til-drenering-av-jordbruksareal' },
+  tilskudd: { navn: 'Statsforvalteren: Tilskudd til drenering av jordbruksjord', url: 'https://www.landbruksdirektoratet.no/nb/jordbruk/ordninger-for-jordbruk/tilskudd-til-drenering-av-jordbruksjord' },
   rundskriv: { navn: 'Landbruksdirektoratet: Forvaltning av tilskudd til drenering (rundskriv)', url: 'https://www.landbruksdirektoratet.no/nb/filarkiv/rundskriv/drenering/Rundskriv%202019-15_UTG%C3%85TT_%20Forvaltning%20av%20tilskudd%20til%20drenering%20av%20jordbruksjord.pdf' },
   hoydedata: { navn: 'Kartverket: høydedata (punkt-API)', url: 'https://ws.geonorge.no/hoydedata/v1/' },
 };

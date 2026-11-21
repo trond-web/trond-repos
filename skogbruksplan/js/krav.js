@@ -8,17 +8,17 @@ import { dreneringStatus } from './drenering.js';
 
 export const HJEMMEL = {
   gjodsel: { navn: 'Forskrift om lagring og bruk av gjødsel mv. (2025)', url: 'https://lovdata.no/forskrift/2025-01-29-115' },
-  gjodselInfo: { navn: 'Statsforvalteren: nye regler for lagring og bruk av gjødsel', url: 'https://www.statsforvalteren.no/innlandet/landbruk-og-mat/landbruk-og-mat---nyheter/2025/02/nye-regler-for-lagring-og-bruk-av-gjodsel/' },
+  gjodselInfo: { navn: 'Statsforvalteren: nye regler for lagring og bruk av gjødsel', url: 'https://lovdata.no/dokument/SF/forskrift/2025-01-29-115' },
   plantevern: { navn: 'Forskrift om plantevernmidler (journal, autorisasjon, funksjonstest)', url: 'https://lovdata.no/forskrift/2015-05-06-455' },
   pt: { navn: 'Forskrift om produksjonstilskudd og avløsertilskudd i jordbruket', url: 'https://lovdata.no/forskrift/2014-12-19-1817' },
-  rmp: { navn: 'Regionalt miljøtilskudd (RMP) – regional forskrift', url: 'https://www.landbruksdirektoratet.no/nb/jordbruk/ordninger-for-jordbruk/regionalt-miljotilskudd' },
-  regionaleKrav: { navn: 'Forskrift om regionale miljøkrav (vannområder, erosjon)', url: 'https://www.statsforvalteren.no/siteassets/fm-oslo-og-viken/landbruk-og-mat/miljotiltak/dokumenter/forskrift-regionale-miljokrav-i-oslo-og-viken.pdf' },
-  drenering: { navn: 'Forskrift om tilskudd til drenering av jordbruksjord', url: 'https://www.statsforvalteren.no/agder/landbruk-og-mat/tilskot-innan-jordbruk-og-skogbruk/tilskudd-til-drenering-av-jordbruksareal' },
+  rmp: { navn: 'Regionalt miljøtilskudd (RMP) – regional forskrift', url: 'https://www.landbruksdirektoratet.no/nb/jordbruk/ordninger-for-jordbruk/regionalt-miljotilskudd-rmb' },
+  regionaleKrav: { navn: 'Forskrift om regionale miljøkrav (vannområder, erosjon)', url: 'https://www.landbruksdirektoratet.no/nb/jordbruk/ordninger-for-jordbruk/regionalt-miljotilskudd-rmb' },
+  drenering: { navn: 'Forskrift om tilskudd til drenering av jordbruksjord', url: 'https://www.landbruksdirektoratet.no/nb/jordbruk/ordninger-for-jordbruk/tilskudd-til-drenering-av-jordbruksjord' },
   storfe: { navn: 'Forskrift om hold av storfe (beite, fri bevegelse)', url: 'https://www.mattilsynet.no/dyr/produksjonsdyr/storfe/veileder-om-hold-av-storfe/gi-storfe-tilgang-til-beite-fri-bevegelse-og-mosjon' },
   legemiddel: { navn: 'Mattilsynet: dokumentasjon av legemiddelbruk på matproduserende dyr', url: 'https://mattilsynet.no/dyr/dyrehelsepersonell/legemidler-til-dyr/dokumentasjon-av-legemiddelbruk-pa-matproduserende-dyr' },
   husdyrreg: { navn: 'Forskrift om identifikasjon og registrering av husdyr (Husdyrregisteret)', url: 'https://www.mattilsynet.no/dyr/produksjonsdyr/storfe' },
-  skog: { navn: 'Skogbruksloven § 6 og forskrift om bærekraftig skogbruk (foryngelsesplikt)', url: 'https://www.statsforvalteren.no/rogaland/landbruk-og-mat/skogbruk/forynging-av-skog/' },
-  ksl: { navn: 'KSL – Kvalitetssystem i landbruket', url: 'https://www.matmerk.no/ksl' },
+  skog: { navn: 'Skogbruksloven § 6 og forskrift om bærekraftig skogbruk (foryngelsesplikt)', url: 'https://www.landbruksdirektoratet.no/nb/skogbruk/ordninger-for-skogbruk/tilskudd-til-skogkultur' },
+  ksl: { navn: 'KSL – Kvalitetssystem i landbruket', url: 'https://www.ksl.no/' },
   internkontroll: { navn: 'Internkontrollforskriften (HMS)', url: 'https://lovdata.no/forskrift/1996-12-06-1127' },
 };
 export const TEMA = { gjodsel: 'Gjødsel og jord', plantevern: 'Plantevern', tilskudd: 'Søknader og tilskudd', miljo: 'Miljø og vann', husdyr: 'Husdyr', skog: 'Skog', hms: 'KSL og HMS' };

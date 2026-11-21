@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.12.0 – 🔎 Ukentlig sjekk av lover, satser og priser (2026-11-21)
+
+*Forbedret.* SkogIQ.ai sjekker nå hver uke om lover og forskrifter, tilskuddssatser, PEFC og KSL, veiledere, tømmerpriser fra SSB og datakildene er endret. Eieren får beskjed og et forslag til oppdatering. Første sjekk fant flere endringer som nå er rettet. Gjødselforskriften ble endret 6. oktober 2026: fosforgrensene gjelder fra 2028, og fram til da er grensen 3,5 kg P/daa. Fosfor per dyr følger nå normtallene i forskriften (melkeku 15 kg, ammeku 8 kg, verpehøne 120 g osv.). KSL kapittel 1, 10 og 15 er oppdatert til nye versjoner (2026.9d, 2026.10b og 2026.10). I tillegg er lenkene til forskriftene om hest, landbruksveier og allmenngjøring av tariff rettet, og rundt 20 døde lenker er byttet ut.
+
 ## 2.11.0 – 🏠 Plass i fjøset og 💰 produksjonstilskudd (2026-11-21)
 
 *Nytt.* Husdyr-fanen viser nå om det er plass nok i fjøset, sauehuset, stallen eller hønsehuset. Kravene er hentet fra forskriftene om storfe, småfe, høns og kalkun og svin, og der forskriften ikke har tall per dyr, brukes vanlige anbefalinger. Du ser hvor mange dyr til det er plass til, og får varsel om båsfjøs som må legges om til løsdrift innen 2034. Driftsbygninger kan hentes fra landbrukstaksten. Nytt er også et anslag på produksjonstilskudd med Landbruksdirektoratets satser for 2025: husdyr, driftstilskudd, beite og utmarksbeite, areal per sone, kulturlandskap og avløsning. I tillegg er det rettet en feil i den engelske versjonen: tekster med kolon og parentes, som «Fjøset: for lite plass (…)», ble ikke oversatt.

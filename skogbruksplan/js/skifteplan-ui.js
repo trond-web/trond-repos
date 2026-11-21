@@ -248,7 +248,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     const p = SP(); const a = aar(); const S = hentPlan();
     const aktive = aktiveSkifter(p, a);
     if (!p.skifter.length) return '<div class="tom">Ingen skifter ennå. Gå til «Skifter» for å hente eller tegne skifter.</div>';
-    const o = oppsummer(S, a); const fs = fosforSnitt(p, a); const g = fosforgrense(a, p.region) ?? fosforgrense(2027, p.region);
+    const o = oppsummer(S, a); const fs = fosforSnitt(p, a); const g = fosforgrense(a, p.region); const pAar = fs.rader.find((r) => r.aar === a)?.perDaa ?? null;
     const uten = p.skifter.filter((s) => !s.vekster?.[a]?.kultur);
     const pakrevd = o.aktivtAreal > 25 || aktive.some((s) => KULTURER[s.vekster[a].kultur].pKrevende && s.areal > 5);
     const diff = (har, behov, d = 1) => { const x = har - behov; const kl = Math.abs(x) <= Math.max(0.3, behov * 0.08) ? 'ok' : x > 0 ? 'over' : 'under'; return `<span class="sp-diff ${kl}">${fmt(har, d)}<small>/${fmt(behov, d)}</small></span>`; };
@@ -256,7 +256,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
         <div class="detalj-topp"><h3>Gjødslingsplan ${a}</h3><span class="sp-krav ${pakrevd ? 'pakrevd' : ''}">${pakrevd ? 'Påkrevd' : 'Ikke påkrevd'}</span></div>
         <p class="hint">${fmt(o.aktivtAreal, 1)} daa gjødslet areal. Planen skal foreligge før vekstsesongen og oppbevares i 5 år (§ 26).</p>
         <div class="sp-totaler"><div><small>Nitrogen</small>${diff(o.sum.N, o.sum.behovN, 0)} kg</div><div><small>Fosfor</small>${diff(o.sum.P, o.sum.behovP, 0)} kg</div><div><small>Kalium</small>${diff(o.sum.K, o.sum.behovK, 0)} kg</div>
-          <div><small>P snitt 3 år</small><span class="sp-diff ${fs.snitt != null && g && fs.snitt > g ? (a < 2027 ? 'under' : 'over') : 'ok'}">${fs.snitt != null ? fmt(fs.snitt, 2) : '–'}<small>/${g ?? '–'}${a < 2027 ? ' fra 2027' : ''}</small></span> kg/daa</div></div>
+          <div><small>P per daa ${a}</small><span class="sp-diff ${pAar != null && g && pAar > g ? 'over' : 'ok'}">${pAar != null ? fmt(pAar, 2) : '–'}<small>/${g ?? '–'}</small></span> kg/daa</div></div>
         <div class="knapperad"><button type="button" class="knapp primar" data-sp="foresla-alle">Foreslå gjødsling for alle</button><button type="button" class="knapp" data-sp="skriv-gp">Skriv ut gjødslingsplan</button><button type="button" class="knapp" data-sp="csv-gp">CSV</button></div>
       </div>
       ${aktive.map((sk) => {
@@ -273,7 +273,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
         <li>Spredeperiode: 1. mars – ${REGIONER[p.region].slutt[1]}.${REGIONER[p.region].slutt[0]}. (${esc(REGIONER[p.region].navn.toLowerCase())}). Ikke på snødekt eller frossen mark.</li>
         <li>Organisk gjødsel på åpen jord skal moldes ned innen 18 timer.</li>
         <li>Minst 6 m avstand til vassdrag ved spredning på eng; ingen gjødsling i vegetasjonssoner mot vann.</li>
-        <li>Fosforgrense fra 2027: ${fosforgrense(2027, p.region)} kg P/daa i snitt over tre år, deretter strengere (${fosforgrense(2030, p.region)} fra 2030${fosforgrense(2033, p.region) !== fosforgrense(2030, p.region) ? `, ${fosforgrense(2033, p.region)} fra 2033` : ''}).</li>
+        <li>Fosforgrense: 3,5 kg P/daa fram til utgangen av 2027. Fra 2028: ${fosforgrense(2028, p.region)} kg P/daa/år, deretter strengere (${fosforgrense(2030, p.region)} fra 2030${fosforgrense(2033, p.region) !== fosforgrense(2030, p.region) ? `, ${fosforgrense(2033, p.region)} fra 2033` : ''}). Innmarksbeite godkjent for spredning: 2 kg P/daa/år. Foretak med egen husdyrgjødsel over 75 kg P regner årlig snitt for hele arealet; andre kan bruke snitt over tre år (§ 20, endret 6. oktober 2026).</li>
         <li>N fra husdyrgjødsel regnes her som plantetilgjengelig ammonium-N × virkningsgrad for spredemåten. Bruk egen gjødselanalyse når du har den.</li>
       </ul></details>`;
   }
@@ -328,7 +328,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
         <h4 class="undertittel">Jordprøver (§ 29)</h4>
         <ul class="sp-regler"><li>Representative prøver med pH, P-AL, K-AL og moldinnhold/glødetap.</li><li>Ikke eldre enn 8 år – 4 år for fosforkrevende kulturer (potet, grønnsaker).</li></ul>
         <h4 class="undertittel">Gjødsling og spredning (§§ 15–20)</h4>
-        <ul class="sp-regler"><li>Spredeperiode for organisk gjødsel, nedmolding innen 18 timer på åpen jord, ikke på snødekt eller frossen mark.</li><li>Fosforgrense fra 2027 (snitt over tre år) – strammes inn i 2030 og 2033.</li><li>Gjødseljournal for foretak som omsetter mer enn 75 kg fosfor i husdyrgjødsel årlig (§ 27).</li></ul>
+        <ul class="sp-regler"><li>Spredeperiode for organisk gjødsel, nedmolding innen 18 timer på åpen jord, ikke på snødekt eller frossen mark.</li><li>Fosforgrense 3,5 kg P/daa fram til 2028, deretter 2,8 (2,5 fra 2030 og 2,3 fra 2033) – egne grenser for Rogaland og Troms og Finnmark (§ 20, endret 6. oktober 2026).</li><li>Gjødseljournal for foretak som omsetter mer enn 75 kg fosfor i husdyrgjødsel årlig (§ 27).</li></ul>
         <h4 class="undertittel">Plantevernjournal (forskrift om plantevernmidler)</h4>
         <ul class="sp-regler"><li>Integrert plantevern: årlig sjekkliste.</li><li>Sprøytejournal: skifte og kultur, preparat, dose, tidspunkt, behandlet areal og skadegjører. Oppbevares i minst 3 år.</li><li>Vannjournal når preparatet krever vegetasjonssone eller avdriftsavstand (ikke nødvendig over 50 m fra vann).</li></ul>
         <h4 class="undertittel">Kilder</h4>

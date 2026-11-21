@@ -841,7 +841,7 @@ test('Skifteplan: gjødselbehov, forslag, fosforgrense, krav og journal', () => 
   assert.equal(SP.pAlKorreksjon(1.5), 100); assert.equal(SP.pAlKorreksjon(6), 0); assert.equal(SP.pAlKorreksjon(12), -25); assert.equal(SP.pAlKorreksjon(20), -75);
   assert.equal(SP.kKorreksjon(5, 20), 50); assert.equal(SP.kKorreksjon(20, 120), -25); assert.equal(SP.moldKorreksjon(2), 2); assert.equal(SP.moldKorreksjon(8), 0); assert.equal(SP.moldKorreksjon(30), -2);
   // Fosforgrenser § 20
-  assert.equal(SP.fosforgrense(2026), null); assert.equal(SP.fosforgrense(2027), 2.8); assert.equal(SP.fosforgrense(2031), 2.5); assert.equal(SP.fosforgrense(2035), 2.3); assert.equal(SP.fosforgrense(2028, 'rogaland'), 3.1);
+  assert.equal(SP.fosforgrense(2026), 3.5, 'overgangsgrense fram til 2028'); assert.equal(SP.fosforgrense(2027), 3.5); assert.equal(SP.fosforgrense(2028), 2.8); assert.equal(SP.fosforgrense(2028, 'nord'), 2.5); assert.equal(SP.fosforgrense(2031), 2.5); assert.equal(SP.fosforgrense(2035), 2.3); assert.equal(SP.fosforgrense(2028, 'rogaland'), 3.1);
   // AR5 → skifter (beite får kultur)
   const geo = (x) => ({ type: 'Polygon', coordinates: [[[x, 60.2], [x + 0.004, 60.2], [x + 0.004, 60.202], [x, 60.202], [x, 60.2]]] });
   const fig = [{ id: 'a', kategori: 'jordbruk', geometri: geo(11), areal: 50, ar5: { artype: 'Fulldyrka jord' } }, { id: 'b', kategori: 'jordbruk', geometri: geo(11.01), areal: 20, ar5: { artype: 'Innmarksbeite' } }, { id: 'c', kategori: 'myr', geometri: geo(11.02), areal: 9 }, { id: 'd', kategori: 'jordbruk', geometri: geo(11.03), areal: 0.4, ar5: { artype: 'Fulldyrka jord' } }];
@@ -1156,9 +1156,9 @@ test('Oppdrag: én oppdragstype per tiltakstype, valg av tiltak, linjer, sammend
 });
 
 test('KSL: sjekklister, svar og avvik, kontroller med frister, dokumentasjon fra planen og egenrevisjon', () => {
-  // Sjekklistene: kapittel 1 (2026.8), 10 (2026.9) og 15 (2024.4) med dokumentasjonskrav
+  // Sjekklistene: kapittel 1 (2026.9d), 10 (2026.10b) og 15 (2026.10) med dokumentasjonskrav
   const k1 = KSL.KSL_KAPITLER.find((k) => k.nr === 1); const k10 = KSL.KSL_KAPITLER.find((k) => k.nr === 10);
-  assert.equal(k1.versjon, '2026.8'); assert.equal(k1.sporsmal.length, 44); assert.equal(k10.sporsmal.length, 56);
+  assert.equal(k1.versjon, '2026.9d'); assert.equal(k1.sporsmal.length, 44); assert.equal(k10.sporsmal.length, 65);
   assert.ok(KSL.sporsmal('1.2.1').dok && KSL.sporsmal('10.2.1').dok && !KSL.sporsmal('1.3.1').dok);
   for (const k of KSL.KSL_KAPITLER) for (const q of k.sporsmal) assert.ok(k.seksjoner.some((sk) => q.nr.startsWith(`${sk.nr}.`)), q.nr);
   for (const t of [...Object.values(KSL.KONTROLLTYPER), ...Object.values(KSL.DOKUMENTTYPER)]) for (const nr of t.ksl) assert.ok(KSL.sporsmal(nr), `ukjent KSL-punkt ${nr}`);
@@ -4481,8 +4481,8 @@ test('Husdyr: gjødsel, lager, spredeareal, fôrbalanse og fordeling', async () 
   const sk = (id, areal, kultur) => ({ id, nr: id, areal, vekster: { 2027: { kultur } }, jordprove: {}, gjodsling: [] });
   const S = { skifteplan: { aar: 2027, region: 'innland', skifter: [sk('a', 300, 'engNorm2'), sk('b', 80, 'beite'), sk('c', 100, 'bygg')], dyrehold: { dyr: [{ id: 'k', slag: 'melkeku', antall: 30 }, { id: 'h', slag: 'verpehone', antall: 500 }], lager: 300 } } };
   const g = H.husdyrgjodsel(S, 2027);
-  assert.equal(g.rader[0].P, 420); assert.equal(g.rader[0].tonn, 840); assert.equal(Math.round(g.rader[0].tonnLager), 630);
-  assert.equal(g.areal, 480); assert.equal(g.grense, 2.8); assert.ok(Math.abs(g.arealBehov - g.P / 2.8) < 1e-9);
+  assert.equal(g.rader[0].P, 450, 'normtall 15 kg P per melkeku (vedlegg 1)'); assert.equal(g.rader[0].tonn, 900); assert.equal(Math.round(g.rader[0].tonnLager), 675);
+  assert.equal(g.areal, 480); assert.equal(g.grense, 3.5, '2027: overgangsgrense'); assert.equal(g.grenseFra, 2.8); assert.ok(Math.abs(g.arealBehovFra - g.P / 2.8) < 1e-9);
   const funn = H.kontrollerHusdyr(S, 2027);
   assert.ok(funn.some((f) => f.nivaa === 'avvik' && /gjødsellager/.test(f.tittel)), 'for lite lager');
   assert.ok(funn.some((f) => /Gjødseljournal/.test(f.tittel)));
@@ -4548,4 +4548,28 @@ test('Husdyr: plass i dyrerom og produksjonstilskudd (satser 2025)', async () =>
   assert.equal(b('Utmarksbeitetilskudd, sau'), 80 * 581);
   assert.equal(t.avlosning, 139100, 'avløsertilskudd er begrenset til maks');
   assert.equal(t.sum, t.poster.reduce((s, p) => s + p.belop, 0));
+});
+
+test('Kildesjekk: Lovdata-metadata, opphevet og vurdering av endringer', async () => {
+  const K = await import('../verktoy/kildesjekk.mjs');
+  const side = (ekstra = '') => `<title>Forskrift om hold av storfe - Lovdata</title><table><tr><td>Ikrafttredelse</td><td>22.04.2004</td></tr><tr><td>Sist endret</td><td>FOR-2024-09-02-2054</td></tr></table><p>Hjemmel: Fastsatt av LMD.${ekstra}</p><p>§ 30. (Opphevet)</p>`;
+  const m = K.lovdataMeta(side());
+  assert.equal(m.tittel, 'Forskrift om hold av storfe'); assert.equal(m.sistEndret, 'FOR-2024-09-02-2054'); assert.equal(m.opphevet, false, '«§ 30. (Opphevet)» er ikke hele forskriften');
+  assert.equal(K.lovdataMeta(side(' Opphevet ved forskrift 21 okt 2024 nr. 2533 (i kraft 1 nov 2024).')).opphevet, true);
+  const kode = { ksl: { 1: '2026.8' }, pefc: 'PEFC N 02:2022', ptAar: 2025, pris: { G: 620, F: 570, L: 430 }, drift: { G: 180, F: 185, L: 200 } };
+  const lov = (sist) => ({ id: 'lov:x', gruppe: 'Lover og forskrifter', navn: 'Gjødselforskriften', url: 'u', lovdata: true, ok: true, sistEndret: sist, opphevet: false, fingeravtrykk: sist });
+  const forrige = { kilder: { 'lov:x': lov('FOR-2025-01-01-1') }, kode };
+  const naa = { tid: '2026-11-21T00:00:00Z', kode, kilder: {
+    'lov:x': lov('FOR-2026-10-06-2005'),
+    'ksl:1': { id: 'ksl:1', gruppe: 'Standarder', navn: 'KSL kapittel 1', ok: true, versjon: '2026.9d', iKoden: '2026.8', fingeravtrykk: 'a' },
+    'ldir:pt-oversikt': { id: 'ldir:pt-oversikt', gruppe: 'Satser og tilskudd', navn: 'PT', ok: true, utdrag: ['/nb/x/produksjonstilskudd-og-avlosertilskudd--endelige-satser-2026'], fingeravtrykk: 'b' },
+    'pris:tommer': { id: 'pris:tommer', gruppe: 'Priser og kostnader', navn: 'Tømmerpris', ok: true, aar: 2025, ssbPris: 847, appSnitt: 603, avvik: 0.4, forslag: { G: 871, F: 801, L: 604 }, fingeravtrykk: 'c' },
+  } };
+  const funn = K.vurder(naa, forrige);
+  assert.ok(funn.some((f) => /FOR-2025-01-01-1 → FOR-2026-10-06-2005/.test(f.tekst)), 'endret forskrift');
+  assert.ok(funn.some((f) => /Ny versjon 2026\.9d/.test(f.tekst)), 'ny KSL-versjon');
+  assert.ok(funn.some((f) => /satser for 2026/.test(f.tekst)), 'nye PT-satser');
+  assert.ok(funn.some((f) => /847 kr\/m³/.test(f.tekst)), 'tømmerpris');
+  assert.ok(funn.every((f) => f.nivaa === 'viktig'));
+  assert.ok(K.rapport(naa, funn).includes('## Må sjekkes for hånd'));
 });

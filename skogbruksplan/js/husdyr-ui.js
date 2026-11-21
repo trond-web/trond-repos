@@ -39,12 +39,12 @@ export function lagHusdyrUi({ SP, aar, hentPlan, lagre, melding, nyId, visGjodsl
         <tr class="sum"><td><b>Sum</b></td><td></td><td class="tall"><b>${n1(g.tonn)}</b></td><td class="tall"><b>${n1(g.tonnLager)}</b></td><td class="tall"><b>${n1(g.P)}</b></td><td class="tall"><b>${n0(g.N)}</b></td><td class="tall"><b>${n1(g.Pbeite)}</b></td></tr>
       </tbody></table></div>
       <div class="hd-nokkel">
-        <div><span class="hint">Spredeareal (skifter med vekst ${a})</span><b>${n1(g.areal)} daa</b>${g.areal ? `<span>${n1(g.PperDaa)} kg P/daa fra husdyrgjødsel · grense fra ${g.grenseAar}: ${n1(g.grense)}</span><span>Trenger minst ${n1(g.arealBehov)} daa ${arealOk == null ? '' : status(arealOk, 'Nok areal', 'For lite areal')}</span>` : '<span>Ingen skifter har vekst – legg inn vekster under Skifter.</span>'}</div>
+        <div><span class="hint">Spredeareal (skifter med vekst ${a})</span><b>${n1(g.areal)} daa</b>${g.areal ? `<span>${n1(g.PperDaa)} kg P/daa fra husdyrgjødsel · grense ${g.grenseAar}: ${n1(g.grense)}${g.aarFra > g.grenseAar ? ` (fra ${g.aarFra}: ${n1(g.grenseFra)})` : ''}</span><span>Trenger minst ${n1(g.arealBehov)} daa ${arealOk == null ? '' : status(arealOk, 'Nok areal', 'For lite areal')}</span>` : '<span>Ingen skifter har vekst – legg inn vekster under Skifter.</span>'}</div>
         <div><span class="hint">Gjødsellager (${g.lagerKrav} måneder)</span><b>ca. ${n0(g.lagerBehov)} m³ trengs</b>
           <label class="hd-lager">Lageret ditt <input type="number" min="0" step="10" data-hd-dh="lager" value="${dh.lager ?? ''}" placeholder="m³"> m³</label>${lagerOk == null ? '' : status(lagerOk, 'Stort nok', 'For lite')}</div>
         <div><span class="hint">Lagt inn i gjødslingsplanen ${a}</span><b>${n1(g.planTonn)} av ${n1(g.tonnLager)} tonn</b><span>${n1(g.planP)} kg P · <a href="#" data-hd="til-gjodsling">Åpne gjødslingsplanen</a></span></div>
       </div>
-      <p class="hint">Mengde og fosfor er beregnet fra fosfor per dyr (typiske tall, 1 gjødseldyrenhet = 14 kg P) og innholdet i gjødseltypen. Gjødsla fra beiteperioden havner på beitet. Bruk egen gjødselanalyse i gjødslingsplanen når du har den.</p>
+      <p class="hint">Fosfor per dyr er normtallene i gjødselforskriften (vedlegg 1). Mengden gjødsel er beregnet fra fosforet og innholdet i gjødseltypen. Gjødsla fra beiteperioden havner på beitet. Bruk egen gjødselanalyse i gjødslingsplanen når du har den.</p>
     </div>`;
   }
 

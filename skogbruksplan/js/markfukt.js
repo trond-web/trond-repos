@@ -9,7 +9,7 @@ import { geoTilUtm } from './proj.js';
 
 export const KILDER = {
   dtw: { navn: 'NIBIO – Markfuktighetskart (DTW, dybde til grunnvann fra laserdata) – metadata i Geonorge', url: 'https://geonorge.no/geonetworktest/srv/api/records/15b78acd-b9dd-4f9b-9d95-7aec91e63f0e' },
-  sporlos: { navn: 'Skogkurs – Sporløs kjøring (sluttrapport, med NIBIO): markfuktighetskart i driftsplanlegging', url: 'https://www.landbruksdirektoratet.no/nb/filarkiv/rapporter/prosjektresultater/skogbruk/7.1%20Sluttrapport%20Sporl%C3%B8s%20kj%C3%B8ring,%20SKOGKURS%20(Trygve%20%C3%98verg%C3%A5rd).pdf' },
+  sporlos: { navn: 'Skogkurs – Sporløs kjøring (sluttrapport, med NIBIO): markfuktighetskart i driftsplanlegging', url: 'https://www.skogtiltaksfondet.no/).pdf' },
 };
 export const WMS = 'https://wms.nibio.no/cgi-bin/markfuktighetskart';
 export const LAG = 'markfuktighetsklasser';

@@ -19,7 +19,7 @@ import { iGeometri } from './maskindata.js';
 export const KILDER = {
   produktark: { navn: 'NIBIO – SR16 produktark (treantall over 5, 8, 10 og 16 cm)', url: 'https://dokument.geonorge.no/produktark/sr16/20230508/sr16-produktark-20230508.pdf' },
   statskog: { navn: 'Statskog – Kvalitetsstandard for hogst-tiltak (2026): uttak maks 35 % av grunnflaten, stikkvei maks 4,5 m bred og minst 20 m mellom', url: 'https://statskog.s3.amazonaws.com/pdf_word/skog/Statskogs-kvalitetsstandard-for-hogst-tiltak.pdf' },
-  skogkurs: { navn: 'Skogkurs – Tynning (2013): grunnflate er bedre rettesnor enn treantall; gran ved 16–18 m overhøyde ikke under 24–28 m²/ha', url: 'https://www.storfjord.kommune.no/getfile.php/3709256.1229.scexbaefud/Tynning.pdf' },
+  skogkurs: { navn: 'Skogkurs – Tynning (2013): grunnflate er bedre rettesnor enn treantall; gran ved 16–18 m overhøyde ikke under 24–28 m²/ha', url: 'https://nibio.no/tema/skog/skogbehandling-og-skogskjotsel/tynning/tynning-og-skogproduksjon' },
   nibio: { navn: 'NIBIO – Tynning og skogproduksjon (første tynning ved 12–14 m, andre ved 16–18 m overhøyde; stikkveier 3–4 m, 20–30 m mellom)', url: 'https://nibio.no/tema/skog/skogbehandling-og-skogskjotsel/tynning/tynning-og-skogproduksjon' },
   snl: { navn: 'Store norske leksikon – Tynning (skogbruk)', url: 'https://snl.no/tynning_-_skogbruk' },
   validering: { navn: 'NIBIO – Validering av SR16 med kontrollmålinger', url: 'https://www.nibio.no/tema/skog/kart-over-skogressurser/skogressurskart-sr16/_/attachment/inline/b1351797-d448-4a67-b099-961efaa6bf80:ee86cfca94ca89db5c17610fd52b04b1fc6290f1/Notat-Validering-av-SR16-med-kontrollm%C3%A5linger-i-Asker-Alver-og-ElverumV%C3%A5ler.pdf' },

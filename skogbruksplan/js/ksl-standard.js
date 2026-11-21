@@ -1,12 +1,12 @@
-// KSL-standarden (Stiftelsen Norsk Mat): sjekklister for egenrevisjon. Generert fra de offisielle PDF-ene (nb-no):
-// kapittel 1 versjon 2026.8, kapittel 10 versjon 2026.9 og kapittel 15 versjon 2024.4, og husdyrkapitlene
-// 30 Drøvtyggere – generelt 2026.7, 31 Storfe 2026.7, 32 Småfe 2026.7, 35 Melk 2026.10, 40 Svin 2026.6, 50 Fjørfe – generelt 2026.10, 51 Eggproduksjon 2026.7, 52 Oppal fjørfe 2026.7, 53 Slaktekyllingproduksjon 2026.3, 54 Kalkun, ender og gjess 2026.7, 70 Hest i næring 2026.9.
+// KSL-standarden (Stiftelsen Norsk Mat): sjekklister for egenrevisjon, lest ut av de offisielle PDF-ene (nb-no) med
+// verktoy/ksl-fra-pdf.py. Versjoner: 1 2026.9d, 10 2026.10b, 15 2026.10, 30 2026.7, 31 2026.7, 32 2026.7, 35 2026.10, 40 2026.6, 50 2026.10, 51 2026.7, 52 2026.7, 53 2026.3, 54 2026.7, 70 2026.9.
 // dok = spørsmålet er merket med dokumentasjonssymbolet. krav = utdrag av «For å oppfylle dette kravet må du».
+// Nye versjoner oppdages av den ukentlige kildesjekken (verktoy/kildesjekk.mjs).
 export const KSL_KAPITLER = [
  {
   "nr": 1,
   "navn": "Generelle krav til gården",
-  "versjon": "2026.8",
+  "versjon": "2026.9d",
   "url": "https://www.ksl.no/ksl-standarden/generelle-krav-til-garden/",
   "seksjoner": [
    {
@@ -43,15 +43,15 @@ export const KSL_KAPITLER = [
    },
    {
     "nr": "1.9",
-    "navn": "Et klimavennlig landbruk"
+    "navn": "Kulturminner, kulturlandskap og biologisk mangfold – regionale og"
    },
    {
     "nr": "1.10",
-    "navn": "Kulturminner, kulturlandskap og biologisk mangfold"
+    "navn": "Smitteforebygging ved kjøp av brukt utstyr fra utlandet"
    },
    {
     "nr": "1.11",
-    "navn": "Smitteforebygging ved kjøp av brukt utstyr fra utlandet"
+    "navn": "Et klimavennlig landbruk"
    }
   ],
   "sporsmal": [
@@ -79,7 +79,13 @@ export const KSL_KAPITLER = [
     "tekst": "Har du ført skifteregistrering som dokumenterer gjennomførte tiltak og bruk av innsatsfaktorer?",
     "dok": true,
     "krav": [
-     "føre skifteregistrering per areal eller skifte registrere gjennomførte tiltak og bruk av innsatsfaktorer registrere bruk av frø, såvarer, settevarer eller annet plantemateriale dokumentere art, sort og partinummer for innkjøpt såvare …"
+     "føre skifteregistrering per areal eller skifte",
+     "registrere gjennomførte tiltak og bruk av innsatsfaktorer",
+     "registrere bruk av frø, såvarer, settevarer eller annet plantemateriale",
+     "dokumentere art, sort og partinummer for innkjøpt såvare der dette er relevant",
+     "dokumentere art og sort ved bruk av egen såvare",
+     "registrere hvilket skifte såvaren eller plantematerialet er brukt på for å sikre sporbarhet",
+     "kunne legge fram dokumentasjonen ved revisjon eller annen kontroll"
     ]
    },
    {
@@ -113,9 +119,7 @@ export const KSL_KAPITLER = [
     "tekst": "Har du en oppdatert gjødslingsplan (før inneværende vekstsesong) med kartskisse/skiftekart, basert på vekst og representative jordprøver?",
     "dok": true,
     "krav": [
-     "Ha en oppdatert gjødslingsplan før hver vekstsesong.",
-     "Informasjon:",
-     "Du skal ha en oppdatert gjødslingsplan klar før vekstsesongen starter. Planen skal omfatte alle arealer (skifter) du disponerer og inneholde et kart som viser skifteinndelingen."
+     "Ha en oppdatert gjødslingsplan før hver vekstsesong."
     ]
    },
    {
@@ -125,7 +129,9 @@ export const KSL_KAPITLER = [
     "krav": [
      "føre gjødseljournal fortløpende for inneværende vekstsesong",
      "registrere hvor og når det er gjødslet",
-     "registrere type og mengde gjødsel som er brukt"
+     "registrere type og mengde gjødsel som er brukt",
+     "kunne dokumentere hvor mye nitrogen og fosfor som er tilført hvert areal",
+     "kunne dokumentere samlet tilført mengde totalnitrogen og totalfosfor"
     ]
    },
    {
@@ -145,7 +151,8 @@ export const KSL_KAPITLER = [
     "krav": [
      "Spre husdyrgjødsel kun i tillatt periode og i tråd med fristene som gjelder for ditt fylke eller område.",
      "Unngå spredning av husdyrgjødsel i perioden det ikke er tillatt i din kommune",
-     "Ikke spre husdyrgjødsel på snødekket eller frossen mark."
+     "Ikke spre husdyrgjødsel på snødekket eller frossen mark.",
+     "Sørge for at spredning skjer i vekstsesongen, helst om våren, slik at næringsstoffene utnyttes av planteveksten."
     ]
    },
    {
@@ -161,9 +168,7 @@ export const KSL_KAPITLER = [
     "tekst": "Er spredning av husdyrgjødsel på innmarksbeite gjennomført i tråd med regelverket?",
     "dok": false,
     "krav": [
-     "Ha kommunal godkjenning for innmarksbeitet",
-     "Spre husdyrgjødsel kun innenfor tillatt periode",
-     "Spre på frostfri jord"
+     "Ha kommunal godkjenning for innmarksbeitet Spre husdyrgjødsel kun innenfor tillatt periode Spre på frostfri jord Kun spre på innmarksbeite eller fulldyrket jord Ikke spre gjødsel på utmark Følge gjeldende regler for gjødseltype og eventuell nedmolding Ta hensyn til naturverdier der kommunen har satt vilkår eller avslag"
     ]
    },
    {
@@ -171,9 +176,10 @@ export const KSL_KAPITLER = [
     "tekst": "Har du rutiner som sikrer at gjødsellageret kontrolleres minst én gang i løpet av 12 måneder?",
     "dok": true,
     "krav": [
-     "gjødsellageret, slik at anlegget fungerer som det skal og er fritt for lekkasjer. Du må også oppfylle spesielle krav som gjelder for det gjødselanlegget du har.",
-     "Spesielle krav:",
-     "Lager for flytende gjødsel skal ha tette konstruksjoner i gulv, vegger og porter."
+     "kontrollere gjødsellageret minst én gang i løpet av 12 måneder",
+     "kontrollere at gjødsellageret er tett og uten lekkasjer eller andre forhold som kan føre til forurensning",
+     "oppfylle særskilte krav som gjelder for den typen gjødselanlegg du har",
+     "kunne dokumentere at kontrollen er gjennomført"
     ]
    },
    {
@@ -188,18 +194,14 @@ export const KSL_KAPITLER = [
     "nr": "1.3.7",
     "tekst": "Har du rutiner som sikrer at husdyrgjødsel som lagres på bakken, alltid skjermes mot overflatevann og plasseres slik at avrenning hindres?",
     "dok": false,
-    "krav": [
-     "bakken: skjermes mot overflatevann ikke plasseres slik at det er fare for avrenning til vannforekomster eller på flomutsatte områder"
-    ]
+    "krav": []
    },
    {
     "nr": "1.3.8",
     "tekst": "Har du rutiner som sikrer at gjødsel fra luftegårder og utendørs talle samles opp regelmessig, minst én gang i året?",
     "dok": false,
     "krav": [
-     "luftegårder og utendørs talle fjernes regelmessig, minst én gang årlig. Du må sørge for at oppsamlet gjødsel enten spres eller lagres på en tilfredsstillende måte, og at væskeoverskudd samles opp og lagres dersom det kan medføre miljøskade.",
-     "Informasjon:",
-     "Luftegårder og utendørs talle må være innrettet slik at gjødsel kan fjernes enkelt fra fôringsplasser, hvileplasser og eventuelle trafikkarealer mellom disse."
+     "luftegårder og utendørs talle fjernes regelmessig, minst én gang årlig. Du må sørge for at oppsamlet gjødsel enten spres eller lagres på en tilfredsstillende måte, og at væskeoverskudd samles opp og lagres dersom det kan medføre miljøskade."
     ]
    },
    {
@@ -207,9 +209,7 @@ export const KSL_KAPITLER = [
     "tekst": "Har du rutine for å følge gjeldende regelverk og bruksbegrensningene for avløpsslam, kompost, biorest og annen organisk gjødsel?",
     "dok": false,
     "krav": [
-     "bruksbegrensningene for organisk gjødsel følges. Kravene varierer med type produkt.",
-     "Slam",
-     "Følg bruksbegrensningene i varedeklarasjonen."
+     "bruksbegrensningene for organisk gjødsel følges. Kravene varierer med type produkt."
     ]
    },
    {
@@ -217,9 +217,7 @@ export const KSL_KAPITLER = [
     "tekst": "Har du rutiner som sikrer at kommunen varsles før avløpsslam brukes på gården?",
     "dok": false,
     "krav": [
-     "ha rutiner som sikrer at kommunen varsles senest to uker før avløpsslam brukes på gården.",
-     "Informasjon:",
-     "Meldingen skal inneholde en vurdering av forhold som kan påvirke agronomi, miljø, sikkerhet, helse og hygiene ved bruken av slam.\""
+     "ha rutiner som sikrer at kommunen varsles senest to uker før avløpsslam brukes på gården."
     ]
    },
    {
@@ -233,21 +231,15 @@ export const KSL_KAPITLER = [
    {
     "nr": "1.5.2",
     "tekst": "Kan du dokumentere at plantevernmidlene er brukt i samsvar med godkjent etikett?",
-    "dok": false,
-    "krav": [
-     "kunne dokumentere at plantevernmidler er brukt i samsvar med godkjent etikett, og ha rutiner som sikrer korrekt bruk fremover.",
-     "Du skal følge bruksanvisningen på merkelappen og kontrollere at etiketten er godkjent. Plantevernmidler skal ikke brukes utenfor godkjent bruksområde eller i høyere dosering/konsentrasjon enn tillatt.",
-     "Du må også være kjent med reglene som gjelder for plantevernmidler som ikke lenger er godkjent. Kravet er forankret i forskrift om plantevernmidler."
-    ]
+    "dok": true,
+    "krav": []
    },
    {
     "nr": "1.5.3",
     "tekst": "Kan du dokumentere at spredeutstyret tilpasses, rengjøres og vedlikeholdes slik at det ikke er fare for forurensning av vann, og har du rutiner som sikrer dette fremover?",
     "dok": true,
     "krav": [
-     "Kunne dokumentere, og ha rutiner som sikrer, at spredeutstyret tilpasses, rengjøres og vedlikeholdes slik at det ikke oppstår fare for forurensning av vann.",
-     "Kravet er forankret i forskrift om plantevernmidler.",
-     "Du skal:"
+     "Kunne dokumentere, og ha rutiner som sikrer, at spredeutstyret tilpasses, rengjøres og vedlikeholdes slik at det ikke oppstår fare for forurensning av vann. Kravet er forankret i forskrift om plantevernmidler."
     ]
    },
    {
@@ -255,19 +247,15 @@ export const KSL_KAPITLER = [
     "tekst": "Kan du dokumentere at du oppfyller kravene til integrert plantevern, beskyttelse av vannmiljø og journalføring, og har du rutiner som sikrer at disse kravene etterleves?",
     "dok": true,
     "krav": [
-     "plantevern, gjennomføre tiltak som reduserer risikoen for vannforurensning, og føre plantevernjournal i tre deler: 1. journal for integrert plantevern, 2. journal for vannbeskyttelse, 3. sprøytejournal.",
-     "Kravet er forankret i forskrift om plantevernmidler.",
-     "Informasjon"
+     "plantevern, gjennomføre tiltak som reduserer risikoen for vannforurensning, og føre plantevernjournal i tre deler:"
     ]
    },
    {
     "nr": "1.5.5",
-    "tekst": "Oppbevarer du plantevernmidlene avlåst, tydelig merket og i tråd med tilleggskrav på etiketten, og har du rutiner som sikrer korrekt oppbevaring?",
+    "tekst": "Oppbevares plantevernmidler avlåst, tydelig merket og i samsvar med kravene på etiketten, og er det etablert rutiner for korrekt oppbevaring?",
     "dok": false,
     "krav": [
-     "tilfredsstiller kravene i forskrift om plantevernmidler, og ha rutiner som sikrer riktig oppbevaring.",
-     "Slik oppbevarer du plantevernmidler riktig:",
-     "følg oppbevaringskravene som står på etiketten (f.eks. «lagres frostfritt»)"
+     "tilfredsstiller kravene i forskrift om plantevernmidler, og ha rutiner som sikrer riktig oppbevaring."
     ]
    },
    {
@@ -275,9 +263,7 @@ export const KSL_KAPITLER = [
     "tekst": "Setter du opp advarselsplakater i samsvar med Mattilsynets mal når arealer som er åpne for allmenn ferdsel behandles med plantevernmidler, og har du rutiner som sikrer at dette alltid blir gjort?",
     "dok": false,
     "krav": [
-     "brukes på arealer som er åpne for allmenn ferdsel. Dette innebærer å sette opp advarselsplakater og å informere aktører med særskilte interesser. Kravet er forankret i forskrift om plantevernmidler.",
-     "Plakater:",
-     "merk arealet med plakater i samsvar med Mattilsynets mal"
+     "brukes på arealer som er åpne for allmenn ferdsel. Dette innebærer å sette opp advarselsplakater og å informere aktører med særskilte interesser. Kravet er forankret i forskrift om plantevernmidler."
     ]
    },
    {
@@ -287,7 +273,8 @@ export const KSL_KAPITLER = [
     "krav": [
      "Åkersprøyte, tåkesprøyte, jordbærbommer og spredeutstyr med total bomlengde på over tre meter skal testes hvert 3. år",
      "Spredeutstyr i veksthus skal testet hvert 5. år.",
-     "Ryggbåret og håndtholdt spredeutstyr er unntatt krav til vanlig funksjonstest, men skal egentestes."
+     "Ryggbåret og håndtholdt spredeutstyr er unntatt krav til vanlig funksjonstest, men skal egentestes.",
+     "Spredeutstyr med krav til funksjonstest skal ha påsatt gyldig registreringsmerke, dette gjelder også fabrikknytt utstyr."
     ]
    },
    {
@@ -295,9 +282,7 @@ export const KSL_KAPITLER = [
     "tekst": "Overholder du behandlingsfristene for plantevernmidler, og har du rutiner som sikrer at innhøstingsdato dokumenteres når dette er påkrevd?",
     "dok": true,
     "krav": [
-     "kjemiske plantevernmidler du bruker, og sikre at disse fristene overholdes i praksis. Du skal dokumentere tidspunkt for innhøsting slik at det kan vises at behandlingsfristene er fulgt. På beitearealer gjelder behandlingsfristen fra …",
-     "Informasjon",
-     "Behandlingsfristen er den minstetiden som må gå mellom siste gang et plantevernmiddel brukes og tidspunktet for innhøsting. Formålet er å sikre at rester av plantevernmidlene brytes ned til et trygt nivå før produktet høstes eller før …"
+     "kjemiske plantevernmidler du bruker, og sikre at disse fristene overholdes i praksis. Du skal dokumentere tidspunkt for innhøsting slik at det kan vises at behandlingsfristene er fulgt. På beitearealer gjelder behandlingsfristen fra tidspunktet for behandling til dyrene slippes på beite. Kravet er forankret i plantevernforskriften."
     ]
    },
    {
@@ -305,9 +290,7 @@ export const KSL_KAPITLER = [
     "tekst": "Følger du opplysningsplikten for meldepliktige skadegjørere og floghavre, og har du rutiner som sikrer at funn meldes i tråd med regelverket?",
     "dok": false,
     "krav": [
-     "skadegjørere og floghavre. Du skal melde fra til kommunen dersom du har kjennskap til eller mistanke om floghavre på eiendommen. Meldingen skal inneholde planteprøve og registreringsskjema som kommunen sender videre til",
-     "Kimen Såvarelaboratoriet AS for diagnostisering.",
-     "Ved mistanke om andre meldepliktige skadegjørere skal du melde fra til"
+     "skadegjørere og floghavre. Du skal melde fra til kommunen dersom du har kjennskap til eller mistanke om floghavre på eiendommen. Meldingen skal inneholde planteprøve og registreringsskjema som kommunen sender videre til Kimen Såvarelaboratoriet AS for diagnostisering. Ved mistanke om andre meldepliktige skadegjørere skal du melde fra til Mattilsynet gjennom deres skjematjeneste. Aktuelle skadegjørere er listet i vedlegg 1 og 2 til forskrift om plantehelse. Meldeplikten gjelder både jord du eier og jord du leier."
     ]
    },
    {
@@ -315,9 +298,7 @@ export const KSL_KAPITLER = [
     "tekst": "Opplyser du den du leier jord av, eller leier bort til, dersom du finner meldepliktige skadegjørere eller floghavre, og har du rutiner som sikrer at dette alltid blir gjort?",
     "dok": false,
     "krav": [
-     "finner meldepliktige skadegjørere eller floghavre. Dersom du leier bort jord, skal du også informere om tidligere funn av floghavre. Hvilke skadegjørere som er meldepliktige, fremgår av vedlegg 1 og 2 til forskrift om plantehelse. …",
-     "Informasjon:",
-     "Ved maskinsamarbeid mellom en smittet og en ikke-smittet driftsenhet kan påvisning av en meldepliktig skadegjører medføre at begge påføres restriksjoner."
+     "finner meldepliktige skadegjørere eller floghavre. Dersom du leier bort jord, skal du også informere om tidligere funn av floghavre. Hvilke skadegjørere som er meldepliktige, fremgår av vedlegg 1 og 2 til forskrift om plantehelse. Kravet er forankret i forskrift om plantehelse og forskrift om floghavre."
     ]
    },
    {
@@ -327,7 +308,8 @@ export const KSL_KAPITLER = [
     "krav": [
      "Gode rutiner for rengjøring av maskiner, lager og utstyr.",
      "Årlig kontroll på all dyrket jord unntatt flerårig eng.",
-     "Riktig destruering av floghavre"
+     "Riktig destruering av floghavre",
+     "Holde et 20 meter bredt belte inntil naboeiendom, veier og åpne vannveier helt fritt for frøbærende floghavreplanter. Tilsvarende plikt gjelder for arealer som er utsatt for flom."
     ]
    },
    {
@@ -343,20 +325,16 @@ export const KSL_KAPITLER = [
     "tekst": "Lagrer du innkjøpt mineralgjødsel på en sikker måte?",
     "dok": false,
     "krav": [
-     "Ja aktuelt",
      "Lagringsmåte som hindrer at gjødsla kan komme på avveie",
-     "Lagringsmåte som verner liv, helse, miljø og materielle verdier mot uhell og ulykker."
+     "Lagringsmåte som verner liv, helse, miljø og materielle verdier mot uhell og ulykker.",
+     "Kravene til oppbevaring av mineralgjødsel er strenge. Les mer under informasjon."
     ]
    },
    {
     "nr": "1.7.2",
-    "tekst": "Lagrer du fôr i siloanlegg eller som rundballer på en måte som hindrer avrenning og fare for forurensning?",
+    "tekst": "Lagres grovfôri rundballer, eller siloanlegg slik at det ikke oppstår fare for avrenning og/eller forurensing?",
     "dok": false,
-    "krav": [
-     "Silopressaft skal samles opp, lagres og brukes slik at den ikke skader miljøet – enten du lagrer den i silo eller i rundballer.",
-     "Rundballer bør helst lagres på mark der saft som renner av, kan infiltreres i grunnen, og der avrenningen kan kontrolleres gjennom drenering.",
-     "Rundballer må lagres i god avstand fra vassdrag"
-    ]
+    "krav": []
    },
    {
     "nr": "1.7.3",
@@ -375,57 +353,18 @@ export const KSL_KAPITLER = [
     "krav": [
      "Drive systematisk forebyggende arbeid mot skadegjørere",
      "Dokumentere forekomst av skadedyr som kan påvirke tryggheten til råvarer, eventuelt smitte til dyr.",
-     "Drive skadedyrbekjempelse slik at fôrvarer produseres, bearbeides, pakkes, lagres og transporteres under hensiktsmessige hygieniske forhold."
+     "Drive skadedyrbekjempelse slik at fôrvarer produseres, bearbeides, pakkes, lagres og transporteres under hensiktsmessige hygieniske forhold.",
+     "Ha en plan for hvordan du raskt og effektivt kan gjøre tiltak dersom problemene med skadedyr øker og det er fare for mattrygghet eller spredning av smittsom sykdom til dyreholdet ditt."
     ]
    },
    {
     "nr": "1.8.2",
     "tekst": "Dersom du benytter skadedyrmidler, kan du dokumentere hvilke skadedyrmidler som brukes, og hvor de er plassert?",
     "dok": true,
-    "krav": [
-     "Dokumentere hvilke skadedyrmidler du bruker",
-     "Dokumentere hvor de er plassert. Dette kan du gjøre på et kart eller ved hjelp av en enkel skisse."
-    ]
+    "krav": []
    },
    {
     "nr": "1.9.1",
-    "tekst": "Har du en plan for vedlikehold og fornyelse av hydrotekniske anlegg?",
-    "dok": false,
-    "krav": [
-     "Ha reflektert og vurdert rundt vedlikehold og fornying av grøfteanlegg.",
-     "For å få tilskudd til grøfting må du levere en godkjent grøfteplan. Planen skal inneholde kart, analyser av nedslagsfeltet det hydrotekniske anlegget skal betjene og beskrivelse av tiltakenes miljømessige effekt."
-    ]
-   },
-   {
-    "nr": "1.9.2",
-    "tekst": "Følger du lokale/regionale bestemmelser om jordarbeiding eller andre miljøkrav?",
-    "dok": false,
-    "krav": [
-     "Følge lokale bestemmelser gitt av statsforvalter knyttet til jordarbeiding eller andre miljøtiltak.",
-     "Ditt lokale landbrukskontor har oversikt over hvilke krav som gjelder for din eiendom."
-    ]
-   },
-   {
-    "nr": "1.9.3",
-    "tekst": "Dersom kommunen har gitt særskilte miljøbestemmelser av betydning for drifta, følger du disse?",
-    "dok": false,
-    "krav": [
-     "Holde deg oppdatert på lokale bestemmelser",
-     "Følge de aktuelle bestemmelsene for din gård."
-    ]
-   },
-   {
-    "nr": "1.9.4",
-    "tekst": "Har du gjort deg kjent med kilder til klimagassutslipp og aktuelle tiltak for din gård?",
-    "dok": false,
-    "krav": [
-     "Gjøre deg kjent med kilder til klimagassutslipp på din gård.",
-     "Vurdere tiltak som kan redusere det totale klimaavtrykket til din virksomhet.",
-     "Vurdere å ta i bruk klimakalkulator og/eller klimarådgivning fra NLR, Tine, eller andre rådgivningsapparat."
-    ]
-   },
-   {
-    "nr": "1.10.1",
     "tekst": "Har du merket av kulturminner og andre verdifulle kulturlandskapselementer på skiftekartet for gården?",
     "dok": true,
     "krav": [
@@ -433,8 +372,8 @@ export const KSL_KAPITLER = [
     ]
    },
    {
-    "nr": "1.10.2",
-    "tekst": "Har du tilstrekkelig vegetasjonssone mot vassdrag med årssikker vannføring på minimum 2 meter, som du ikke jordarbeider?",
+    "nr": "1.9.2",
+    "tekst": "Har du tilstrekkelig vegetasjonssone mot vassdrag med årssikker vannføring på minimum 2 meter , som du ikke jordarbeider?",
     "dok": false,
     "krav": [
      "sette igjen en vegetasjonssone på minst 2 meter mot vassdrag med en årssikker vannføring, målt horisontalt ved normal vannføring.",
@@ -443,17 +382,15 @@ export const KSL_KAPITLER = [
     ]
    },
    {
-    "nr": "1.10.3",
+    "nr": "1.9.3",
     "tekst": "Har du rutiner som sikrer at tiltak som kan påvirke kulturminner, kulturlandskap eller biologisk mangfold alltid gjennomføres i dialog med kommunen?",
     "dok": false,
     "krav": [
-     "påvirke kulturminner, kulturlandskap eller biologisk mangfold gjennomføres i dialog med kommunen. Kontakt det lokale landbrukskontoret dersom du er usikker på om et tiltak krever avklaring.",
-     "Informasjon",
-     "Eksempler på tiltak som skal avklares med kommunen:"
+     "påvirke kulturminner, kulturlandskap eller biologisk mangfold gjennomføres i dialog med kommunen. Kontakt det lokale landbrukskontoret dersom du er usikker på om et tiltak krever avklaring."
     ]
    },
    {
-    "nr": "1.10.4",
+    "nr": "1.9.4",
     "tekst": "Dersom det finnes fredede kulturminner på gården, ivaretar du disse med en tilhørende sikringssone?",
     "dok": false,
     "krav": [
@@ -463,11 +400,49 @@ export const KSL_KAPITLER = [
     ]
    },
    {
-    "nr": "1.11.1",
+    "nr": "1.10.1",
     "tekst": "Har du rutiner som sikrer at brukt utstyr kjøpt fra utlandet er rengjort og desinfisert før forsendelse til Norge, og at dette dokumenteres?",
     "dok": true,
     "krav": [
-     "utlandet rengjøres og eventuelt desinfiseres både før forsendelse til Norge og etter ankomst, og at all rengjøring og desinfeksjon dokumenteres med godkjente metoder og midler. Utstyret skal deretter stå tørt i minst 14 dager før det …"
+     "utlandet rengjøres og eventuelt desinfiseres både før forsendelse til Norge og etter ankomst, og at all rengjøring og desinfeksjon dokumenteres med godkjente metoder og midler. Utstyret skal deretter stå tørt i minst 14 dager før det tas i bruk."
+    ]
+   },
+   {
+    "nr": "1.11.1",
+    "tekst": "Har du en plan for vedlikehold og fornyelse av hydrotekniske anlegg?",
+    "dok": false,
+    "krav": [
+     "ha vurdert tilstanden på hydrotekniske anlegg som har betydning for drenering og vannhåndtering på foretaket",
+     "ha en plan for nødvendig vedlikehold eller fornying der det er behov for dette",
+     "oppdatere planen dersom behov eller forhold endres"
+    ]
+   },
+   {
+    "nr": "1.11.2",
+    "tekst": "Følger du lokale/regionale bestemmelser om jordarbeiding eller andre miljøkrav?",
+    "dok": false,
+    "krav": [
+     "Følge lokale bestemmelser gitt av statsforvalter knyttet til jordarbeiding eller andre miljøtiltak.",
+     "Ditt lokale landbrukskontor har oversikt over hvilke krav som gjelder for din eiendom."
+    ]
+   },
+   {
+    "nr": "1.11.3",
+    "tekst": "Dersom kommunen har gitt særskilte miljøbestemmelser av betydning for drifta, følger du disse?",
+    "dok": false,
+    "krav": [
+     "Holde deg oppdatert på lokale bestemmelser",
+     "Følge de aktuelle bestemmelsene for din gård."
+    ]
+   },
+   {
+    "nr": "1.11.4",
+    "tekst": "Har du vurdert foretakets viktigste kilder til klimagassutslipp og relevante tiltak for å redusere utslippene? Se veileder for eksempler.",
+    "dok": false,
+    "krav": [
+     "vurdere foretakets viktigste kilder til klimagassutslipp",
+     "vurdere relevante tiltak for å redusere utslippene",
+     "ha en enkel dokumentert vurdering av utslippskilder og aktuelle tiltak"
     ]
    }
   ]
@@ -475,7 +450,7 @@ export const KSL_KAPITLER = [
  {
   "nr": 10,
   "navn": "Helse, miljø og sikkerhet (HMS)",
-  "versjon": "2026.9",
+  "versjon": "2026.10b",
   "url": "https://www.ksl.no/ksl-standarden/helse-miljo-og-sikkerhet/",
   "seksjoner": [
    {
@@ -535,7 +510,9 @@ export const KSL_KAPITLER = [
     "krav": [
      "Skrive mål for følgende områder",
      "Mål for arbeidsmiljø",
-     "Mål for arbeid mot brann"
+     "Mål for arbeid mot brann",
+     "Mål for arbeid med el-sikkerhet",
+     "Skrive ned hvem som er ansvarlig for HMS-arbeidet"
     ]
    },
    {
@@ -557,7 +534,7 @@ export const KSL_KAPITLER = [
    },
    {
     "nr": "10.3.1",
-    "tekst": "Har du dokumentasjon på risikovurdering av farlige arbeidsoppgaver på gården?",
+    "tekst": "Har du dokumentasjon på risikovurdering av farlige arbeidsoppgaver på gården? (se eksempler i veiledningstekst)",
     "dok": true,
     "krav": [
      "Ha skriftlig beskrivelse av farlige arbeidsoppgaver med en vurdering av risikomoment og hva som gjøres for å minske risiko."
@@ -565,6 +542,16 @@ export const KSL_KAPITLER = [
    },
    {
     "nr": "10.3.2",
+    "tekst": "Har du dokumentasjon på risikovurdering av det elektriske anlegget på gården?",
+    "dok": true,
+    "krav": [
+     "Kartlegge farer og problem",
+     "Vurdere risiko knyttet til det som er avdekket",
+     "Gjøre tiltak for å redusere risiko"
+    ]
+   },
+   {
+    "nr": "10.3.3",
     "tekst": "Er låvebruer og andre steder med høydeforskjell sikret med klatrefritt rekkverk?",
     "dok": false,
     "krav": [
@@ -573,7 +560,7 @@ export const KSL_KAPITLER = [
     ]
    },
    {
-    "nr": "10.3.3",
+    "nr": "10.3.4",
     "tekst": "Parkeres traktorer og annet utstyr slik at det ikke utgjør fare?",
     "dok": false,
     "krav": [
@@ -584,12 +571,16 @@ export const KSL_KAPITLER = [
    },
    {
     "nr": "10.4.1",
-    "tekst": "Gjennomfører du tiltak for å sikre at arbeidsplassen ikke medfører økt fare for helseskade?",
+    "tekst": "Gjennomfører du tiltak for å sikre at arbeidsplassen ikke medfører økt fare for helseskade? Se viktige punkt du må ta hensyn til i veileder.",
     "dok": false,
     "krav": [
      "Gå gjennom drifta og vurdere om det er behov for tiltak på områdene",
      "Støy",
-     "Vibrasjoner"
+     "Vibrasjoner",
+     "Mulige belastninger på kroppen",
+     "Belysning",
+     "Støv",
+     "Ventilasjon"
     ]
    },
    {
@@ -606,7 +597,8 @@ export const KSL_KAPITLER = [
     "tekst": "Har alle på gården tilgang til sikkerhetsdatabladene for farlige kjemikalier på gården?",
     "dok": true,
     "krav": [
-     "ha sikkerhetsdatablad for alle helsefarlige, brann og eksplosjonsfarlige stoffer lagre sikkerhetsdatablad på en slik måte at alle som har bruk for de vil kunne finne de ved behov"
+     "ha sikkerhetsdatablad for alle helsefarlige, brann og eksplosjonsfarlige stoffer",
+     "lagre sikkerhetsdatablad på en slik måte at alle som har bruk for de vil kunne finne de ved behov"
     ]
    },
    {
@@ -620,10 +612,16 @@ export const KSL_KAPITLER = [
    },
    {
     "nr": "10.4.5",
+    "tekst": "Er det montert setebelte i alle traktorer som benyttes i arbeidssammenheng?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "10.4.6",
     "tekst": "Har dere rutiner på gården som sikrer at setebelte blir brukt i henhold til forskriften?",
     "dok": false,
     "krav": [
-     "Ha montert setebelte i alle traktorer som benyttes i næringssammenheng",
+     "Ha montert setebelte i alle traktorer som benyttes i arbeidssammenheng",
      "Benytte setebeltet ved all kjøring der det kreves i forskrift om utførelse av arbeid."
     ]
    },
@@ -632,7 +630,6 @@ export const KSL_KAPITLER = [
     "tekst": "Finnes trygge lekeområder for barn på gården?",
     "dok": false,
     "krav": [
-     "Ja aktuelt",
      "Ha leke og oppholdsareal som har fysisk skille (gjerde e.l.) som hindrer at barn utilsiktet leker og oppholder seg på områder det utføres gårdsdrift/arbeides på gården."
     ]
    },
@@ -664,7 +661,7 @@ export const KSL_KAPITLER = [
    },
    {
     "nr": "10.6.1",
-    "tekst": "Gjennomføres det faglig kontroll med termografering av det elektriske anlegget minimum hvert tredje år?",
+    "tekst": "Gjennomføres det faglig kontroll med termografering av det elektriske anlegget minimum hvert tredje år? (gjelder bygg med husdyr, varmlufts korntørke eller forsikringssum over en sum som forsikringsselskapet ditt har satt)",
     "dok": true,
     "krav": [
      "I god tid før det har gått tre år, bestille el-kontroll med termografering",
@@ -689,7 +686,8 @@ export const KSL_KAPITLER = [
     "krav": [
      "Ha gyldig sertifikat for varme arbeider",
      "Fjerne alle brennbare materialer i området det skal jobbes",
-     "Ha tilgjengelig slokkemiddel (min 2x 6kg egnet slukkemiddel eller 1x6 kg apparat og en brannslange med påsatt vann)"
+     "Ha tilgjengelig slokkemiddel (min 2x 6kg egnet slukkemiddel eller 1x6 kg apparat og en brannslange med påsatt vann)",
+     "Ha brannvakt"
     ]
    },
    {
@@ -697,7 +695,6 @@ export const KSL_KAPITLER = [
     "tekst": "Er rømningsveier åpne og ryddet (inkludert ryddet for snø)?",
     "dok": false,
     "krav": [
-     "Ja aktuelt",
      "Ha åpne rømningsveier ut til sikker sone",
      "Forsikre deg om at utganger er mulig å benytte året rundt"
     ]
@@ -707,9 +704,12 @@ export const KSL_KAPITLER = [
     "tekst": "Er det tilstrekkelig brannslokkingsutstyr i bygningene, er det lett tilgjengelig og klart til bruk, og er nødvendig kontroll og vedlikehold gjennomført?",
     "dok": false,
     "krav": [
-     "vurdere hvor mye brannslokkingsutstyr som er nødvendig for å dekke hele arealet ha godkjent brannslokkingsutstyr som er lett tilgjengelig og klart til bruk plassere brannslokkingsapparater ved innganger til og utganger fra brannceller …",
-     "Anbefalt antall brannslokkingsapparater: bygninger under 300 m²: minst ett 6 kg ABC-apparat bygninger mellom 300 og 600 m²: minst to 6 kg ABC-apparater bygninger over 600 m²: minst tre 6 kg ABC-apparater",
-     "Brannslokkingsapparater bør plasseres ved innganger til og utganger fra alle brannceller og i rom med stor brannbelastning. Ved inngangsdører der apparatet er plassert innenfor døren, bør det være oppslag som viser dette."
+     "vurdere hvor mye brannslokkingsutstyr som er nødvendig for å dekke hele arealet",
+     "ha godkjent brannslokkingsutstyr som er lett tilgjengelig og klart til bruk",
+     "plassere brannslokkingsapparater ved innganger til og utganger fra brannceller og i rom med stor brannbelastning",
+     "vurdere behovet for brannslokkingsutstyr som en del av den årlige gjennomgangen av elektrisk anlegg og utstyr",
+     "sørge for at brannslokkingsutstyret kontrolleres og vedlikeholdes i samsvar med gjeldende krav",
+     "sørge for at periodisk kontroll av håndslokkere utføres etter NS 3910 av kvalifisert servicepersonell"
     ]
    },
    {
@@ -741,7 +741,6 @@ export const KSL_KAPITLER = [
     "tekst": "Er det installert brannalarmanlegg i driftsbygningen?",
     "dok": false,
     "krav": [
-     "Ja aktuelt",
      "Avklare om det er krav til brannalarm i dine bygg",
      "Montere inn brannalarmanlegg godkjent i henhold til Norsk Standard 3960"
     ]
@@ -753,7 +752,8 @@ export const KSL_KAPITLER = [
     "krav": [
      "Ha nødvendig kompetanse på ditt anlegg (leverandør har ansvaret for å lære deg opp)",
      "Foreta ettersyn/egenkontroll av brannalarm en gang pr mnd.",
-     "Umiddelbart utbedre eventuelle feil eller mangler som avdekkes"
+     "Umiddelbart utbedre eventuelle feil eller mangler som avdekkes",
+     "Dokumentere egenkontrollen"
     ]
    },
    {
@@ -769,7 +769,6 @@ export const KSL_KAPITLER = [
     "tekst": "Er gårdsverkstedet vurdert med tanke på brannsikkerhet?",
     "dok": false,
     "krav": [
-     "Ja aktuelt",
      "Foreta en grundig risikovurdering før du starter med arbeid som kan forårsake brann"
     ]
    },
@@ -796,7 +795,14 @@ export const KSL_KAPITLER = [
     "tekst": "Er det gjennomført og dokumentert nødvendig opplæring for alle som arbeider på gården, på et språk de forstår(inkludert egne barn og kårfolk)?",
     "dok": true,
     "krav": [
-     "ha oversikt over arbeidsutstyr og arbeidsoppgaver som krever opplæring sørge for at alle som skal bruke arbeidsutstyr, håndtere varer, stoffer eller produkter, har nødvendig opplæring og nødvendige kvalifikasjoner gi nødvendig opplæring …"
+     "ha oversikt over arbeidsutstyr og arbeidsoppgaver som krever opplæring",
+     "sørge for at alle som skal bruke arbeidsutstyr, håndtere varer, stoffer eller produkter, har nødvendig opplæring og nødvendige kvalifikasjoner",
+     "gi nødvendig opplæring og trening i bruk av hjelpemidler og personlig verneutstyr",
+     "sørge for at opplæringen gis på et språk og på en måte den enkelte forstår",
+     "gi nødvendig opplæring og instruksjon før arbeidstakeren settes til arbeid",
+     "ta særlig hensyn til manglende erfaring og modenhet ved opplæring av personer under 18 år",
+     "gjennomføre dokumentert sikkerhetsopplæring for arbeidsutstyr der dette kreves",
+     "sørge for at dokumentert sikkerhetsopplæring signeres av både den som gir og den som mottar opplæringen"
     ]
    },
    {
@@ -804,7 +810,12 @@ export const KSL_KAPITLER = [
     "tekst": "Er det tilstrekkelige personalrom for arbeidshjelp på gården?",
     "dok": false,
     "krav": [
-     "Ha rom der arbeidshjelp har tilgang til toalett vask dusj garderobe med skiftemulighet og mulighet til å tørke klær spiserom"
+     "Ha rom der arbeidshjelp har tilgang til",
+     "toalett",
+     "vask",
+     "dusj",
+     "garderobe med skiftemulighet og mulighet til å tørke klær",
+     "spiserom"
     ]
    },
    {
@@ -818,6 +829,15 @@ export const KSL_KAPITLER = [
    },
    {
     "nr": "10.9.3",
+    "tekst": "Får arbeidshjelp opplæring på et språk de forstår?",
+    "dok": false,
+    "krav": [
+     "Kartlegge hvilke språk og språkkunnskaper som arbeiderne har",
+     "gjennomføre opplæring på språk som arbeider forstår"
+    ]
+   },
+   {
+    "nr": "10.9.4",
     "tekst": "Har du risikovurdert arbeidsoppgaver og iverksatt tiltak der det er gravide arbeidshjelp?",
     "dok": true,
     "krav": [
@@ -826,7 +846,7 @@ export const KSL_KAPITLER = [
     ]
    },
    {
-    "nr": "10.9.4",
+    "nr": "10.9.5",
     "tekst": "Har du løpende oversikt over hvor mye den enkelte arbeidshjelp arbeider på din gard?",
     "dok": true,
     "krav": [
@@ -834,87 +854,50 @@ export const KSL_KAPITLER = [
     ]
    },
    {
-    "nr": "10.9.5",
+    "nr": "10.9.6",
     "tekst": "Kjenner du til omfanget av alminnelig arbeidstid?",
     "dok": false,
     "krav": [
-     "Ja aktuelt",
      "Gjøre deg kjent med og følge regelverket for arbeidstid."
     ]
    },
    {
-    "nr": "10.9.6",
+    "nr": "10.9.7",
     "tekst": "Kjenner du til reglene for pauser?",
     "dok": false,
     "krav": [
-     "Ja aktuelt",
      "Gjøre deg kjent med arbeidstidsbestemmelsenes regler for pauser og følge disse.",
      "Gjøre arbeidstakerne oppmerksom på retten til pauser."
     ]
    },
    {
-    "nr": "10.9.7",
-    "tekst": "Får alle ansatte godkjent lønnsslipp?",
-    "dok": false,
-    "krav": [
-     "Gi arbeidstaker en lønnsslipp som dokumentasjon på lønn skatt andre trekk"
-    ]
-   },
-   {
-    "nr": "10.9.8",
+    "nr": "10.10.1",
     "tekst": "Har alle ansatte arbeidsavtale og lønn i tråd med gjeldende allmenngjøringsforskrift?",
     "dok": true,
     "krav": [
      "Ha en skriftlig arbeidsavtale på et språk som både arbeidsgiver og arbeidstaker forstår",
-     "Arbeidsavtalen skal minst inneholde hvem avtalen er mellom personnummer eller D-nummer hvor arbeidsplassen er beskrivelse av arbeidet dato for når arbeidsforholdet starter forventa varighet på arbeidsforholdet hvis det er midlertidig …"
-    ]
-   },
-   {
-    "nr": "10.9.9",
-    "tekst": "Har du avklart i arbeidsavtalen vilkår for evnt husleie og diett?",
-    "dok": false,
-    "krav": [
-     "Ja aktuelt",
-     "Ha en skriftlig avtale om leieforhold",
-     "Dokumentere eventuelt trekk i lønn i henhold til arbeidsavtale"
-    ]
-   },
-   {
-    "nr": "10.9.10",
-    "tekst": "Har du yrkesskadeforsikring for alle som arbeider på gården, og som har krav på det etter reglene?",
-    "dok": true,
-    "krav": [
-     "Tegne yrkesskadeforsikring for alle arbeidstakere"
-    ]
-   },
-   {
-    "nr": "10.9.11",
-    "tekst": "Kjenner du til ordningen med gjennomsnittsberegnet arbeidstid, og har du grunnlaget for denne beregningen?",
-    "dok": false,
-    "krav": [
-     "Avtale med arbeidstaker at arbeidstid skal gjennomsnittsberegnes",
-     "Planlegge og føre oversikt over arbeidstid slik at det er i henhold til regelverket"
-    ]
-   },
-   {
-    "nr": "10.9.12",
-    "tekst": "Kjenner du til krav om døgnhvil og ukehvil?",
-    "dok": false,
-    "krav": [
-     "Kjenne til forskriftens krav om hvile",
-     "Ha en arbeidsplan der arbeidstid og hviletid er beskrevet"
-    ]
-   },
-   {
-    "nr": "10.10.1",
-    "tekst": "Har alle ansatte egen lønnskonto?",
-    "dok": false,
-    "krav": [
-     "Betale lønn kun til personlige konti"
+     "Arbeidsavtalen skal minst inneholde",
+     "hvem avtalen er mellom",
+     "personnummer eller D-nummer",
+     "hvor arbeidsplassen er",
+     "beskrivelse av arbeidet",
+     "dato for når arbeidsforholdet starter",
+     "forventa varighet på arbeidsforholdet hvis det er midlertidig"
     ]
    },
    {
     "nr": "10.10.2",
+    "tekst": "Får alle ansatte godkjent lønnsslipp?",
+    "dok": false,
+    "krav": [
+     "Gi arbeidstaker en lønnsslipp som dokumentasjon på",
+     "lønn",
+     "skatt",
+     "andre trekk"
+    ]
+   },
+   {
+    "nr": "10.10.3",
     "tekst": "Ved bruk av sesongarbeidere formidlet via arbeidsformidler, sikrer du at det er et byrå som er et registrert norsk foretak med tillatelse til å drive arbeidsformidling innenfor landbruk?",
     "dok": false,
     "krav": [
@@ -923,7 +906,7 @@ export const KSL_KAPITLER = [
     ]
    },
    {
-    "nr": "10.10.3",
+    "nr": "10.10.4",
     "tekst": "Beregning av minstelønn – vet du hvordan dette utføres?",
     "dok": false,
     "krav": [
@@ -932,7 +915,48 @@ export const KSL_KAPITLER = [
     ]
    },
    {
-    "nr": "10.10.4",
+    "nr": "10.10.5",
+    "tekst": "Har du avklart i arbeidsavtalen vilkår for evnt husleie og diett?",
+    "dok": false,
+    "krav": [
+     "Ha en skriftlig avtale om leieforhold",
+     "Dokumentere eventuelt trekk i lønn i henhold til arbeidsavtale"
+    ]
+   },
+   {
+    "nr": "10.10.6",
+    "tekst": "Har du yrkesskadeforsikring for alle som arbeider på gården, og som har krav på det etter reglene?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "10.10.7",
+    "tekst": "Kjenner du til ordningen med gjennomstnittsberegnet arbeidstid, og har du grunnlaget for denne beregningen?",
+    "dok": false,
+    "krav": [
+     "Avtale med arbeidstaker at arbeidstid skal gjennomsnittsberegnes",
+     "Planlegge og føre oversikt over arbeidstid slik at det er i henhold til regelverket"
+    ]
+   },
+   {
+    "nr": "10.10.8",
+    "tekst": "Har alle ansatte egen lønnskonto?",
+    "dok": false,
+    "krav": [
+     "Betale lønn kun til personlige konti"
+    ]
+   },
+   {
+    "nr": "10.10.9",
+    "tekst": "Kjenner du til krav om døgnhvil og ukehvil?",
+    "dok": false,
+    "krav": [
+     "Kjenne til forskriftens krav om hvile",
+     "Ha en arbeidsplan der arbeidstid og hviletid er beskrevet"
+    ]
+   },
+   {
+    "nr": "10.10.10",
     "tekst": "Dersom du har barn eller ungdom under 15 år i arbeid hos deg, kjenner du til begrensningen i arbeidstid og type oppgaver de kan utføre?",
     "dok": false,
     "krav": [
@@ -940,32 +964,94 @@ export const KSL_KAPITLER = [
     ]
    },
    {
-    "nr": "10.10.5",
+    "nr": "10.10.11",
     "tekst": "Er standarden for innkvartering i samsvar med gjeldende krav?",
     "dok": false,
     "krav": [
-     "gjøre deg kjent med Arbeidstilsynets norm for boligstandard vurdere om arbeidstakerne kommer under unntaksbestemmelsene for arbeidsforhold opp til 12 uker følge opp bolig og utføre nødvendig kontroll/vedlikehold"
+     "gjøre deg kjent med Arbeidstilsynets norm for boligstandard",
+     "vurdere om arbeidstakerne kommer under unntaksbestemmelsene for arbeidsforhold opp til 12 uker",
+     "følge opp bolig og utføre nødvendig kontroll/vedlikehold"
     ]
    },
    {
     "nr": "10.11.1",
-    "tekst": "Har du rutiner for å følge opp sykemeldte arbeidstakere?",
+    "tekst": "Får alle ansatte godkjent lønnsslipp?",
     "dok": false,
     "krav": [
-     "Ja aktuelt kjenne til plikter du som arbeidsgiver har til å følge opp sykemeldte"
+     "Gi arbeidstaker en lønnsslipp som dokumentasjon på",
+     "lønn",
+     "skatt",
+     "andre trekk"
     ]
    },
    {
     "nr": "10.11.2",
-    "tekst": "Er du kjent med regelverket for obligatorisk tjenestepensjon (OTP)?",
-    "dok": false,
+    "tekst": "Har alle ansatte arbeidsavtale og lønn i tråd med gjeldende allmenngjøringsforskrift?",
+    "dok": true,
     "krav": [
-     "Gjøre deg kjent med lov om obligatorisk tjenestepensjon",
-     "Vurdere om dine ansatte enkeltvis eller sammen gjør at det er krav om"
+     "Ha en skriftlig arbeidsavtale på et språk som både arbeidsgiver og arbeidstaker forstår",
+     "Arbeidsavtalen skal minst inneholde",
+     "hvem avtalen er mellom",
+     "personnummer eller D-nummer",
+     "hvor arbeidsplassen er",
+     "beskrivelse av arbeidet",
+     "dato for når arbeidsforholdet starter",
+     "forventa varighet på arbeidsforholdet hvis det er midlertidig"
     ]
    },
    {
     "nr": "10.11.3",
+    "tekst": "Har du avklart i arbeidsavtalen vilkår for evnt husleie og diett?",
+    "dok": false,
+    "krav": [
+     "Ha en skriftlig avtale om leieforhold",
+     "Dokumentere eventuelt trekk i lønn i henhold til arbeidsavtale"
+    ]
+   },
+   {
+    "nr": "10.11.4",
+    "tekst": "Har du rutiner for å følge opp sykemeldte arbeidstakere?",
+    "dok": false,
+    "krav": [
+     "kjenne til plikter du som arbeidsgiver har til å følge opp sykemeldte"
+    ]
+   },
+   {
+    "nr": "10.11.5",
+    "tekst": "Har du yrkesskadeforsikring for alle som arbeider på gården, og som har krav på det etter reglene?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "10.11.6",
+    "tekst": "Er du kjent med regelverket for obligatorisk tjenestepensjon (OTP)?",
+    "dok": false,
+    "krav": [
+     "Gjøre deg kjent med lov om obligatorisk tjenestepensjon",
+     "Vurdere om dine ansatte enkeltvis eller sammen gjør at det er krav om",
+     "OTP"
+    ]
+   },
+   {
+    "nr": "10.11.7",
+    "tekst": "Kjenner du til ordningen med gjennomstnittsberegnet arbeidstid, og har du grunnlaget for denne beregningen?",
+    "dok": false,
+    "krav": [
+     "Avtale med arbeidstaker at arbeidstid skal gjennomsnittsberegnes",
+     "Planlegge og føre oversikt over arbeidstid slik at det er i henhold til regelverket"
+    ]
+   },
+   {
+    "nr": "10.11.8",
+    "tekst": "Kjenner du til krav om døgnhvil og ukehvil?",
+    "dok": false,
+    "krav": [
+     "Kjenne til forskriftens krav om hvile",
+     "Ha en arbeidsplan der arbeidstid og hviletid er beskrevet"
+    ]
+   },
+   {
+    "nr": "10.11.9",
     "tekst": "Har dine ansatte kjennskap til, og fått opplæring i, rutiner for varsling i din bedrift?",
     "dok": false,
     "krav": [
@@ -974,7 +1060,7 @@ export const KSL_KAPITLER = [
     ]
    },
    {
-    "nr": "10.11.4",
+    "nr": "10.11.10",
     "tekst": "Er verneombud valgt i samsvar med gjeldende regler?",
     "dok": false,
     "krav": [
@@ -996,7 +1082,6 @@ export const KSL_KAPITLER = [
     "tekst": "Er det lett tilgjengelig førstehjelpsutstyr på gården?",
     "dok": false,
     "krav": [
-     "Ja aktuelt",
      "Ha tilgjengelig førstehjelpsutstyr der det kan bli behov for det i arbeidssituasjonen"
     ]
    },
@@ -1005,9 +1090,9 @@ export const KSL_KAPITLER = [
     "tekst": "Er det førstehjelpskompetanse på gården?",
     "dok": false,
     "krav": [
-     "Ja aktuelt",
      "Ha nødvendig oversikt over førstehjelpsutstyr som finnes på gården",
-     "Kunne bruke tilgjengelig utstyr på riktig måte"
+     "Kunne bruke tilgjengelig utstyr på riktig måte",
+     "Kunne utføre nødvendig førstehjelp"
     ]
    },
    {
@@ -1015,7 +1100,9 @@ export const KSL_KAPITLER = [
     "tekst": "Har du en plan for hvordan du kan håndtere eventuelle kriser eller produksjonsavvik på gården?",
     "dok": false,
     "krav": [
-     "kartlegge produksjon med formål å finne kritiske områder planlegge skadereduserende rutiner knyttet til både produkt og produksjonsapparatet planlegge for eventuelle personlige situasjoner som kan oppstå"
+     "kartlegge produksjon med formål å finne kritiske områder",
+     "planlegge skadereduserende rutiner knyttet til både produkt og produksjonsapparatet",
+     "planlegge for eventuelle personlige situasjoner som kan oppstå"
     ]
    },
    {
@@ -1031,44 +1118,69 @@ export const KSL_KAPITLER = [
  {
   "nr": 15,
   "navn": "Grovfôr, korn, frø, olje- og belgvekster",
-  "versjon": "2024.4",
+  "versjon": "2026.10",
   "url": "https://www.ksl.no/ksl-standarden/grovfor-korn-fro-olje-og-belgvekster/",
   "seksjoner": [
    {
     "nr": "15.1",
-    "navn": "Såing"
-   },
-   {
-    "nr": "15.2",
     "navn": "Grovfôr"
    },
    {
-    "nr": "15.3",
+    "nr": "15.2",
     "navn": "Korn, frø, olje- og belgvekster"
    }
   ],
   "sporsmal": [
    {
     "nr": "15.1.1",
-    "tekst": "Har du registrert art, sort og partinummer for innkjøpt såvare du har kjøpt, og art og sort for såvare du har dyrket selv?",
+    "tekst": "Lagrer du grovforet ditt trygt?",
+    "dok": false,
+    "krav": [
+     "Lagre grovfôret slik at det, etter best mulig evne, er sikret mot ville dyr.",
+     "Sikre grovfôret mot skader som kan oppstå ved ekstremvær som kraftig nedbør, flom og jordras.",
+     "Lagre grovfôret slik at det ikke blir forurenset."
+    ]
+   },
+   {
+    "nr": "15.1.2",
+    "tekst": "Noterer du type og mengde ensileringsmiddel du har brukt for de ulike fôrpartiene? (bruker du ikke ensileringsmiddel, svar \"Ikke relevant\") Ensileringsmiddel er et kjemikalie og skal derfor dokumenteres.",
     "dok": true,
-    "krav": []
+    "krav": [
+     "registrere type og mengde ensileringsmiddel som brukes til de ulike fôrpartiene",
+     "kunne knytte registreringene til aktuelt fôrparti"
+    ]
    },
    {
     "nr": "15.2.1",
-    "tekst": "Lagrer du grovfôret slik at det ikke blir utsatt for forurensning?",
+    "tekst": "Har du sikret at beiset såvare ikke forurenser mat- og fôrkorn, og lagrer du det utilgjengelig for dyr?",
     "dok": false,
     "krav": []
    },
    {
     "nr": "15.2.2",
-    "tekst": "Noterer du type og mengde ensileringsmiddel du har brukt for de ulike fôrpartiene?",
+    "tekst": "Er transportutstyr til korn, frø, olje- og belgvekster rengjort før bruk, og er råvarene tildekket under transport?",
+    "dok": false,
+    "krav": [
+     "alt transportutstyr brukt til korn, frø, olje- og belgvekster være grundig rengjort før bruk.",
+     "råvarene dekkes til under transport, slik at de er beskyttet mot forurensning fra vær, støv, jord, gjødselrester, skadedyr eller annet materiale.",
+     "transporten gjennomføres på en måte som forhindrer spredning av floghavre, blant annet ved å hindre at frø kan falle av transportmidlene eller forurense andre arealer."
+    ]
+   },
+   {
+    "nr": "15.2.3",
+    "tekst": "Rengjør du tørkeutstyr og lager minst én gang i året?",
     "dok": false,
     "krav": []
    },
    {
-    "nr": "15.3.1",
-    "tekst": "Følger du hygiene- og kvalitetskrav knyttet til kornproduksjon?",
+    "nr": "15.2.4",
+    "tekst": "Lagrer du råvarene slik at de er beskyttet mot forurensning og skadegjørere?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "15.2.5",
+    "tekst": "Tørker, rullerer og kjøler du korn og frø til lagerfast vare?",
     "dok": false,
     "krav": []
    }
@@ -1679,15 +1791,22 @@ export const KSL_KAPITLER = [
    },
    {
     "nr": "35.3.2",
-    "tekst": "Gjennomføres det faglig kontroll med termografering av det elektriske anlegget minimum hvert tredje år? (gjelder bygg med husdyr, varmlufts korntørke eller forsikringssum over en sum som forsikringsselskapet ditt har satt) For å tilfredsstille dette kravet må du: • I god tid før det har gått tre år, bestille el-kontroll med termografering • Sjekke at kontrollforetak kan gjennomføre kontroll i henhold til standard NEK 405-3 med tillegg landbruk for el-kontroll og NEK 405-1 for termografering Den som eier produksjonsdyr, eller en annen som har ansvar for dem, skal sørge for at det gjennomføres faglig kontroll av det elektriske anlegget minimum hvert tredje år. Les mer om hva faglig kontroll er, og hvordan den gjennomføres, på fgsikring.no. § Krav Brannsikring i husdyrrom Lovkrav",
+    "tekst": "Gjennomføres det faglig kontroll med termografering av det elektriske anlegget minimum hvert tredje år? (gjelder bygg med husdyr, varmlufts korntørke eller forsikringssum over en sum som forsikringsselskapet ditt har satt)",
     "dok": true,
-    "krav": []
+    "krav": [
+     "I god tid før det har gått tre år, bestille el-kontroll med termografering",
+     "Sjekke at kontrollforetak kan gjennomføre kontroll i henhold til standard",
+     "NEK 405-3 med tillegg landbruk for el-kontroll og NEK 405-1 for termografering"
+    ]
    },
    {
     "nr": "35.3.3",
     "tekst": "Er det installert brannalarmanlegg i driftsbygningen?",
     "dok": false,
-    "krav": []
+    "krav": [
+     "Avklare om det er krav til brannalarm i dine bygg",
+     "Montere inn brannalarmanlegg godkjent i henhold til Norsk Standard 3960"
+    ]
    }
   ]
  },
@@ -2138,7 +2257,9 @@ export const KSL_KAPITLER = [
     "nr": "50.1.1",
     "tekst": "For å oppfylle kravet til dyreholdjournal må du fortløpende registrere nødvendige produksjonsdata i en produksjonskontroll eller i en egen journal. Oppfyller du kravet?",
     "dok": true,
-    "krav": []
+    "krav": [
+     "produksjonsdata i en produksjonskontroll eller i en egen journal. Oppfyller du kravet?"
+    ]
    },
    {
     "nr": "50.1.2",
@@ -3428,7 +3549,9 @@ export const KSL_KAPITLER = [
     "nr": "70.3.6",
     "tekst": "Har du som arbeidsgiver, og eventuelle arbeidsledere på gården, gjennomgått lovpålagt opplæring i HMS-arbeid?",
     "dok": true,
-    "krav": []
+    "krav": [
+     "Gjennomføre opplæring i HMS for arbeidsledere"
+    ]
    },
    {
     "nr": "70.3.7",
@@ -3442,13 +3565,19 @@ export const KSL_KAPITLER = [
     "nr": "70.3.8",
     "tekst": "Er det tilstrekkelige personalrom for ansatte?",
     "dok": false,
-    "krav": []
+    "krav": [
+     "Ha rom der ansatte har tilgang til toalett, vask, dusj, garderobe med skiftemulighet og mulighet til å tørke klær, og spiserom"
+    ]
    },
    {
     "nr": "70.3.9",
     "tekst": "Dersom du har barn eller ungdom under 18 år i arbeid hos deg, kjenner du til begrensningene i arbeidstid og type oppgaver de kan utføre?",
     "dok": false,
-    "krav": []
+    "krav": [
+     "Sette deg inn i regelverket for arbeid utført av personer under 18 år",
+     "Gjennomføre risikovurdering før barn eller ungdom settes i arbeid",
+     "Ha skriftlig samtykke fra foreldre eller foresatte før barn under 15 år settes i arbeid"
+    ]
    },
    {
     "nr": "70.3.10",
@@ -3464,7 +3593,10 @@ export const KSL_KAPITLER = [
     "nr": "70.3.11",
     "tekst": "Har virksomheten en oppdatert beredskapsplan lett tilgjengelig for alle?",
     "dok": true,
-    "krav": []
+    "krav": [
+     "Utarbeide en skriftlig beredskapsplan der det er beskrevet hva som skal gjøres i de aktuelle situasjonene.",
+     "Lage en beredskapsplakat med skisse over bygninger og med nødvendig informasjon om hva bygg inneholder"
+    ]
    },
    {
     "nr": "70.3.12",

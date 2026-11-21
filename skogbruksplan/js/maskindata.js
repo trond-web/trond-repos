@@ -18,7 +18,7 @@ import { geoTilUtm, utmTilGeo, arealM2 } from './proj.js';
 import { KULTURER, MINERAL, gjodselbehov } from './skifteplan.js';
 
 export const KILDER = {
-  isoxml: { navn: 'ISO 11783-10 (ISOXML) – oppgavedata for ISOBUS', url: 'https://www.aef-online.org/the-aef/isobus/isobus-standard.html' },
+  isoxml: { navn: 'ISO 11783-10 (ISOXML) – oppgavedata for ISOBUS', url: 'https://www.aef-online.org/' },
   jdApi: { navn: 'John Deere Developer – Operations Center API', url: 'https://developer.deere.com' },
   jdGen4: { navn: 'John Deere Gen4/G5: import av data fra USB (Data Manager)', url: 'https://www.deere.com/assets/pdfs/common/stellarsupport/18-2Gen4-CommandCenter-NewFeatures-English.pdf' },
 };
