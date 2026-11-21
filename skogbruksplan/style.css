@@ -1558,3 +1558,10 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .hd-beiter > div { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--grid); border-radius: 10px; }
 .hd-stolpe { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; } .hd-stolpe i { display: block; height: 100%; background: var(--accent); }
 .hd-stolpe i.hoy { background: var(--critical); } .hd-stolpe i.lav { background: #e0a800; }
+.hd-kilde { display: inline-block; min-width: 16px; text-align: center; font: 700 10px/16px var(--font-mono); border-radius: 4px; padding: 0 3px; }
+.hd-kilde.forskrift { background: var(--accent); color: var(--accent-ink); } .hd-kilde.veiledende { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--grid); }
+.hd-rom { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 10px; }
+.hd-romkort { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--grid); border-radius: 10px; }
+.hd-romtopp { display: flex; gap: 6px; } .hd-romtopp input { flex: 1; font-weight: 600; }
+.hd-romdyr { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; }
+.hd-sum { font-size: 18px; color: var(--accent); } .hd-gruppe td { background: var(--surface-2); }

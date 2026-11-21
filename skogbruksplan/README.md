@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.10.0** (2026-11-20) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.11.0** (2026-11-21) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -842,6 +842,13 @@ For gårder med melkekyr, ammekyr, ungdyr, okser, sau, geit, hest, ponni, alpakk
   - Beite i utmark og høstbeite fra beiteplanen regnes med i fôrbalansen.
   - Beitekart for utmark fra NIBIO (`wms.nibio.no/cgi-bin/beite`): beitelag (grenser og navn), tapsprosent for sau og lam, og sau per km². Kartlagene slås på i beiteplanen eller under Skifter › Kartlag fra NIBIO. Lenke til Rovbase for rovviltskader.
 - **KSL for husdyr:** sjekklistene for kapittel 30 Drøvtyggere (inkludert lama og alpakka), 31 Storfe, 32 Småfe, 35 Melk, 40 Svin, 50 Fjørfe, 51 Eggproduksjon, 52 Oppal fjørfe, 53 Slaktekylling, 54 Kalkun, ender og gjess og 70 Hest i næring. De er lest ut av de offisielle PDF-ene fra Stiftelsen Norsk Mat (versjon 2026.3–2026.10), og spørsmål som krever dokumentasjon er merket. Kapitlene krysses av automatisk ut fra dyreholdet (melkeku gir 30, 31 og 35, høner gir 50 og 51 osv.). Kapitler brukeren tar bort, kommer ikke tilbake. Selve sjekklistene er bare på norsk.
+- **Plass i dyrerommene:** areal per dyr og hvor mange dyr som står inne samtidig. For slaktekylling, kalkun og slaktegris regnes dette fra antall produsert og antall innsett.
+  - § = minstekrav i forskriften: kalv 1,5–2,0 m², verpehøner høyst 9 per m², slaktekylling høyst 36 kg/m² (25 kg uten velferdsprogram), kalkun 38/44 kg/m², purker 2,25 m² og slaktegris 0,80 m².
+  - ≈ = vanlig anbefaling der forskriften ikke gir et tall per dyr (ku, sau, geit, hest, alpakka).
+  - Dyrerom (fjøs, sauehus, stall, hønsehus) legges inn med areal, driftsform og dyr. Driftsbygninger kan hentes fra landbrukstaksten.
+  - Viser om det er nok plass, og hvor mange dyr til det er plass til.
+  - Varsel for båsfjøs med storfe: løsdriftskravet gjelder fra 1. januar 2034.
+- **Produksjonstilskudd – anslag:** de endelige satsene for søknadsåret 2025 fra Landbruksdirektoratet. Tar med husdyrtilskudd (trinnvis), tilskudd til små og mellomstore melkebruk, driftstilskudd (melk, geitemelk, spesialisert storfe), beite- og utmarksbeitetilskudd (fra beiteplanen), arealtilskudd for grovfôr og korn per arealsone, kulturlandskapstilskudd og avløsertilskudd (høyst 139 100 kr). Arealsonen velges, og regionen for gris og høns hentes fra kommunen. Ikke med: økologisk drift, bevaringsverdige raser, RMP, lam og kje, og tak for antall dyr. Satsene ligger i `PT` i `js/husdyr.js` og må oppdateres hvert år.
 - Alle tall per dyr er typiske anslag for norske forhold og bør tilpasses egen drift.
 
 ## 🌐 Engelsk språk (`js/sprak.js`, `js/sprak-en.js`)

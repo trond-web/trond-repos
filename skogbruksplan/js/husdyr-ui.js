@@ -1,5 +1,5 @@
 // 🐄 Underfanen «Husdyr» i Skifteplan: dyrehold, husdyrgjødsel og fôrbalanse (beregningene i husdyr.js).
-import { DYRESLAG, FORUTSETNINGER, tomtDyrehold, nyttDyr, verdier, husdyrgjodsel, forbalanse, kontrollerHusdyr, fordelHusdyrgjodsel, beiteplan, kontrollerBeite, nyBeiteperiode, beitekapasitet, dm } from './husdyr.js';
+import { DYRESLAG, FORUTSETNINGER, tomtDyrehold, nyttDyr, verdier, husdyrgjodsel, forbalanse, kontrollerHusdyr, fordelHusdyrgjodsel, beiteplan, kontrollerBeite, nyBeiteperiode, beitekapasitet, dm, dyrerom, kontrollerRom, nyttRom, FORSKRIFTER, produksjonstilskudd, PT_KILDE, SONER, ptRegion } from './husdyr.js';
 import { gjodselbehov, KULTURER, JORDSMONN_KARTLAG } from './skifteplan.js';
 import { fmt } from './charts.js';
 
@@ -95,14 +95,47 @@ export function lagHusdyrUi({ SP, aar, hentPlan, lagre, melding, nyId, visGjodsl
     </div>`;
   }
 
+  function romHtml() {
+    const S = hentPlan(); const dh = DH(); const d = dyrerom(S);
+    if (!d.behov.length) return '';
+    const bygg = (S.takst?.bygninger || []).filter((g) => g.type === 'driftsbygning' && !(dh.rom || []).some((r) => r.byggId === g.id));
+    const rad = (b) => `<tr><td>${b.ikon} ${esc(b.navn)}</td><td class="tall">${n0(b.samtidig)}</td><td class="tall">${fmt(b.m2, b.m2 < 1 ? 2 : 1)}${b.egen ? '' : ` <span class="hd-kilde ${b.kilde}" title="${b.kilde === 'forskrift' ? 'Minstekrav i forskriften' : 'Vanlig anbefaling – forskriften har ikke et tall per dyr'}">${b.kilde === 'forskrift' ? '§' : '≈'}</span>`}</td><td class="tall">${n0(b.areal)}</td><td class="hint">${esc(b.tekst || '')}${b.forskrift && FORSKRIFTER[b.forskrift] ? ` <a href="${FORSKRIFTER[b.forskrift].url}" target="_blank" rel="noopener">Forskriften</a>` : ''}</td></tr>`;
+    return `<div class="kort"><div class="detalj-topp"><h3>🏠 Plass i dyrerommene</h3><div class="knapperad" style="margin:0">${bygg.length ? `<button type="button" class="knapp liten" data-hd="rom-fra-takst" title="Lag dyrerom av driftsbygningene i landbrukstaksten">Hent fra takst (${bygg.length})</button>` : ''}<button type="button" class="knapp liten" data-hd="nytt-rom">+ Dyrerom</button></div></div>
+      <div class="tabell-wrap"><table class="tabell sp-tabell"><thead><tr><th>Dyreslag</th><th class="tall" title="Dyr som står inne samtidig">Samtidig</th><th class="tall">m²/dyr</th><th class="tall">m² trengs</th><th>Krav</th></tr></thead><tbody>${d.behov.map(rad).join('')}</tbody></table></div>
+      <p class="hint"><span class="hd-kilde forskrift">§</span> minstekrav i forskriften · <span class="hd-kilde veiledende">≈</span> vanlig anbefaling (forskriften har ikke et tall per dyr). For slaktekylling, kalkun og slaktegris er dyr samtidig = produsert per år ÷ innsett. Arealet er fritt areal/bruksareal for dyra – ikke bygningens BTA.</p>
+      ${(dh.rom || []).length ? `<div class="hd-rom">${d.rom.map((r) => `<div class="hd-romkort" data-hd-rom="${r.id}">
+        <div class="hd-romtopp"><input data-hd-r="navn" value="${esc(r.navn || '')}" placeholder="Navn, f.eks. Fjøset"><button type="button" class="knapp liten" data-hd="slett-rom" title="Fjern dyrerommet">✕</button></div>
+        <div class="skjema"><label>Areal for dyra (m²) <input type="number" min="0" data-hd-r="areal" value="${r.areal ?? ''}" placeholder="${r.bta ? `BTA ${n0(r.bta)}` : 'm²'}"></label>
+          <label>Driftsform <select data-hd-r="type">${[['losdrift', 'Løsdrift'], ['basfjos', 'Båsfjøs'], ['annet', 'Annet']].map(([k, t]) => `<option value="${k}" ${r.type === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
+        <div class="hd-romdyr">${dh.dyr.filter((x) => Number(x.antall) > 0).map((x) => `<label class="avkrysning"><input type="checkbox" data-hd-romdyr="${x.id}" ${(r.dyr || []).includes(x.id) ? 'checked' : ''}> ${verdier(x).ikon} ${esc(verdier(x).navn)}</label>`).join('')}</div>
+        ${r.arealTall && r.her.length ? `<div class="hd-stolpe"><i style="width:${Math.min(100, Math.round(r.andel * 100))}%" class="${r.andel > 1 ? 'hoy' : r.andel > 0.9 ? 'lav' : 'ok'}"></i></div><span>${n0(r.trengs)} av ${n0(r.arealTall)} m² · ${r.andel > 1 ? '<span class="hd-ikke">✕ For lite plass</span>' : `<span class="hd-ok">✓ Nok plass</span>${r.ledig > 0 ? ` – plass til ca. ${n0(r.ledig)} til` : ''}`}</span>` : '<span class="hint">Legg inn areal og kryss av hvilke dyr som står her.</span>'}
+      </div>`).join('')}</div>` : '<p class="hint">Legg inn fjøset, sauehuset, stallen eller hønsehuset med arealet dyra har til rådighet, så ser du om det er plass nok – og hvor mange dyr til det er plass til.</p>'}
+    </div>`;
+  }
+
+  function tilskuddHtml(a) {
+    const S = hentPlan(); const dh = DH(); const t = produksjonstilskudd(S, a); if (!dh.dyr.some((r) => Number(r.antall) > 0) && !t.areal.jordbruk) return '';
+    const grupper = [...new Set(t.poster.map((p) => p.gruppe))];
+    return `<div class="kort"><div class="detalj-topp"><h3>💰 Produksjonstilskudd – anslag</h3><b class="hd-sum">ca. ${n0(t.sum)} kr</b></div>
+      <div class="skjema"><label>Arealsone <select data-hd-pt="sone">${SONER.map((z) => `<option value="${z}" ${t.sone === z ? 'selected' : ''}>Sone ${z}</option>`).join('')}</select></label>
+        <label>Region (gris og høns) <select data-hd-pt="region">${[['', `Fra kommunen (${{ jaeren: 'Jæren', nord: 'Nordland, Troms og Finnmark', ovrig: 'landet for øvrig' }[ptRegion(S.eiendom?.kommunenr)]})`], ['jaeren', 'Jæren'], ['nord', 'Nordland, Troms og Finnmark'], ['ovrig', 'Landet for øvrig']].map(([k, n]) => `<option value="${k}" ${(dh.tilskudd?.region || '') === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label></div>
+      <div class="tabell-wrap"><table class="tabell sp-tabell"><thead><tr><th>Tilskudd</th><th>Grunnlag</th><th class="tall">Kr</th></tr></thead><tbody>
+        ${grupper.map((g) => `<tr class="hd-gruppe"><td colspan="3"><b>${esc(g)}</b></td></tr>${t.poster.filter((p) => p.gruppe === g).map((p) => `<tr><td>${esc(p.navn)}</td><td class="hint">${esc(p.grunnlag)}</td><td class="tall">${n0(p.belop)}</td></tr>`).join('')}`).join('')}
+        <tr class="sum"><td><b>Sum produksjonstilskudd</b></td><td></td><td class="tall"><b>${n0(t.sum)}</b></td></tr>
+        <tr><td>Avløsertilskudd (ferie og fritid)</td><td class="hint">grunnlag ${n0(t.avlosningGrunnlag)} kr, høyst 139 100 kr</td><td class="tall">${t.avlosning ? `inntil ${n0(t.avlosning)}` : '–'}</td></tr>
+      </tbody></table></div>
+      <p class="hint">Grovt anslag med de endelige satsene for søknadsåret ${t.satserAar} (<a href="${PT_KILDE.url}" target="_blank" rel="noopener">Landbruksdirektoratet</a>). Satsene endres i hvert jordbruksoppgjør. Ikke med: økologisk drift, bevaringsverdige raser, regionale miljøtilskudd (RMP), lam og kje i beitetilskuddet (bare voksne dyr er talt), tak for maksimalt antall støtteberettigede dyr og vilkår for hver ordning. Beitetilskudd forutsetter minst 12 uker på beite (16 for melkekyr), utmarksbeite minst 5 uker. Avløsertilskuddet dekker dokumenterte utgifter til avløser. Søknaden sendes i Altinn – sjekk vilkårene der.</p>
+    </div>`;
+  }
+
   return {
     html() {
       const a = aar(); const S = hentPlan(); const dh = DH();
-      const g = husdyrgjodsel(S, a); const f = forbalanse(S, a); const funn = [...kontrollerHusdyr(S, a), ...kontrollerBeite(S, a)];
+      const g = husdyrgjodsel(S, a); const f = forbalanse(S, a); const funn = [...kontrollerHusdyr(S, a), ...kontrollerBeite(S, a), ...kontrollerRom(S)];
       const NIV = { avvik: '✕', varsel: '!', info: 'i' };
       return `${dyrHtml(dh)}
         ${funn.length ? `<div class="kort">${funn.map((x) => `<div class="sp-funn" style="--farge:${x.nivaa === 'avvik' ? 'var(--critical)' : x.nivaa === 'varsel' ? '#c77800' : 'var(--accent)'}"><i>${NIV[x.nivaa]}</i><div><b>${esc(x.tittel)}</b><div class="hint">${esc(x.tekst)}</div></div></div>`).join('')}</div>` : ''}
-        ${gjodselHtml(g, dh, a)}${forHtml(f, a)}${beiteHtml(a)}`;
+        ${gjodselHtml(g, dh, a)}${forHtml(f, a)}${beiteHtml(a)}${romHtml()}${tilskuddHtml(a)}`;
     },
     klikk(e) {
       const k = e.target.closest('[data-hd]'); if (!k) return false;
@@ -118,6 +151,13 @@ export function lagHusdyrUi({ SP, aar, hentPlan, lagre, melding, nyId, visGjodsl
         dh.beiting = [...(dh.beiting || []), ny]; lagre(false); return true;
       }
       if (hva === 'slett-beite') { const id = k.closest('[data-hd-bp]')?.dataset.hdBp; dh.beiting = (dh.beiting || []).filter((x) => x.id !== id); lagre(false); return true; }
+      if (hva === 'nytt-rom') { dh.rom = [...(dh.rom || []), nyttRom(nyId)]; lagre(false); return true; }
+      if (hva === 'slett-rom') { const id = k.closest('[data-hd-rom]')?.dataset.hdRom; dh.rom = (dh.rom || []).filter((r) => r.id !== id); lagre(false); return true; }
+      if (hva === 'rom-fra-takst') {
+        const S = hentPlan();
+        for (const g of (S.takst?.bygninger || []).filter((x) => x.type === 'driftsbygning' && !(dh.rom || []).some((r) => r.byggId === x.id))) dh.rom = [...(dh.rom || []), { ...nyttRom(nyId, g.navn || 'Driftsbygning'), byggId: g.id, bta: Number(g.bta) || null }];
+        melding('Driftsbygningene er lagt inn som dyrerom. Fyll inn arealet dyra har til rådighet – det er mindre enn BTA.'); lagre(false); return true;
+      }
       if (hva === 'til-gjodsling') { e.preventDefault(); visGjodsling(); return true; }
       if (hva === 'fordel') {
         const S = hentPlan(); const a = aar(); const f = fordelHusdyrgjodsel(S, a, { gjodselbehov });
@@ -133,6 +173,14 @@ export function lagHusdyrUi({ SP, aar, hentPlan, lagre, melding, nyId, visGjodsl
       const t = e.target; const dh = DH();
       if (t.dataset.hdDh) { dh[t.dataset.hdDh] = tall(t.value); lagre(false); return true; }
       if (t.dataset.hdFu) { dh.forutsetninger[t.dataset.hdFu] = tall(t.value); lagre(false); return true; }
+      if (t.dataset.hdPt) { dh.tilskudd = { ...(dh.tilskudd || {}), [t.dataset.hdPt]: t.value }; lagre(false); return true; }
+      const rm = t.closest('[data-hd-rom]');
+      if (rm && (t.dataset.hdR || t.dataset.hdRomdyr)) {
+        const r = (dh.rom || []).find((x) => x.id === rm.dataset.hdRom); if (!r) return true;
+        if (t.dataset.hdRomdyr) r.dyr = t.checked ? [...new Set([...(r.dyr || []), t.dataset.hdRomdyr])] : (r.dyr || []).filter((x) => x !== t.dataset.hdRomdyr);
+        else r[t.dataset.hdR] = t.dataset.hdR === 'areal' ? tall(t.value) : t.value;
+        lagre(false); return true;
+      }
       const bp = t.closest('[data-hd-bp]');
       if (bp && t.dataset.hdB) { const x = (dh.beiting || []).find((y) => y.id === bp.dataset.hdBp); if (!x) return true; const f = t.dataset.hdB; x[f] = f === 'antall' ? tall(t.value) : f === 'skifteId' || f === 'dyrId' ? (t.value || null) : t.value; lagre(false); return true; }
       const rad = t.closest('[data-hd-rad]'); if (!rad || !t.dataset.hdF) return false;

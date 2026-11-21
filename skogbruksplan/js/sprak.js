@@ -36,10 +36,11 @@ export function lagOversetter(ordbok = {}, { mangler = null } = {}) {
     // Innledende symboler/emoji og avsluttende tegn holdes utenfor oppslaget: «🌲 Skogen siste døgn» → «Skogen siste døgn»
     const m = t.match(/^([^\p{L}\d{]*)(.*?)([\s.:!?…»)]*)$/su); if (!m || !m[2]) return null;
     const hel = slaaOpp(m[2]); if (hel != null) return m[1] + hel + m[3];
-    const delt = m[2].split(SKILLE);
+    // Ledd delt med «·», «–», «:» osv. Avsluttende tegn tas med i siste ledd, så «Fjøset: for lite plass (… finnes)» beholder parentesen.
+    const delt = (m[2] + m[3]).split(SKILLE);
     if (delt.length > 1) {
       let treff = false; const ut = delt.map((d, i) => { if (i % 2 || !BOKSTAV.test(d)) return d; const o = oversettDel(d); if (o !== d) treff = true; return o; });
-      if (treff) return m[1] + ut.join('') + m[3];
+      if (treff) return m[1] + ut.join('');
     }
     // Flere setninger i én tekst (f.eks. begrunnelser fra tiltaksmotoren): oversett setning for setning.
     const setn = (m[2] + m[3]).split(/(?<=[.!?])\s+(?=[\p{Lu}«(\d])/u);
