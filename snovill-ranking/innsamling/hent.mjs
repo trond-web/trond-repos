@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Samler inn resultater fra turrenn og langløp og lager rankingen for menn og kvinner.
 //
-//   node langlop-ranking/innsamling/hent.mjs [--data <mappe>] [--ut <mappe>] [--sesong 2025-26,2026-27] [--uten-nett]
+//   node snovill-ranking/innsamling/hent.mjs [--data <mappe>] [--ut <mappe>] [--sesong 2025-26,2026-27] [--uten-nett]
 //
-// --data   Hvor løpsresultatene lagres (standard: langlop-ranking/data). Løp som er ferdige hentes aldri på nytt.
+// --data   Hvor løpsresultatene lagres (standard: snovill-ranking/data). Løp som er ferdige hentes aldri på nytt.
 // --ut     Hvor rankingfilene skrives (standard: samme som --data).
 // --sesong Hvilke sesonger. Standard: 2025-26 og sesongen vi er i nå.
 // --uten-nett  Bare regn ut rankingen på nytt fra lagrede løp.

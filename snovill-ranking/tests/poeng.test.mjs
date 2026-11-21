@@ -1,4 +1,4 @@
-// Kjør: node --test langlop-ranking/tests/*.test.mjs
+// Kjør: node --test snovill-ranking/tests/*.test.mjs
 import test from "node:test";
 import assert from "node:assert/strict";
 import { tidspoeng, bonus, distansevekt, kobleLopere, sammeNavn, slaSammenDuplikater, erLanglop, lagRanking, REGLER } from "../innsamling/poeng.mjs";

@@ -52,11 +52,11 @@ og fødselsår og klubb skiller personer med samme navn.
 ## Kjøre lokalt
 
 ```sh
-node langlop-ranking/innsamling/hent.mjs                 # hent nye resultater og regn ut rankingen
-node langlop-ranking/innsamling/hent.mjs --uten-nett     # bare regn ut på nytt fra lagrede løp
-node langlop-ranking/innsamling/hent.mjs --sesong 2025-26
-node --test langlop-ranking/tests/*.test.mjs
-python3 -m http.server -d langlop-ranking 8080           # åpne http://localhost:8080
+node snovill-ranking/innsamling/hent.mjs                 # hent nye resultater og regn ut rankingen
+node snovill-ranking/innsamling/hent.mjs --uten-nett     # bare regn ut på nytt fra lagrede løp
+node snovill-ranking/innsamling/hent.mjs --sesong 2025-26
+node --test snovill-ranking/tests/*.test.mjs
+python3 -m http.server -d snovill-ranking 8080           # åpne http://localhost:8080
 ```
 
 Et løp hentes på nytt de første tre dagene etter løpsdagen (i tilfelle listene rettes). Deretter regnes
