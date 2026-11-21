@@ -24,6 +24,7 @@ import { lagInnsikt } from './innsikt.js';
 import { skjotselsbehov, skjotselsTiltak } from './skjotsel.js';
 import { initSok } from './sok-ui.js';
 import { initKommando } from './kommando.js';
+import { skjulte as driftSkjulte, velgDriftsomrader, settDrift, harValgt as driftValgt, kortTekst as driftTekst } from './driftsomrader.js';
 import { initPefc } from './pefc-ui.js';
 import { delFlate, nyttNr } from './del.js';
 import { initAssistent } from './assistent.js';
@@ -648,6 +649,7 @@ function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 // Kapittel i brukerveiledningen for hver fane («?» i panelets overskrift).
 const HJELP_FOR_FANE = { planer: 'kom-i-gang', nettverk: 'nettverk', oversikt: 'kom-i-gang', kommune: 'kommune', bestand: 'bestand', tiltak: 'tiltak', framskriving: 'verdi', veier: 'veier', verdi: 'verdi', rapporter: 'rapporter', skogbrand: 'miljo', skifteplan: 'miljo', ksl: 'miljo', karbon: 'miljo', pefc: 'miljo', ai: 'data', felt: 'felt', data: 'data' };
 function visFane(navn) {
+  if (driftSkjulte(S).faner.has(navn)) navn = 'oversikt'; // 🧭 fanen hører til et driftsområde som er slått av
   const hk = $('#panelHjelp'); if (hk) hk.dataset.hjelp = HJELP_FOR_FANE[navn] || 'kom-i-gang';
   registrerBruk('fane', navn); // bruksstatistikk for administrator (innlogging.js)
   if (deling && navn !== 'bestand') stoppDeling();
@@ -677,6 +679,27 @@ function visFane(navn) {
   if (!erMobil()) document.body.classList.remove('panel-skjult');
   setTimeout(() => kart.invalidateSize(), 50);
 }
+
+// ---------------------------------------------------------------- 🧭 driftsområder (js/driftsomrader.js)
+// Skjuler fanene for skog, jord eller husdyr når eiendommen ikke bruker dem, og viser valget øverst i Oversikt.
+function brukDrift() {
+  const sk = driftSkjulte(S);
+  $$('.faner button[data-fane]').forEach((b) => { b.hidden = sk.faner.has(b.dataset.fane); });
+  const aktiv = $('.faner button.aktiv')?.dataset.fane; if (aktiv && sk.faner.has(aktiv)) visFane('oversikt');
+  const l = $('#driftLinje'); if (l) l.innerHTML = `<span class="hint">Viser</span> <b>${esc(driftTekst(S))}</b> <button type="button" class="knapp liten" data-drift-velg title="Velg hvilke deler av løsningen du vil se for denne eiendommen">Tilpass</button>`;
+}
+async function velgDrift({ forste = false } = {}) {
+  const valg = await velgDriftsomrader(S, { forste }); if (!valg) return;
+  settDrift(S, valg); lagreSnart(); brukDrift(); skifteplanVisning?.tegn?.();
+  melding(`Viser nå: ${driftTekst(S)}. Endre når som helst med «Tilpass» øverst i Oversikt.`);
+}
+// Spør én gang per eiendom (ikke for demoen), når ingen annen dialog er åpen.
+function sporDriftOmNodvendig(forsok = 0) {
+  if (driftValgt(S) || /fiktiv/i.test(S.eiendom?.navn || '') || !(S.bestand?.length || S.skifteplan || S.markslag?.length)) return;
+  if (document.querySelector('dialog[open]')) { if (forsok < 20) setTimeout(() => sporDriftOmNodvendig(forsok + 1), 3000); return; }
+  velgDrift({ forste: true });
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-drift-velg]')) { e.preventDefault(); velgDrift(); } });
 
 // ---------------------------------------------------------------- oversikt
 function tegnInnsikt() {
@@ -2222,6 +2245,7 @@ function settSti(obj, sti, verdi) {
 }
 
 function tegnEiendom() {
+  brukDrift();
   const f = $('#eiendomSkjema');
   for (const [k, v] of Object.entries(S.eiendom)) if (f.elements[k]) f.elements[k].value = v ?? '';
   $('#eiendomNavn').textContent = S.eiendom.navn || 'SkogIQ.ai';
@@ -2504,6 +2528,7 @@ async function aapnePlan(id) {
   sikreKantsone();
   if (naboLag && kart.hasLayer(naboLag)) visNaboer();
   synkAktiv(); // hent endringer fra mobilen
+  setTimeout(() => sporDriftOmNodvendig(), 800);
 }
 
 // Planene på denne enheten som tilhører den innloggede brukeren (eller ikke har eier ennå).
@@ -2659,7 +2684,7 @@ function kommandoValg(q) {
     valg.push({ gruppe: 'Lag plan', ikon: '✦', tittel: `Lag skogbruksplan for ${m[1].trim()} ${m[2]}/${m[3]}${m[4] ? `/${m[4]}` : ''}`, under: 'Fra Kartverket, NIBIO og SR16', alltid: true,
       utfor: async () => { const k = finnKommune(m[1], await lastKommuner()); if (!k) { melding('Fant ikke kommunen.'); return; } lagPlanFor({ kommunenr: k.nr, gnr: +m[2], bnr: +m[3], fnr: +(m[4] || 0) }); } });
   }
-  for (const [k, t] of Object.entries(FANE_TITLER)) valg.push({ gruppe: 'Gå til', ikon: FANE_IKON[k], tittel: t, standard: true, utfor: () => visFane(k) });
+  for (const [k, t] of Object.entries(FANE_TITLER).filter(([k]) => !driftSkjulte(S).faner.has(k))) valg.push({ gruppe: 'Gå til', ikon: FANE_IKON[k], tittel: t, standard: true, utfor: () => visFane(k) });
   valg.push(
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Kjør tiltaksmotoren', under: 'Flatehogst, lukket hogst, tynning, markberedning, planting og ungskogpleie – kort og lang sikt', sok: 'foreslå tiltak automatisk motor plan', standard: true, utfor: () => { visFane('tiltak'); kjorMotor(motorForhand || S.motor || {}); } },
     { gruppe: 'Handlinger', ikon: '✦', tittel: 'Lag ny skogbruksplan', under: 'Fra kommune, gårds- og bruksnummer', sok: 'generer eiendom gnr bnr', standard: true, utfor: () => { visFane('planer'); $('#genKommune').focus(); } },
@@ -3048,6 +3073,7 @@ async function start() {
   tegnPlanListe();
   if (!S.bestand.length) visFane('planer');
   sikreKantsone(); // 💧 kantsone mot vann for planer som mangler den
+  setTimeout(() => sporDriftOmNodvendig(), 4000);
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
   // Endringer fra SkogIQ Felt (registreringer, utførte tiltak) i planen som er åpen her: last planen inn på nytt.
   kanal?.addEventListener('message', async (m) => {

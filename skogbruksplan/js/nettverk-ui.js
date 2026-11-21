@@ -10,7 +10,7 @@ import { avatar, fyllBilder } from './profilbilde-ui.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nb = (v) => Number(v || 0).toLocaleString('nb-NO');
-export const ROLLE = { skogeier: { navn: 'Skogeier', entall: 'skogeier', flertall: 'skogeiere', ikon: '🌲' }, innkjoper: { navn: 'Innkjøper', entall: 'innkjøper', flertall: 'innkjøpere', ikon: '🪵' }, entreprenor: { navn: 'Entreprenør', entall: 'entreprenør', flertall: 'entreprenører', ikon: '🚜' }, radgiver: { navn: 'Rådgiver / regnskapsfører', entall: 'rådgiver', flertall: 'rådgivere', ikon: '📊' }, offentlig: { navn: 'Offentlig', entall: 'offentlig', flertall: 'offentlige', ikon: '🏛' } };
+export const ROLLE = { skogeier: { navn: 'Skogeier/gårdbruker', entall: 'skogeier/gårdbruker', flertall: 'skogeiere og gårdbrukere', ikon: '🌲' }, innkjoper: { navn: 'Innkjøper', entall: 'innkjøper', flertall: 'innkjøpere', ikon: '🪵' }, entreprenor: { navn: 'Entreprenør', entall: 'entreprenør', flertall: 'entreprenører', ikon: '🚜' }, radgiver: { navn: 'Rådgiver / regnskapsfører', entall: 'rådgiver', flertall: 'rådgivere', ikon: '📊' }, offentlig: { navn: 'Offentlig', entall: 'offentlig', flertall: 'offentlige', ikon: '🏛' } };
 export const antall = (n, r) => `${nb(n)} ${n === 1 ? ROLLE[r].entall : ROLLE[r].flertall}`;
 const tid = (ms) => { const d = new Date(ms); const idag = new Date(); return d.toDateString() === idag.toDateString() ? d.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' }) + (d.getFullYear() !== idag.getFullYear() ? ` ${d.getFullYear()}` : ''); };
 

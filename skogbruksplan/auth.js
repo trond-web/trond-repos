@@ -32,7 +32,7 @@ export const PROFILFELT = { telefon: 30, rolle: 20, foretak: 120, orgnr: 11, adr
 export const ROLLER = ['skogeier', 'bonde', 'radgiver', 'entreprenor', 'annet'];
 // Brukerroller (én eller flere per bruker, obligatorisk ved registrering). Lagres i profilen som «roller».
 // Den eldre enkeltrollen «rolle» over beholdes bare for å foreslå roller til brukere som ble registrert før.
-export const BRUKERROLLER = { skogeier: 'Skogeier', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', radgiver: 'Rådgiver / regnskapsfører', offentlig: 'Offentlig' };
+export const BRUKERROLLER = { skogeier: 'Skogeier/gårdbruker', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', radgiver: 'Rådgiver / regnskapsfører', offentlig: 'Offentlig' };
 export const rensRoller = (r) => [...new Set((Array.isArray(r) ? r : r == null ? [] : [r]).map((x) => String(x || '').trim().toLowerCase()).filter((x) => BRUKERROLLER[x]))];
 // Versjoner som «1.10» sammenlignes tall for tall. Brukeren må godta på nytt når godtatt versjon er eldre enn kreverGodkjenning.
 export const sammenlignVersjon = (a, b) => { const x = String(a || '0').split('.').map(Number); const y = String(b || '0').split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return Math.sign(d); } return 0; };

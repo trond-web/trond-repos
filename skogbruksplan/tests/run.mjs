@@ -4573,3 +4573,19 @@ test('Kildesjekk: Lovdata-metadata, opphevet og vurdering av endringer', async (
   assert.ok(funn.every((f) => f.nivaa === 'viktig'));
   assert.ok(K.rapport(naa, funn).includes('## Må sjekkes for hånd'));
 });
+
+test('Driftsområder: skjulte faner, forslag og minst ett område', async () => {
+  const D = await import('../js/driftsomrader.js');
+  const S = { bestand: [], skifteplan: { skifter: [{ areal: 40 }], dyrehold: { dyr: [{ slag: 'sau', antall: 30 }] } } };
+  assert.deepEqual(D.drift(S), { skog: true, jord: true, husdyr: true }, 'alt på som standard');
+  assert.equal(D.harValgt(S), false);
+  assert.deepEqual(D.forslag(S), { skog: false, jord: true, husdyr: true });
+  D.settDrift(S, { skog: false, jord: false, husdyr: true });
+  const sk = D.skjulte(S);
+  assert.ok(sk.faner.has('bestand') && sk.faner.has('pefc') && !sk.faner.has('skifteplan') && !sk.faner.has('ksl'));
+  assert.ok(sk.underfaner.has('gjodsling') && !sk.underfaner.has('husdyr'));
+  D.settDrift(S, { skog: true, jord: false, husdyr: false });
+  assert.ok(D.skjulte(S).faner.has('skifteplan') && D.skjulte(S).faner.has('ksl'));
+  assert.deepEqual(D.settDrift(S, {}), { skog: true, jord: false, husdyr: false, valgt: true }, 'minst ett område');
+  assert.deepEqual(D.forslag({ bestand: [] }), { skog: true, jord: true, husdyr: true }, 'tom plan: alt på');
+});

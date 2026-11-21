@@ -3,7 +3,7 @@
 import { RAILWAY, gyldigToken } from './innlogging.js';
 import { lagAdminApi } from './admin-api.js';
 import { skogKort } from './admin-skog.js';
-const ROLLENAVN = { skogeier: 'Skogeier', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', radgiver: 'Rådgiver / regnskapsfører', offentlig: 'Offentlig' };
+const ROLLENAVN = { skogeier: 'Skogeier/gårdbruker', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', radgiver: 'Rådgiver / regnskapsfører', offentlig: 'Offentlig' };
 
 const API = /github\.io$/.test(location.hostname) ? RAILWAY : '';
 const $ = (s) => document.querySelector(s);

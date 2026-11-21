@@ -13,6 +13,7 @@ import { lagMaskinUi } from './maskin-ui.js';
 import { lagDreneringUi } from './drenering-ui.js';
 import { lagHusdyrUi } from './husdyr-ui.js';
 import { kontrollerHusdyr, kontrollerBeite, kontrollerRom } from './husdyr.js';
+import { skjulte as driftSkjulte } from './driftsomrader.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -338,7 +339,10 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
 
   function tegn() {
     const panel = $('#fane-skifteplan'); if (!panel) return;
-    panel.querySelectorAll('[data-sp-under]').forEach((k) => k.classList.toggle('aktiv', k.dataset.spUnder === underfane));
+    // 🧭 Driftsområder: skjul underfanene for jord eller husdyr når de er slått av for eiendommen.
+    const skjult = driftSkjulte(hentPlan()).underfaner;
+    if (skjult.has(underfane)) underfane = ['skifter', 'gjodsling', 'sproyting', 'husdyr', 'krav', 'maskin'].find((u) => !skjult.has(u));
+    panel.querySelectorAll('[data-sp-under]').forEach((k) => { k.hidden = skjult.has(k.dataset.spUnder); k.classList.toggle('aktiv', k.dataset.spUnder === underfane); });
     const html = underfane === 'gjodsling' ? gjodslingHtml() : underfane === 'sproyting' ? sproytingHtml() : underfane === 'krav' ? kravHtml() : underfane === 'maskin' ? maskin.html(tegn) : underfane === 'husdyr' ? husdyr.html() : skifterHtml();
     $('#spInnhold').innerHTML = toppHtml() + html;
   }
