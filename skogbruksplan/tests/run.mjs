@@ -4589,3 +4589,24 @@ test('Driftsområder: skjulte faner, forslag og minst ett område', async () => 
   assert.deepEqual(D.settDrift(S, {}), { skog: true, jord: false, husdyr: false, valgt: true }, 'minst ett område');
   assert.deepEqual(D.forslag({ bestand: [] }), { skog: true, jord: true, husdyr: true }, 'tom plan: alt på');
 });
+
+test('Klima: gårdens klimabalanse (husdyr, jord, energi, skog)', async () => {
+  const K = await import('../js/klima.js'); const { lagDemo } = await import('../js/demo.js');
+  const tom = K.klimabalanse({ bestand: [] }, 2026); assert.equal(tom.poster.length, 0); assert.equal(tom.netto, 0);
+  const S = { bestand: [], skifteplan: { skifter: [{ id: 'a', areal: 100, vekster: { 2026: { kultur: 'engNorm2' } }, gjodsling: [{ aar: 2026, type: 'mineral', produkt: 'kas', mengde: 37 }] }], dyrehold: { dyr: [{ id: 'k', slag: 'melkeku', antall: 10, inne: 12 }] } }, klima: { medInnkjopt: false } };
+  const b = K.klimabalanse(S, 2026); const p = (n) => b.poster.find((x) => x.navn === n)?.t;
+  assert.ok(Math.abs(p('Metan fra fordøyelsen') - (10 * 117 * 28) / 1000) < 1e-9, 'Tier 1 × GWP');
+  assert.ok(Math.abs(p('Metan fra gjødsellageret') - (10 * 21 * 28) / 1000) < 1e-9);
+  assert.equal(p('Lystgass fra gjødsel på beite'), undefined, 'hele året inne');
+  const nMin = 10 * 100; /* 37 kg KAS ≈ 10 kg N/daa (avrundet i gjødslingsplanen) */ const n2o = nMin * (0.01 + 0.1 * 0.01 + 0.3 * 0.0075) * 44 / 28 * 265 / 1000;
+  assert.ok(Math.abs(p('Lystgass fra mineralgjødsel') - n2o) < 1e-6);
+  assert.ok(Math.abs(p('Diesel i jordbruket') - (100 * 7 * 2.66) / 1000) < 1e-9, 'diesel anslått fra arealet');
+  assert.equal(p('Produksjon av mineralgjødsel'), undefined, 'innkjøpt slått av');
+  S.klima = { diesel: 1000, myrEng: 10 }; const b2 = K.klimabalanse(S, 2026);
+  assert.ok(Math.abs(b2.poster.find((x) => x.navn === 'Diesel i jordbruket').t - 2.66) < 1e-9);
+  assert.ok(b2.poster.find((x) => x.navn === 'Dyrket myr (drenert torv)').t > 2, 'myr');
+  const d = lagDemo(2026); const sk = K.klimabalanse({ bestand: d.bestand, innstillinger: {} }, 2026);
+  assert.ok(sk.binding > 0 && sk.netto < 0, 'skogen binder');
+  assert.ok(Math.abs(sk.utslipp - sk.binding - sk.netto) < 1e-9);
+  assert.ok(b.tiltak.some((x) => /melkekyr/.test(x.navn)));
+});
