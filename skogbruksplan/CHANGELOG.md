@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.13.0 – 🧭 Vis bare det du driver med (2026-11-21)
+
+*Nytt.* Ikke alle har både skog, jord og husdyr. Første gang du åpner en eiendom, spør SkogIQ.ai nå hva du driver med: 🌲 skog, 🌾 jord og/eller 🐄 husdyr. Alt står på som standard, og appen foreslår ut fra hva som finnes på eiendommen (bestand, jordbruksareal, dyr og driftsbygninger). Fanene for det du ikke bruker, skjules, og dataene blir liggende. Du endrer valget når som helst med «Tilpass» øverst i Oversikt. Valget gjelder per eiendom og følger med til andre enheter. Rollen Skogeier heter nå Skogeier/gårdbruker.
+
 ## 2.12.0 – 🔎 Ukentlig sjekk av lover, satser og priser (2026-11-21)
 
 *Forbedret.* SkogIQ.ai sjekker nå hver uke om lover og forskrifter, tilskuddssatser, PEFC og KSL, veiledere, tømmerpriser fra SSB og datakildene er endret. Eieren får beskjed og et forslag til oppdatering. Første sjekk fant flere endringer som nå er rettet. Gjødselforskriften ble endret 6. oktober 2026: fosforgrensene gjelder fra 2028, og fram til da er grensen 3,5 kg P/daa. Fosfor per dyr følger nå normtallene i forskriften (melkeku 15 kg, ammeku 8 kg, verpehøne 120 g osv.). KSL kapittel 1, 10 og 15 er oppdatert til nye versjoner (2026.9d, 2026.10b og 2026.10). I tillegg er lenkene til forskriftene om hest, landbruksveier og allmenngjøring av tariff rettet, og rundt 20 døde lenker er byttet ut.

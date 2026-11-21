@@ -1565,3 +1565,19 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .hd-romtopp { display: flex; gap: 6px; } .hd-romtopp input { flex: 1; font-weight: 600; }
 .hd-romdyr { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; }
 .hd-sum { font-size: 18px; color: var(--accent); } .hd-gruppe td { background: var(--surface-2); }
+
+/* 🧭 Driftsområder */
+.drift-linje { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; font-size: 13px; }
+.drift-linje .knapp { margin-left: auto; }
+.drift-dialog { max-width: 520px; width: calc(100vw - 32px); border: 0; border-radius: 16px; padding: 20px; background: var(--surface); color: var(--text); }
+.drift-dialog::backdrop { background: rgba(10, 20, 15, .45); }
+.drift-dialog h3 { margin: 0 0 6px; }
+.drift-valg { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.drift-kort { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1.5px solid var(--grid); border-radius: 12px; cursor: pointer; }
+.drift-kort:has(input:checked) { border-color: var(--accent); background: var(--surface-2); }
+.drift-kort input { margin-top: 4px; width: 18px; height: 18px; }
+.drift-ikon { font-size: 26px; line-height: 1; }
+.drift-tekst { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.drift-tekst b { font-size: 15px; }
+.drift-finnes { color: var(--text-2); } .drift-finnes.ja { color: var(--accent); font-weight: 600; }
+.drift-forslag { padding: 8px 12px; border-radius: 10px; background: var(--surface-2); font-size: 13px; }
