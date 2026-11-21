@@ -4258,6 +4258,12 @@ test('Sikkerhetskopi: tar, kryptering, S3-signatur, kopi med opprydding, opplast
   const st = JSON.parse((await api('GET', '/api/admin/backup', true)).b); assert.ok(st.aktiv && st.kryptert && st.s3); assert.equal(st.lokale.length, 2);
   const dl = await api('GET', `/api/admin/backup/fil?navn=${st.lokale[0].navn}`, true); assert.equal(dl.st, 200); assert.ok(Buffer.from(dl.b).subarray(0, 8).equals(B.MAGI));
   assert.equal((await api('GET', '/api/admin/backup/fil?navn=../brukere.json', true)).st, 404, 'bare kopifiler kan lastes ned');
+  // Sletting: bare administrator, lokalt og i S3, men aldri den siste lokale kopien
+  assert.equal((await api('DELETE', `/api/admin/backup/fil?navn=${st.lokale[0].navn}`, false)).st, 403);
+  const forS3 = lager.size; const sl = await api('DELETE', `/api/admin/backup/fil?navn=${st.lokale[0].navn}`, true); assert.equal(sl.st, 200, sl.b);
+  assert.equal(bk.lokaleFiler().length, 1); assert.equal(lager.size, forS3 - 1, 'slettet også utenfor Railway'); assert.ok(!bk.status().historikk.some((h) => h.navn === st.lokale[0].navn));
+  assert.equal((await api('DELETE', `/api/admin/backup/fil?navn=${bk.lokaleFiler()[0]}`, true)).st, 409, 'den siste kopien står');
+  assert.equal((await api('DELETE', '/api/admin/backup/fil?navn=../brukere.json', true)).st, 400);
   rmSync(mappe, { recursive: true, force: true }); rmSync(til, { recursive: true, force: true });
 });
 
@@ -4609,4 +4615,11 @@ test('Klima: gårdens klimabalanse (husdyr, jord, energi, skog)', async () => {
   assert.ok(sk.binding > 0 && sk.netto < 0, 'skogen binder');
   assert.ok(Math.abs(sk.utslipp - sk.binding - sk.netto) < 1e-9);
   assert.ok(b.tiltak.some((x) => /melkekyr/.test(x.navn)));
+});
+
+test('Juletema i den virtuelle skogen: 20. november – 31. desember', async () => {
+  const { erJul3d } = await import('../js/skog3d-jul.js');
+  const d = (m, dag) => new Date(2026, m - 1, dag, 12);
+  assert.equal(erJul3d(d(11, 19)), false); assert.equal(erJul3d(d(11, 20)), true); assert.equal(erJul3d(d(12, 24)), true);
+  assert.equal(erJul3d(d(12, 31)), true); assert.equal(erJul3d(new Date(2027, 0, 1, 0, 1)), false, 'fjernes 1. januar'); assert.equal(erJul3d(d(7, 1)), false);
 });

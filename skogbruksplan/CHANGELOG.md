@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.15.0 – 🎄 Jul i den virtuelle skogen (2026-11-21)
+
+*Nytt.* Fra 20. november til nyttår står det et pyntet juletre med stjerne, lys og gaver i den virtuelle skogen. Nisser og reinsdyr holder deg med selskap, og de lave granene rundt deg har fått julepynt. Det virker også med VR-briller. Knappen 🎄 Jul skjuler pynten, og temaet forsvinner av seg selv 1. januar. Administrator kan nå også slette enkelte sikkerhetskopier på admin-siden.
+
 ## 2.14.0 – 🌍 Klimabalansen for hele gården (2026-11-21)
 
 *Nytt.* Den nye fanen Klima regner ut gårdens samlede CO₂-balanse i tonn CO₂-ekvivalenter per år. Utslipp fra husdyr (metan og lystgass), gjødsling, kalk, dyrket myr, diesel, strøm og innkjøpt gjødsel og kraftfôr stilles opp mot bindingen i skogen (tilvekst minus planlagt hogst). Du ser netto balanse, hva som teller mest, og hvilke tiltak som gir størst effekt. Dyr, skifter, gjødsling og skog hentes fra planen, og diesel, strøm, kalk og myr fyller du inn selv. Metoden er IPCC med de samme faktorene som Norges klimagassregnskap.
