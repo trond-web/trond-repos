@@ -17,7 +17,7 @@ on:
       - "harehund-skogsprotokoll/**"
       - "tommerplan/**"
       - "nannestad-naering/**"
-      - "langlop-ranking/**"
+      - "snovill-ranking/**"
       - ".github/workflows/deploy-pages.yml"
   schedule:
     # Børsradar: ny analyse hver handelsdag etter børsslutt (18:45 norsk sommertid / 17:45 vintertid)
@@ -59,7 +59,7 @@ jobs:
       # tretetthet-flyfoto ligger fortsatt på rot-URL-en, øvrige apper under egne stier
       - name: Assemble site
         run: |
-          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom _site/borsradar _site/team-sjusjoen _site/nordfjella-villrein _site/gran-kommune _site/gran-turveier _site/harehund-skogsprotokoll _site/tommerplan _site/nannestad-naering _site/langlop-ranking
+          mkdir -p _site/snovill-skifore _site/therese-helge _site/skogbruksplan _site/sefrak-eiendom _site/borsradar _site/team-sjusjoen _site/nordfjella-villrein _site/gran-kommune _site/gran-turveier _site/harehund-skogsprotokoll _site/tommerplan _site/nannestad-naering _site/snovill-ranking
           cp -r tretetthet-flyfoto/. _site/
           cp -r snovill-skifore/. _site/snovill-skifore/
           cp -r therese-helge/. _site/therese-helge/
@@ -72,41 +72,45 @@ jobs:
           cp -r harehund-skogsprotokoll/. _site/harehund-skogsprotokoll/
           cp -r tommerplan/. _site/tommerplan/
           cp -r nannestad-naering/. _site/nannestad-naering/
-          # Langløpsrankingen: bare appen og rankingfilene publiseres, ikke innsamlingen og rådataene per løp
-          cp langlop-ranking/index.html langlop-ranking/app.js langlop-ranking/style.css langlop-ranking/icon.svg _site/langlop-ranking/
-          mkdir -p _site/langlop-ranking/data
-          cp langlop-ranking/data/*.json _site/langlop-ranking/data/
+          # Snøvill-ranking: bare appen og rankingfilene publiseres, ikke innsamlingen og rådataene per løp
+          cp snovill-ranking/index.html snovill-ranking/app.js snovill-ranking/style.css snovill-ranking/icon.svg _site/snovill-ranking/
+          mkdir -p _site/snovill-ranking/data
+          cp snovill-ranking/data/*.json _site/snovill-ranking/data/
+          # Gammel adresse (/langlop-ranking/) sender videre til den nye
+          mkdir -p _site/langlop-ranking
+          cp snovill-ranking/videresending/index.html _site/langlop-ranking/
           # Nordfjella villrein kjører på Railway (med server). Pages sender videre dit og rydder bort den gamle appen.
           cp nordfjella-villrein/pages-videresending/* _site/nordfjella-villrein/
           rm -f _site/team-sjusjoen/bilder/README.md
           # Tester, verktøy og serverfiler (Railway) publiseres ikke på GitHub Pages
           rm -rf _site/skogbruksplan/tests _site/skogbruksplan/verktoy _site/skogbruksplan/server.js _site/skogbruksplan/package.json _site/skogbruksplan/railway.json _site/sefrak-eiendom/tests _site/gran-kommune/tests _site/gran-kommune/data/hent-data.mjs _site/gran-turveier/tests _site/gran-turveier/README.md _site/gran-turveier/data/hent-data.mjs _site/gran-turveier/data/ruter.mjs _site/gran-turveier/data/png.mjs _site/borsradar/analyse _site/borsradar/data/innsidehandel.json _site/harehund-skogsprotokoll/tests _site/harehund-skogsprotokoll/README.md _site/tommerplan/tests _site/tommerplan/README.md _site/nannestad-naering/tests _site/nannestad-naering/verktoy
 
-      # Langløpsrankingen: løpsresultatene tas vare på mellom kjøringene i Actions-cachen,
+      # Snøvill-ranking: løpsresultatene tas vare på mellom kjøringene i Actions-cachen,
       # så bare nye og ferske løp hentes. Resultatene i repoet (sesongen 2025/26) er utgangspunktet.
+      # Øk versjonen (v2, v3 ...) når reglene for hvilke løp som er med endres, så alt sjekkes på nytt.
       - name: Restore langløpsresultater
         uses: actions/cache/restore@v4
         with:
           path: .langlop-data
-          key: langlop-data-${{ github.run_id }}
-          restore-keys: langlop-data-
+          key: langlop-data-v2-${{ github.run_id }}
+          restore-keys: langlop-data-v2-
 
       # Henter nye resultater fra EQ Timing, Birken, Vasaloppet og Ski Classics og regner ut rankingen.
       # Feiler det, publiseres rankingen som ligger i repoet.
-      - name: Langløpsrankingen
+      - name: Snøvill-ranking
         continue-on-error: true
         timeout-minutes: 30
         run: |
           mkdir -p .langlop-data/lop
-          cp -rn langlop-ranking/data/lop/. .langlop-data/lop/
-          node langlop-ranking/innsamling/hent.mjs --data .langlop-data --ut _site/langlop-ranking/data
+          cp -rn snovill-ranking/data/lop/. .langlop-data/lop/
+          node snovill-ranking/innsamling/hent.mjs --data .langlop-data --ut _site/snovill-ranking/data
 
       - name: Save langløpsresultater
         if: always() && hashFiles('.langlop-data/lop/**') != ''
         uses: actions/cache/save@v4
         with:
           path: .langlop-data
-          key: langlop-data-${{ github.run_id }}
+          key: langlop-data-v2-${{ github.run_id }}
 
       # Snøvill: snødybde, snømengde og smelting fra NVE/seNorge legges ved som datafil
       - name: Snødata fra NVE (Snøvill)

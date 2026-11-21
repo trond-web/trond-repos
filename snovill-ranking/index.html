@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Snøvill-ranking</title>
+<meta name="description" content="Rangering av løpere i turrenn og langløp på ski, for menn og kvinner. Resultatene samles inn automatisk fra EQ Timing, Birken, Vasaloppet og Ski Classics.">
+<meta name="author" content="Trond Harald Sand">
+<meta name="theme-color" content="#0e1a24">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="topp">
+    <div>
+      <h1>Snøvill-ranking</h1>
+      <p class="under">Turrenn og langløp på ski · <span id="status">laster …</span></p>
+    </div>
+    <label class="sesongvalg">Sesong
+      <select id="sesong" aria-label="Velg sesong"></select>
+    </label>
+  </header>
+
+  <nav class="faner" role="tablist">
+    <button role="tab" data-fane="ranking" class="aktiv" aria-selected="true">Rangering</button>
+    <button role="tab" data-fane="lop" aria-selected="false">Løp</button>
+    <button role="tab" data-fane="poeng" aria-selected="false">Poengsystemet</button>
+  </nav>
+
+  <main>
+    <section id="fane-ranking" class="fane aktiv">
+      <div class="kontroller">
+        <div class="kjonn" role="group" aria-label="Kjønn">
+          <button data-kjonn="M" class="aktiv" aria-pressed="true">Menn</button>
+          <button data-kjonn="K" aria-pressed="false">Kvinner</button>
+        </div>
+        <input id="sok" type="search" placeholder="Søk etter navn eller klubb" aria-label="Søk etter navn eller klubb">
+        <select id="nasjon" aria-label="Nasjon"><option value="">Alle nasjoner</option></select>
+        <select id="alder" aria-label="Aldersgruppe">
+          <option value="">Alle aldre</option>
+          <option value="-22">Junior (til og med 22 år)</option>
+          <option value="23-34">Senior 23–34 år</option>
+          <option value="35-49">Veteran 35–49 år</option>
+          <option value="50-59">Veteran 50–59 år</option>
+          <option value="60-">Veteran 60 år og eldre</option>
+        </select>
+      </div>
+      <p class="hint" id="rankinghint"></p>
+      <div class="tabellramme">
+        <table class="tabell" id="rankingtabell">
+          <thead>
+            <tr>
+              <th class="tall">#</th>
+              <th>Løper</th>
+              <th class="skjul-smal">Klubb / lag</th>
+              <th class="tall">Løp</th>
+              <th class="tall skjul-smal">Beste</th>
+              <th class="tall">Poeng</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button class="flere" id="flere" hidden>Vis flere</button>
+    </section>
+
+    <section id="fane-lop" class="fane">
+      <div class="kontroller">
+        <input id="lopsok" type="search" placeholder="Søk etter løp eller sted" aria-label="Søk etter løp">
+        <select id="niva" aria-label="Nivå">
+          <option value="">Alle nivåer</option>
+          <option value="pro">Ski Classics Pro Tour</option>
+          <option value="challengers">Ski Classics Challengers</option>
+          <option value="fis">FIS-langløp</option>
+          <option value="turrenn">Turrenn</option>
+        </select>
+      </div>
+      <div id="lopliste" class="lopliste"></div>
+    </section>
+
+    <section id="fane-poeng" class="fane">
+      <div class="kort tekst">
+        <h2>Slik regnes poengene</h2>
+        <p>Hvert resultat gir <strong>løpspoeng</strong>. Sesongpoengene er summen av de <strong id="r-beste">8</strong> beste løpspoengene, slik at både jevnhet og toppresultater teller, uten at den som går flest løp vinner automatisk. Menn og kvinner rangeres hver for seg, og alle sammenligninger gjøres mot vinneren av samme kjønn i samme løp.</p>
+        <div class="formel">Løpspoeng = Løpsvekt × (Tidspoeng + Plasseringsbonus)</div>
+        <h3>Tidspoeng (0–100)</h3>
+        <p>Tidspoeng = 100 × (vinnertid ÷ egen tid)<sup id="r-eks">3</sup>. Vinneren får 100. Prosenten bak vinneren gjør at ulike distanser og føreforhold kan sammenlignes. Alle som fullfører får poeng, så rankingen gjelder hele feltet, ikke bare eliten.</p>
+        <div class="tabellramme"><table class="tabell liten" id="tidstabell"><thead><tr><th>Bak vinneren</th><th class="tall">Tidspoeng</th></tr></thead><tbody></tbody></table></div>
+        <h3>Plasseringsbonus</h3>
+        <p>I fellesstart avgjøres de beste plassene ofte på sekunder. Derfor får de 15 beste en bonus for plasseringen:</p>
+        <p class="mono" id="r-bonus"></p>
+        <h3>Løpsvekt = Nivå × Distanse × Feltstyrke</h3>
+        <div class="tabellramme"><table class="tabell liten">
+          <thead><tr><th>Nivå</th><th class="tall">Vekt</th></tr></thead>
+          <tbody id="r-niva"></tbody>
+        </table></div>
+        <div class="tabellramme"><table class="tabell liten">
+          <thead><tr><th>Distanse</th><th class="tall">Vekt</th></tr></thead>
+          <tbody id="r-distanse"></tbody>
+        </table></div>
+        <p><strong>Feltstyrke</strong> (<span id="r-felt">0,8–1,0</span>) måler hvor sterke de ti beste i løpet er: hvor mange sesongpoeng de har, sammenlignet med nr. 20 på rankingen. Et lokalt turrenn der toppfolka ikke stiller, teller dermed mindre enn et løp der hele eliten går. Rankingen regnes ut i flere runder, slik at feltstyrken og løperpoengene henger sammen.</p>
+        <h3>Hvilke løp som er med</h3>
+        <ul>
+          <li><strong>Turrenn og langløp på minst 20 km.</strong> Har arrangøren ikke oppgitt distansen, tas løpet med når vinneren brukte minst 50 minutter. Ordinære langrenn (krets-, sone- og landsrenn med intervallstart), karuseller, mesterskap, sprint, stafetter, ungdomsrenn og klasser uten tidtaking er holdt utenfor.</li>
+          <li><strong>EQ Timing</strong>: de fleste norske turrenn (Holmenkollmarsjen, Reistadløpet, Skarverennet, Trysil Skimaraton …) og mange svenske løp.</li>
+          <li><strong>Birken</strong>: Birkebeinerrennet, SkøyteBirken og HalvBirken.</li>
+          <li><strong>Vasaloppet</strong>: Vasaloppet, Vasaloppet 45 og 30, og Tjejvasan.</li>
+          <li><strong>Ski Classics</strong>: Pro Tour og Challengers over hele verden (Marcialonga, Jizerská padesátka, La Diagonela, König Ludwig Lauf, Transjurassienne …). Rulleskiløp og sprinter er holdt utenfor.</li>
+        </ul>
+        <p>Klasser i samme løype samme dag (for eksempel konkurranse og trim med tid) slås sammen til én resultatliste, så alle måles mot den raskeste.</p>
+        <p>Når samme løp finnes både hos tidtakeren og hos Ski Classics, brukes tidtakerens fullstendige liste, mens nivået og løpernes FIS-koder hentes fra Ski Classics.</p>
+        <h3>Samme løper i flere løp</h3>
+        <p>Løperne kobles med FIS-kode, NIF-ID og EQ Timings person-ID der det finnes. Ellers kobles de på navn, og fødselsår og klubb skiller personer med samme navn. Løpere som har byttet navn, eller som skrives forskjellig hos ulike arrangører, kan dukke opp to ganger.</p>
+        <h3>Oppdatering</h3>
+        <p>Nye resultater hentes automatisk flere ganger i døgnet. Et løp hentes på nytt de første dagene etter løpsdagen, i tilfelle resultatlistene blir rettet.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bunn">
+    Data fra <a href="https://live.eqtiming.com" rel="noopener">EQ Timing</a>, <a href="https://birken.no/no/resultatservice" rel="noopener">Birken</a>, <a href="https://results.vasaloppet.se" rel="noopener">Vasaloppet</a> og <a href="https://skiclassics.com/results/" rel="noopener">Ski Classics</a>. Rankingen er laget her og er ikke offisiell.
+    <p class="signatur">Utviklet av Trond Harald Sand</p>
+  </footer>
+</div>
+
+<dialog id="detalj" class="detalj">
+  <div class="detalj-topp">
+    <div id="detalj-tittel"></div>
+    <button class="lukk" id="lukk" aria-label="Lukk">✕</button>
+  </div>
+  <div id="detalj-innhold"></div>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>
