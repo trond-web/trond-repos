@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.14.0 – 🌍 Klimabalansen for hele gården (2026-11-21)
+
+*Nytt.* Den nye fanen Klima regner ut gårdens samlede CO₂-balanse i tonn CO₂-ekvivalenter per år. Utslipp fra husdyr (metan og lystgass), gjødsling, kalk, dyrket myr, diesel, strøm og innkjøpt gjødsel og kraftfôr stilles opp mot bindingen i skogen (tilvekst minus planlagt hogst). Du ser netto balanse, hva som teller mest, og hvilke tiltak som gir størst effekt. Dyr, skifter, gjødsling og skog hentes fra planen, og diesel, strøm, kalk og myr fyller du inn selv. Metoden er IPCC med de samme faktorene som Norges klimagassregnskap.
+
 ## 2.13.0 – 🧭 Vis bare det du driver med (2026-11-21)
 
 *Nytt.* Ikke alle har både skog, jord og husdyr. Første gang du åpner en eiendom, spør SkogIQ.ai nå hva du driver med: 🌲 skog, 🌾 jord og/eller 🐄 husdyr. Alt står på som standard, og appen foreslår ut fra hva som finnes på eiendommen (bestand, jordbruksareal, dyr og driftsbygninger). Fanene for det du ikke bruker, skjules, og dataene blir liggende. Du endrer valget når som helst med «Tilpass» øverst i Oversikt. Valget gjelder per eiendom og følger med til andre enheter. Rollen Skogeier heter nå Skogeier/gårdbruker.
