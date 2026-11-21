@@ -108,4 +108,15 @@ jobs:
 
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      # GitHub finner av og til ikke artefakten rett etter opplasting («No artifacts named
+      # github-pages»). Vent litt og prøv på nytt før kjøringen regnes som feilet.
+      - name: Vent før nytt forsøk
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 60
+
+      - name: Deploy to GitHub Pages (nytt forsøk)
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
