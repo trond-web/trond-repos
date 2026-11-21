@@ -1,1 +1,46 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0e1a24"/><path d="M8 50 L56 38" stroke="#6aa5ff" stroke-width="4" stroke-linecap="round"/><path d="M8 56 L56 44" stroke="#6aa5ff" stroke-width="4" stroke-linecap="round"/><circle cx="36" cy="13" r="5" fill="#f2c14e"/><path d="M34 20 L28 33 L20 40 M28 33 L38 36 L42 45 M31 25 L41 28 M31 25 L22 24" fill="none" stroke="#e5edf4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Snøvill-ranking</title>
+  <defs>
+    <linearGradient id="himmel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1546a6"/>
+      <stop offset="1" stop-color="#3987e5"/>
+    </linearGradient>
+  </defs>
+  <!-- Samme blå flis som Snøvill-skiføre -->
+  <rect width="512" height="512" rx="112" fill="url(#himmel)"/>
+  <!-- Fjell i bakgrunnen -->
+  <path d="M0 300 L110 225 L190 270 L300 185 L420 260 L512 215 L512 512 L0 512 Z" fill="#ffffff" opacity="0.28"/>
+  <!-- Pallen: 2, 1, 3 -->
+  <g fill="#ffffff">
+    <rect x="70" y="318" width="124" height="130" rx="10"/>
+    <rect x="194" y="262" width="124" height="186" rx="10"/>
+    <rect x="318" y="350" width="124" height="98" rx="10"/>
+  </g>
+  <g fill="#1546a6" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-weight="800" text-anchor="middle">
+    <text x="132" y="404" font-size="64">2</text>
+    <text x="256" y="352" font-size="84">1</text>
+    <text x="380" y="420" font-size="56">3</text>
+  </g>
+  <!-- Skiløper i diagonalgang på øverste trinn -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" transform="translate(256 84)">
+    <circle cx="10" cy="22" r="22" fill="#ffffff" stroke="none"/>
+    <!-- kropp -->
+    <path d="M2 50 L-14 112" stroke-width="22"/>
+    <!-- bein -->
+    <path d="M-14 112 L18 140 L28 172" stroke-width="18"/>
+    <path d="M-14 112 L-36 144 L-62 166" stroke-width="18"/>
+    <!-- armer -->
+    <path d="M0 62 L34 86 L58 70" stroke-width="14"/>
+    <path d="M0 62 L-30 92 L-58 104" stroke-width="14"/>
+    <!-- staver -->
+    <path d="M58 70 L40 176" stroke="#eb6834" stroke-width="8"/>
+    <path d="M-58 104 L-92 170" stroke="#eb6834" stroke-width="8"/>
+    <!-- ski -->
+    <path d="M-16 176 L80 176" stroke-width="10"/>
+    <path d="M-110 168 L-14 176" stroke-width="10"/>
+  </g>
+  <!-- Oransje skispor, som i Snøvill-skiføre -->
+  <g stroke="#eb6834" stroke-width="16" stroke-linecap="round">
+    <path d="M70 474 L442 474"/>
+  </g>
+</svg>
