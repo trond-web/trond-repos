@@ -192,6 +192,18 @@ export function lagBackup({ mappe, nokkel = '', s3 = null, beholdLokalt = 7, beh
     aktiv: !!mappe,
     kjor,
     lokaleFiler,
+    // Sletter én kopi (lokalt og utenfor Railway). Den eneste lokale kopien kan ikke slettes, så det alltid finnes én.
+    async slett(navn) {
+      navn = String(navn || ''); if (!/^skogiq-[\dT-]+\.tar\.gz(\.enc)?$/.test(navn)) return { feil: 'Ugyldig navn', status: 400 };
+      const lokale = lokaleFiler(); const rad = (status.historikk || []).find((h) => h.navn === navn);
+      if (!lokale.includes(navn) && !rad) return { feil: 'Finnes ikke', status: 404 };
+      if (lokale.includes(navn) && lokale.length <= 1) return { feil: 'Dette er den eneste sikkerhetskopien på volumet. Ta en ny kopi før du sletter denne.', status: 409 };
+      let lokalt = false; let iS3 = null;
+      if (lokale.includes(navn)) { rmSync(path.join(lokal, navn), { force: true }); lokalt = true; }
+      if (s3 && rad?.s3 === 'ok') { try { await s3.slett(navn); iS3 = 'slettet'; } catch (e) { iS3 = 'feil'; logg.error('Sikkerhetskopi: sletting i S3 feilet:', e.message); } }
+      status.historikk = (status.historikk || []).filter((h) => h.navn !== navn); lagreStatus();
+      return { ok: true, navn, lokalt, s3: iS3 };
+    },
     hentLokal(navn) { if (!/^skogiq-[\dT-]+\.tar\.gz(\.enc)?$/.test(String(navn)) || !lokaleFiler().includes(navn)) return null; return readFileSync(path.join(lokal, navn)); },
     status: () => ({ aktiv: !!mappe, kryptert: !!nokkel, s3: !!s3, s3Kryptert: !!(s3 && nokkel), intervallTimer, beholdLokalt, beholdS3, ...status, forfalt: forfalt(), lokale: lokaleFiler().map((n) => ({ navn: n, storrelse: statSync(path.join(lokal, n)).size })).reverse() }),
     // Sjekk hver time; ta kopi når forrige er eldre enn intervallet (første sjekk etter et minutt).
@@ -201,12 +213,16 @@ export function lagBackup({ mappe, nokkel = '', s3 = null, beholdLokalt = 7, beh
 }
 
 // HTTP for administrator: GET /api/admin/backup (status), POST /api/admin/backup (ta kopi nå),
-// GET /api/admin/backup/fil?navn=… (last ned en lokal kopi). erAdmin(req) → true/false/null (null = ikke innlogget).
+// GET /api/admin/backup/fil?navn=… (last ned en lokal kopi), DELETE /api/admin/backup/fil?navn=… (slett kopien). erAdmin(req) → true/false/null (null = ikke innlogget).
 export function backupApi(b, { erAdmin, cors = () => ({}) }, req, res, sti, ekstraHoder = {}) {
   if (sti !== '/api/admin/backup' && sti !== '/api/admin/backup/fil') return false;
   const json = (s, o) => { res.writeHead(s, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...cors(req), ...ekstraHoder }); res.end(JSON.stringify(o)); };
   const a = erAdmin(req); if (!a) { json(a === null ? 401 : 403, { feil: 'Bare for administrator', innlogging: a === null }); return true; }
   if (!b?.aktiv) { json(200, { aktiv: false }); return true; }
+  if (sti === '/api/admin/backup/fil' && req.method === 'DELETE') {
+    const navn = new URL(req.url, 'http://x').searchParams.get('navn');
+    b.slett(navn).then((r) => json(r.feil ? r.status || 500 : 200, { ...r, status: b.status() })); return true;
+  }
   if (sti === '/api/admin/backup/fil') {
     const navn = new URL(req.url, 'http://x').searchParams.get('navn'); const data = b.hentLokal(navn);
     if (!data) { json(404, { feil: 'Finnes ikke' }); return true; }

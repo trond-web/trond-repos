@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.14.0** (2026-11-21) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.15.0** (2026-11-21) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -727,6 +727,9 @@ Settes `EPOST_NOKKEL` og `EPOST_FRA` senere, sendes «Glemt passord» automatisk
 
 ## Sikkerhetskopi (`backup.js`, admin.html, `verktoy/gjenopprett-backup.mjs`)
 
+Administrator kan slette enkeltkopier på admin-siden («Slett»). Kopien slettes både på volumet og utenfor Railway (`DELETE /api/admin/backup/fil?navn=…`). Den eneste kopien på volumet kan ikke slettes.
+
+
 Hele datamappen på Railway-volumet (mappen til `BRUKER_FIL`, `/data`) kopieres én gang i døgnet. Mappen inneholder brukere, skylagrede planer, nettverk og chat, tømmerdeling, tilbudsforespørsler, PC↔mobil-synk, droneoppdrag og John Deere-koblinger. Tilbud, synk, droneoppdrag og John Deere lagres nå også på volumet (`tilbud.json`, `plan-synk.json`, `kontroller.json`, `jd.json`), og forsvinner ikke lenger ved utrulling.
 
 - **Format:** tar + gzip. Med `BACKUP_NOKKEL` krypteres kopien med AES-256-GCM, og nøkkelen avledes med scrypt og et tilfeldig salt.
@@ -823,6 +826,16 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
+
+## 🎄 Juletema i den virtuelle skogen (`js/skog3d-jul.js`)
+
+Fra 20. november til og med 31. desember får den virtuelle skogen (også i VR):
+- et pyntet juletre med stjerne, kuler, lysslynge og gaver like ved deg
+- julepynt på de lave granene og furuene rundt deg
+- nisser som snur seg mot deg
+- tre reinsdyr, ett av dem med rød mule
+
+Alt følger med når du går. Knappen «🎄 Jul» skjuler og viser pynten. Temaet forsvinner av seg selv 1. januar. Alt er laget av enkle 3D-former, så ingenting hentes utenfra.
 
 ## 🌍 Klimabalanse for hele gården (fanen «Klima», `js/klima.js`, `js/klima-ui.js`)
 

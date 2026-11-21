@@ -151,13 +151,21 @@ async function visBackup(ny = null) {
     </div>
     <p style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 6px"><button type="button" data-backup-na>Ta sikkerhetskopi nå</button><span class="hint">Automatisk hver ${b.intervallTimer}. time${b.s3 ? `, og ${b.beholdS3} kopier beholdes utenfor Railway` : ''}.</span></p>
     ${b.historikk?.length ? `<div class="tabell"><table><thead><tr><th>Tid</th><th class="t">Filer</th><th class="t">Data</th><th class="t">Kopi</th><th>Utenfor Railway</th><th></th></tr></thead><tbody>
-      ${b.historikk.slice(0, 7).map((h) => `<tr><td>${new Date(h.tid).toLocaleString('nb-NO')}${h.kilde === 'manuell' ? ' <span class="pille">manuell</span>' : ''}</td><td class="t">${tall(h.filer)}</td><td class="t">${mb(h.bytes)}</td><td class="t">${mb(h.storrelse)}</td><td>${{ ok: '✓ lastet opp', feil: '⚠ feilet', ukryptert: 'ikke sendt (ukryptert)' }[h.s3] || '–'}</td><td>${b.lokale.some((l) => l.navn === h.navn) ? `<button type="button" data-backup-fil="${esc(h.navn)}">Last ned</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : '<p class="hint">Ingen kopier ennå.</p>'}
+      ${b.historikk.slice(0, 30).map((h) => `<tr><td>${new Date(h.tid).toLocaleString('nb-NO')}${h.kilde === 'manuell' ? ' <span class="pille">manuell</span>' : ''}</td><td class="t">${tall(h.filer)}</td><td class="t">${mb(h.bytes)}</td><td class="t">${mb(h.storrelse)}</td><td>${{ ok: '✓ lastet opp', feil: '⚠ feilet', ukryptert: 'ikke sendt (ukryptert)' }[h.s3] || '–'}</td><td style="white-space:nowrap">${b.lokale.some((l) => l.navn === h.navn) ? `<button type="button" data-backup-fil="${esc(h.navn)}">Last ned</button> ` : ''}<button type="button" class="fare" data-backup-slett="${esc(h.navn)}" title="Slett kopien${h.s3 === 'ok' ? ' – også utenfor Railway' : ''}">Slett</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="hint">Ingen kopier ennå.</p>'}
     <p class="hint">Kopien inneholder alt på volumet: brukere, skylagrede planer, nettverk og chat, tilbud, tømmerdeling, PC↔mobil-synk og John Deere-koblinger. Gjenopprett med <code>verktoy/gjenopprett-backup.mjs</code> (se README).</p>`;
 }
 document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-backup-na]')) {
     const k = e.target.closest('[data-backup-na]'); k.disabled = true; k.textContent = 'Tar kopi …';
     try { const r = await fetch(`${API}/api/admin/backup`, { method: 'POST', headers: hode(), credentials: 'same-origin' }); const j = await r.json(); if (!r.ok) alert(j.feil || 'Sikkerhetskopien feilet'); visBackup(j.status); } catch { alert('Ingen kontakt med serveren'); visBackup(); }
+  }
+  const sl = e.target.closest('[data-backup-slett]');
+  if (sl) {
+    const navn = sl.dataset.backupSlett; const rad = backupData?.historikk?.find((h) => h.navn === navn);
+    if (!confirm(`Slette sikkerhetskopien fra ${rad ? new Date(rad.tid).toLocaleString('nb-NO') : navn}?${rad?.s3 === 'ok' ? ' Kopien slettes både på volumet og utenfor Railway.' : ''} Dette kan ikke angres.`)) return;
+    sl.disabled = true;
+    try { const r = await fetch(`${API}/api/admin/backup/fil?navn=${encodeURIComponent(navn)}`, { method: 'DELETE', headers: hode(), credentials: 'same-origin' }); const j = await r.json(); if (!r.ok) alert(j.feil || 'Klarte ikke å slette kopien'); visBackup(j.status); } catch { alert('Ingen kontakt med serveren'); visBackup(); }
+    return;
   }
   const f = e.target.closest('[data-backup-fil]');
   if (f) {
