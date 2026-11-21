@@ -8,16 +8,27 @@ const SPORT_IDER = "2,138,258,267,276,377,419,277";
 
 // Arrangementer som ikke er turrenn/langløp (karuseller, KM, ungdomsrenn, testarrangement osv.)
 const IKKE_LANGLOP =
-  /kopi|kopia|\btest|avlyst|påmelding|karusell|cuprenn|\bcup\b|backyard|terrengløp|rulleski|u\/tid|ute?n tid|utan tid|ingen tid|\bkm\b|\bnm\b|\bnnm\b|\bsm\b|mesterskap|mästerskap|festival|ungdom|barnas|barn |trenings|hodelykt|lysløype|kveldsrenn|onsdagsrenn|sprint|stafett|naborunden|skicross|langrennscross|spark|motbakke|uphill|bakkeløp/i;
+  /kopi|kopia|\btest|avlyst|påmelding|karusell|cuprenn|\bcup\b|backyard|terrengløp|rulleski|u\/tid|ute?n tid|utan tid|ingen tid|\bkm\b|\bnm\b|\bnnm\b|\bsm\b|mesterskap|mästerskap|\bdm\b|famil|fortropp|ungdom|barnas|barn |trenings|hodelykt|lysløype|kveldsrenn|onsdagsrenn|sprint|stafett|naborunden|skicross|langrennscross|spark|motbakke|uphill|bakkeløp/i;
 // For etappenavn gjelder det samme, unntatt KM/NM (ellers faller "Turrenn 30 km" bort)
 const IKKE_ETAPPE = new RegExp(IKKE_LANGLOP.source.replace("|\\bkm\\b|\\bnm\\b", ""), "i");
+// Ordinære langrenn (krets-, sone- og landsrenn) har intervallstart. Turrenn på samme nivå
+// med fellesstart (f.eks. HovdenTour) tas med.
 const IKKE_NIVA = new Set(["Kretsrenn", "Sonerenn", "Landsrenn", "Klubbrenn", "Nasjonalt"]);
+const STARTTYPER = new Set(["mass", "interval"]); // ikke sprintheat, stafett eller jaktstart
 
 export const MIN_KM = 20;
+// Uten registrert distanse regnes klassen som langløp når vinneren brukte minst så lenge
+const MIN_VINNERTID_TIDELER = 50 * 60 * 10;
 
 function kmFraNavn(navn) {
   const m = String(navn).match(/(\d+(?:[.,]\d+)?)\s*km/i);
   return m ? Number(m[1].replace(",", ".")) : 0;
+}
+
+// Svensk skikk: "Epic 55", "Classic 50", "Lofsdalen 18" (brukes bare når distansen ellers mangler)
+function tallSist(navn) {
+  const m = String(navn).trim().match(/\s(\d{2,3})$/);
+  return m && Number(m[1]) >= 10 && Number(m[1]) <= 150 ? Number(m[1]) : 0;
 }
 
 export async function finnArrangementer({ fra, til }) {
@@ -26,7 +37,6 @@ export async function finnArrangementer({ fra, til }) {
   return liste
     .filter((e) => e.Meta?.GotResults)
     .filter((e) => !IKKE_LANGLOP.test(e.Name))
-    .filter((e) => !IKKE_NIVA.has(e.Sportlevel?.Name))
     // Mai–oktober er det rulleski og løping, ikke skiløp
     .filter((e) => {
       const mnd = Number(e.Date.slice(5, 7));
@@ -39,6 +49,7 @@ export async function finnArrangementer({ fra, til }) {
       land: e.City?.Country?.Ioc ?? e.Organization?.Country?.Ioc ?? null,
       sted: e.City?.Name ?? null,
       fis: /FIS/i.test(e.Sportlevel?.Name ?? ""),
+      niva: e.Sportlevel?.Name ?? "",
     }));
 }
 
@@ -50,16 +61,19 @@ export async function langeEtapper(arr) {
   const ut = [];
   for (const e of Object.values(ev.Etapper)) {
     if (e.VirtuellType !== 0 || e.Seksjon || e.GjemFraLive) continue;
-    if (e.Type && e.Type !== "mass") continue; // turrenn har fellesstart / bølgestart
+    if (e.Type && !STARTTYPER.has(e.Type)) continue;
+    if (e.Type === "interval" && IKKE_NIVA.has(arr.niva)) continue;
     if (IKKE_ETAPPE.test(e.Navn ?? "")) continue;
-    let km = Number(e.Km) || kmFraNavn(e.Navn);
-    if (km > 150) km = kmFraNavn(e.Navn) || kmFraNavn(arr.navn); // feilregistrert distanse (f.eks. 3000)
+    // Distansen i klassenavnet ("Mosjon 32 km") går foran det arrangøren har registrert
+    let km = kmFraNavn(e.Navn) || Number(e.Km) || tallSist(e.Navn) || 0;
+    if (km > 150) km = kmFraNavn(arr.navn); // feilregistrert distanse (f.eks. 3000)
     if (!km) {
       const maks = Math.max(0, ...stasjoner.filter((s) => s.EtappeUID === e.UID).map((s) => Number(s.Km) || 0));
       km = maks || kmFraNavn(arr.navn);
     }
-    if (km < MIN_KM) continue;
-    ut.push({ etappeId: e.UID, etappeNavn: (e.Navn ?? "").trim(), km });
+    if (km && km < MIN_KM) continue;
+    // km = null: ukjent distanse, avgjøres av vinnertiden når resultatene er hentet
+    ut.push({ etappeId: e.UID, etappeNavn: (e.Navn ?? "").trim(), km: km || null });
   }
   return ut;
 }
@@ -87,6 +101,13 @@ async function kjonnsliste(eqId, etappeId, kjonn) {
     .sort((a, b) => a[3] - b[3]);
 }
 
+// Klasser uten kjent distanse tas med når vinneren (herrer, ellers damer) brukte minst 50 minutter.
+export function langNok(etappe, res) {
+  if (etappe.km) return true;
+  const vinner = res.M[0]?.[3] ?? res.K[0]?.[3] ?? 0;
+  return vinner >= MIN_VINNERTID_TIDELER;
+}
+
 export async function hentResultater(arr, etappe) {
   const [M, K] = [await kjonnsliste(arr.eqId, etappe.etappeId, "male"), await kjonnsliste(arr.eqId, etappe.etappeId, "female")];
   return { M, K };
@@ -110,5 +131,5 @@ export function lopUrl(arr) {
 export function lopNavn(arr, etappe, antallEtapper) {
   const grunn = arr.navn.replace(/\s*[-–]\s*\d{4}-\d{2}-\d{2}\s*$/, "").trim();
   if (antallEtapper <= 1) return grunn;
-  return `${grunn} – ${etappe.etappeNavn || `${etappe.km} km`}`;
+  return `${grunn} – ${etappe.etappeNavn || (etappe.km ? `${etappe.km} km` : "")}`.replace(/ – $/, "");
 }

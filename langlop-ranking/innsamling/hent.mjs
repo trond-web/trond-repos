@@ -75,7 +75,7 @@ async function samleSesong(sesong) {
         const ider = [];
         for (const et of etapper) {
           const res = await eq.hentResultater(arr, et);
-          if (res.M.length + res.K.length === 0) continue;
+          if (res.M.length + res.K.length === 0 || !eq.langNok(et, res)) continue;
           const id = eq.lopId(arr, et);
           ider.push(id);
           await lagre(id, {

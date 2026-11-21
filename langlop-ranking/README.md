@@ -13,9 +13,11 @@ Resultatene samles inn automatisk, og rankingen regnes ut på nytt hver gang sid
 | [Vasaloppet](https://results.vasaloppet.se) | Vasaloppet, Vasaloppet 45 og 30, Tjejvasan | Resultatlistene (HTML, 100 per side) |
 | [Ski Classics](https://skiclassics.com/results/) | Pro Tour og Challengers over hele verden | Resultatsidene; løper-ID-en er FIS-koden |
 
-Med i rankingen er turrenn og langløp på minst 20 km med fellesstart eller bølgestart. Ordinære
-langrenn, karuseller, KM, sprint, stafetter, ungdomsrenn, klasser uten tidtaking, rulleski og alt
-fra mai til oktober (unntatt skiløp på den sørlige halvkule) er holdt utenfor.
+Med i rankingen er turrenn og langløp på minst 20 km. Mangler distansen hos arrangøren, tas klassen med
+når vinneren brukte minst 50 minutter. Ordinære langrenn (krets-, sone- og landsrenn med intervallstart),
+karuseller, mesterskap, sprint, stafetter, ungdomsrenn, klasser uten tidtaking, rulleski og alt fra mai
+til oktober (unntatt skiløp på den sørlige halvkule) er holdt utenfor. Klasser i samme løype samme dag
+(konkurranse, trim med tid, elite) slås sammen til én resultatliste.
 
 Når samme løp finnes både hos tidtakeren og hos Ski Classics, brukes tidtakerens fullstendige liste,
 mens nivået (Pro Tour / Challengers), datoen og FIS-kodene hentes fra Ski Classics.

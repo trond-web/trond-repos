@@ -108,7 +108,9 @@ export function slaSammenKlasser(lop) {
       continue;
     }
     const delnavn = l.navn.includes(" – ") ? l.navn.split(" – ").slice(1).join(" – ") : "";
-    const nokkel = `${arr}|${Math.round(l.km ?? 0)}|${stilart(delnavn, l.arrangement)}`;
+    // Uten kjent distanse slås bare klasser sammen som kun skiller seg på kjønn ("Konkurranse damer/herrer")
+    const ukjent = l.km ? "" : foldTekst(delnavn).replace(/\b(damer|herrer|kvinner|menn|women|men|dam|herr)\b/g, "").replace(/\s+/g, " ").trim();
+    const nokkel = `${arr}|${Math.round(l.km ?? 0)}|${stilart(delnavn, l.arrangement)}|${ukjent}`;
     if (!grupper.has(nokkel)) grupper.set(nokkel, []);
     grupper.get(nokkel).push({ l, delnavn });
   }
@@ -125,7 +127,7 @@ export function slaSammenKlasser(lop) {
     if (perArr.get(arr) > 1) {
       // Flere distanser/stilarter: skill dem med distanse og stilart, eller klassenavnet
       const st = stilart(g[0].delnavn, forste.arrangement);
-      const del = g.length === 1 ? pentLopsnavn(g[0].delnavn) : `${forste.km} km${st === "F" ? " fri" : st === "C" ? " klassisk" : ""}`;
+      const del = g.length === 1 || !forste.km ? pentLopsnavn(g[0].delnavn) || `${g.length} klasser` : `${forste.km} km${st === "F" ? " fri" : st === "C" ? " klassisk" : ""}`;
       const forsteOrd = navnTokens(grunn)[0];
       navn = forsteOrd && navnTokens(del)[0] === forsteOrd ? del : `${grunn} – ${del}`;
     }
@@ -356,7 +358,8 @@ export function lagRanking(alleLop, { sesong, sesongNavn, oppdatert }) {
 
     // Grunnpoeng uten løpsvekt
     for (const r of rader) r.grunn = tidspoeng(r.vinnertid, r.tid) + bonus(r.plass);
-    const nivaVekt = utLop.map((l) => REGLER.niva[l.niva] * distansevekt(l.km));
+    // Ukjent distanse: Ski Classics-løp er nesten alltid 40 km+, turrenn uten oppgitt distanse regnes som 30–49 km
+    const nivaVekt = utLop.map((l) => REGLER.niva[l.niva] * distansevekt(l.km ?? (l.kilde === "skiclassics" ? 50 : 30)));
     let felt = utLop.map(() => 1);
 
     let sesongPoeng = new Map();
