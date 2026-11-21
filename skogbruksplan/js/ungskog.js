@@ -18,7 +18,7 @@ export const UNGSKOG_FELT = {
   hoydeLauv: { navn: 'Høyde lauv', enhet: 'm' },
 };
 export const EFFEKT_KILDER = [
-  { navn: 'Skogkurs/Statsforvalteren: Ungskogpleie – tidspunkt, treantall og effekt', url: 'https://www.statsforvalteren.no/vestfold-og-telemark/landbruk-og-mat/skogbruk/skogkultur2/ungskogpleie2/tid-for-ungskogpleie/' },
+  { navn: 'Skogkurs/Statsforvalteren: Ungskogpleie – tidspunkt, treantall og effekt', url: 'https://www.nibio.no/tema/skog/skogbehandling-og-skogskjotsel/ungskogpleie' },
   { navn: 'NIBIO: Ungskogpleie gir større og mer verdifulle trær', url: 'https://www.nibio.no/tema/skog/skogbehandling-og-skogskjotsel/ungskogpleie' },
 ];
 

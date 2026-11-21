@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.11.0** (2026-11-21) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.12.0** (2026-11-21) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -824,12 +824,25 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
 
+## 🔎 Ukentlig kildesjekk av lover, satser, standarder og priser (`verktoy/kildesjekk.mjs`, `docs/kildesjekk.md`)
+
+En planlagt oppgave kjører hver mandag morgen. Den sjekker:
+- om lover og forskrifter er endret eller opphevet (Lovdata)
+- om det har kommet nye tilskuddssatser og ordninger (Landbruksdirektoratet)
+- om det har kommet nye versjoner av PEFC- og KSL-standardene
+- veiledere fra Mattilsynet og NIBIO
+- tømmerpriser fra SSB sammenlignet med standardprisene i appen
+- om datakildene appen bruker, svarer
+- om noen lenker i appen er døde
+
+Eieren får beskjed om det som er endret, og en pull request med forslag til oppdatering. Ingenting flettes inn automatisk. Detaljer og rutine: `docs/kildesjekk.md`.
+
 ## 🐄 Husdyr – dyrehold, husdyrgjødsel og fôrbalanse (Skifteplan › Husdyr, `js/husdyr.js`, `js/husdyr-ui.js`)
 
 For gårder med melkekyr, ammekyr, ungdyr, okser, sau, geit, hest, ponni, alpakka/lama, verpehøner, slaktekylling, kalkun og gris.
 
 - **Dyrehold:** antall dyr per dyreslag (gjennomsnittlig antall, eller produsert per år for slaktekylling, kalkun og slaktegris), måneder innefôring, grovfôr og kraftfôr per dyr og fosfor per dyr. Tomme felt bruker typiske tall, og egne tall overstyrer. Lagres i planen (`S.skifteplan.dyrehold`) og følger synkroniseringen.
-- **Husdyrgjødsel:** mengde (tonn/år), N, P og K per dyreslag ut fra fosfor per dyr (1 gjødseldyrenhet = 14 kg P) og innholdet i gjødseltypen. Gjødsla deles i det som går til lager og det som havner på beitet.
+- **Husdyrgjødsel:** mengde (tonn/år), N, P og K per dyreslag ut fra normtallene for fosfor per dyr i vedlegg 1 til gjødselforskriften og innholdet i gjødseltypen. Gjødsla deles i det som går til lager og det som havner på beitet.
   - Spredeareal: fosfor per daa på skiftene med vekst sammenlignet med fosforgrensen i gjødselforskriften (fra 2027, strammes inn i 2030 og 2033), og hvor mange daa som trengs.
   - Lager: behov for lagerkapasitet (standard 8 måneder, kan endres) sammenlignet med lageret ditt.
   - **Fordel på skiftene:** foreslår husdyrgjødsel per skifte etter fosforbehovet. Tørr fjørfegjødsel samles på de minste skiftene. Mineralgjødsel for resten foreslås som før under Gjødsling.

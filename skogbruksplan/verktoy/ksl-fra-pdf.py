@@ -2,8 +2,8 @@
 # Bruk: python3 verktoy/ksl-fra-pdf.py ut.json kapittel1.pdf kapittel2.pdf ...  (krever pdftotext og pdfplumber)
 # Kapittelnavn og lenker for husdyrkapitlene står i NAVN og URL. Se over resultatet før det legges inn.
 import sys, re, json, subprocess, pdfplumber
-NAVN = {30: 'Drøvtyggere – generelt', 31: 'Storfe', 32: 'Småfe', 35: 'Melk', 40: 'Svin', 50: 'Fjørfe – generelt', 51: 'Eggproduksjon', 52: 'Oppal fjørfe', 53: 'Slaktekyllingproduksjon', 54: 'Kalkun, ender og gjess', 70: 'Hest i næring'}
-URL = {30: 'drovtyggere-generelt', 31: 'storfe', 32: 'smafe', 35: 'melk', 40: 'svin', 50: 'fjorfe-generelt', 51: 'eggproduksjon', 52: 'oppal-fjorfe', 53: 'slaktekylling', 54: 'kalkun-ender-og-gjess', 70: 'hest-i-naering'}
+NAVN = {1: 'Generelle krav til gården', 10: 'Helse, miljø og sikkerhet (HMS)', 15: 'Grovfôr, korn, frø, olje- og belgvekster', 30: 'Drøvtyggere – generelt', 31: 'Storfe', 32: 'Småfe', 35: 'Melk', 40: 'Svin', 50: 'Fjørfe – generelt', 51: 'Eggproduksjon', 52: 'Oppal fjørfe', 53: 'Slaktekyllingproduksjon', 54: 'Kalkun, ender og gjess', 70: 'Hest i næring'}
+URL = {1: 'generelle-krav-til-garden', 10: 'helse-miljo-og-sikkerhet', 15: 'grovfor-korn-fro-olje-og-belgvekster', 30: 'drovtyggere-generelt', 31: 'storfe', 32: 'smafe', 35: 'melk', 40: 'svin', 50: 'fjorfe-generelt', 51: 'eggproduksjon', 52: 'oppal-fjorfe', 53: 'slaktekylling', 54: 'kalkun-ender-og-gjess', 70: 'hest-i-naering'}
 QRE = re.compile(r'^(\d+\.\d+\.\d+)\b')
 SKRAP = re.compile(r'(\s{2,}(Ja|Nei|Ikke|aktuelt|Svar))+\s*$')
 def dokmap(pdf):
@@ -39,7 +39,7 @@ def parse(pdf):
     txt = subprocess.run(['pdftotext', '-layout', pdf, '-'], capture_output=True, text=True).stdout
     lines = linjer(pdf)
     lines = [l for l in lines if not re.match(r'^\s*Side: \d+ av \d+', l) and 'Stiftelsen Norsk Mat •' not in l]
-    kap = int(re.search(r'^\s+(\d+) [A-ZÆØÅ]', txt, re.M).group(1)); ver = re.search(r'Versjon ([\d.]+)', txt).group(1)
+    kap = int(re.search(r'^\s+(\d+) [A-ZÆØÅ]', txt, re.M).group(1)); fv = re.search(r'-(\d{4}\.\d+[a-z]?)-nb-no', pdf); ver = fv.group(1) if fv else re.search(r'Versjon ([\d.]+[a-z]?)', txt).group(1)
     dok = dokmap(pdf)
     seksjoner = []; sp = []; i = 0
     while i < len(lines):
@@ -57,7 +57,7 @@ def parse(pdf):
                 x = SKRAP.sub('', lines[i]); s = x.strip(); i += 1
                 if s in ('Svar', 'Ikke', 'aktuelt', 'Ja', 'Nei') or re.fullmatch(r'Ja\s+Nei', s): continue
                 if modus == 'q':
-                    if s.startswith('For å oppfylle'):
+                    if re.match(r'For å (oppfylle|tilfredsstille|innfri)', s):
                         modus = 'k'; rest = s.split(':', 1)[1].strip() if ':' in s else ''
                         if rest: cur = rest
                         continue

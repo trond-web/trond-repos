@@ -17,8 +17,8 @@
 import { geoTilUtm, utmTilGeo, punktIGeometri } from './proj.js';
 
 export const KILDER = {
-  forskrift: { navn: 'Forskrift om planlegging og godkjenning av veier for landbruksformål (traktorveg klasse 7 og 8 krever godkjenning)', url: 'https://lovdata.no/forskrift/2015-02-13-140' },
-  pefc: { navn: 'Norsk PEFC Skogstandard – krav 14 (kjøreskader), 27 (kantsoner) og 30 (kulturminner)', url: 'https://pefcnorge.org/' },
+  forskrift: { navn: 'Forskrift om planlegging og godkjenning av veier for landbruksformål (traktorveg klasse 7 og 8 krever godkjenning)', url: 'https://lovdata.no/dokument/SF/forskrift/2015-05-28-550' },
+  pefc: { navn: 'Norsk PEFC Skogstandard – krav 14 (kjøreskader), 27 (kantsoner) og 30 (kulturminner)', url: 'https://www.pefc.no/' },
   kjoreskader: { navn: 'Skogbrukets kursinstitutt: Unngå kjøreskader – basveg, stikkveg og risting', url: 'https://www.skogkurs.no/' },
   dtw: { navn: 'NIBIO markfuktighetskart (DTW)', url: 'https://kilden.nibio.no/' },
   hoyde: { navn: 'Kartverket høydedata (DTM1)', url: 'https://hoydedata.no' },

@@ -88,11 +88,15 @@ export const SPREDEMAATE = {
   overflate: { navn: 'Bredspredd på eng/beite', f: 0.45 },
 };
 
-// Fosforgrenser (kg P/daa, snitt over tre år) etter § 20, fra 2027.
+// Fosforgrenser (kg P/daa/år) etter § 20 tredje ledd, slik den lyder etter endring 6. oktober 2026 (FOR-2026-10-06-2005):
+// grensene gjelder fra 1. januar 2028. Fram til utgangen av 2027 er grensen 3,5 kg P/daa på fulldyrket og overflatedyrket
+// jord (§ 36 nr. 4). Foretak med husdyrgjødsel over 75 kg P regner grensen som årlig snitt for hele arealet; foretak uten
+// husdyr (eller under 75 kg P) som tar imot organisk gjødsel, kan bruke snitt over tre år. Innmarksbeite: 2 kg P/daa/år.
+export const P_FRA = 2028; export const P_OVERGANG = 3.5; export const P_INNMARKSBEITE = 2;
 const P_GRENSE = {
-  vanlig: [[2027, 2.8], [2030, 2.5], [2033, 2.3]],
-  rogaland: [[2027, 3.1], [2030, 3.0], [2033, 2.7]],
-  nord: [[2027, 2.5]],
+  vanlig: [[2028, 2.8], [2030, 2.5], [2033, 2.3]],
+  rogaland: [[2028, 3.1], [2030, 3.0], [2033, 2.7]],
+  nord: [[2028, 2.5]],
 };
 // Spredeperiode for organisk gjødsel (§ 15). Slutt = [måned, dag].
 export const REGIONER = {
@@ -108,6 +112,7 @@ export function regionFraKommune(kommunenr) {
   return 'innland';
 }
 export function fosforgrense(aar, region = 'innland') {
+  if (aar < P_FRA) return P_OVERGANG;
   const tabell = P_GRENSE[REGIONER[region]?.pGrense || 'vanlig'];
   let g = null; for (const [fra, v] of tabell) if (aar >= fra) g = v;
   return g;
@@ -373,13 +378,14 @@ export function kontroller(S, aar) {
     if (pH && k.pH && pH < k.pH[0] - 0.05) push('varsel', 'kalk', `Skifte ${sk.nr}: lav pH (${pH})`, `Anbefalt pH for ${k.navn.toLowerCase()} er ${k.pH[0]}–${k.pH[1]}. Vurder kalking.`, sk.id, 'handbokKorn');
     if (Number(sk.jordprove.PAL) > 14) push('varsel', 'fosfor', `Skifte ${sk.nr}: høy P-AL (${sk.jordprove.PAL})`, 'Høyt fosfortall – gjødselbehovet for P er redusert. Begrens fosfortilførselen.', sk.id, 'handbokP');
   }
-  // § 20 fosforgrense
-  const grense = fosforgrense(aar, region); const fs = fosforSnitt(plan, aar);
-  if (fs.snitt != null) {
-    const tekst = `Snitt ${Math.round(fs.snitt * 100) / 100} kg P/daa (${fs.rader.map((r) => `${r.aar}: ${Math.round(r.perDaa * 100) / 100} ${r.kilde}`).join(', ')}).`;
-    if (grense == null) push('info', 'fosfor', 'Fosforgrense gjelder fra 2027', `${tekst} Fra 2027: ${fosforgrense(2027, region)} kg P/daa i snitt over tre år (${REGIONER[region].navn.toLowerCase()}).`, null, 'gjodselforskrift');
-    else if (fs.snitt > grense) push('avvik', 'fosfor', `Fosfortilførselen er over grensen (${grense} kg P/daa)`, tekst, null, 'gjodselforskrift');
-    else push('ok', 'fosfor', `Fosfortilførselen er innenfor grensen (${grense} kg P/daa)`, tekst, null, 'gjodselforskrift');
+  // § 20 fosforgrense: årlig tilført P per daa (snitt over tre år kan brukes av foretak uten egen husdyrgjødsel over 75 kg P).
+  const grense = fosforgrense(aar, region); const fs = fosforSnitt(plan, aar); const iAar = fs.rader.find((r) => r.aar === aar);
+  if (iAar) {
+    const tekst = `${aar}: ${Math.round(iAar.perDaa * 100) / 100} kg P/daa (${iAar.kilde})${fs.rader.length > 1 ? `, snitt ${fs.rader.length} år ${Math.round(fs.snitt * 100) / 100}` : ''}.`;
+    const fra = aar < P_FRA ? ` Fra ${P_FRA}: ${fosforgrense(P_FRA, region)} kg P/daa/år (${REGIONER[region].navn.toLowerCase()}), ${fosforgrense(2030, region)} fra 2030.` : '';
+    if (iAar.perDaa > grense) push('avvik', 'fosfor', `Fosfortilførselen er over grensen (${grense} kg P/daa${aar < P_FRA ? ' fram til 2028' : ''})`, tekst + fra, null, 'gjodselforskrift');
+    else if (aar < P_FRA && iAar.perDaa > fosforgrense(P_FRA, region)) push('varsel', 'fosfor', `Innenfor dagens grense, men over grensen fra ${P_FRA} (${fosforgrense(P_FRA, region)} kg P/daa)`, tekst + fra, null, 'gjodselforskrift');
+    else push('ok', 'fosfor', `Fosfortilførselen er innenfor grensen (${grense} kg P/daa)`, tekst + fra, null, 'gjodselforskrift');
   }
   // Gjødsling over behov
   for (const sk of aktive) {

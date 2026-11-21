@@ -12,7 +12,7 @@ export const KILDER = {
   dtw: { navn: 'NIBIO markfuktighetskart (DTW)', url: 'https://www.nibio.no/tema/jord/arealressurser/andre-kart/markfuktighet' },
   skogkurs: { navn: 'Skogkurs: Markfuktighetskart for skogen i Norge', url: 'https://skogkurs.no/fagartikler/markfuktighetskart-for-skogen-i-norge/' },
   sporlos: { navn: 'Skogtiltaksfondet: Sporløs kjøring (prosjektrapport)', url: 'https://www.skogtiltaksfondet.no/wp-content/uploads/2023/06/2013-42_Sporlos-kjoring.pdf' },
-  ngu: { navn: 'NGU løsmassekart', url: 'https://www.ngu.no/geologisk-kartlegging/losmasser' },
+  ngu: { navn: 'NGU løsmassekart', url: 'https://www.ngu.no/' },
   hoyde: { navn: 'Kartverket høydedata (DTM1)', url: 'https://hoydedata.no' },
   nve: { navn: 'NVE seNorge: teledyp, snø, vannmetning og nedbør', url: 'https://api.nve.no/doc/gridtimeseries-data-gts/' },
   met: { navn: 'MET Locationforecast', url: 'https://api.met.no/weatherapi/locationforecast/2.0/documentation' },

@@ -13,15 +13,15 @@ export const MOTOR_VERSJON = 1;
 export const KILDER = {
   forskrift: { navn: 'Forskrift om bærekraftig skogbruk §§ 6–7: foryngelsesplikt og tilrådd plantetall per bonitet', url: 'https://lovdata.no/dokument/SF/forskrift/2006-06-07-593' },
   tynning: { navn: 'NIBIO: Tynning og skogproduksjon – første tynning ved 12–14 m overhøyde, andre ved 16–18 m; én tynning i gran, to i furu', url: 'https://nibio.no/tema/skog/skogbehandling-og-skogskjotsel/tynning/tynning-og-skogproduksjon' },
-  ungskogpleie: { navn: 'Statsforvalteren/Skogkurs: Tid for ungskogpleie – ved 1–5 m høyde, 150–250 trær/daa etterpå (100–140 i stormutsatte bestand)', url: 'https://www.statsforvalteren.no/vestfold-og-telemark/landbruk-og-mat/skogbruk/skogkultur2/ungskogpleie2/tid-for-ungskogpleie/' },
-  snutebille: { navn: 'NIBIO/Landbruksdirektoratet: Snutebilleundersøkelsen 2017 – markberedning gir høyere overlevelse og mindre gnag', url: 'https://www.landbruksdirektoratet.no/nb/filarkiv/rapporter/prosjektresultater/skogbruk/9.2%20Snutebilleunders%C3%B8kelsen%202017%20-%20sluttrapport.pdf' },
+  ungskogpleie: { navn: 'Statsforvalteren/Skogkurs: Tid for ungskogpleie – ved 1–5 m høyde, 150–250 trær/daa etterpå (100–140 i stormutsatte bestand)', url: 'https://www.nibio.no/tema/skog/skogbehandling-og-skogskjotsel/ungskogpleie' },
+  snutebille: { navn: 'NIBIO/Landbruksdirektoratet: Snutebilleundersøkelsen 2017 – markberedning gir høyere overlevelse og mindre gnag', url: 'https://www.skogtiltaksfondet.no/' },
   lukket: { navn: 'NIBIO/NINA for Miljødirektoratet (2025): Arealeffekter av økt bruk av lukkede hogstformer – egnet særlig på middels og lav bonitet, blåbær- og tyttebærskog og eldre gran', url: 'https://www.miljodirektoratet.no/publikasjoner/2025/mars-2025/arealeffekter-av-okt-bruk-av-lukkede-hogstformer/' },
   lukketDef: { navn: 'Lukka hogst: mer enn 15 trær/daa står igjen, eller åpninger under 2 daa (Store norske leksikon)', url: 'https://snl.no/lukka_hogst' },
-  pefc: { navn: 'Norsk PEFC Skogstandard (PEFC N 02:2022): laveste hogstalder, livsløpstrær, kantsoner og hogstformer', url: 'https://www.pefcnorge.org/' },
+  pefc: { navn: 'Norsk PEFC Skogstandard (PEFC N 02:2022): laveste hogstalder, livsløpstrær, kantsoner og hogstformer', url: 'https://www.pefc.no/' },
   storm: { navn: 'Skogbrand: Forebygging av stormskader – ungskogpleie ved ca. 4 m, tynning før 14 m, maks 40 % uttak', url: 'https://www.skogbrand.no/forebygging/stormskader/' },
   karbonOmlop: { navn: 'Verra VM0045 (IFM): kreditter for økt karbonlager mot en referanse – utsatt hogst, redusert hogst, avsetning, gjødsling og bedre foryngelse', url: 'https://verra.org/documents/vm0045-improved-forest-management-using-dynamic-matched-baselines-from-national-forest-inventories-v1-2' },
-  klimatiltak: { navn: 'Statsforvalteren: tilskudd til klimatiltak i skog 2026 – gjødsling 40 %, tettere planting 30 %, suppleringsplanting 30 %', url: 'https://www.statsforvalteren.no/innlandet/landbruk-og-mat/skogbruk/skogkultur/tilskudd-til-klimatiltak-i-skog-2026/' },
-  torv: { navn: 'NIBIO: Hogst og grøfting på torvmark gir utslipp av CO₂ fra nedbrytning av torv', url: 'https://www.nibio.no/tema/klima/klimagassutslipp-fra-jordbruk-og-arealbruk' },
+  klimatiltak: { navn: 'Landbruksdirektoratet: tilskudd til klimatiltak i skog – gjødsling 40 %, tettere planting 30 %, suppleringsplanting 30 %', url: 'https://www.landbruksdirektoratet.no/nb/skogbruk/ordninger-for-skogbruk/tilskudd-til-tettere-skogplanting-som-klimatiltak' },
+  torv: { navn: 'NIBIO: Hogst og grøfting på torvmark gir utslipp av CO₂ fra nedbrytning av torv', url: 'https://www.nibio.no/' },
   okonomi: { navn: 'Faustmann – forventningsverdi og optimalt hogsttidspunkt (SkogIQ verdiberegning med dine priser og rente)', url: null },
 };
 

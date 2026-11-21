@@ -29,7 +29,7 @@ export const KILDER = {
   tommer: { navn: 'Skoghåndboka: Tillegging og lasting av tømmer ved offentlig veg', url: 'https://skoghandboka.no/tema/driftsteknikk/tillegging-og-lasting-av-tommer-ved-offentlig-veg/' },
   vegarbeid: { navn: 'Store norske leksikon: Trafikkskilt 110 Vegarbeid (plassering 150–250 m før faren)', url: 'https://snl.no/Vegarbeid_-_trafikkskilt' },
   kraft: { navn: 'Skoghåndboka: Hogst nær elektriske anlegg', url: 'https://skoghandboka.no/tema/driftsteknikk/hogst-naer-elektriske-anlegg/' },
-  pefc: { navn: 'Norsk PEFC Skogstandard krav 6 (friluftsliv) – rydding av stier og løyper', url: 'https://pefcnorge.org/' },
+  pefc: { navn: 'Norsk PEFC Skogstandard krav 6 (friluftsliv) – rydding av stier og løyper', url: 'https://www.pefc.no/' },
 };
 
 // Skilt som brukes. Nummer etter skiltforskriften/N300. type styrer tegningen.

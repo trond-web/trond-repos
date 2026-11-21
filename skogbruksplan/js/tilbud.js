@@ -8,8 +8,8 @@ import { typeFor, sammendrag, linjer } from './oppdrag.js';
 
 export const KILDER = {
   serioesitet: { navn: 'Seriøsitetskrav (skatteattest, HMS-egenerklæring) – mal fra Difi/KS/BNL', url: 'https://www.io.kommune.no/_f/p1/ibfc07354-4a77-4e71-8529-83507ce90c77/seriositetskrav.pdf' },
-  tariff: { navn: 'Forskrift om allmenngjøring av tariffavtale for jordbruks- og gartnerinæringene', url: 'https://lovdata.no/forskrift/2022-12-09-2153' },
-  byggherre: { navn: 'Statsforvalteren: bygging av landbruksveger er underlagt byggherreforskriften', url: 'https://www.statsforvalteren.no/trondelag/landbruk/nyheter-landbruk-og-mat/2020/09/bygging-av-landbruksveger-er-underlagt-byggherreforskriften/' },
+  tariff: { navn: 'Forskrift om allmenngjøring av tariffavtale for jordbruks- og gartnerinæringene', url: 'https://lovdata.no/dokument/SF/forskrift/2024-10-21-2533' },
+  byggherre: { navn: 'Statsforvalteren: bygging av landbruksveger er underlagt byggherreforskriften', url: 'https://lovdata.no/dokument/SF/forskrift/2009-08-03-1028' },
   skogfond: { navn: 'Skogfond: utbetaling til skogkultur og andre tiltak', url: 'https://www.landbruksdirektoratet.no/nb/skogbruk/skogfond' },
 };
 
