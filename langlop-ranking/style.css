@@ -152,6 +152,7 @@ input[type="search"] { flex: 1 1 220px; min-width: 0; }
 .formel { font-family: "JetBrains Mono", ui-monospace, monospace; background: var(--flate2); border-radius: 8px; padding: 10px 12px; margin: 10px 0; overflow-wrap: anywhere; }
 
 .bunn { margin-top: 30px; color: var(--dempet); font-size: 13px; }
+.bunn .signatur { margin: 8px 0 0; font-weight: 600; }
 
 .detalj {
   width: min(760px, calc(100vw - 24px)); max-height: calc(100vh - 40px);
