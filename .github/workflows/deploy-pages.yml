@@ -84,12 +84,13 @@ jobs:
 
       # Langløpsrankingen: løpsresultatene tas vare på mellom kjøringene i Actions-cachen,
       # så bare nye og ferske løp hentes. Resultatene i repoet (sesongen 2025/26) er utgangspunktet.
+      # Øk versjonen (v2, v3 ...) når reglene for hvilke løp som er med endres, så alt sjekkes på nytt.
       - name: Restore langløpsresultater
         uses: actions/cache/restore@v4
         with:
           path: .langlop-data
-          key: langlop-data-${{ github.run_id }}
-          restore-keys: langlop-data-
+          key: langlop-data-v2-${{ github.run_id }}
+          restore-keys: langlop-data-v2-
 
       # Henter nye resultater fra EQ Timing, Birken, Vasaloppet og Ski Classics og regner ut rankingen.
       # Feiler det, publiseres rankingen som ligger i repoet.
@@ -106,7 +107,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .langlop-data
-          key: langlop-data-${{ github.run_id }}
+          key: langlop-data-v2-${{ github.run_id }}
 
       # Snøvill: snødybde, snømengde og smelting fra NVE/seNorge legges ved som datafil
       - name: Snødata fra NVE (Snøvill)
