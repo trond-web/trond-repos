@@ -119,6 +119,12 @@ export const KAPITLER = [
       ${steg(['Åpne oppdraget › <b>Maskin</b>.', 'Velg versjon og koordinatsystem (standardvalgene passer de fleste maskiner).', '<b>Last ned filsett (ZIP)</b>, kopier til minnepinne og importer i maskinen (se LES_MEG.txt).', 'Etter drift: <b>Les inn produksjonsfiler</b> (.hpr, .fpr …) og trykk <b>Gå gjennom endringer i planen</b> – se <a href="#" data-hjelp="ajourforing">Ajourføring fra hogstmaskindata</a>.'])}`,
   },
   {
+    id: 'proveflater', ikon: '🎯', tittel: 'Virtuelle prøveflater fra hogstmaskindata',
+    tekst: `<p>Når du leser inn en hpr-fil under <b>Data › Hogstmaskindata</b>, lages det prøveflater på 400 m² (radius 11,3 m) i et nett med 40 m mellomrom over arealet maskinen hogde. Stammene på hver flate gir stammetall, grunnflate, middeldiameter, anslått høyde, volum og treslag – som en prøveflate i takst, men målt av maskinen.</p>
+      ${steg(['Les inn hpr-fila (eller prøv med simulert hogst).', 'Se tabellen per bestand: volum fra prøveflatene mot planens volum, med avvik og vurdering.', 'Ved flatehogst kan planens volum i andre hogstmodne bestand med samme treslag justeres med samme faktor – <b>Juster</b>. Det kan angres.', 'Last ned flatene som CSV eller GeoJSON til takstfirma eller rådgiver, eller vis dem i kartet.'])}
+      ${tips('Ved tynning viser flatene bare uttaket. Hogstmaskinen ser bare trærne som er hogd, så tallene er en etterkontroll av planen, ikke en takst av hele eiendommen.')}`,
+  },
+  {
     id: 'ajourforing', ikon: '🔄', tittel: 'Ajourføring fra hogstmaskindata (HPR)',
     tekst: `<p>Etter hogst kan hpr-fila fra hogstmaskinen brukes til å ajourføre skogbruksplanen. Stammene har posisjon, så SkogIQ ser hvor det er hogd og hvor mye.</p>
       <h4>Slik gjør du det</h4>

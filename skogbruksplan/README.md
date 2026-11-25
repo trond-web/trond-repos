@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.20.0** (2026-11-25) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.21.0** (2026-11-25) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -1593,6 +1593,27 @@ telles bare én gang, og bare endringen siden forrige import trekkes fra volumet
 
 Neste steg i standarden er versjon 4.0, der kartet sendes som GeoJSON inne i ogi, og den løpende meldingen hpd
 (HarvestedDeltaProduction). Produksjonsfiler i 4.0 kan allerede leses. Kilde: [Skogforsk – StanForD 2010](https://www.skogforsk.se/english/projects/stanford/).
+
+## 🎯 Virtuelle prøveflater fra hogstmaskindata (`js/proveflater.js`)
+
+Når en hpr-fil leses inn under Data › Hogstmaskindata, lages det virtuelle prøveflater fra stammene maskinen hogde.
+- **Flatene:** sirkler på **400 m²** (radius 11,28 m) i et fast rutenett med 40 m mellomrom. NMBU (Dieset 2017) fant at 400 m² ga minst feil med hogstmaskindata. En flate tas bare med når hele sirkelen, pluss 3 m, ligger i hogd areal (10 m-ruter med stammer). Det er fordi posisjonen ved kranspissen har 1–2 m feil. Flater med færre enn 3 stammer utelates.
+- **Verdier per flate:**
+  - stammer per ha og per daa
+  - grunnflate (m²/ha)
+  - grunnflatevektet middeldiameter (dg)
+  - Lorey-høyde, anslått fra stokklengdene pluss toppen
+  - volum fub per ha og per daa
+  - middelstamme og treslagsfordeling etter grunnflate
+- **Per bestand:** snitt med standardfeil, mot planens volum og treantall, med avvik og vurdering. Avvik over ±15 % meldes, og appen sier fra når spredningen gjør avviket usikkert.
+- **Lokal kalibrering** (bare ved flatehogst): en volumfaktor fra bestand med minst 3 flater, til sammen minst 6. Faktoren kan brukes på bestand som ikke er hogd, er hogstmodne (minst 50 år) og har samme treslag. Bare faktorer mellom 0,7 og 1,3 brukes. Hvert bestand får merknad og `ekstra.KALIBRERT`, og kalibreringen kan angres.
+- **Eksport:** CSV (UTM33 og WGS84) og GeoJSON med sirklene. I kartet vises flatene som lilla sirkler.
+- **Begrensninger:**
+  - Bare hogde trær er med.
+  - Ved tynning viser flatene bare uttaket.
+  - Utvalget er skjevt (Räty mfl. 2022).
+  - Høyden er et anslag.
+- **Personvern:** fører-ID i HPR-fila leses ikke.
 
 ## Hogstmaskindata mot SR16 (Data › 🌲 Hogstmaskindata mot SR16)
 

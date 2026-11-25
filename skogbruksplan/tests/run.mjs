@@ -4694,6 +4694,31 @@ test('Ny plan: data fra tidligere år skrives fram til i år, med merknad og sam
   assert.equal(igjen.takstAar, 2026);
 });
 
+test('Prøveflater: 400 m² fra hogstmaskindata, sammendrag mot planen og kalibrering som kan angres', async () => {
+  const P = await import('../js/proveflater.js'); const H = await import('../js/hpr-sr16.js'); const { lagDemo } = await import('../js/demo.js');
+  assert.ok(Math.abs(Math.PI * P.RADIUS ** 2 - 400) < 0.01, 'radius gir 400 m²');
+  // Høyde fra stokkene: 3 × 5 m + rest fra toppdiameter 80 mm (8 m) + stubbe
+  assert.ok(Math.abs(P.hoydeFraStokker({ stokker: [{ lengde: 500, topp: 250 }, { lengde: 500, topp: 160 }, { lengde: 500, topp: 80 }] }) - 23.15) < 0.01);
+  // En flate med to kjente stammer: grunnflate, dg, volum per ha.
+  const v = P.flateVerdier([{ dbh: 300, fub: 0.6, treslag: 'G' }, { dbh: 200, fub: 0.3, treslag: 'F' }]);
+  assert.equal(v.nHa, 50); assert.equal(v.vHa, 22.5); assert.equal(v.gHa, 2.6); assert.equal(v.dg, 26.9); assert.deepEqual(v.andel, { G: 69, F: 31, L: 0 });
+  // Simulert flatehogst i et bestand: flatene ligger i bestandet, og alle stammer i hver flate ligger innenfor radius.
+  const S = lagDemo(2026); const b = S.bestand.find((x) => x.geometri && x.areal > 30); const st = H.simulerTynning(b, { uttak: 1 });
+  const r = P.lagProveflater(st, { S }); assert.ok(r.flater.length >= 5, `nok flater (${r.flater.length})`);
+  assert.ok(r.flater.every((f) => f.bestandId === b.id && f.stammer >= P.MIN_STAMMER));
+  assert.deepEqual(P.lagProveflater(st, { S }).flater.map((f) => f.id + f.e + f.n), r.flater.map((f) => f.id + f.e + f.n), 'samme flater ved ny innlesing');
+  const sm = P.sammendrag(r, S); assert.equal(sm.bestand.length, 1); assert.equal(sm.bestand[0].flater, r.flater.length); assert.ok(sm.bestand[0].vSf > 0);
+  assert.ok(P.csv(r).split('\n').length === r.flater.length + 1); assert.equal(P.geojson(r).features[0].geometry.coordinates[0].length, 33);
+  // Kalibrering: syntetisk sammendrag med 10 % mer volum enn planen i 2 bestand gir faktor 1,1 og justerer et hogstmodent granbestand.
+  const syn = { bestand: [{ bestandId: 'x1', flater: 4, planVDaa: 30, vDaa: 33, treslag: 'G' }, { bestandId: 'x2', flater: 4, planVDaa: 20, vDaa: 22, treslag: 'G' }] };
+  const kal = P.kalibrering(syn); assert.equal(kal.faktor, 1.1); assert.equal(P.kalibrering(syn, { tynning: true }), null);
+  const S2 = { bestand: [{ id: 'a', treslag: 'G', alder: 80, volumDaa: 25, merknad: '' }, { id: 'b', treslag: 'F', alder: 80, volumDaa: 25 }, { id: 'c', treslag: 'G', alder: 20, volumDaa: 5 }, { id: 'x1', treslag: 'G', alder: 90, volumDaa: 30 }] };
+  assert.equal(P.brukKalibrering(S2, syn, kal, { dato: '2026-11-25' }), 1); assert.equal(S2.bestand[0].volumDaa, 27.5); assert.match(S2.bestand[0].merknad, /kalibrert/);
+  assert.equal(P.brukKalibrering(S2, syn, kal), 0, 'ikke kalibrert to ganger');
+  assert.equal(P.angreKalibrering(S2), 1); assert.equal(S2.bestand[0].volumDaa, 25); assert.equal(S2.bestand[0].merknad, ''); assert.ok(!S2.bestand[0].ekstra.KALIBRERT);
+  assert.equal(P.brukKalibrering(S2, syn, { ...kal, faktor: 1.6 }), 0, 'store avvik justeres ikke');
+});
+
 test('EUDR: hogstoppdrag blir leveranse med bestand, kjøper og målt mengde', async () => {
   const E = await import('../js/eudr.js'); const OP = await import('../js/oppdrag.js'); const { lagDemo } = await import('../js/demo.js');
   const S = lagDemo(2026); let n = 0; const nyId = (p) => `${p}${++n}`;
