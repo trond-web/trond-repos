@@ -302,3 +302,4 @@ body.flate-aktiv .fab, body.flate-aktiv .gpsstripe, body.flate-aktiv .sporstatus
 /* 💧 Kantsone mot vann */
 .kantsone-felt { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: rgba(59,143,232,.13); border-left: 4px solid #1e6fd9; display: grid; gap: 3px; font-size: 14px; }
 .kantsone-felt span { color: var(--muted); font-size: 13px; }
+.framskrevet-info { border-left: 4px solid var(--accent, #1f7a3f); background: color-mix(in srgb, var(--accent, #1f7a3f) 10%, transparent); border-radius: 8px; padding: 8px 12px; font-size: 13px; line-height: 1.45; }

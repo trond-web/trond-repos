@@ -576,13 +576,16 @@
       </div>
       <div class="kort">
         <h3>Importer skogbruksplan</h3>
-        <p class="hint">SOSI (.sos), GeoJSON eller CSV/Excel-eksport (bestandsliste). Feltnavn som BESTANDNR, TRESLAG, BONITET, HOGSTKLASSE, ALDER, VOLUM osv. gjenkjennes automatisk.</p>
+        <p class="hint">SOSI (.sos), GeoJSON eller CSV/Excel-eksport (bestandsliste). Feltnavn som BESTANDNR, TRESLAG, BONITET, HOGSTKLASSE, ALDER, VOLUM osv. gjenkjennes automatisk. Har filen takstår (TAKSTAAR, REGAAR o.l.) eller fyller du det inn, skrives alder og volum fram til i år.</p>
         <div class="skjema to-kol">
           <label>Koordinatsystem
             <select id="impKoord">
               <option value="auto">Automatisk</option><option value="UTM32">EUREF89 UTM32</option><option value="UTM33">EUREF89 UTM33</option>
               <option value="UTM35">EUREF89 UTM35</option><option value="WGS84">WGS84 (grader)</option>
             </select>
+          </label>
+          <label>Dataene gjelder år <span class="hint">(takstår)</span>
+            <input id="impAar" type="number" min="1950" step="1" inputmode="numeric" placeholder="Fra filen – ellers i år">
           </label>
           <label>Ved import
             <select id="impModus"><option value="flett">Flett med eksisterende (oppdater på bestandsnr)</option><option value="erstatt">Erstatt alle bestand</option></select>

@@ -362,6 +362,7 @@ progress { accent-color: var(--accent); height: 8px; }
 @keyframes puls { from { opacity: .3; } to { opacity: 1; } }
 .gen-resultat { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--grid); display: grid; gap: 12px; }
 .gen-resultat .knapp.primar { font-size: 15px; padding: 11px 18px; justify-self: start; border-radius: 13px; }
+.framskrevet-info { border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 8px; padding: 8px 12px; font-size: 13px; line-height: 1.45; }
 .plan-rad { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--grid); }
 .plan-rad:last-child { border-bottom: 0; }
 .plan-rad .navn { font-weight: 600; }

@@ -7,7 +7,7 @@ import { lagSosi } from './sosi.js';
 import {
   TRESLAG, HOGSTKLASSER, HK_NAVN, HK_ROMERTALL, BONITETER, TILTAKSTYPER, STANDARD_INNSTILLINGER,
   normaliserBestand, laavesteHogstalder, beregnetHogstklasse, startTilstand, arligTilvekstDaa,
-  rotnettoPerM3, hogstklasseFor, rettFeilHogd, tiltakKostnad, framskriv, foreslaaForEiendom, sammendrag, nyId, runde, HOGSTTYPER, hogstAndel, hogstNettoPerM3,hkGrenser, hogstklasseAvvik, framskrivTilAar
+  rotnettoPerM3, hogstklasseFor, rettFeilHogd, tiltakKostnad, framskriv, foreslaaForEiendom, sammendrag, nyId, runde, HOGSTTYPER, hogstAndel, hogstNettoPerM3,hkGrenser, hogstklasseAvvik, framskrivTilAar, framskrivListe, framskrivTekst
 } from './model.js';
 import { lesFil, slaaSammen } from './importers.js';
 import { lagDemo } from './demo.js';
@@ -2062,6 +2062,10 @@ async function importerFiler(filer, tvingModus = null) {
   for (const fil of filer) {
     try {
       const r = await lesFil(fil, $('#impKoord').value, IAAR);
+      // Data fra et tidligere år skrives fram til i år. Takståret kommer fra filen, ellers fra feltet i skjemaet.
+      const oppgitt = Number($('#impAar')?.value) || null;
+      if (oppgitt && oppgitt >= 1950 && oppgitt < IAAR) for (const b of r.bestand) if (Number(b.takstAar) >= IAAR) b.takstAar = oppgitt;
+      const fr = framskrivListe(r.bestand, IAAR, { kilde: 'importert fil' });
       const modus = ut.length ? 'flett' : (tvingModus || $('#impModus').value);
       const res = slaaSammen(samlet, r.bestand, modus);
       samlet = res.liste;
@@ -2073,6 +2077,8 @@ async function importerFiler(filer, tvingModus = null) {
         if (m?.merk) ut.push(`<div class="hint">ℹ️ ${esc(m.merk)}</div>`);
         tegnEiendom();
       }
+      if (fr.antall) ut.push(`<div class="framskrevet-info">📈 ${esc(framskrivTekst(fr))}</div>`);
+      else if (r.bestand.length && !oppgitt && r.bestand.every((b) => Number(b.takstAar) >= IAAR)) ut.push(`<div class="hint">ℹ️ Filen har ikke takstår, så dataene er regnet som årets. Er de eldre, fyll inn «Dataene gjelder år» og importer på nytt – da skrives alder og volum fram til ${IAAR}.</div>`);
       for (const a of (r.advarsler || []).slice(0, 5)) ut.push(`<div class="hint">⚠️ ${esc(a)}</div>`);
     } catch (e) {
       ut.push(`<div>❌ <b>${esc(fil.name)}</b>: ${esc(e.message)}</div>`);
@@ -2092,7 +2098,7 @@ function bestandTilFeature(b, koordsys = 'WGS84') {
       BESTANDNR: b.nr, TEIG: b.teig || null, AREAL_DAA: b.areal, TRESLAG: b.treslag, BONITET: b.bonitet, HOGSTKLASSE: hk(b),
       ...(b.tetthetsklasse && hk(b) ? { TETTHETSKLASSE: b.tetthetsklasse, SP_HKL: hk(b) * 10 + (b.tetthetsklasse === 'a' ? 1 : 2) } : {}),
       ...(b.ungskog ? { TREANTALL_FOR_REGULERING: b.ungskog.treantallFor ?? null, TREANTALL_ETTER_REGULERING: b.ungskog.treantallEtter ?? null, HOYDE_BAR: b.ungskog.hoydeBar ?? null, HOYDE_LAUV: b.ungskog.hoydeLauv ?? null } : {}),
-      ALDER: b.alder ?? null, VOLUM_DAA: b.volumDaa ?? runde(s.volumDaa, 1), VOLUM_M3: runde(s.volumDaa * (b.areal || 0), 0),
+      ALDER: b.alder ?? null, VOLUM_DAA: b.volumDaa ?? runde(s.volumDaa, 1), VOLUM_M3: runde(s.volumDaa * (b.areal || 0), 0), TAKSTAAR: b.takstAar ?? null,
       TREANTALL: b.treantall ?? null, MIDDELHOYDE: b.hoyde ?? null, MILJOFIGUR: b.miljo ? 'Ja' : null, VEGETASJONSTYPE: vegTekst(b.vegetasjon) || null, MERKNAD: b.merknad || null,
       TILTAK: (b.tiltak || []).filter((t) => t.status !== 'utfort').map((t) => `${TILTAKSTYPER[t.type]?.navn || t.type} ${t.aar}`).join('; ') || null,
       ...b.ekstra,
@@ -2324,8 +2330,8 @@ async function lagreAktivPlan() {
 // Planer som åpnes et senere år enn de ble taksert: alder og volum skrives frem til i år (én gang, lagres).
 function framskrivPlanTilIAar() {
   let n = 0; let aar = 0;
-  for (const b of S.bestand) { const d = framskrivTilAar(b, IAAR); if (d) { n++; aar = Math.max(aar, d); } }
-  if (n) { lagreSnart(); setTimeout(() => melding(`Alder og volum i ${n} bestand er skrevet frem ${aar} år til ${IAAR} med vekstmodellen.`, 6000), 400); }
+  const f = framskrivListe(S.bestand, IAAR, { kilde: 'planen' }); n = f.antall; aar = f.antall ? IAAR - f.fra : 0;
+  if (n) { if (S.eiendom) S.eiendom.takstAar = IAAR; S.metadata = { ...(S.metadata || {}), framskrevet: f }; lagreSnart(); setTimeout(() => melding(`📈 Planen er oppdatert til ${IAAR}. Alder og volum i ${n} bestand er skrevet fram ${aar} år med vekstmodellen. Hvert bestand har en merknad om dette.`, 8000), 400); }
 }
 // Eldre genererte planer kunne ha «Mulig hogd» på glissen skog med mange trær over 5 cm – rett alder og merknad.
 function rettHogdIPlan() {
@@ -2650,10 +2656,11 @@ async function startGenerering(e) {
       <div class="nokkeltall" style="margin:0">
         <div><b>${fmt(m.skogDaa)} daa</b><span>skog av ${fmt(m.eiendomDaa)} daa</span></div>
         <div><b>${ny.bestand.length}</b><span>bestand</span></div>
-        <div><b>${fmt(vol)} m³</b><span>stående volum (SR16)</span></div>
+        <div><b>${fmt(vol)} m³</b><span>stående volum ${m.framskrevet ? `i ${IAAR} (SR16 skrevet fram)` : '(SR16)'}</span></div>
         <div><b>${kontroll}</b><span>trolig hogd siden forrige takst – kontroller</span></div>
         ${ny.skifteplan?.skifter?.length ? `<div><b>${ny.skifteplan.skifter.length}</b><span>skifter på ${fmt(ny.skifteplan.skifter.reduce((s, x) => s + x.areal, 0))} daa jordbruksareal</span></div>` : ''}
       </div>
+      ${m.framskrevet ? `<p class="framskrevet-info" style="margin:0">📈 ${esc(framskrivTekst(m.framskrevet))} SR16 er målt ${m.sr16Aar ? esc(m.sr16Aar.fra === m.sr16Aar.til ? `${m.sr16Aar.fra}` : `${m.sr16Aar.fra}–${m.sr16Aar.til}`) : 'tidligere'}, og trærne har vokst siden.</p>` : ''}
       <p class="hint" style="margin:0" id="genDatagrunnlag">⏳ Miljødata til PEFC, veier, traktorveier og tømmerpriser hentes i bakgrunnen og legges inn i planen når de kommer. Du kan åpne planen nå.</p>
       <p class="hint" style="margin:0">${m.antallFraPlan ? `Bestandsgrenser fra skogbruksplan registrert ${esc(m.planRegistrert || '')}, oppdatert med SR16.` : 'Fant ingen tidligere skogbruksplan – bestandene er laget fra SR16-flater.'} Utkastet må kontrolleres i felt før det brukes som grunnlag for hogst.</p>
       <div class="motor-sporsmal" id="motorSporsmal">
@@ -3047,6 +3054,7 @@ function kobleHendelser() {
       if (!Array.isArray(data.bestand)) throw new Error('Filen er ikke en sikkerhetskopi fra denne appen.');
       if (S.bestand.length && !confirm('Erstatte alle data med sikkerhetskopien?')) return;
       S = { ...S, ...data, innstillinger: { ...klon(STANDARD_INNSTILLINGER), ...data.innstillinger } };
+      framskrivPlanTilIAar();
       valgtId = null; tegnEiendom(); tegnInnstillinger(); tegnRegistreringer(); endret({ kart: true, zoom: true });
       melding('Sikkerhetskopi gjenopprettet.');
     } catch (err) { melding(`Kunne ikke lese filen: ${err.message}`); }
