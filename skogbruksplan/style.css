@@ -1628,3 +1628,7 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .eu-rolle > span { display: flex; flex-direction: column; gap: 2px; }
 .eu-forslag > div { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; margin: 4px 0; border-radius: 8px; background: var(--surface-2); font-size: 13px; }
 .eu-lev { padding: 10px 0; border-top: 1px solid var(--grid); }
+.pf .hs-tall { margin-top: 6px; }
+.pf .hs-tall small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.pf-kal { border-left: 4px solid #7b2cbf; background: color-mix(in srgb, #7b2cbf 7%, var(--surface)); border-radius: 8px; padding: 8px 12px; margin: 10px 0; }
+.pf-kal p { margin: 4px 0; }

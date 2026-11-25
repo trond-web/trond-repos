@@ -1861,7 +1861,7 @@ function visStanfordLag(gj) {
   stanfordLag = L.geoJSON(gj, {
     renderer: r, interactive: false,
     style: (f) => (f.properties.lag === 'hogd' ? { color: f.properties.farge || '#b5651d', weight: 1, fillColor: f.properties.farge || '#f39c4a', fillOpacity: f.properties.farge ? 0.45 : 0.35 }
-      : f.properties.lag === 'sr16' ? { color: '#333', weight: 1, dashArray: '3 3', fill: false } : { color: '#d03b3b', weight: 3, dashArray: '6 4' }),
+      : f.properties.lag === 'sr16' ? { color: '#333', weight: 1, dashArray: '3 3', fill: false } : f.properties.lag === 'proveflate' ? { color: '#7b2cbf', weight: 2, fillColor: '#7b2cbf', fillOpacity: 0.12 } : { color: '#d03b3b', weight: 3, dashArray: '6 4' }),
     pointToLayer: (f, ll) => (f.properties.lag === 'stamme'
       ? L.circleMarker(ll, { renderer: r, radius: 2, stroke: false, fillOpacity: 0.85, fillColor: STAMME_FARGE[f.properties.treslag] || '#555' })
       : L.circleMarker(ll, { renderer: r, radius: 7, color: '#fff', weight: 2, fillColor: '#2a78d6', fillOpacity: 1 })),

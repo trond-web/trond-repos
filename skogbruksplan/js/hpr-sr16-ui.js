@@ -3,13 +3,14 @@
 import { TERSKLER, STANDARD_TERSKEL, KILDER, FARGER, STIKKVEI_BREDDE, lesStammer, boksFor, hentSr16, sammenlign, andel, vurdering, csv, kartGeojson, tynning, erTynning, simulerTynning } from './hpr-sr16.js';
 import { simulerDrift, importNokkel } from './stanford.js';
 import { fmt } from './charts.js';
+import * as PF from './proveflater.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const dato = (d) => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 const pst = (a) => (a == null ? '–' : `${Math.round(a * 100)} %`);
 const avvikKlasse = (a) => (a == null ? 'ukjent' : a > 1.2 ? 'hoy' : a >= 0.8 ? 'ok' : a >= 0.5 ? 'lav' : 'uttak');
 const TRESLAG = { G: 'Gran', F: 'Furu', L: 'Lauv' };
-const lastNed = (tekst, navn) => { const url = URL.createObjectURL(new Blob([tekst], { type: 'text/csv;charset=utf-8' })); const a = document.createElement('a'); a.href = url; a.download = navn; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000); };
+const lastNed = (tekst, navn, type = 'text/csv;charset=utf-8') => { const url = URL.createObjectURL(new Blob([tekst], { type })); const a = document.createElement('a'); a.href = url; a.download = navn; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000); };
 
 export function initHprSr16({ hentPlan, endret, melding, visKartlag = () => {}, visBestand = () => {}, hent = fetch }) {
   const panel = document.querySelector('#hprPanel'); if (!panel) return null;
@@ -93,6 +94,53 @@ export function initHprSr16({ hentPlan, endret, melding, visKartlag = () => {}, 
     </div>`;
   }
 
+  // ---------- virtuelle prøveflater (400 m²) ----------
+  const pfRes = (a) => (a.proveflater ? { ...a.proveflater, tynning: tynningVis(a) } : null);
+  const pfKart = (a, gj) => { const r = pfRes(a); if (r?.flater.length) gj.features.push(...PF.geojson(r).features); return gj; };
+  const sign = (x) => (x == null ? '–' : `${x > 0 ? '+' : x < 0 ? '−' : ''}${Math.round(Math.abs(x) * 100)} %`);
+  function proveflaterHtml(a) {
+    const r = pfRes(a);
+    if (!r) return `<h5>🎯 Virtuelle prøveflater (${PF.FLATE_M2} m²)</h5><p class="hint">Denne sammenligningen ble laget før prøveflatene kom. Les inn HPR-fila på nytt for å lage prøveflater.</p>`;
+    const sm = PF.sammendrag(r, S()); const t = sm.total; const kal = PF.kalibrering(sm, { tynning: r.tynning });
+    const kand = kal ? PF.kandidaterForKalibrering(S(), sm, kal) : []; const kalibrert = (S().bestand || []).filter((b) => b.ekstra?.KALIBRERT).length;
+    const ok = kal && kal.faktor >= 0.7 && kal.faktor <= 1.3;
+    return `<div class="pf">
+      <h5>🎯 Virtuelle prøveflater (${PF.FLATE_M2} m²)</h5>
+      <p class="hint">Sirkelflater med radius ${fmt(r.radius, 1)} m, lagt med ${r.avstand} m mellomrom der hele flaten ligger i hogd areal. Stammene maskinen hogde på hver flate gir verdiene – som en prøveflate i takst, men målt av hogstmaskinen.</p>
+      ${r.tynning ? '<p class="sf-varsel">⚠ Tynning: flatene viser bare det som ble tatt ut, ikke skogen som står igjen. Bruk dem til å se uttaket per flate, ikke til å kontrollere planens volum.</p>' : ''}
+      ${!r.flater.length ? `<p class="hint">Ingen hele flater fikk plass i det hogde arealet (${fmt(r.hogdDaa, 1)} daa). Hogsten må dekke et sammenhengende område på minst ca. 30 × 30 m.</p>` : `
+      <div class="sf-tall hs-tall">
+        <div><b>${t.flater}</b><span>prøveflater${r.utelatt ? ` (${r.utelatt} utelatt)` : ''}</span></div>
+        <div><b>${fmt(t.vDaa, 1)}${t.vSf != null ? ` <small>± ${fmt(t.vSf, 1)}</small>` : ''}</b><span>m³fub per daa ${r.tynning ? 'tatt ut' : ''}</span></div>
+        <div><b>${fmt(t.nDaa)}</b><span>stammer per daa</span></div>
+        <div><b>${fmt(t.gHa, 1)}</b><span>grunnflate m²/ha</span></div>
+        <div><b>${t.dg != null ? fmt(t.dg, 1) : '–'}</b><span>middeldiameter (dg) cm</span></div>
+        <div><b>${t.hl != null ? fmt(t.hl, 1) : '–'}</b><span>Lorey-høyde m (anslått)</span></div>
+      </div>
+      ${sm.bestand.length ? `<div class="tabell"><table class="sf-tabell"><thead><tr><th>Bestand</th><th class="t">Flater</th><th class="t">Volum m³/daa</th><th class="t">Plan m³/daa</th><th class="t">Avvik</th><th class="t">Stammer/daa</th><th class="t">Plan trær/daa</th><th class="t">G m²/ha</th><th class="t">dg cm</th><th class="t">H m</th><th>Vurdering</th></tr></thead><tbody>
+        ${sm.bestand.map((x) => { const v = PF.vurderAvvik(x, { tynning: r.tynning }); return `<tr><td><a href="#" data-hs-bestand="${esc(x.bestandId)}">${esc(x.nr)}</a> <span class="hint">${esc(x.treslag || '')}${x.bonitet ?? ''}</span></td><td class="t">${x.flater}</td><td class="t">${fmt(x.vDaa, 1)}${x.vSf != null ? `<div class="hint">± ${fmt(x.vSf, 1)}</div>` : ''}</td><td class="t">${x.planVDaa != null ? fmt(x.planVDaa, 1) : '–'}</td><td class="t hs-${r.tynning ? 'ukjent' : v.niva === 'ok' ? 'ok' : v.niva === 'hoy' ? 'hoy' : v.niva === 'lav' ? 'lav' : 'ukjent'}">${r.tynning ? '–' : sign(x.avvikV)}</td><td class="t">${fmt(x.nDaa)}</td><td class="t">${x.planNDaa != null ? fmt(x.planNDaa) : '–'}</td><td class="t">${fmt(x.gHa, 1)}</td><td class="t">${x.dg != null ? fmt(x.dg, 1) : '–'}</td><td class="t">${x.hl != null ? fmt(x.hl, 1) : '–'}</td><td class="hint">${esc(v.tekst)}</td></tr>`; }).join('')}
+      </tbody></table></div>` : ''}
+      ${sm.utenforPlan ? `<p class="hint">${sm.utenforPlan} flate${sm.utenforPlan === 1 ? '' : 'r'} ligger utenfor bestandene i planen.</p>` : ''}
+      ${kal ? `<div class="pf-kal"><b>Lokal kalibrering av planen</b>
+        <p>Prøveflatene i ${kal.bestand} bestand (${kal.flater} flater) viser i snitt <b>${sign(kal.faktor - 1)}</b> volum mot planen (faktor ${fmt(kal.faktor, 2)}). ${ok ? (kand.length ? `${kand.length} bestand som ikke er hogd, er hogstmodne (minst 50 år) og har samme treslag (${esc(kal.treslag.map((x) => TRESLAG[x] || x).join(', '))}), kan få volumet justert med samme faktor.` : 'Ingen andre hogstmodne bestand med samme treslag å justere.') : 'Avviket er så stort (utenfor ±30 %) at det bør kontrolleres i felt før planen justeres.'}</p>
+        <div class="knapperad">${ok && kand.length ? `<button type="button" class="knapp liten primar" data-hs="pf-kalibrer">Juster ${kand.length} bestand</button>` : ''}${kalibrert ? `<button type="button" class="knapp liten" data-hs="pf-angre">Angre kalibreringen (${kalibrert} bestand)</button>` : ''}</div>
+        <p class="hint">Bare et anslag: hogstmaskinen ser bare bestand som er hogd, så utvalget er skjevt. Hvert justert bestand får en merknad, og kalibreringen kan angres.</p></div>` : kalibrert ? `<div class="knapperad"><button type="button" class="knapp liten" data-hs="pf-angre">Angre kalibreringen (${kalibrert} bestand)</button></div>` : ''}
+      <details class="ekstra"><summary>Alle prøveflatene (${r.flater.length})</summary><div class="tabell"><table class="sf-tabell"><thead><tr><th>Flate</th><th>Bestand</th><th class="t">Stammer</th><th class="t">Stammer/ha</th><th class="t">G m²/ha</th><th class="t">dg cm</th><th class="t">H m</th><th class="t">m³/ha</th><th>Treslag (grunnflate)</th></tr></thead><tbody>
+        ${r.flater.slice(0, 300).map((f) => `<tr><td>${esc(f.id)}</td><td>${esc(f.bestandNr ?? '–')}</td><td class="t">${f.stammer}</td><td class="t">${fmt(f.nHa)}</td><td class="t">${fmt(f.gHa, 1)}</td><td class="t">${f.dg != null ? fmt(f.dg, 1) : '–'}</td><td class="t">${f.hl != null ? fmt(f.hl, 1) : '–'}</td><td class="t">${fmt(f.vHa)}</td><td class="hint">${Object.entries(f.andel).filter(([, p]) => p).map(([k, p]) => `${TRESLAG[k]} ${p} %`).join(', ')}</td></tr>`).join('')}
+      </tbody></table></div></details>
+      <div class="knapperad"><button type="button" class="knapp liten" data-hs="pf-kart">Vis flatene i kartet</button><button type="button" class="knapp liten" data-hs="pf-csv">⬇ Prøveflater (CSV)</button><button type="button" class="knapp liten" data-hs="pf-geojson">⬇ Prøveflater (GeoJSON)</button></div>`}
+      <details class="ekstra"><summary>Slik lages prøveflatene – og begrensninger</summary><ul class="sf-liste">
+        <li><b>${PF.FLATE_M2} m²</b> (radius ${fmt(r.radius, 2)} m): <a href="${PF.KILDER.dieset.url}" target="_blank" rel="noopener">NMBU fant</a> at virtuelle flater på 400 m² fra hogstmaskindata ga minst feil.</li>
+        <li>Flatene legges i et fast rutenett med ${r.avstand} m mellomrom og tas bare med når hele sirkelen, pluss 3 m, ligger i hogd areal. Posisjonen ved kranspissen har typisk 1–2 m feil. Flater med færre enn ${PF.MIN_STAMMER} stammer utelates.</li>
+        <li><b>Volum</b> er m³ fast under bark (fub) fra maskinen. <b>dg</b> er grunnflatevektet middeldiameter fra diameteren i brysthøyde. <b>Høyden</b> er anslått fra stokklengdene pluss toppen (HPR har sjelden målt trehøyde). Lorey-høyden er vektet med grunnflaten.</li>
+        <li>Bare trærne maskinen hogde, er med. Gjensettings- og livsløpstrær, kantsoner og trær under maskinens minstediameter mangler, så flatene viser litt mindre enn skogen før hogst. Ved tynning viser de bare uttaket.</li>
+        <li>Utvalget er skjevt: bare hogstmoden skog og tynningsskog blir hogd. Bruk tallene som etterkontroll og lokal kalibrering, ikke som takst av hele eiendommen (<a href="${PF.KILDER.raty.url}" target="_blank" rel="noopener">Räty mfl. 2022</a>, <a href="${PF.KILDER.raheim.url}" target="_blank" rel="noopener">Raheim 2021</a>).</li>
+        <li>Planens tall er skrevet fram til i år, mens hogsten skjedde ${esc(a.resultat.hogstAar || '')}. Det gir litt ekstra avvik når hogsten er gammel.</li>
+        <li>Opplysninger om maskinføreren (fører-ID) i HPR-fila leses ikke og lagres ikke.</li>
+      </ul></details>
+    </div>`;
+  }
+
   function resultatHtml(a) {
     const res = a.resultat; const t = res.total; const v = vurdering(t, terskel);
     const diamSr = (() => { const f = res.flater.filter((x) => x.sr16Info?.diam && x.smlDaa); const sum = f.reduce((s, x) => s + x.smlDaa, 0); return sum ? f.reduce((s, x) => s + x.sr16Info.diam * x.smlDaa, 0) / sum : null; })();
@@ -121,6 +169,7 @@ export function initHprSr16({ hentPlan, endret, melding, visKartlag = () => {}, 
       ${res.bestand.length ? `<div class="tabell"><table class="sf-tabell"><thead><tr><th>Bestand</th><th class="t">Hogd daa</th><th class="t">Hogd ≥ ${terskel} cm</th><th class="t">SR16</th><th class="t">Hogd av SR16</th><th class="t">Plan</th><th class="t">Hogd av plan</th><th class="t">m³ hogd</th></tr></thead><tbody>
         ${res.bestand.map((b) => { const x = andel(b, terskel); return `<tr><td><a href="#" data-hs-bestand="${esc(b.id)}">${esc(b.nr)}</a> <span class="hint">${esc(b.treslag || '')}${b.bonitet ?? ''}</span></td><td class="t">${fmt(b.hogdDaa, 1)}${b.smlDaa < b.hogdDaa ? `<div class="hint">${fmt(b.smlDaa, 1)} mot SR16</div>` : ''}</td><td class="t">${fmt(b.stammerTerskel[terskel])}</td><td class="t">${b.smlDaa ? fmt(b.sr16[terskel]) : '–'}</td><td class="t"><span class="hs-pille hs-${avvikKlasse(x)}">${pst(x)}</span></td><td class="t">${b.plan != null ? fmt(b.plan) : '–'}</td><td class="t">${b.plan ? pst(b.planStammer / b.plan) : '–'}</td><td class="t">${fmt(b.m3)}</td></tr>`; }).join('')}
       </tbody></table></div>` : '<p class="hint">Ingen av stammene står i bestandene i planen.</p>'}
+      ${proveflaterHtml(a)}
       <details class="ekstra"><summary>Per SR16-flate (${res.flater.length})</summary>
         <div class="tabell"><table class="sf-tabell"><thead><tr><th>SR16-flate</th><th>Målt</th><th class="t">Hogd daa</th><th class="t">SR16 trær/ha ≥ ${terskel} cm</th><th class="t">Hogd ≥ ${terskel} cm</th><th class="t">SR16</th><th class="t">Hogd av SR16</th></tr></thead><tbody>
         ${res.flater.map((f) => { const x = andel(f, terskel); return `<tr><td>${f.sr16Info ? `${esc(f.sr16Info.treslag)} <span class="hint">H${f.sr16Info.bonitet ?? '?'} · ${fmt(f.sr16Info.hoyde, 1)} m · ${fmt(f.sr16Info.volubHa)} m³/ha</span>` : '<span class="hint">Utenfor SR16-skog</span>'}${f.varsel.map((w) => `<div class="hint">⚠ ${esc(w)}</div>`).join('')}</td><td>${f.sr16Info?.aar ?? '–'}</td><td class="t">${fmt(f.hogdDaa, 1)}</td><td class="t">${f.sr16Info ? fmt(f.sr16Info.trean[terskel]) : '–'}</td><td class="t">${fmt(f.stammerTerskel[terskel])}</td><td class="t">${f.smlDaa ? fmt(f.sr16[terskel]) : '–'}</td><td class="t"><span class="hs-pille hs-${avvikKlasse(x)}">${pst(x)}</span></td></tr>`; }).join('')}
@@ -158,12 +207,14 @@ export function initHprSr16({ hentPlan, endret, melding, visKartlag = () => {}, 
       const flater = await hentSr16(boksFor(st.medPosisjon), { hent, logg: (t) => { arbeider = t; tegn(); } });
       arbeider = 'Sammenligner …'; tegn();
       const resultat = sammenlign(S(), st.stammer, flater);
+      arbeider = 'Lager prøveflater …'; tegn();
+      const proveflater = PF.lagProveflater(st.stammer, { S: S(), tynning: erTynning(resultat, S()) });
       const id = ferdig ? `sim${Date.now().toString(36)}` : importNokkel(filer);
-      const ny = { id, dato: new Date().toISOString(), filer: st.filer.filter((f) => /\.hpr$/i.test(f)).slice(0, 10), maskiner: [...new Set(st.maskiner.map((m) => [m.produsent, m.modell].filter(Boolean).join(' ')).filter(Boolean))], utenPosisjon: st.stammer.length - st.medPosisjon.length, resultat };
+      const ny = { id, dato: new Date().toISOString(), filer: st.filer.filter((f) => /\.hpr$/i.test(f)).slice(0, 10), maskiner: [...new Set(st.maskiner.map((m) => [m.produsent, m.modell].filter(Boolean).join(' ')).filter(Boolean))], utenPosisjon: st.stammer.length - st.medPosisjon.length, resultat, proveflater };
       const plan = S(); plan.hprAnalyser = [...(plan.hprAnalyser || []).filter((x) => x.id !== id), ny].slice(-10);
       valgt = id; arbeider = ''; endret({ kart: false }); tegn();
-      visKartlag(kartGeojson(ny.resultat, terskel));
-      melding(`${fmt(resultat.total.stammer)} stammer sammenlignet med SR16.`);
+      visKartlag(pfKart(ny, kartGeojson(ny.resultat, terskel)));
+      melding(`${fmt(resultat.total.stammer)} stammer sammenlignet med SR16${proveflater.flater.length ? `, og ${proveflater.flater.length} prøveflater på ${PF.FLATE_M2} m² er laget` : ''}.`);
     } catch (e) { arbeider = ''; tegn(); melding(e.message || 'Klarte ikke å lese fila.'); }
   }
   // Simulert tynning i et bestand med planlagt tynning (ellers det største i hogstklasse III–IV).
@@ -191,7 +242,11 @@ export function initHprSr16({ hentPlan, endret, melding, visKartlag = () => {}, 
     if (k === 'simuler') { e.preventDefault(); form = 'auto'; simuler(); return; }
     if (k === 'simuler-tynning') { e.preventDefault(); simulerTyn(); return; }
     if (!a) return;
-    if (k === 'kart') visKartlag(kartGeojson(a.resultat, terskel));
+    if (k === 'kart' || k === 'pf-kart') visKartlag(pfKart(a, kartGeojson(a.resultat, terskel)));
+    if (k === 'pf-csv') lastNed(PF.csv(pfRes(a)), 'proveflater-hogstmaskin.csv');
+    if (k === 'pf-geojson') lastNed(JSON.stringify(PF.geojson(pfRes(a))), 'proveflater-hogstmaskin.geojson', 'application/geo+json');
+    if (k === 'pf-kalibrer') { const r = pfRes(a); const sm = PF.sammendrag(r, S()); const kal = PF.kalibrering(sm, { tynning: r.tynning }); const n = PF.kandidaterForKalibrering(S(), sm, kal).length; if (n && confirm(`Justere volumet i ${n} hogstmodne bestand med faktor ${fmt(kal.faktor, 2)}? Hvert bestand får en merknad, og du kan angre.`)) { const m = PF.brukKalibrering(S(), sm, kal); endret({ kart: true }); tegn(); melding(`Volumet i ${m} bestand er justert med prøveflatene.`); } }
+    if (k === 'pf-angre' && confirm('Angre kalibreringen og sette tilbake volumet i bestandene?')) { const m = PF.angreKalibrering(S()); endret({ kart: true }); tegn(); melding(`Volumet i ${m} bestand er satt tilbake.`); }
     if (k === 'csv-bestand') lastNed(csv(a.resultat, 'bestand', terskel), 'hogst-mot-sr16-bestand.csv');
     if (k === 'csv-flater') lastNed(csv(a.resultat, 'flater', terskel), 'hogst-mot-sr16-flater.csv');
     if (k === 'slett' && confirm('Slette denne sammenligningen?')) { const plan = S(); plan.hprAnalyser = analyser().filter((x) => x.id !== a.id); valgt = null; visKartlag(null); endret({ kart: false }); tegn(); }
@@ -199,7 +254,7 @@ export function initHprSr16({ hentPlan, endret, melding, visKartlag = () => {}, 
   panel.addEventListener('change', (e) => {
     const f = e.target;
     if (f.matches('[data-hs-fil]')) { const l = [...f.files]; f.value = ''; if (l.length) Promise.all(l.map(async (x) => ({ navn: x.name, data: new Uint8Array(await x.arrayBuffer()) }))).then(lesFiler); return; }
-    if (f.dataset.hs === 'terskel') { terskel = Number(f.value); tegn(); const a = analyser().find((x) => x.id === valgt); if (a) visKartlag(kartGeojson(a.resultat, terskel)); }
+    if (f.dataset.hs === 'terskel') { terskel = Number(f.value); tegn(); const a = analyser().find((x) => x.id === valgt); if (a) visKartlag(pfKart(a, kartGeojson(a.resultat, terskel))); }
     if (f.dataset.hs === 'velg') { valgt = f.value; tegn(); }
   });
   panel.addEventListener('dragover', (e) => { if (e.target.closest('[data-hs-slipp]')) { e.preventDefault(); e.target.closest('[data-hs-slipp]').classList.add('over'); } });
