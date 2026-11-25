@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.17.0 – 🌍 EUDR – avskogingsfritt og lovlig tømmer (2026-11-25)
+
+*Nytt.* Den nye fanen EUDR hjelper deg å dokumentere at tømmeret er avskogingsfritt og lovlig etter EUs avskogingsforordning. NB: Det er usikkert om og når EUDR blir innført i Norge – forordningen er ikke tatt inn i EØS-avtalen, men gjelder i EU fra 30. desember 2026, så tømmer som selges til EU kan likevel trenge dokumentasjon. Fanen sjekker foryngelse, miljøfigurer og kartflater i planen. Den har en sjekkliste du bekrefter selv, GeoJSON med geolokasjon av eiendommen og hogstflatene, forenklet engangserklæring for små skogeiere og en oversikt over leveranser med informasjon til kjøperen. Den ukentlige kildesjekken følger med på statusen i Norge. Personvernerklæringen er oppdatert (versjon 1.14) fordi EUDR-dokumentasjonen kan inneholde kontaktinfo til kjøpere.
+
 ## 2.16.0 – 💰 Tilskudd du kan søke om (2026-11-25)
 
 *Nytt.* Den nye fanen Tilskudd viser hvilke ordninger gården kan søke om – produksjonstilskudd, avløsning, regionalt miljøtilskudd, drenering, SMIL, skogkultur, klimatiltak i skog, veibygging, beitelag og flere. For hver ordning ser du om den er aktuell for deg og hvorfor, hva den kan gi i kroner ut fra planen, krav og vilkår, frist og hvem du søker hos. Alt tilpasses fylket og kommunen gården ligger i, med lenke til Statsforvalteren der satsene er regionale, og du får en oversikt over de neste fristene. Satser og krav sjekkes hver uke mot Landbruksdirektoratet, så du får beskjed når noe endres eller det kommer nye ordninger.

@@ -1614,3 +1614,12 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .ts-deler td { font-size: 12.5px; }
 .ts-frister { display: flex; flex-direction: column; } .ts-frister > div { display: grid; grid-template-columns: 150px 1fr auto; gap: 8px; padding: 6px 0; border-top: 1px solid var(--grid); font-size: 13px; }
 @media (max-width: 560px) { .ts-frister > div { grid-template-columns: 1fr; gap: 2px; } }
+
+/* 🌍 EUDR */
+.eu-status { border-left: 4px solid #e0a800; background: color-mix(in srgb, #ffcf4d 10%, var(--surface)); }
+.eu-status h3 { margin-top: 0; }
+.eu-sjekk .eu-sp { display: flex; gap: 10px; justify-content: space-between; align-items: center; padding: 7px 0; border-top: 1px solid var(--grid); font-size: 13px; }
+.eu-rolle { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--grid); }
+.eu-rolle > span { display: flex; flex-direction: column; gap: 2px; }
+.eu-forslag > div { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; margin: 4px 0; border-radius: 8px; background: var(--surface-2); font-size: 13px; }
+.eu-lev { padding: 10px 0; border-top: 1px solid var(--grid); }
