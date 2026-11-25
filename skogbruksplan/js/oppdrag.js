@@ -1,6 +1,7 @@
 // Oppdrag: ett eller flere planlagte tiltak samlet til en bestilling til en utfører (entreprenør, tømmerkjøper,
 // planteleverandør …). Hver tiltakstype har sin egen oppdragstype med egne felt og egen sjekkliste, bygd på
 // Norsk PEFC Skogstandard (kravpunktnumrene følger KRAVPUNKTER i pefc.js) og vanlig praksis i skogbruket. Ingen DOM – kan testes i Node.
+import { frikoble } from './eudr.js';
 
 // felt: { id, navn, type: 'tekst' | 'tall' | 'valg' | 'dato', valg?, enhet?, standard? }
 // sjekk: { id, tekst, pefc? } – pefc er kravpunktnummer i Norsk PEFC Skogstandard.
@@ -13,6 +14,7 @@ const HOGST_FELLES_SJEKK = [
   { id: 'friluft', tekst: 'Stier, løyper og friluftsinteresser er vurdert, og stier ryddes etter drift', pefc: 6 },
   { id: 'sha', tekst: 'Sikkerhet, helse og arbeidsmiljø (SHA) er avklart. Varsling ved arbeid nær vei og strømlinjer', pefc: 2 },
   { id: 'avtale', tekst: 'Skriftlig avtale om pris, sortiment, levering og oppgjør er inngått' },
+  { id: 'eudr', tekst: 'EUDR: tømmerkjøperen har fått geolokasjon og bekreftelse på at tømmeret er avskogingsfritt og lovlig (der kjøperen krever det)' },
 ];
 const KULTUR_FELLES_SJEKK = [
   { id: 'mis', tekst: 'Nøkkelbiotoper og miljøfigurer er kjent for utfører og holdes utenfor', pefc: 22 },
@@ -163,6 +165,7 @@ export function stegFor(o) {
     hogst && { id: 'maskin', tekst: 'Send filsett til hogstmaskinen', hjelp: 'StanForD-filer med kart, bestand og hensyn til maskinen.', fane: 'maskin', ferdig: !!(o.stanford?.eksportert?.length || o.stanford?.importer?.length), valgfri: true },
     { id: 'sjekk', tekst: `Gå gjennom sjekklisten (${n} av ${sjekk.length})`, hjelp: 'PEFC-krav og praktiske punkter før og under arbeidet.', fane: 'sjekkliste', ferdig: sjekk.length > 0 && n === sjekk.length },
     { id: 'utfort', tekst: 'Marker oppdraget som utført', hjelp: 'Tiltakene i planen merkes som utført.', fane: 'oversikt', ferdig: avsluttet },
+    hogst && { id: 'eudr', tekst: 'Dokumenter tømmeret for EUDR', hjelp: 'Leveranse med geolokasjon og informasjon til tømmerkjøperen. Lages automatisk når oppdraget er utført.', fane: 'eudr', ferdig: !!o.eudr?.leveranseId, valgfri: true },
   ].filter(Boolean);
   const neste = steg.find((x) => !x.ferdig && !x.valgfri) || steg.find((x) => !x.ferdig);
   if (neste && !avsluttet) neste.neste = true;
@@ -248,6 +251,7 @@ export function fjernLinje(S, o, tiltakId) {
 // Sletter oppdraget og frigjør tiltakene.
 export function slettOppdrag(S, o) {
   for (const { tiltak } of linjer(S, o)) if (tiltak.oppdragId === o.id) delete tiltak.oppdragId;
+  frikoble(S, o); // EUDR-leveransen blir liggende (skal oppbevares i fem år)
   S.oppdrag = (S.oppdrag || []).filter((x) => x !== o);
 }
 

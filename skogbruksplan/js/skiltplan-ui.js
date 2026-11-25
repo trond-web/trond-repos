@@ -53,8 +53,13 @@ export function lagSkiltplanUi({ hentPlan, endret, melding, visLag }) {
       </div></div>`;
   }
 
-  function kart(o, { zoom = false } = {}) { vist = o?.skiltplan ? o.id : null; visLag(o?.skiltplan ? { skilt: o.skiltplan.skilt, situasjoner: o.skiltplan.situasjoner } : null, { zoom }); }
-  function lukk() { if (vist) { vist = null; visLag(null); } }
+  let vistNokkel = null; let vistRef = null;
+  function kart(o, { zoom = false } = {}) {
+    const nokkel = o?.skiltplan ? `${o.id}|${o.skiltplan.status}|${(o.skiltplan.skilt || []).length}` : null;
+    if (!zoom && nokkel && nokkel === vistNokkel && vistRef === o.skiltplan) return; vistRef = o?.skiltplan || null;
+    vist = o?.skiltplan ? o.id : null; vistNokkel = vist ? nokkel : null; visLag(o?.skiltplan ? { skilt: o.skiltplan.skilt, situasjoner: o.skiltplan.situasjoner } : null, { zoom });
+  }
+  function lukk() { if (vist) { vist = null; vistNokkel = null; visLag(null); } }
 
   async function lag(o, tegn) {
     if (henter) return; henter = o.id; tegn();

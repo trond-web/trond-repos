@@ -63,8 +63,13 @@ export function lagDriftsvegUi({ hentPlan, endret, melding, okonomi, visLag }) {
     for (const h of hindre.get(o.id) || []) f.push({ type: 'Feature', geometry: h.geometri, properties: { lag: h.lag } });
     return { type: 'FeatureCollection', features: f };
   }
-  function kart(o, { zoom = false } = {}) { const gj = o?.driftsveg ? geojson(o) : null; vist = gj ? o.id : null; visLag(gj, { zoom }); }
-  function lukk() { if (vist) { vist = null; visLag(null); } }
+  let vistNokkel = null; let vistRef = null;
+  function kart(o, { zoom = false } = {}) {
+    const nokkel = o?.driftsveg ? `${o.id}|${o.driftsveg.status}` : null;
+    if (!zoom && nokkel && nokkel === vistNokkel && vistRef === o.driftsveg) return; vistRef = o?.driftsveg || null;
+    const gj = o?.driftsveg ? geojson(o) : null; vist = gj ? o.id : null; vistNokkel = gj ? nokkel : null; visLag(gj, { zoom });
+  }
+  function lukk() { if (vist) { vist = null; vistNokkel = null; visLag(null); } }
 
   async function hentGrunnlag(o, framdrift) {
     const plan = S(); const ls = linjer(plan, o).filter((l) => l.tiltak.status !== 'utfort');

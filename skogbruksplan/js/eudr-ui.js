@@ -17,13 +17,28 @@ function skrivUt(tittel, kropp, melding) {
   w.document.close();
 }
 
-export function initEudr({ hentPlan, endret, melding, nyId, iAar = new Date().getFullYear() }) {
+const filnavnFor = (S, x) => `eudr-${(S.eiendom?.navn || 'eiendom').toLowerCase().replace(/[^a-z0-9æøå]+/g, '-').replace(/^-+|-+$/g, '')}-${x}.geojson`;
+// GeoJSON for én leveranse (bestandene i den).
+export function lastNedLeveranseGeo(S, l, navn = `leveranse-${l.dato}`) { lastNed(filnavnFor(S, navn), geojson(S, { bestandIder: l.bestandIder })); }
+// Utskrift med informasjonen kjøperen trenger (aktsomhet trinn 1).
+export function skrivLeveranseInfo(S, l, melding, iAar = new Date().getFullYear()) {
+  const i = leveranseInfo(S, l); const klar = samsvar(S, iAar).klar;
+  skrivUt('EUDR – informasjon til kjøper', `<h1>EUDR – informasjon om leveranse ${esc(l.dato)}</h1><p class="merk">${esc(STATUS.tekst)}</p>
+    <table><tr><th>Produkt</th><td>${esc(i.produkt)}</td></tr><tr><th>Treslag</th><td>${esc(i.treslag)}</td></tr><tr><th>Mengde</th><td>${esc(i.mengde)}${l.maalt ? ' (målt av hogstmaskinen)' : ''}</td></tr><tr><th>Produksjonsland</th><td>${esc(i.land)}</td></tr>
+    <tr><th>Leverandør</th><td>${esc(i.leverandor.navn)}<br>${esc(i.leverandor.adresse)}<br>${esc(i.leverandor.epost)}</td></tr><tr><th>Kjøper</th><td>${esc(i.kjoper?.navn || '')}<br>${esc(i.kjoper?.adresse || '')}<br>${esc(i.kjoper?.epost || '')}</td></tr>
+    ${l.oppdragNr ? `<tr><th>Oppdrag</th><td>${esc(l.oppdragNr)}</td></tr>` : ''}
+    <tr><th>Hogststed</th><td>${i.steder.map(esc).join('<br>')}<br>${i.geolokasjon.features.length} polygon(er) i vedlagt GeoJSON-fil</td></tr><tr><th>Erklærings-/referansenummer</th><td>${esc(i.referanse || '–')}</td></tr>
+    <tr><th>Avskogingsfritt og lovlig</th><td>${klar ? 'Skogen er forynget etter hogst og ikke gjort om til annen arealbruk etter 31.12.2020. Hogsten er gjort i samsvar med skogbruksloven, forskrift om berekraftig skogbruk og naturmangfoldloven. Norge er lavrisikoland.' : '⚠ Ikke fullstendig dokumentert – sjekklisten i SkogIQ.ai har punkter som ikke er bekreftet eller har avvik.'}</td></tr></table>`, melding);
+}
+
+export function initEudr({ hentPlan, endret, melding, nyId, iAar = new Date().getFullYear(), apneOppdrag = () => {} }) {
   const E = () => { const S = hentPlan(); if (!S.eudr) S.eudr = { rolle: 'fullmakt', virksomhet: {}, sjekkliste: {}, leveranser: [], sortimenter: ['4403'] }; return S.eudr; };
   const lagre = () => { endret({ kart: false }); tegn(); };
 
   function tegn() {
     const el = $('#eudrInnhold'); if (!el) return;
     const S = hentPlan(); const e = E(); const s = samsvar(S, iAar); const v = e.virksomhet || {}; const fe = forenkletErklaering(S, iAar); const forslag = foreslaLeveranser(S);
+    const opp = (l) => l.fraOppdrag && (S.oppdrag || []).find((o) => o.id === l.fraOppdrag);
     const felt = (f, navn, hint = '', type = 'text') => `<label>${navn} <input type="${type}" data-eu-v="${f}" value="${esc(v[f] ?? '')}" placeholder="${esc(hint)}"></label>`;
     el.innerHTML = `
       <div class="kort eu-status"><h3>⚠️ Usikkert om og når EUDR blir innført i Norge</h3><p>${esc(STATUS.tekst)}</p>
@@ -56,6 +71,7 @@ export function initEudr({ hentPlan, endret, melding, nyId, iAar = new Date().ge
       </div>
       <div class="kort"><div class="detalj-topp"><h3>Leveranser</h3><button type="button" class="knapp liten" data-eu="ny-lev">+ Leveranse</button></div>
         <p class="hint">Hva du har solgt, til hvem og fra hvilke bestand. Kjøperen trenger informasjonen og erklærings- eller referansenummeret. Dokumentasjonen skal oppbevares i minst fem år.</p>
+        <p class="hint">🪓 Hogst- og tynningsoppdrag blir leveranser automatisk når de markeres som utført – med bestand, tømmerkjøper og mengde (målt av hogstmaskinen når produksjonsfilene er lest inn).</p>
         ${forslag.length ? `<div class="eu-forslag">${forslag.map((f, i) => `<div><span>${esc(f.tekst)}</span><button type="button" class="knapp liten" data-eu-forslag="${i}">Legg til</button></div>`).join('')}</div>` : ''}
         ${(e.leveranser || []).map((l) => `<div class="eu-lev" data-eu-lev="${l.id}"><div class="skjema to-kol">
             <label>Dato <input type="date" data-eu-l="dato" value="${esc(l.dato)}"></label>
@@ -66,15 +82,15 @@ export function initEudr({ hentPlan, endret, melding, nyId, iAar = new Date().ge
             <label>Kjøperens adresse <input data-eu-k="adresse" value="${esc(l.kjoper?.adresse || '')}"></label>
             <label>Kjøperens e-post <input type="email" data-eu-k="epost" value="${esc(l.kjoper?.epost || '')}"></label>
             <label>Erklærings-/referansenummer <input data-eu-l="referanse" value="${esc(l.referanse || '')}" placeholder="${esc(e.erklaeringsnummer || '')}"></label></div>
-          <div class="hint">Bestand: ${esc((S.bestand || []).filter((b) => l.bestandIder.includes(b.id)).map((b) => b.nr).join(', ') || 'ingen valgt')}</div>
-          <div class="knapperad"><button type="button" class="knapp liten" data-eu-l-h="info">Informasjon til kjøper</button><button type="button" class="knapp liten" data-eu-l-h="geo">GeoJSON</button><button type="button" class="knapp liten fare" data-eu-l-h="slett">Slett</button></div></div>`).join('') || '<p class="hint">Ingen leveranser registrert ennå.</p>'}
+          <div class="hint">Bestand: ${esc((S.bestand || []).filter((b) => l.bestandIder.includes(b.id)).map((b) => b.nr).join(', ') || 'ingen valgt')}${l.maalt ? ' · mengde målt av hogstmaskinen' : ''}</div>
+          <div class="knapperad">${opp(l) ? `<button type="button" class="knapp liten" data-eu-l-h="oppdrag">🪓 Oppdrag ${esc(opp(l).nr)}</button>` : l.oppdragNr ? `<span class="hint">Fra oppdrag ${esc(l.oppdragNr)} (slettet)</span>` : ''}<button type="button" class="knapp liten" data-eu-l-h="info">Informasjon til kjøper</button><button type="button" class="knapp liten" data-eu-l-h="geo">GeoJSON</button><button type="button" class="knapp liten fare" data-eu-l-h="slett">Slett</button></div></div>`).join('') || '<p class="hint">Ingen leveranser registrert ennå.</p>'}
       </div>`;
   }
 
   document.addEventListener('click', (ev) => {
     const root = ev.target.closest?.('#eudrInnhold'); if (!root) return;
     const S = hentPlan(); const e = E(); const k = ev.target.closest('[data-eu]');
-    const filnavn = (x) => `eudr-${(S.eiendom?.navn || 'eiendom').toLowerCase().replace(/[^a-z0-9æøå]+/g, '-').replace(/^-+|-+$/g, '')}-${x}.geojson`;
+    const filnavn = (x) => filnavnFor(S, x);
     if (k?.dataset.eu === 'geo-eiendom') { const g = geojson(S); if (!g.features.length) { melding('Eiendommen mangler grense i kartet.'); return; } lastNed(filnavn('eiendom'), g); }
     if (k?.dataset.eu === 'geo-hogst') { const ider = [...new Set((S.bestand || []).filter((b) => (b.tiltak || []).some((t) => ['sluttavvirkning', 'tynning', 'lukkethogst'].includes(t.type) && Number(t.aar) > 2020)).map((b) => b.id))]; if (!ider.length) { melding('Ingen hogst etter 2020 er registrert i planen.'); return; } lastNed(filnavn('hogst'), geojson(S, { bestandIder: ider })); }
     if (k?.dataset.eu === 'skriv-erklaering') {
@@ -91,14 +107,10 @@ export function initEudr({ hentPlan, endret, melding, nyId, iAar = new Date().ge
     const lh = ev.target.closest('[data-eu-l-h]');
     if (lh) {
       const l = e.leveranser.find((x) => x.id === lh.closest('[data-eu-lev]').dataset.euLev); if (!l) return;
-      if (lh.dataset.euLH === 'slett') { if (confirm('Slette leveransen? Dokumentasjonen skal normalt oppbevares i fem år.')) { e.leveranser = e.leveranser.filter((x) => x !== l); lagre(); } return; }
-      if (lh.dataset.euLH === 'geo') { lastNed(filnavn(`leveranse-${l.dato}`), geojson(S, { bestandIder: l.bestandIder })); return; }
-      const i = leveranseInfo(S, l);
-      skrivUt('EUDR – informasjon til kjøper', `<h1>EUDR – informasjon om leveranse ${esc(l.dato)}</h1><p class="merk">${esc(STATUS.tekst)}</p>
-        <table><tr><th>Produkt</th><td>${esc(i.produkt)}</td></tr><tr><th>Treslag</th><td>${esc(i.treslag)}</td></tr><tr><th>Mengde</th><td>${esc(i.mengde)}</td></tr><tr><th>Produksjonsland</th><td>${esc(i.land)}</td></tr>
-        <tr><th>Leverandør</th><td>${esc(i.leverandor.navn)}<br>${esc(i.leverandor.adresse)}<br>${esc(i.leverandor.epost)}</td></tr><tr><th>Kjøper</th><td>${esc(i.kjoper?.navn || '')}<br>${esc(i.kjoper?.adresse || '')}<br>${esc(i.kjoper?.epost || '')}</td></tr>
-        <tr><th>Hogststed</th><td>${i.steder.map(esc).join('<br>')}<br>${i.geolokasjon.features.length} polygon(er) i vedlagt GeoJSON-fil</td></tr><tr><th>Erklærings-/referansenummer</th><td>${esc(i.referanse || '–')}</td></tr>
-        <tr><th>Avskogingsfritt og lovlig</th><td>${samsvar(S, iAar).klar ? 'Skogen er forynget etter hogst og ikke gjort om til annen arealbruk etter 31.12.2020. Hogsten er gjort i samsvar med skogbruksloven, forskrift om berekraftig skogbruk og naturmangfoldloven. Norge er lavrisikoland.' : '⚠ Ikke fullstendig dokumentert – sjekklisten i SkogIQ.ai har punkter som ikke er bekreftet eller har avvik.'}</td></tr></table>`, melding);
+      if (lh.dataset.euLH === 'slett') { if (confirm('Slette leveransen? Dokumentasjonen skal normalt oppbevares i fem år.')) { e.leveranser = e.leveranser.filter((x) => x !== l); for (const o of S.oppdrag || []) if (o.eudr?.leveranseId === l.id) delete o.eudr; lagre(); } return; }
+      if (lh.dataset.euLH === 'geo') { lastNedLeveranseGeo(S, l); return; }
+      if (lh.dataset.euLH === 'oppdrag') { apneOppdrag(l.fraOppdrag, 'eudr'); return; }
+      skrivLeveranseInfo(S, l, melding, iAar);
     }
   });
   document.addEventListener('change', (ev) => {
@@ -110,7 +122,7 @@ export function initEudr({ hentPlan, endret, melding, nyId, iAar = new Date().ge
     else if (t.dataset.euHs) { const s = new Set(e.sortimenter || ['4403']); if (t.checked) s.add(t.dataset.euHs); else s.delete(t.dataset.euHs); e.sortimenter = [...s]; lagre(); }
     else if (t.dataset.euL || t.dataset.euK) {
       const l = e.leveranser.find((x) => x.id === t.closest('[data-eu-lev]').dataset.euLev); if (!l) return;
-      if (t.dataset.euK) l.kjoper = { ...(l.kjoper || {}), [t.dataset.euK]: t.value.trim() }; else l[t.dataset.euL] = t.dataset.euL === 'm3' ? (t.value === '' ? null : Number(t.value)) : t.value;
+      if (t.dataset.euK) l.kjoper = { ...(l.kjoper || {}), [t.dataset.euK]: t.value.trim() }; else { l[t.dataset.euL] = t.dataset.euL === 'm3' ? (t.value === '' ? null : Number(t.value)) : t.value; if (t.dataset.euL === 'm3') { l.manuellM3 = t.value !== ''; l.maalt = false; } }
       lagre();
     }
   });

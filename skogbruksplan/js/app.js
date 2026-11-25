@@ -478,10 +478,16 @@ function tegnBestandKart(zoom = false) {
   if (zoom) zoomTilAlle();
 }
 
+// Stil og etikett settes bare når de faktisk er endret – setContent på en etikett tvinger nettleseren til å
+// beregne layout på nytt, og med mange bestand ga det merkbar heng ved hvert klikk.
+const sistStil = new WeakMap(); const sistEtikett = new WeakMap();
 function oppdaterStiler() {
   tegnMis(true);
   terrengCache = $('#fargeEtter').value === 'terreng' && veiVisning ? veiVisning.terrengtransport() : null; skjotselCache = null;
-  for (const b of S.bestand) { lagPerBestand.get(b.id)?.setStyle(stilFor(b)); etikettPerBestand.get(b.id)?.setContent(etikettHtml(b)); }
+  for (const b of S.bestand) {
+    const lag = lagPerBestand.get(b.id); if (lag) { const st = stilFor(b); const k = JSON.stringify(st); if (sistStil.get(lag) !== k) { lag.setStyle(st); sistStil.set(lag, k); } }
+    const et = etikettPerBestand.get(b.id); if (et) { const h = etikettHtml(b); if (sistEtikett.get(et) !== h) { et.setContent(h); sistEtikett.set(et, h); } }
+  }
   tegnLegend();
 }
 
@@ -2260,7 +2266,9 @@ function tegnEiendom() {
 }
 
 // ---------------------------------------------------------------- oppdatering
-function endret({ kart: kartEndret = false, zoom = false } = {}) {
+function endret({ kart: kartEndret = false, zoom = false, bare = null } = {}) {
+  // Bare oppdragsdata (felt, sjekkliste, utfører): lagre uten å tegne resten av appen på nytt.
+  if (bare === 'oppdrag') { lagreSnart(); if (!$('#fane-eudr').hidden) eudrVisning?.tegn(); return; }
   frResultat = null;
   for (const b of S.bestand) for (const t of b.tiltak || []) if (!t.id) t.id = nyId('t'); // eldre importerte tiltak uten id
   lagreSnart();
@@ -2829,7 +2837,7 @@ function kobleHendelser() {
   kslVisning = initKsl({ hentPlan: () => S, endret, melding, nyId, iAar: IAAR, visFane });
   klimaVisning = initKlima({ hentPlan: () => S, endret, iAar: IAAR });
   tilskuddVisning = initTilskudd({ hentPlan: () => S, endret, iAar: IAAR });
-  eudrVisning = initEudr({ hentPlan: () => S, endret, melding, nyId, iAar: IAAR });
+  eudrVisning = initEudr({ hentPlan: () => S, endret, melding, nyId, iAar: IAAR, apneOppdrag: (id, fane) => { if (!(S.oppdrag || []).some((o) => o.id === id)) { melding('Oppdraget finnes ikke lenger.'); return; } visFane('tiltak'); visTiltakVisning('oppdrag'); oppdragVisning?.apne(id, fane); } });
   karbonVisning = initKarbon({
     hentPlan: () => S, endret, melding, iAar: IAAR, visFane,
     uthev: (ider) => { uthevet = new Set(ider); oppdaterStiler(); },
@@ -2878,6 +2886,7 @@ function kobleHendelser() {
     },
     startValg: (o) => { visTiltakVisning('plan'); settValgModus(true, o); },
     visKartlag: visStanfordLag, visDriftsveg: visDriftsvegLag, visSkilt: visSkiltLag, ajourforing: ajourVisning,
+    nyId, iAar: IAAR, apneEudr: () => visFane('eudr'),
   });
   $('#tiltakVisning').addEventListener('click', (e) => { const b = e.target.closest('[data-tv]'); if (b) visTiltakVisning(b.dataset.tv); });
   $('#velgTiltakBtn').addEventListener('click', () => settValgModus(!valgModus));
