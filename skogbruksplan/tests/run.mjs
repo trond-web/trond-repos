@@ -4279,7 +4279,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
   '1.8': '1b41be6f78760f90',
-  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1',
+  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
@@ -4349,6 +4349,36 @@ test('Personvern: godkjenning ved registrering og innlogging, innsyn, statistikk
   inn.lager.lagre({ ...inn.lager.hent('ola@x.no'), navn: 'sjef@x.no', epost: 'sjef@x.no' }); assert.equal(inn.slettMeg('sjef@x.no', 'granskog-1').status, 400);
 });
 
+test('Nettverk: rådgivere beskriver seg, velger synlighet, og skogeiere kan knytte seg til flere', async () => {
+  const { lagNettverk } = await import('../nettverk.js'); const A = await import('../auth.js'); const K = await import('../js/innlogging.js');
+  assert.deepEqual(Object.keys(K.RADGIVER_TYPER), A.RADGIVER_TYPER, 'samme rådgivertyper i klient og server');
+  const rg = (typer, synlig, kommuner = []) => ({ roller: ['radgiver'], radgiver: { typer, beskrivelse: 'Hjelper skogeiere med regnskap og skatt', synlig }, kommuner });
+  const B = { 'ola@x.no': { navn: 'ola@x.no', visning: 'Ola Skog', profil: { roller: ['skogeier'], kommuner: [{ nr: '3412', navn: 'Løten' }] } },
+    'regn@x.no': { navn: 'regn@x.no', visning: 'Rita Regnskap', profil: rg(['regnskap', 'skatt'], true) },
+    'skog@x.no': { navn: 'skog@x.no', visning: 'Sverre Skogrådgiver', profil: rg(['skogbruk'], true, [{ nr: '3412', navn: 'Løten' }]) },
+    'langt@x.no': { navn: 'langt@x.no', visning: 'Lars Langtvekk', profil: rg(['skogbruk'], true, [{ nr: '5001', navn: 'Trondheim' }]) },
+    'skjult@x.no': { navn: 'skjult@x.no', visning: 'Siri Skjult', profil: rg(['revisjon'], false) },
+    'gammel@x.no': { navn: 'gammel@x.no', visning: 'Gammel Rådgiver', profil: { roller: ['radgiver'] } } };
+  const n = lagNettverk({ brukere: { hent: (u) => B[String(u).toLowerCase()] || null, alle: () => Object.values(B) } });
+  assert.equal(n.statistikk().radgivere, 3, 'bare synlige rådgivere telles');
+  const sett = n.skogKommunerFor('ola@x.no');
+  const kat = n.aktorer('ola@x.no', { kommuner: sett, rolle: 'radgiver' }).map((x) => x.navn);
+  assert.deepEqual(kat, ['Rita Regnskap', 'Sverre Skogrådgiver'], 'hele landet + egen kommune; skjulte, andre kommuner og rådgivere uten opplysninger vises ikke');
+  const rita = n.aktorer('ola@x.no', { q: 'rita' })[0]; assert.deepEqual(rita.radgiver.typer, ['regnskap', 'skatt']); assert.match(rita.radgiver.beskrivelse, /regnskap/);
+  // Flere rådgivere for samme skogeier
+  const a = n.be('ola@x.no', { til: 'regn@x.no', rolle: 'radgiver' }); const b = n.be('ola@x.no', { til: 'skog@x.no', rolle: 'radgiver' });
+  assert.equal(a.status, 'foresporsel'); assert.equal(b.status, 'foresporsel');
+  n.svar('regn@x.no', a.kobling, 'godta'); n.svar('skog@x.no', b.kobling, 'godta');
+  assert.equal(n.oversikt('ola@x.no').koblinger.filter((k) => k.rolle === 'radgiver' && k.status === 'aktiv').length, 2);
+  // Skjult rådgiver: skogeieren kan ikke be om kobling, men rådgiveren kan invitere skogeieren.
+  assert.equal(n.be('ola@x.no', { til: 'skjult@x.no', rolle: 'radgiver' }).status, 403);
+  assert.equal(n.be('skjult@x.no', { til: 'ola@x.no', rolle: 'radgiver' }).status, 'foresporsel');
+  // Profilen: rådgiveropplysninger valideres, og eldre rådgivere uten dem må fylle inn.
+  assert.equal(A.radgiverMangler(B['gammel@x.no'].profil), true); assert.equal(A.radgiverMangler(B['regn@x.no'].profil), false); assert.equal(A.radgiverMangler({ roller: ['skogeier'] }), false);
+  assert.equal(K.radgiverMangler(B['gammel@x.no'].profil), true);
+  assert.deepEqual(A.rensRadgiver({ typer: ['regnskap', 'tull', 'regnskap'], beskrivelse: ' x ', synlig: 'ja' }), { typer: ['regnskap'], beskrivelse: 'x', synlig: false });
+});
+
 test('Nettverk: statistikk, katalog uten e-post, koblinger begge veier, tilgang, chat og uleste', async () => {
   const { lagNettverk, nettverkApi } = await import('../nettverk.js');
   const B = { 'ola@x.no': { navn: 'ola@x.no', visning: 'Ola Skog', epost: 'ola@x.no', profil: { roller: ['skogeier'], kommune: 'Løten' } },
@@ -4358,7 +4388,7 @@ test('Nettverk: statistikk, katalog uten e-post, koblinger begge veier, tilgang,
     'off@x.no': { navn: 'off@x.no', visning: 'Kommunen', profil: { roller: ['offentlig'] } },
     'sperret@x.no': { navn: 'sperret@x.no', visning: 'Sperret', sperret: true, profil: { roller: ['innkjoper'] } } };
   let tid = 1e12; const n = lagNettverk({ brukere: { hent: (u) => B[String(u).toLowerCase()] || null, alle: () => Object.values(B) }, naa: () => tid });
-  assert.deepEqual(n.statistikk(), { skogeiere: 2, innkjopere: 2, entreprenorer: 1 }, 'sperrede brukere telles ikke');
+  assert.deepEqual(n.statistikk(), { skogeiere: 2, innkjopere: 2, entreprenorer: 1, radgivere: 0 }, 'sperrede brukere telles ikke');
   const kat = n.aktorer('ola@x.no'); assert.deepEqual(kat.map((x) => x.navn), ['Kari Kjøper', 'Per Entreprenør'], 'sortert på navn, sperrede er skjult'); assert.ok(!JSON.stringify(kat).includes('epost'), 'katalogen viser ikke e-post');
   assert.equal(n.aktorer('ola@x.no', { q: 'elverum' }).length, 1); assert.equal(n.aktorer('ola@x.no', { rolle: 'entreprenor' }).length, 1);
   // Skogeier ber om kobling til innkjøper; bare innkjøperen kan godta.

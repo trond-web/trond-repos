@@ -140,6 +140,8 @@ export const KAPITLER = [
       ${steg(['Øverst ser du hvor mange innkjøpere og entreprenører som er i SkogIQ.ai.', 'Søk etter navn, firma eller kommune under <b>Finn innkjøpere og entreprenører</b>, og trykk <b>＋ Innkjøper</b> eller <b>＋ Entreprenør</b>.', 'Når de godtar, står de under <b>Mine innkjøpere</b> og <b>Mine entreprenører</b>. Trykk <b>💬 Chat</b> for å skrive.'])}
       <h4>Som innkjøper eller entreprenør</h4>
       ${steg(['Skogeiere som ber om kobling, ser du under <b>Forespørsler til deg</b> – trykk <b>Godta</b>.', 'Du kan også invitere en skogeier med e-postadressen vedkommende bruker i SkogIQ.ai.', 'Skogeierne dine står under <b>Mine skogeiere</b>, med chat.'])}
+      <h4>Rådgivere</h4>
+      <p>Rådgivere (skogbruk, landbruk, regnskap, revisjon, skatt, juss, bank, forsikring) beskriver i Min profil hva slags rådgiver de er, og velger om skogeiere og gårdbrukere kan finne dem og be om kobling. En skogeier kan knytte seg til flere rådgivere – de står under <b>Mine rådgivere</b>, med chat. En skjult rådgiver inviterer kundene sine selv med e-post. Rådgivere uten kommuner vises i hele landet.</p>
       <h4>Chat</h4>
       <p><kbd>Enter</kbd> sender, <kbd>Shift</kbd> + <kbd>Enter</kbd> gir ny linje. Nye meldinger vises som et tall på fanen Nettverk og som et varsel. «Lest» vises når mottakeren har sett meldingen.</p>
       ${tips('Rollene dine (skogeier, innkjøper, entreprenør) bestemmer hva du ser. Endre dem i Min profil.')}

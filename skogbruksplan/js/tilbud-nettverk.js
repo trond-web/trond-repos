@@ -20,7 +20,7 @@ export async function hentNettverksmottakere({ hent = (u, o) => fetch(u, o), mak
   if (r.status === 401 || r.status === 503) return (cache = []);
   if (!r.ok) throw new Error(`Fikk ikke hentet nettverket (${r.status})`);
   const d = await r.json();
-  cache = (d.koblinger || []).filter((k) => k.status === 'aktiv' && k.jegEr === 'skogeier' && k.motpart?.bruker)
+  cache = (d.koblinger || []).filter((k) => k.status === 'aktiv' && k.jegEr === 'skogeier' && k.motpart?.bruker && (k.rolle === 'innkjoper' || k.rolle === 'entreprenor'))
     .map((k) => ({ kobling: k.id, bruker: k.motpart.bruker, navn: k.motpart.navn, foretak: k.motpart.foretak || '', rolle: k.rolle, bilde: k.motpart.bilde || null, kommuner: k.motpart.kommuner || [] }));
   cacheTid = Date.now(); return cache;
 }

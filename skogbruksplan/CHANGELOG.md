@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.20.0 – 📊 Rådgivere i nettverket (2026-11-25)
+
+*Nytt.* Rådgivere beskriver nå i Min profil hva slags rådgiver de er – skogbruk, landbruk, regnskap, revisjon, skatt og økonomi, juss, bank eller forsikring – med en kort tekst. De velger selv om skogeiere og gårdbrukere kan finne dem og be om kobling under Nettverk, eller om de vil være skjult og invitere kundene sine selv. En skogeier kan knytte seg til flere rådgivere, som står under «Mine rådgivere» med chat. Rådgivere uten kommuner vises i hele landet. Rådgivere som var registrert fra før, blir bedt om å fylle inn opplysningene ved neste innlogging. Personvernerklæringen er oppdatert (versjon 1.15).
+
 ## 2.19.0 – 📈 Nye planer skrives fram til i år – og du får vite det (2026-11-25)
 
 *Forbedret.* Alder og volum i en ny plan gjelder nå alltid for i år. Planer fra gnr/bnr: SR16 er målt for flere år siden, og alder og volum skrives fram med vekstmodellen, også der bare volumet er kjent. Sammendraget sier nå tydelig hvor mange bestand som er skrevet fram og fra hvilket år, og volumet vises som stående volum i år. Import av SOSI, GeoJSON og CSV: takståret leses fra filen (TAKSTAAR, REGAAR o.l.), eller du fyller det inn i det nye feltet «Dataene gjelder år». Før ble importerte data alltid regnet som årets. Sikkerhetskopier skrives også fram. Hvert bestand får en merknad om framskrivingen.

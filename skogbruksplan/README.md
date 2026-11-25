@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.19.0** (2026-11-25) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.20.0** (2026-11-25) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -1254,7 +1254,15 @@ Under **Min profil** kan brukeren velge et bilde («📷 Last opp bilde», på m
 
 ## Nettverk og chat (💬 Nettverk, `nettverk.js` og `js/nettverk-ui.js`)
 
-Skogeiere kobler seg til innkjøpere og entreprenører, og partene chatter direkte i SkogIQ.ai.
+Skogeiere kobler seg til innkjøpere, entreprenører og rådgivere, og partene chatter direkte i SkogIQ.ai.
+
+**Rådgivere** (`radgiver`):
+- **Profil:** i Min profil oppgir rådgiveren én eller flere rådgivertyper (`RADGIVER_TYPER` i `auth.js` og `js/innlogging.js`: skogbruk, landbruk, regnskap, revisjon, skatt og økonomi, juss, bank og finansiering, forsikring, annet). Rådgiveren skriver også en kort beskrivelse av hva hen hjelper skogeiere og gårdbrukere med.
+- **Synlighet:** rådgiveren velger selv om skogeiere og gårdbrukere kan finne hen og be om kobling (`profil.radgiver.synlig`). En skjult rådgiver vises ikke i katalogen, og skogeiere kan ikke be om kobling (403). Rådgiveren kan fortsatt invitere kundene sine med e-post.
+- **Flere rådgivere:** en skogeier kan knytte seg til flere rådgivere, som står under «Mine rådgivere».
+- **Kommuner** er valgfritt. Uten kommuner vises rådgiveren i hele landet, også for skogeiere uten kjente kommuner.
+- **Rådgivere som var registrert fra før,** og nye rådgivere, må fylle inn opplysningene i en dialog ved innlogging (`sporRadgiver`, `radgiverMangler`). Dialogen kan ikke lukkes uten å lagre eller logge ut.
+- **Tilbudsforespørsler** går bare til innkjøpere og entreprenører, ikke til rådgivere.
 
 **Velkomst ved innlogging:**
 - Skogeiere ser hvor mange innkjøpere og entreprenører som finnes i løsningen, og hvor mange de er koblet til.

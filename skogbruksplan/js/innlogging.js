@@ -42,7 +42,7 @@ if (typeof window !== 'undefined' && !window.__skogiqInnlogging && !/logginn\.ht
       const r = await opprinnelig(`${API}/api/meg`, { headers: t ? { Authorization: `Bearer ${t}` } : {}, credentials: 'same-origin', cache: 'no-store' });
       if (r.status === 401) { ls.del(LS_OKT); tilInnlogging(); return; }
       const d = await r.json().catch(() => ({})); if (d.bruker) ls.set(LS_SETT, '1');
-      if (d.aktiv && d.bruker) { meg = d; visBruker(); startBruk(opprinnelig); window.dispatchEvent(new CustomEvent('skogiq-innlogget', { detail: d })); const spor = () => sporVilkar().then(() => { sporRoller(); sporKommuner(); }); window.addEventListener('skogiq-profil', () => sporKommuner()); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', spor, { once: true }); else spor(); }
+      if (d.aktiv && d.bruker) { meg = d; visBruker(); startBruk(opprinnelig); window.dispatchEvent(new CustomEvent('skogiq-innlogget', { detail: d })); const spor = () => sporVilkar().then(() => { sporRoller(); sporRadgiver(); sporKommuner(); }); window.addEventListener('skogiq-profil', () => { sporRadgiver(); sporKommuner(); }); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', spor, { once: true }); else spor(); }
     } catch {
       // Uten nett: slipp inn en enhet som har vært innlogget før.
       if (erPages && !ls.get(LS_SETT)) { tilInnlogging(); return; }
@@ -81,6 +81,65 @@ export const ROLLER = { skogeier: 'Skogeier/gårdbruker', bonde: 'Bonde / gårdb
 // Brukerroller (én eller flere, obligatorisk). Samme nøkler som BRUKERROLLER i auth.js.
 export const BRUKERROLLER = { skogeier: { navn: 'Skogeier/gårdbruker', ikon: '🌲', tekst: 'Eier eller driver skog, jord eller husdyr' }, entreprenor: { navn: 'Entreprenør', ikon: '🚜', tekst: 'Hogst, skogkultur, vei' }, innkjoper: { navn: 'Innkjøper', ikon: '🪵', tekst: 'Kjøper tømmer' }, radgiver: { navn: 'Rådgiver / regnskapsfører', ikon: '📊', tekst: 'Skogfaglig rådgiver, regnskap, skatt' }, offentlig: { navn: 'Offentlig', ikon: '🏛', tekst: 'Kommune, statsforvalter, etat' } };
 // Forslag ut fra den eldre enkeltrollen i profilen.
+// Rådgivertyper (samme nøkler som RADGIVER_TYPER i auth.js).
+export const RADGIVER_TYPER = {
+  skogbruk: { navn: 'Skogbruksrådgiver', tekst: 'Skogbruksleder, skogkonsulent, takst' },
+  landbruk: { navn: 'Landbruksrådgiver', tekst: 'F.eks. NLR – plantekultur, husdyr, gjødsling' },
+  regnskap: { navn: 'Regnskapsfører', tekst: 'Regnskap, MVA og årsoppgjør' },
+  revisjon: { navn: 'Revisor', tekst: 'Revisjon og attestasjon' },
+  skatt: { navn: 'Skatt og økonomi', tekst: 'Skogfond, investering, generasjonsskifte' },
+  juridisk: { navn: 'Jurist / advokat', tekst: 'Kontrakter, odel, eiendom, arv' },
+  finans: { navn: 'Bank og finansiering', tekst: 'Lån, finansiering og verdivurdering' },
+  forsikring: { navn: 'Forsikring', tekst: 'Skog, bygninger og drift' },
+  annet: { navn: 'Annet', tekst: 'Beskriv under' },
+};
+// Mangler rådgiveren opplysningene? (Samme regel som radgiverMangler i auth.js.)
+export const radgiverMangler = (profil, roller = profil?.roller) => (roller || []).includes('radgiver') && !(profil?.radgiver?.typer?.length && profil.radgiver.beskrivelse && typeof profil.radgiver.synlig === 'boolean');
+// Skjemadelen for rådgivere: typer, beskrivelse og om skogeiere/gårdbrukere kan knytte seg til dem i Nettverk.
+const radgiverFelt = (rg = {}) => `<div data-rg style="display:grid;gap:8px">
+  <span style="font-size:13px">Hva slags rådgiver er du? <small style="color:#555">(én eller flere)</small></span>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${Object.entries(RADGIVER_TYPER).map(([k, r]) => `<label style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1.5px solid #cfd6d1;border-radius:12px;cursor:pointer;background:#fff;font-size:13.5px"><input type="checkbox" name="rgTyper" value="${k}" ${(rg.typer || []).includes(k) ? 'checked' : ''} style="width:17px;height:17px;margin-top:1px;accent-color:#1f6b4a;flex:none"><span style="display:grid;gap:1px"><b>${r.navn}</b><small style="color:#555;font-size:11.5px">${r.tekst}</small></span></label>`).join('')}</div>
+  <label style="display:grid;gap:3px;font-size:13px">Beskriv hva du hjelper skogeiere og gårdbrukere med <small style="color:#555">(vises i Nettverk)</small><textarea name="rgBeskrivelse" rows="3" maxlength="600" placeholder="F.eks. «Regnskapsfører for landbruk og skog i Innlandet. Skogfond, MVA og generasjonsskifte.»" style="padding:9px;border-radius:8px;border:1px solid #bbb;font:inherit;width:100%;box-sizing:border-box">${String(rg.beskrivelse ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]))}</textarea></label>
+  <fieldset style="border:1.5px solid #cfd6d1;border-radius:12px;padding:8px 12px;margin:0;display:grid;gap:6px;font-size:14px"><legend style="font-size:13px;padding:0 4px">Kan skogeiere og gårdbrukere knytte seg til deg under Nettverk?</legend>
+    <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="radio" name="rgSynlig" value="ja" ${rg.synlig === true ? 'checked' : ''} style="accent-color:#1f6b4a;margin-top:3px"><span><b>Ja</b> – jeg vises i katalogen, og skogeiere og gårdbrukere kan be om kobling <small style="color:#555;display:block">De ser navn, foretak, rådgivertype, beskrivelsen og kommunene dine – aldri e-post. Du godtar hver forespørsel selv.</small></span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="radio" name="rgSynlig" value="nei" ${rg.synlig === false ? 'checked' : ''} style="accent-color:#1f6b4a;margin-top:3px"><span><b>Nei</b> – jeg er skjult, og inviterer selv kundene mine med e-postadressen deres</span></label>
+  </fieldset></div>`;
+// Leser rådgiverfeltene i et skjema. Gir { radgiver } eller { feil }.
+const lesRadgiver = (rot) => {
+  const typer = [...rot.querySelectorAll('input[name="rgTyper"]:checked')].map((x) => x.value);
+  const beskrivelse = rot.querySelector('[name="rgBeskrivelse"]')?.value.trim() || ''; const s = rot.querySelector('input[name="rgSynlig"]:checked')?.value;
+  if (!typer.length) return { feil: 'Velg hva slags rådgiver du er.' };
+  if (beskrivelse.length < 10) return { feil: 'Beskriv kort hva du hjelper skogeiere og gårdbrukere med (minst 10 tegn).' };
+  if (!s) return { feil: 'Velg om skogeiere og gårdbrukere kan knytte seg til deg under Nettverk.' };
+  return { radgiver: { typer, beskrivelse, synlig: s === 'ja' } };
+};
+// Rådgivere som mangler opplysningene (bl.a. de som var registrert før de ble innført), må fylle dem inn ved innlogging.
+export function sporRadgiver() {
+  if (typeof document === 'undefined' || !meg?.bruker || !meg.registrering || !radgiverMangler(meg.profil, meg.roller)) return;
+  if (document.querySelector('.radgiver-dialog, .rolle-dialog, .vilkar-dialog')) return;
+  const f0 = brukFetch || window.fetch.bind(window);
+  const d = document.createElement('dialog'); d.className = 'radgiver-dialog';
+  d.style.cssText = 'border:0;border-radius:18px;padding:0;max-width:560px;width:calc(100% - 24px);max-height:calc(100% - 24px);font:15px/1.4 system-ui,sans-serif;color:#10241c;background:#fbfcfa;box-shadow:0 20px 60px rgba(0,0,0,.3)';
+  d.innerHTML = `<form method="dialog" style="display:grid;gap:12px;padding:20px">
+    <div><b style="font-size:19px">📊 Fortell hva slags rådgiver du er</b><p style="margin:4px 0 0;color:#43544b;font-size:14px">Hei ${rens(String(meg.navn || '').split(' ')[0] || '')}! Rådgivere kan nå vises i Nettverket, og skogeiere og gårdbrukere kan knytte seg til en eller flere rådgivere. Fyll inn opplysningene under – du kan endre dem senere i Min profil.</p></div>
+    ${radgiverFelt(meg.profil?.radgiver || {})}
+    <div data-f style="color:#b4302f;min-height:18px;font-size:13px"></div>
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center"><button type="button" data-logg-ut style="padding:9px 12px;border-radius:9px;border:0;background:none;color:#555;text-decoration:underline;cursor:pointer">Logg ut</button><button value="ok" style="padding:11px 18px;border-radius:10px;border:0;background:#1f6b4a;color:#fff;font-weight:700;cursor:pointer">Lagre</button></div>
+  </form>`;
+  document.body.appendChild(d);
+  d.addEventListener('cancel', (e) => e.preventDefault()); // obligatorisk for rådgivere
+  d.showModal();
+  d.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault(); const vis = (t) => { d.querySelector('[data-f]').textContent = t; };
+    const r0 = lesRadgiver(d); if (r0.feil) { vis(r0.feil); return; }
+    try {
+      const r = await f0(`${API}/api/konto/profil`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...autHode() }, credentials: 'same-origin', body: JSON.stringify({ profil: { navn: meg.navn || meg.bruker, radgiver: r0.radgiver } }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok) { vis(j.feil || 'Klarte ikke å lagre'); return; }
+      meg = { ...meg, profil: j.profil || { ...(meg.profil || {}), radgiver: r0.radgiver }, radgiverMangler: false };
+      d.close(); d.remove(); window.dispatchEvent(new CustomEvent('skogiq-profil', { detail: meg }));
+    } catch { vis('Ingen kontakt med serveren. Prøv igjen.'); }
+  });
+}
 const FRA_GAMMEL = { skogeier: 'skogeier', bonde: 'skogeier', entreprenor: 'entreprenor', radgiver: 'radgiver' };
 const rolleValg = (valgt, navn = 'roller') => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${Object.entries(BRUKERROLLER).map(([k, r]) => `<label style="display:flex;gap:8px;align-items:flex-start;padding:9px 10px;border:1.5px solid ${valgt.includes(k) ? '#1f6b4a' : '#cfd6d1'};border-radius:12px;cursor:pointer;background:${valgt.includes(k) ? '#e6f0ea' : '#fff'};font-size:14px" data-rolle-kort><input type="checkbox" name="${navn}" value="${k}" ${valgt.includes(k) ? 'checked' : ''} style="width:18px;height:18px;margin-top:2px;accent-color:#1f6b4a;flex:none"><span style="display:grid;gap:1px"><b>${r.ikon} ${r.navn}</b><small style="color:#555;font-size:11.5px">${r.tekst}</small></span></label>`).join('')}</div>`;
 const merkKort = (d) => d.addEventListener('change', (e) => { const l = e.target.closest('[data-rolle-kort]'); if (!l) return; const p = e.target.checked; l.style.borderColor = p ? '#1f6b4a' : '#cfd6d1'; l.style.background = p ? '#e6f0ea' : '#fff'; });
@@ -127,7 +186,7 @@ export async function lagreKommuner(kommuner) {
 }
 export function sporKommuner() {
   if (typeof document === 'undefined' || !meg?.bruker || !meg.registrering || !erAktor() || (meg.profil?.kommuner || []).length) return;
-  if (document.querySelector('.kommune-dialog, .rolle-dialog, .vilkar-dialog')) return; // tas etter de andre dialogene
+  if (document.querySelector('.kommune-dialog, .rolle-dialog, .vilkar-dialog, .radgiver-dialog')) return; // tas etter de andre dialogene
   const roller = (meg.roller || meg.profil?.roller || []).filter((r) => r === 'innkjoper' || r === 'entreprenor').map((r) => (r === 'innkjoper' ? 'innkjøper' : 'entreprenør')).join(' og ');
   const d = document.createElement('dialog'); d.className = 'kommune-dialog';
   d.style.cssText = 'border:0;border-radius:18px;padding:0;max-width:520px;width:calc(100% - 24px);font:15px/1.4 system-ui,sans-serif;color:#10241c;background:#fbfcfa;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:visible';
@@ -194,6 +253,7 @@ export async function minProfil() {
       ${inp('telefon', 'Telefon', 'tel', 'autocomplete="tel"')}
       <div></div>
       <div style="grid-column:1/-1;display:grid;gap:4px"><span style="font-size:13px">Roller <small style="color:#555">(minst én)</small></span>${rolleValg(p.roller || meg?.roller || [])}</div>
+      <div style="grid-column:1/-1" data-rg-plass ${(p.roller || meg?.roller || []).includes('radgiver') ? '' : 'hidden'}>${radgiverFelt(p.radgiver || {})}</div>
       <div style="grid-column:1/-1;display:grid;gap:4px"><span style="font-size:13px" data-kv-tittel></span><div data-kv-profil></div></div>
       ${inp('foretak', 'Gård / foretak', 'text', 'autocomplete="organization"')}${inp('orgnr', 'Organisasjonsnummer', 'text', 'inputmode="numeric"')}
       <div style="grid-column:1/-1">${inp('adresse', 'Adresse', 'text', 'autocomplete="street-address"')}</div>
@@ -225,8 +285,8 @@ export async function minProfil() {
   document.body.appendChild(d); merkKort(d); d.showModal(); fyllBilder(d);
   // Kommuner: påkrevd for innkjøpere og entreprenører (hvor de opererer), valgfritt for skogeiere (hvor de har skog).
   const kvVelger = lagKommunevelger(d.querySelector('[data-kv-profil]'), { valgt: p.kommuner || [] });
-  const kvTittel = () => { const r = [...d.querySelectorAll('input[name="roller"]:checked')].map((x) => x.value); const akt = r.includes('innkjoper') || r.includes('entreprenor'); d.querySelector('[data-kv-tittel]').innerHTML = akt ? 'Kommuner du opererer i <small style="color:#555">(minst én – skogeiere i disse kommunene finner deg i Nettverk)</small>' : 'Kommuner du har skog i <small style="color:#555">(valgfritt – kommunene til planene dine teller også)</small>'; };
-  kvTittel(); d.addEventListener('change', (e) => { if (e.target.name === 'roller') kvTittel(); });
+  const kvTittel = () => { const r = [...d.querySelectorAll('input[name="roller"]:checked')].map((x) => x.value); const akt = r.includes('innkjoper') || r.includes('entreprenor'); d.querySelector('[data-kv-tittel]').innerHTML = akt ? 'Kommuner du opererer i <small style="color:#555">(minst én – skogeiere i disse kommunene finner deg i Nettverk)</small>' : r.includes('radgiver') && !r.includes('skogeier') ? 'Kommuner du jobber i <small style="color:#555">(valgfritt – uten kommuner vises du for skogeiere og gårdbrukere i hele landet)</small>' : 'Kommuner du har skog i <small style="color:#555">(valgfritt – kommunene til planene dine teller også)</small>'; };
+  kvTittel(); d.addEventListener('change', (e) => { if (e.target.name === 'roller') { kvTittel(); d.querySelector('[data-rg-plass]').hidden = !d.querySelector('input[name="roller"][value="radgiver"]').checked; } });
   // Profilbilde: velg, beskjær og last opp med en gang (profilbilde-ui.js), eller fjern.
   const settAvatar = (id) => { const a = d.querySelector('[data-pb-avatar]'); a.removeAttribute('style'); a.classList.remove('med-bilde'); a.style.cssText = 'width:72px;height:72px;border-radius:50%;background:#1f6b4a;color:#fff;display:grid;place-items:center;font-weight:800;font-size:26px;flex:none'; delete a.dataset.bildeLastet; a.textContent = String(p.navn || meg?.bruker || '?').trim().charAt(0).toUpperCase(); if (id) a.dataset.bilde = id; else delete a.dataset.bilde; fyllBilder(d); meg = { ...meg, profil: { ...(meg.profil || {}), bilde: id || undefined } }; d.querySelector('[data-pb-fjern]').hidden = !id; d.querySelector('[data-pb-fil]').closest('label').firstChild.textContent = id ? '📷 Bytt bilde' : '📷 Last opp bilde'; visBruker(); window.dispatchEvent(new CustomEvent('skogiq-profil', { detail: meg })); };
   d.querySelector('[data-pb-fil]').addEventListener('change', async (e) => {
@@ -265,6 +325,7 @@ export async function minProfil() {
     if (!profil.roller.length) { vis('Velg minst én rolle.'); return; }
     profil.kommuner = kvVelger.verdi();
     if (profil.roller.some((r) => r === 'innkjoper' || r === 'entreprenor') && !profil.kommuner.length) { vis('Velg minst én kommune du opererer i.'); d.querySelector('[data-kv-sok]')?.focus(); return; }
+    if (profil.roller.includes('radgiver')) { const rg = lesRadgiver(d.querySelector('[data-rg-plass]')); if (rg.feil) { vis(rg.feil); d.querySelector('[data-rg-plass]').scrollIntoView({ block: 'center' }); return; } profil.radgiver = rg.radgiver; }
     const post = (sti, metode, kropp) => f0(`${API}${sti}`, { method: metode, headers: { 'Content-Type': 'application/json', ...autHode() }, credentials: 'same-origin', body: JSON.stringify(kropp) }).then(async (r) => ({ ok: r.ok, j: await r.json().catch(() => ({})) }), () => ({ ok: false, j: { feil: 'Ingen kontakt med serveren' } }));
     const pr = await post('/api/konto/profil', 'PUT', { profil });
     if (!pr.ok) { vis(pr.j.feil || 'Klarte ikke å lagre profilen'); return; }
