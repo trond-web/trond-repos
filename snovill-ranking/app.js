@@ -314,7 +314,8 @@ async function lastKommende() {
       visKommende();
     })
     .catch(() => {
-      $("#kommendehint").textContent = "Fant ingen påmeldingslister ennå.";
+      kommende.laster = null; // prøv igjen neste gang fanen åpnes
+      $("#kommendehint").textContent = "Klarte ikke å hente påmeldingene. Prøv igjen om litt.";
     });
   return kommende.laster;
 }

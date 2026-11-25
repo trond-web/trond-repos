@@ -74,6 +74,8 @@ jobs:
           cp -r nannestad-naering/. _site/nannestad-naering/
           # Snøvill-ranking: bare appen og rankingfilene publiseres, ikke innsamlingen og rådataene per løp
           cp snovill-ranking/index.html snovill-ranking/app.js snovill-ranking/style.css snovill-ranking/icon.svg snovill-ranking/icon-180.png _site/snovill-ranking/
+          # Versjonsnummer på kode og stil, så nettlesere ikke blander ny HTML med gammel app.js fra hurtigbufferen
+          sed -i "s#app.js\"#app.js?v=${GITHUB_SHA::8}\"#; s#style.css\"#style.css?v=${GITHUB_SHA::8}\"#" _site/snovill-ranking/index.html
           mkdir -p _site/snovill-ranking/data
           cp snovill-ranking/data/*.json _site/snovill-ranking/data/
           # Gammel adresse (/langlop-ranking/) sender videre til den nye
