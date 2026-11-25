@@ -3405,7 +3405,7 @@ test('Oppdrag: arbeidsflyt med neste steg, og brukerveiledningen dekker alle hje
   const OP = await import('../js/oppdrag.js'); const HJ = await import('../js/hjelp.js');
   const o = { type: 'sluttavvirkning', status: 'utkast', sjekk: {} };
   let st = OP.stegFor(o);
-  assert.deepEqual(st.map((x) => x.id), ['periode', 'driftsveg', 'skiltplan', 'utforer', 'bestilt', 'maskin', 'sjekk', 'utfort']);
+  assert.deepEqual(st.map((x) => x.id), ['periode', 'driftsveg', 'skiltplan', 'utforer', 'bestilt', 'maskin', 'sjekk', 'utfort', 'eudr']);
   assert.equal(st.find((x) => x.neste).id, 'periode');
   o.periode = { fra: '2027-01-10' }; st = OP.stegFor(o);
   assert.equal(st.find((x) => x.neste).id, 'skiltplan', 'valgfri driftsveg hoppes over når neste velges');
@@ -3413,7 +3413,7 @@ test('Oppdrag: arbeidsflyt med neste steg, og brukerveiledningen dekker alle hje
   assert.equal(st.find((x) => x.neste).id, 'sjekk'); assert.match(st.find((x) => x.id === 'sjekk').tekst, /0 av \d+/);
   for (const k of OP.typeFor('sluttavvirkning').sjekk) o.sjekk[k.id] = true; o.status = 'utfort'; st = OP.stegFor(o);
   assert.ok(!st.some((x) => x.neste), 'ferdig oppdrag har ikke neste steg');
-  const p = OP.stegFor({ type: 'planting', status: 'utkast' }); assert.ok(!p.some((x) => x.id === 'driftsveg' || x.id === 'maskin')); assert.ok(p.find((x) => x.id === 'skiltplan').valgfri);
+  const p = OP.stegFor({ type: 'planting', status: 'utkast' }); assert.ok(!p.some((x) => x.id === 'driftsveg' || x.id === 'maskin' || x.id === 'eudr')); assert.ok(p.find((x) => x.id === 'skiltplan').valgfri);
   // Hjelpelenker i kode og HTML peker til kapitler som finnes, og søket finner dem.
   const ider = new Set(HJ.KAPITLER.map((k) => k.id)); assert.equal(ider.size, HJ.KAPITLER.length);
   const filer = ['../index.html', '../js/app.js', '../js/oppdrag-ui.js', '../js/hjelp.js'].map((f) => readFileSync(new URL(f, import.meta.url), 'utf8')).join('\n');
@@ -4644,6 +4644,30 @@ test('Tilskudd: ordninger, beløp, region og frister tilpasset gården', async (
   S.drift = { skog: true, jord: true, husdyr: false, valgt: true }; assert.ok(!T.tilskuddsoversikt(S, 2026).liste.some((x) => x.id === 'beitelag'));
   const fr = T.kommendeFrister(o, new Date(2026, 10, 25)); assert.equal(fr[0].tekst.startsWith('Skogkultur'), true); assert.ok(fr.every((x) => x.dager >= 0));
   for (const ord of T.ORDNINGER) assert.match(ord.url, /^https:\/\//, ord.id);
+});
+
+test('EUDR: hogstoppdrag blir leveranse med bestand, kjøper og målt mengde', async () => {
+  const E = await import('../js/eudr.js'); const OP = await import('../js/oppdrag.js'); const { lagDemo } = await import('../js/demo.js');
+  const S = lagDemo(2026); let n = 0; const nyId = (p) => `${p}${++n}`;
+  const b = S.bestand.find((x) => x.geometri); const t = { id: 'th1', type: 'sluttavvirkning', aar: 2026 }; b.tiltak = [...(b.tiltak || []), t];
+  const { oppdrag: [o] } = OP.lagOppdrag(S, [{ bestand: b, tiltak: t }], { nyId, iAar: 2026 });
+  o.felt.kjoper = 'Viken Skog';
+  let v = E.oppdragVurdering(S, o, 2026); assert.equal(v.leveranse, null); assert.ok(v.punkter.some((x) => x.id === 'kjoper' && x.nivaa === 'ok'));
+  assert.ok(v.punkter.some((x) => x.id === 'geo' && x.nivaa === 'ok'));
+  o.status = 'utfort'; o.utfortDato = '2026-11-20';
+  assert.equal(E.foreslaLeveranser(S).filter((f) => f.fraOppdrag === o.id).length, 1, 'utført oppdrag foreslås');
+  let r = E.synkLeveranse(S, o, { nyId, anslagM3: 412.4 }); assert.equal(r.ny, true);
+  assert.deepEqual(r.leveranse.bestandIder, [b.id]); assert.equal(r.leveranse.m3, 412); assert.equal(r.leveranse.kjoper.navn, 'Viken Skog'); assert.equal(r.leveranse.dato, '2026-11-20');
+  assert.equal(o.eudr.leveranseId, r.leveranse.id); assert.ok(OP.stegFor(o).find((x) => x.id === 'eudr').ferdig);
+  assert.equal(E.foreslaLeveranser(S).filter((f) => f.fraOppdrag === o.id || f.fraTiltak === t.id).length, 0, 'ikke foreslått to ganger');
+  // Målt mengde fra produksjonsfilene går foran anslaget, og ny synk lager ikke ny leveranse.
+  o.stanford = { resultat: { m3: 455.6, treslag: { G: 400, F: 55.6, L: 0 } } }; r = E.synkLeveranse(S, o, { nyId, anslagM3: 412 });
+  assert.equal(r.ny, false); assert.equal(r.leveranse.m3, 456); assert.equal(r.leveranse.maalt, true); assert.equal(S.eudr.leveranser.length, 1);
+  // Sletter man oppdraget, blir leveransen liggende (oppbevares i fem år) med oppdragsnummeret.
+  OP.slettOppdrag(S, o); assert.equal(S.eudr.leveranser.length, 1); assert.equal(S.eudr.leveranser[0].fraOppdrag, undefined); assert.equal(S.eudr.leveranser[0].oppdragNr, o.nr);
+  // Omdisponert bestand gir avvik.
+  const { oppdrag: [o2] } = OP.lagOppdrag(S, [{ bestand: b, tiltak: { ...t, id: 'th2' } }].map((x) => { b.tiltak.push(x.tiltak); return x; }), { nyId, iAar: 2026 });
+  b.omdisponert = '2023'; assert.ok(E.oppdragVurdering(S, o2, 2026).avvik >= 1);
 });
 
 test('EUDR: geolokasjon med 6 desimaler, sjekk, forenklet erklæring og leveranser', async () => {

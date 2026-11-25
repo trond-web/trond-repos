@@ -11,14 +11,21 @@ import { fmt } from './charts.js';
 import { lagTilbudUi } from './tilbud-ui.js';
 import { STATUS as TILBUD_STATUS } from './tilbud.js';
 import { lagStanfordUi } from './stanford-ui.js';
+import { oppdragVurdering, synkLeveranse, STATUS as EU_STATUS } from './eudr.js';
+import { skrivLeveranseInfo, lastNedLeveranseGeo } from './eudr-ui.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const opsj = (liste, valgt) => liste.map(([v, t]) => `<option value="${esc(v)}" ${String(v) === String(valgt ?? '') ? 'selected' : ''}>${esc(t)}</option>`).join('');
 const kravNavn = (nr) => KRAVPUNKTER.find((k) => k.nr === nr)?.tittel || '';
 
-export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, visBestander, uthev, tiltakNavn, startValg, visKartlag, visDriftsveg = () => {}, visSkilt = () => {}, ajourforing = null }) {
+export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, visBestander, uthev, tiltakNavn, startValg, visKartlag, visDriftsveg = () => {}, visSkilt = () => {}, ajourforing = null, nyId = (p) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, apneEudr = () => {}, iAar = new Date().getFullYear() }) {
   let valgt = null; let filter = 'aktive';
+  // Lett lagring for felt som ikke endrer resten av appen: lagrer og oppdaterer bare merkene i oppdraget, uten å
+  // tegne panelet (og fokuset i skjemaet) på nytt.
+  const lagreStille = (o) => { endret({ kart: false, bare: 'oppdrag' }); if (o) oppdaterMerker(o); };
+  // EUDR: leveranse for hogstoppdraget (lages eller oppdateres).
+  const euSynk = (o) => synkLeveranse(S(), o, { nyId, anslagM3: sammendrag(S(), o, okonomi).m3 });
   const S = () => hentPlan();
   const alle = () => S().oppdrag || [];
   const finn = (id) => alle().find((o) => o.id === id);
@@ -89,8 +96,30 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     return `<label>${navn}<input data-felt="${f.id}" type="${f.type === 'tall' ? 'number' : f.type === 'dato' ? 'date' : 'text'}" ${f.type === 'tall' ? 'step="any"' : ''} value="${esc(verdi ?? '')}"></label>`;
   }
 
-  // Fanene i et oppdrag. Maskin bare for hogst.
-  const FANER = [['oversikt', 'Oversikt'], ['planlegging', 'Planlegging'], ['utforer', 'Utfører'], ['maskin', 'Maskin'], ['sjekkliste', 'Sjekkliste']];
+  // Fanene i et oppdrag. Maskin og EUDR bare for hogst.
+  const FANER = [['oversikt', 'Oversikt'], ['planlegging', 'Planlegging'], ['utforer', 'Utfører'], ['maskin', 'Maskin'], ['sjekkliste', 'Sjekkliste'], ['eudr', 'EUDR']];
+  const KUN_HOGST = new Set(['maskin', 'eudr']);
+  function merkerFor(o, s = sammendrag(S(), o, okonomi)) {
+    const eu = HOGSTOPPDRAG.includes(o.type) ? oppdragVurdering(S(), o, iAar) : null;
+    return { planlegging: [o.driftsveg?.status === 'beholdt', o.skiltplan?.status === 'beholdt'].filter(Boolean).length ? '✓' : '', utforer: o.utforer?.navn ? '✓' : o.tilbud?.status === 'sendt' ? '…' : '', maskin: o.stanford?.eksportert?.length ? '✓' : '', sjekkliste: `${s.sjekk}/${s.sjekkTotalt}`, eudr: eu ? (eu.avvik ? '!' : eu.leveranse ? '✓' : '') : '' };
+  }
+  // Oppdaterer merkene på fanene og arbeidsflyten uten å tegne hele oppdraget.
+  function oppdaterMerker(o) {
+    const panel = $('#oppdragPanel'); if (!panel) return; const m = merkerFor(o);
+    for (const k of panel.querySelectorAll('.op-faner [data-fane]')) { let sp = k.querySelector('.op-merke'); const v = m[k.dataset.fane]; if (!v) { sp?.remove(); continue; } if (!sp) { sp = document.createElement('span'); sp.className = 'op-merke'; k.append(' ', sp); } sp.textContent = v; }
+    const steg = panel.querySelector('.op-steg'); if (steg) steg.outerHTML = stegHtml(o);
+  }
+  function eudrHtml(o) {
+    const v = oppdragVurdering(S(), o, iAar); const l = v.leveranse; const NIV = { ok: '✓', info: 'i', varsel: '!', avvik: '✕' }; const FARGE = { ok: 'var(--accent)', info: 'var(--accent)', varsel: '#c77800', avvik: 'var(--critical)' };
+    return `<div class="eu-status liten"><b>⚠️ Usikkert om og når EUDR blir innført i Norge.</b> <span class="hint">${esc(EU_STATUS.kort || 'Forordningen er ikke tatt inn i EØS-avtalen, men gjelder i EU fra 30. desember 2026. Tømmerkjøpere som selger videre til EU kan likevel be om dokumentasjonen.')}</span></div>
+      <p class="hint op-intro">Dokumentasjon av at tømmeret fra oppdraget er avskogingsfritt og lovlig: geolokasjon av hogststedet, treslag, mengde og kjøper. Når oppdraget markeres som utført, lages leveransen automatisk.</p>
+      ${v.punkter.map((x) => `<div class="sp-funn" style="--farge:${FARGE[x.nivaa]}"><i>${NIV[x.nivaa]}</i><div class="hint" style="color:inherit">${esc(x.tekst)}</div></div>`).join('')}
+      ${l ? `<h4 class="undertittel">Leveranse</h4><table class="tabell sp-tabell"><tbody>
+          <tr><td>Dato</td><td>${esc(l.dato)}</td></tr><tr><td>Mengde</td><td>${l.m3 != null ? `${fmt(l.m3)} m³${l.maalt ? ' (målt av hogstmaskinen)' : ' (anslag fra planen)'}` : 'ikke oppgitt'}</td></tr>
+          <tr><td>Kjøper</td><td>${esc(l.kjoper?.navn || '–')}</td></tr><tr><td>Referanse</td><td>${esc(l.referanse || S().eudr?.erklaeringsnummer || '–')}</td></tr></tbody></table>
+        <div class="knapperad"><button type="button" class="knapp liten primar" data-oh="eu-info">Informasjon til kjøper</button><button type="button" class="knapp liten" data-oh="eu-geo">GeoJSON</button><button type="button" class="knapp liten" data-oh="eu-synk">Oppdater fra oppdraget</button><button type="button" class="knapp liten" data-oh="eu-fane">Åpne i fanen EUDR</button></div>`
+      : `<div class="knapperad"><button type="button" class="knapp liten primar" data-oh="eu-synk">Registrer leveranse nå</button><button type="button" class="knapp liten" data-oh="eu-geo">Last ned geolokasjon (GeoJSON)</button><button type="button" class="knapp liten" data-oh="eu-fane">Sjekklisten i fanen EUDR</button></div>`}`;
+  }
   const faneFor = new Map(); // oppdrag-id → aktiv fane
   function stegHtml(o) {
     const steg = stegFor(o); const ferdige = steg.filter((x) => x.ferdig).length;
@@ -100,9 +129,9 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
   function detaljHtml(o) {
     const ot = typeFor(o.type); const s = sammendrag(S(), o, okonomi); const ls = linjer(S(), o);
     const tapt = (o.linjer || []).length - ls.length; const hogst = HOGSTOPPDRAG.includes(o.type);
-    const faner = FANER.filter(([id]) => id !== 'maskin' || hogst);
+    const faner = FANER.filter(([id]) => !KUN_HOGST.has(id) || hogst);
     let fane = faneFor.get(o.id) || 'oversikt'; if (!faner.some(([id]) => id === fane)) fane = 'oversikt';
-    const merke = { planlegging: [o.driftsveg?.status === 'beholdt', o.skiltplan?.status === 'beholdt'].filter(Boolean).length ? '✓' : '', utforer: o.utforer?.navn ? '✓' : o.tilbud?.status === 'sendt' ? '…' : '', maskin: o.stanford?.eksportert?.length ? '✓' : '', sjekkliste: `${s.sjekk}/${s.sjekkTotalt}` };
+    const merke = merkerFor(o, s);
     const skjemaUtforer = `<form class="skjema to-kol op-skjema">
         <label class="hel">Utfører <span class="hint">(${esc(ot.utforer)})</span><input name="utforer.navn" value="${esc(o.utforer?.navn)}" placeholder="Firma eller navn"></label>
         <label>Kontaktperson <input name="utforer.kontakt" value="${esc(o.utforer?.kontakt)}"></label>
@@ -110,7 +139,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
         <label class="hel">E-post <input name="utforer.epost" type="email" value="${esc(o.utforer?.epost)}"></label>
       </form>`;
     const innhold = {
-      oversikt: `${stegHtml(o)}
+      oversikt: () => `${stegHtml(o)}
         <form class="skjema to-kol op-skjema" id="oppdragSkjema">
           <label class="hel">Tittel <input name="tittel" value="${esc(o.tittel)}"></label>
           <label>Status <select name="status">${opsj(Object.entries(OPPDRAGSSTATUS).map(([k, v]) => [k, v.navn]), o.status)}</select></label>
@@ -130,10 +159,11 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
         ${tapt ? `<p class="hint">${tapt} tiltak er slettet fra planen siden oppdraget ble laget.</p>` : ''}
         <div class="knapperad"><button class="knapp liten" data-oh="legg-til" type="button">+ Legg til flere ${esc(ot.kort.toLowerCase())}-tiltak</button></div>
         <div class="op-fare"><button class="knapp liten fare" data-oh="slett" type="button">Slett oppdraget</button><span class="hint">Tiltakene blir liggende i tiltaksplanen.</span></div>`,
-      planlegging: `<p class="hint op-intro">Planlegg drifta før du bestiller: hvor maskinene skal kjøre, og hvilke skilt og søknader som trengs. Begge forslagene kan beholdes eller slettes.</p>${driftsvegUi.html(o)}${skiltUi.html(o)}`,
-      utforer: `<p class="hint op-intro">Be om tilbud fra en eller flere utførere, eller skriv inn utføreren direkte hvis avtalen allerede er klar.</p>${tilbudUi.html(o)}<h4 class="undertittel">Utfører</h4>${skjemaUtforer}`,
-      maskin: `<p class="hint op-intro">Filsett til hogstmaskin og lassbærer før drift, og produksjonsfilene tilbake etter drift.</p>${stanfordUi.html(o)}`,
-      sjekkliste: `<p class="hint op-intro">Krav og praktiske punkter for ${esc(ot.kort.toLowerCase())}. Kryss av etter hvert. PEFC-kravpunktene står bak.</p>
+      planlegging: () => `<p class="hint op-intro">Planlegg drifta før du bestiller: hvor maskinene skal kjøre, og hvilke skilt og søknader som trengs. Begge forslagene kan beholdes eller slettes.</p>${driftsvegUi.html(o)}${skiltUi.html(o)}`,
+      utforer: () => `<p class="hint op-intro">Be om tilbud fra en eller flere utførere, eller skriv inn utføreren direkte hvis avtalen allerede er klar.</p>${tilbudUi.html(o)}<h4 class="undertittel">Utfører</h4>${skjemaUtforer}`,
+      maskin: () => `<p class="hint op-intro">Filsett til hogstmaskin og lassbærer før drift, og produksjonsfilene tilbake etter drift.</p>${stanfordUi.html(o)}`,
+      eudr: () => eudrHtml(o),
+      sjekkliste: () => `<p class="hint op-intro">Krav og praktiske punkter for ${esc(ot.kort.toLowerCase())}. Kryss av etter hvert. PEFC-kravpunktene står bak.</p>
         <div class="oppdrag-sjekk">${ot.sjekk.map((k) => `<label class="avkrysning"><input type="checkbox" data-sjekk="${k.id}" ${o.sjekk?.[k.id] ? 'checked' : ''}> <span>${esc(k.tekst)}${k.pefc ? ` <span class="hint">PEFC ${k.pefc} ${esc(kravNavn(k.pefc))}</span>` : ''}</span></label>`).join('')}</div>`,
     };
     return `<div class="kort oppdrag-detalj">
@@ -144,20 +174,22 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
       <h3 style="margin:8px 0 2px">${esc(o.nr)} · ${esc(ot.navn)} ${statusPille(o)}</h3>
       <p class="hint" style="margin:0 0 10px">${mengdeTekst(o, s)}${s.netto ? ` · ${s.netto >= 0 ? 'netto' : 'kostnad'} ca. ${fmt(Math.abs(s.netto))} kr` : ''} · opprettet ${esc(o.opprettet)}</p>
       <div class="op-faner" role="tablist">${faner.map(([id, navn]) => `<button type="button" role="tab" data-oh="fane" data-fane="${id}" aria-selected="${id === fane}" class="${id === fane ? 'aktiv' : ''}">${navn}${merke[id] ? ` <span class="op-merke">${merke[id]}</span>` : ''}</button>`).join('')}</div>
-      <div class="op-innhold">${innhold[fane]}</div>
+      <div class="op-innhold">${innhold[fane]()}</div>
     </div>`;
   }
 
+  let tegner = false; let sistUthevet = null;
   function tegn() {
-    const panel = $('#oppdragPanel'); if (!panel) return;
+    const panel = $('#oppdragPanel'); if (!panel || tegner) return;
     const o = valgt && finn(valgt);
     if (valgt && !o) valgt = null;
-    panel.innerHTML = o ? detaljHtml(o) : listeHtml();
+    tegner = true; try { panel.innerHTML = o ? detaljHtml(o) : listeHtml(); } finally { tegner = false; }
     const n = alle().filter((x) => AKTIVE_STATUS.includes(x.status)).length;
     if (o && (faneFor.get(o.id) === 'utforer') && o.tilbud && o.tilbud.sett !== o.tilbud.svar.length) { o.tilbud.sett = o.tilbud.svar.length; endret({ kart: false }); }
     const nyeTotalt = alle().reduce((s, x) => s + nyeSvar(x), 0);
     const el = $('#oppdragAntall'); if (el) el.innerHTML = `${n ? `(${n})` : ''}${nyeTotalt ? ` <span class="tb-ny">${nyeTotalt} nytt tilbud</span>` : ''}`;
-    uthev(o ? linjer(S(), o).map((l) => l.bestand.id) : []);
+    const ider = o ? linjer(S(), o).map((l) => l.bestand.id) : []; const nokkel = ider.join(',');
+    if (nokkel !== sistUthevet) { sistUthevet = nokkel; uthev(ider); }
     if (o) stanfordUi.kart(o); else stanfordUi.lukk();
     if (o?.driftsveg) driftsvegUi.kart(o); else driftsvegUi.lukk();
     if (o?.skiltplan) skiltUi.kart(o); else skiltUi.lukk();
@@ -171,6 +203,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
       o.utfortDato = new Date().toISOString().slice(0, 10);
       const aapne = linjer(S(), o).filter((l) => l.tiltak.status !== 'utfort');
       if (aapne.length && confirm(`Markere ${aapne.length} tiltak i oppdraget som utført?`)) for (const l of aapne) settUtfort(l.bestand, l.tiltak, true);
+      if (HOGSTOPPDRAG.includes(o.type)) { const { ny } = euSynk(o); melding(ny ? `EUDR-leveranse registrert for ${o.nr} – se fanen EUDR i oppdraget.` : `EUDR-leveransen for ${o.nr} er oppdatert.`); }
     }
   }
 
@@ -201,6 +234,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
       ${o.merknad ? `<h2>Instruks</h2><p>${esc(o.merknad).replace(/\n/g, '<br>')}</p>` : ''}
       <h2>Kart</h2>${kart}<p class="hint"><span class="leg" style="background:#f39c4a"></span>bestand i oppdraget <span class="leg" style="background:#555"></span>bilvei <span class="leg" style="background:${VEISTIL.traktorvei.farge}"></span>traktorvei <span class="leg" style="background:${VEISTIL.sti.farge}"></span>sti <span class="leg" style="background:#2a78d6"></span>velteplass · rød stiplet linje: eiendomsgrense</p>
       ${iKantsone.length ? `<h2>💧 Kantsone mot vann</h2><p><b>${iKantsone.map((b) => `Bestand ${esc(b.nr)}: ${fmt(b.kantsone.daa, 1)} daa (${b.kantsone.bredde || plan.kantsone?.bredde || 15} m${b.kantsone.grunn ? `, ${esc(b.kantsone.grunn)}` : ''})`).join(' · ')}</b> (blått i kartet). Kantsonen skal være flersjiktet og normalt urørt: ingen flatehogst, markberedning, gjødsling eller sprøyting, og ingen kjøring – kryss bekker bare på bru eller klopp.</p>` : ''}
+      ${HOGSTOPPDRAG.includes(o.type) ? `<h2>🌍 EUDR</h2><p>Tømmeret skal kunne dokumenteres som avskogingsfritt og lovlig (EUs avskogingsforordning – det er usikkert om og når den blir innført i Norge). Geolokasjon av hogststedet (${ls.length} bestand, GeoJSON) og informasjon til tømmerkjøperen lages i SkogIQ.ai når oppdraget er utført. Miljøfigurer holdes utenfor drift${o.type === 'sluttavvirkning' ? ', og hogstflaten skal forynges innen tre år' : ''}.</p>` : ''}
       <h2>Bestand</h2>
       <table><thead><tr><th>Bestand</th><th>Tiltak</th><th>År</th><th class="t">Daa</th><th>Treslag/bonitet</th><th class="t">Alder</th><th class="t">m³/daa</th><th class="t">Ca. m³</th><th>Merknad</th></tr></thead><tbody>
       ${ls.map(({ bestand: b, tiltak: t }) => { const ok = okonomi({ ...t, bestand: b }); return `<tr><td>${esc(b.nr)}</td><td>${esc(tiltakNavn(t.type))}</td><td>${t.aar}</td><td class="t">${fmt(b.areal, 1)}</td><td>${esc(b.treslag || '')}${b.bonitet ?? ''}</td><td class="t">${b.alder ?? ''}</td><td class="t">${b.volumDaa != null ? fmt(b.volumDaa, 1) : ''}</td><td class="t">${ok.m3 ? fmt(ok.m3) : ''}</td><td>${b.miljo ? '<b>Miljøfigur – hensyn</b> ' : ''}${esc(t.kommentar || '')}</td></tr>`; }).join('')}
@@ -236,6 +270,10 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     if (h.dataset.oh === 'bestand') { e.preventDefault(); visBestander([h.dataset.b]); }
     if (h.dataset.oh === 'fjern') { fjernLinje(S(), o, h.dataset.t); lagre(); }
     if (h.dataset.oh === 'legg-til') startValg(o);
+    if (h.dataset.oh === 'eu-synk') { const { ny } = euSynk(o); lagre(); melding(ny ? 'Leveransen er registrert i fanen EUDR.' : 'Leveransen er oppdatert fra oppdraget.'); }
+    if (h.dataset.oh === 'eu-info') { const l = oppdragVurdering(S(), o, iAar).leveranse; if (l) skrivLeveranseInfo(S(), l, melding, iAar); }
+    if (h.dataset.oh === 'eu-geo') { const l = oppdragVurdering(S(), o, iAar).leveranse || { dato: o.periode?.til || new Date().toISOString().slice(0, 10), bestandIder: linjer(S(), o).map((x) => x.bestand.id) }; if (!l.bestandIder.length) { melding('Oppdraget har ingen bestand.'); return; } lastNedLeveranseGeo(S(), l, `oppdrag-${o.nr}`); }
+    if (h.dataset.oh === 'eu-fane') apneEudr();
     if (h.dataset.oh === 'slett' && confirm(`Slette oppdrag ${o.nr}? Tiltakene blir liggende i tiltaksplanen.`)) { slettOppdrag(S(), o); valgt = null; lagre(); melding(`Oppdrag ${o.nr} er slettet.`); }
   });
   panel.addEventListener('change', (e) => {
@@ -246,15 +284,22 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     if (stanfordUi.endring(e, o, tegn)) return;
     if (driftsvegUi.endring(e)) return;
     if (skiltUi.endring(e, o)) return;
-    if (f.dataset.sjekk) { o.sjekk = { ...o.sjekk, [f.dataset.sjekk]: f.checked }; lagre(); return; }
-    if (f.dataset.felt) { const def = typeFor(o.type).felt.find((x) => x.id === f.dataset.felt); o.felt = { ...o.felt, [f.dataset.felt]: def?.type === 'tall' ? (f.value === '' ? '' : Number(f.value)) : f.value }; lagre(); return; }
+    if (f.dataset.sjekk) { o.sjekk = { ...o.sjekk, [f.dataset.sjekk]: f.checked }; lagreStille(o); return; }
+    if (f.dataset.felt) {
+      const def = typeFor(o.type).felt.find((x) => x.id === f.dataset.felt); const for_ = o.felt?.[f.dataset.felt];
+      o.felt = { ...o.felt, [f.dataset.felt]: def?.type === 'tall' ? (f.value === '' ? '' : Number(f.value)) : f.value };
+      // Tømmerkjøperen følger med til EUDR-leveransen (hvis den ikke er endret der).
+      const l = f.dataset.felt === 'kjoper' && o.eudr?.leveranseId && (S().eudr?.leveranser || []).find((x) => x.id === o.eudr.leveranseId);
+      if (l && (!l.kjoper?.navn || l.kjoper.navn === for_)) l.kjoper = { ...(l.kjoper || {}), navn: f.value };
+      lagreStille(o); return;
+    }
     if (!f.name) return;
-    if (f.name === 'status') settStatus(o, f.value);
-    else if (f.name === 'fra' || f.name === 'til') o.periode = { ...o.periode, [f.name]: f.value };
+    if (f.name === 'status') { settStatus(o, f.value); lagre(); return; }
+    if (f.name === 'fra' || f.name === 'til') o.periode = { ...o.periode, [f.name]: f.value };
     else if (f.name.startsWith('utforer.')) o.utforer = { ...o.utforer, [f.name.slice(8)]: f.value };
     else o[f.name] = f.value;
-    lagre();
+    lagreStille(o);
   });
 
-  return { tegn, apne, lukk() { valgt = null; uthev([]); stanfordUi.lukk(); }, valgt: () => valgt };
+  return { tegn, apne, lukk() { valgt = null; sistUthevet = null; uthev([]); stanfordUi.lukk(); driftsvegUi.lukk(); skiltUi.lukk(); }, valgt: () => valgt };
 }

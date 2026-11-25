@@ -128,10 +128,70 @@ export function forenkletErklaering(S, iAar = new Date().getFullYear()) {
 
 // Leveranser: hva som er solgt, til hvem, fra hvilke bestand, og erklærings- eller referansenummeret.
 export const nyLeveranse = (nyId, data = {}) => ({ id: nyId ? nyId('eu') : `eu${Math.random().toString(36).slice(2, 9)}`, dato: new Date().toISOString().slice(0, 10), hs: '4403', treslag: 'G', m3: null, bestandIder: [], kjoper: { navn: '', adresse: '', epost: '' }, referanse: '', ...data });
-// Forslag til leveranser fra utførte hogster som ikke er registrert ennå.
+// ---------- Kobling mot hogst- og tynningsoppdrag ----------
+// Et hogstoppdrag (sluttavvirkning, tynning, lukket hogst) blir én leveranse: bestandene, tømmerkjøperen og mengden
+// hentes fra oppdraget. Målt mengde fra produksjonsfilene (StanForD) brukes når den finnes, ellers anslaget.
+export const EUDR_OPPDRAG = [...HOGST];
+const OPP_TYPE = { sluttavvirkning: 'Sluttavvirkning', tynning: 'Tynning', lukkethogst: 'Lukket hogst' };
+const oppLinjer = (S, o) => (o?.linjer || []).map((l) => (S?.bestand || []).find((b) => b.id === l.bestandId)).filter(Boolean);
+// Leveransen som hører til oppdraget (eller null).
+export const leveranseFor = (S, o) => (S?.eudr?.leveranser || []).find((l) => l.fraOppdrag === o?.id) || null;
+// Dominerende treslag: målt i produksjonsfilene, ellers etter areal i bestandene.
+function hovedtreslag(S, o) {
+  const m = o?.stanford?.resultat?.treslag; if (m && Object.values(m).some((x) => x > 0)) return Object.entries(m).sort((a, b) => b[1] - a[1])[0][0];
+  const per = {}; for (const b of oppLinjer(S, o)) per[b.treslag || 'G'] = (per[b.treslag || 'G'] || 0) + (b.areal || 0);
+  return Object.entries(per).sort((a, b) => b[1] - a[1])[0]?.[0] || 'G';
+}
+// Data til leveransen fra oppdraget. anslagM3 er planens anslag (fra økonomien i appen) når produksjonsfiler mangler.
+export function leveranseFraOppdrag(S, o, { anslagM3 = null, idag = new Date().toISOString().slice(0, 10) } = {}) {
+  const maalt = o?.stanford?.resultat?.m3; const m3 = maalt > 0 ? Math.round(maalt) : (anslagM3 > 0 ? Math.round(anslagM3) : null);
+  return { fraOppdrag: o.id, dato: o.utfortDato || o.utfort || o.periode?.til || idag, hs: '4403', treslag: hovedtreslag(S, o), m3, maalt: maalt > 0, bestandIder: oppLinjer(S, o).map((b) => b.id), kjoper: { navn: o.felt?.kjoper || '', adresse: '', epost: '' }, referanse: '' };
+}
+// Lager eller oppdaterer leveransen for oppdraget. Felt brukeren har fylt ut selv (kjøperens adresse og e-post,
+// referanse) beholdes. Gir { leveranse, ny }.
+export function synkLeveranse(S, o, { nyId, anslagM3 = null, idag } = {}) {
+  if (!S.eudr) S.eudr = { rolle: 'fullmakt', virksomhet: {}, sjekkliste: {}, leveranser: [], sortimenter: ['4403'] };
+  S.eudr.leveranser = S.eudr.leveranser || [];
+  const data = leveranseFraOppdrag(S, o, { anslagM3, idag }); let l = leveranseFor(S, o); const ny = !l;
+  if (!l) { l = nyLeveranse(nyId, data); S.eudr.leveranser.push(l); }
+  else {
+    l.bestandIder = data.bestandIder; l.treslag = data.treslag;
+    if (data.maalt || l.m3 == null || !l.manuellM3) { l.m3 = data.m3; l.maalt = data.maalt; }
+    if (!l.kjoper?.navn && data.kjoper.navn) l.kjoper = { ...(l.kjoper || {}), navn: data.kjoper.navn };
+    if (o.utfortDato || o.utfort) l.dato = o.utfortDato || o.utfort;
+  }
+  o.eudr = { leveranseId: l.id };
+  return { leveranse: l, ny };
+}
+// Fjerner koblingen når oppdraget slettes (leveransen blir liggende – den skal oppbevares i fem år).
+export function frikoble(S, o) { for (const l of S?.eudr?.leveranser || []) if (l.fraOppdrag === o?.id) { delete l.fraOppdrag; l.oppdragNr = o.nr; } }
+
+// EUDR-sjekk for bestandene i ett hogstoppdrag. Gir { punkter: [{ id, nivaa, tekst }], klar, avvik, leveranse }.
+export function oppdragVurdering(S, o, iAar = new Date().getFullYear()) {
+  const b = oppLinjer(S, o); const p = []; const nr = (l) => l.map((x) => x.nr).join(', ');
+  const miljo = b.filter((x) => x.miljo || x.vern);
+  p.push(miljo.length ? { id: 'vern', nivaa: 'varsel', tekst: `Bestand ${nr(miljo)} har miljøfigur eller vern. Sørg for at hogsten er lovlig og at miljøverdiene holdes utenfor drift.` } : { id: 'vern', nivaa: 'ok', tekst: 'Ingen av bestandene har miljøfigur eller vern.' });
+  const omd = b.filter((x) => x.omdisponert && Number(String(x.omdisponert).slice(0, 4)) > 2020);
+  if (omd.length) p.push({ id: 'omdisponert', nivaa: 'avvik', tekst: `Bestand ${nr(omd)} er merket omdisponert etter 2020 – tømmeret er ikke avskogingsfritt.` });
+  if (o.type === 'sluttavvirkning') { const f = o.felt?.foryngelse; p.push(!f || f === 'Ikke avklart' ? { id: 'foryngelse', nivaa: 'varsel', tekst: 'Plan for foryngelse er ikke avklart. Skogen må forynges innen tre år for at hogsten skal være lovlig og avskogingsfri.' } : { id: 'foryngelse', nivaa: 'ok', tekst: `Foryngelse er planlagt: ${f.toLowerCase()}.` }); }
+  const geo = b.filter((x) => !x.geometri);
+  p.push(geo.length ? { id: 'geo', nivaa: 'avvik', tekst: `Bestand ${nr(geo)} mangler kartflate – geolokasjon kan ikke leveres.` } : { id: 'geo', nivaa: 'ok', tekst: `Geolokasjon klar: ${b.length} polygon${b.length === 1 ? '' : 'er'} med 6 desimaler.` });
+  p.push(o.felt?.kjoper ? { id: 'kjoper', nivaa: 'ok', tekst: `Tømmerkjøper: ${o.felt.kjoper}.` } : { id: 'kjoper', nivaa: 'varsel', tekst: 'Tømmerkjøper er ikke fylt ut. Kjøperen er den som normalt registrerer erklæringen for deg.' });
+  const s = samsvar(S, iAar); const mangler = s.manuelle - s.bekreftet;
+  p.push(s.nei.length ? { id: 'sjekkliste', nivaa: 'avvik', tekst: `Sjekklisten i fanen EUDR har ${s.nei.length} punkt besvart med nei.` } : mangler ? { id: 'sjekkliste', nivaa: 'varsel', tekst: `${mangler} punkt i sjekklisten i fanen EUDR er ikke bekreftet ennå (gjelder hele eiendommen).` } : { id: 'sjekkliste', nivaa: 'ok', tekst: 'Sjekklisten for eiendommen er bekreftet.' });
+  const avvik = p.filter((x) => x.nivaa === 'avvik').length;
+  return { punkter: p, avvik, klar: !avvik && p.every((x) => x.nivaa === 'ok'), leveranse: leveranseFor(S, o) };
+}
+
+// Forslag til leveranser: utførte hogstoppdrag uten leveranse, og utførte hogster utenfor oppdrag.
 export function foreslaLeveranser(S) {
-  const har = new Set((S?.eudr?.leveranser || []).flatMap((l) => (l.fraTiltak ? [l.fraTiltak] : [])));
-  return hogster(S).filter((x) => x.utfort && x.aar > 2020 && !har.has(x.t.id)).map(({ b, t }) => ({ fraTiltak: t.id, dato: `${t.aar}-12-31`, hs: '4403', treslag: b.treslag || 'G', m3: t.volum ?? null, bestandIder: [b.id], tekst: `${t.type === 'tynning' ? 'Tynning' : 'Hogst'} i bestand ${b.nr} (${t.aar})` }));
+  const lev = S?.eudr?.leveranser || [];
+  const har = new Set(lev.flatMap((l) => (l.fraTiltak ? [l.fraTiltak] : [])));
+  const harOpp = new Set(lev.flatMap((l) => (l.fraOppdrag ? [l.fraOppdrag] : [])));
+  const iOppdrag = new Map(); for (const o of S?.oppdrag || []) if (HOGST.has(o.type)) for (const l of o.linjer || []) iOppdrag.set(l.tiltakId, o);
+  const fraOpp = (S?.oppdrag || []).filter((o) => HOGST.has(o.type) && o.status === 'utfort' && !harOpp.has(o.id)).map((o) => ({ ...leveranseFraOppdrag(S, o), tekst: `${OPP_TYPE[o.type]} – oppdrag ${o.nr}${o.felt?.kjoper ? ` (${o.felt.kjoper})` : ''}` }));
+  const fraTiltak = hogster(S).filter((x) => x.utfort && x.aar > 2020 && !har.has(x.t.id) && !iOppdrag.has(x.t.id)).map(({ b, t }) => ({ fraTiltak: t.id, dato: `${t.aar}-12-31`, hs: '4403', treslag: b.treslag || 'G', m3: t.volum ?? null, bestandIder: [b.id], tekst: `${t.type === 'tynning' ? 'Tynning' : 'Hogst'} i bestand ${b.nr} (${t.aar})` }));
+  return [...fraOpp, ...fraTiltak];
 }
 // Informasjonen kjøperen trenger fra skogeieren for en leveranse (aktsomhet trinn 1).
 export function leveranseInfo(S, l) {

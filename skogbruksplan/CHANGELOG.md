@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.18.0 – 🪓 EUDR i hogstoppdragene – og raskere oppdrag (2026-11-25)
+
+*Forbedret.* EUDR henger nå sammen med hogst- og tynningsoppdragene. Hvert hogstoppdrag har en egen EUDR-fane som sjekker bestandene i oppdraget: miljøfigur, omdisponering, plan for foryngelse, kartflater, tømmerkjøper og sjekklisten. Når oppdraget markeres som utført, lages leveransen automatisk med bestand, tømmerkjøper og mengde – målt av hogstmaskinen når produksjonsfilene er lest inn. Du kan skrive ut informasjonen til kjøperen og laste ned geolokasjonen rett fra oppdraget. Det er fortsatt usikkert om og når EUDR blir innført i Norge. Oppdragene er også mye raskere: på en eiendom med 720 bestand tok et fanebytte før rundt ett sekund, og å endre et felt tok 2,5–6 sekunder. Nå skjer begge deler med en gang. Kartet tegner bare bestandene som faktisk er endret, og skjemaet beholder fokuset mens du skriver.
+
 ## 2.17.0 – 🌍 EUDR – avskogingsfritt og lovlig tømmer (2026-11-25)
 
 *Nytt.* Den nye fanen EUDR hjelper deg å dokumentere at tømmeret er avskogingsfritt og lovlig etter EUs avskogingsforordning. NB: Det er usikkert om og når EUDR blir innført i Norge – forordningen er ikke tatt inn i EØS-avtalen, men gjelder i EU fra 30. desember 2026, så tømmer som selges til EU kan likevel trenge dokumentasjon. Fanen sjekker foryngelse, miljøfigurer og kartflater i planen. Den har en sjekkliste du bekrefter selv, GeoJSON med geolokasjon av eiendommen og hogstflatene, forenklet engangserklæring for små skogeiere og en oversikt over leveranser med informasjon til kjøperen. Den ukentlige kildesjekken følger med på statusen i Norge. Personvernerklæringen er oppdatert (versjon 1.14) fordi EUDR-dokumentasjonen kan inneholde kontaktinfo til kjøpere.

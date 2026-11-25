@@ -75,10 +75,11 @@ export const KAPITLER = [
       <li><b>Planlegging</b> – <a href="#" data-hjelp="driftsveg">forslag til driftsveg</a> og <a href="#" data-hjelp="skiltplan">skiltplan</a>.</li>
       <li><b>Utfører</b> – <a href="#" data-hjelp="tilbud">be om tilbud</a>, eller skriv inn utføreren direkte.</li>
       <li><b>Maskin</b> (hogst) – <a href="#" data-hjelp="maskin">filsett til hogstmaskinen</a> og produksjonsfiler tilbake.</li>
+      <li><b>EUDR</b> (hogst) – sjekk av bestandene etter EUs avskogingsforordning, og en leveranse med geolokasjon og informasjon til tømmerkjøperen. Leveransen lages automatisk når oppdraget markeres som utført, og mengden hentes fra produksjonsfilene når de er lest inn. Det er usikkert om og når EUDR blir innført i Norge.</li>
       <li><b>Sjekkliste</b> – PEFC-krav og praktiske punkter for oppdragstypen.</li></ul>
       <h4>Arbeidsflyten</h4>
       <p>Øverst i Oversikt ser du stegene i rekkefølge, med ✓ for det som er gjort og ➜ for <b>neste steg</b>. Trykk på et steg for å gå dit. Valgfrie steg kan hoppes over.</p>
-      ${steg(['Sett periode', 'Lag driftsveg (hogst, valgfritt)', 'Lag skiltplan', 'Be om tilbud eller velg utfører', 'Marker som bestilt', 'Send filsett til maskin (hogst, valgfritt)', 'Gå gjennom sjekklisten', 'Marker som utført – tiltakene i planen merkes utført'])}
+      ${steg(['Sett periode', 'Lag driftsveg (hogst, valgfritt)', 'Lag skiltplan', 'Be om tilbud eller velg utfører', 'Marker som bestilt', 'Send filsett til maskin (hogst, valgfritt)', 'Gå gjennom sjekklisten', 'Marker som utført – tiltakene i planen merkes utført', 'Dokumenter tømmeret for EUDR (hogst, valgfritt – lages automatisk)'])}
       <h4>Status</h4><p><b>Utkast</b> → <b>Bestilt</b> → <b>Pågår</b> → <b>Utført</b> (eller <b>Avbrutt</b>). Et tiltak kan bare ligge i ett aktivt oppdrag om gangen.</p>
       ${tips('<b>Skriv ut arbeidsordre</b> gir utføreren kart, tiltak, instruks, sjekkliste – og driftsvegen hvis du har beholdt den.')}
       ${obs('<b>Slett oppdraget</b> (nederst i Oversikt) sletter bare oppdraget – tiltakene blir liggende i tiltaksplanen.')}`,
