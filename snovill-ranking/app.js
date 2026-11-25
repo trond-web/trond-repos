@@ -505,4 +505,38 @@ $("#lopliste").addEventListener("click", (e) => {
   if (kort) visLopDetalj(Number(kort.dataset.lop));
 });
 
+// ---------- Unike besøk ----------
+// Telles hos abacus.jasoncameron.dev (gratis teller uten innlogging). Hver nettleser telles bare
+// første gang den besøker siden; senere besøk leser bare tallet. Bare den publiserte siden telles.
+const TELLER = "https://abacus.jasoncameron.dev";
+const TELLER_NOKKEL = "trond-web-snovill-ranking/unike-besok";
+
+async function visBesok() {
+  if (!location.hostname.endsWith("github.io")) return;
+  let besoktFor = false;
+  let lagring = true;
+  try {
+    besoktFor = localStorage.getItem("snovill-ranking-besokt") === "1";
+  } catch {
+    lagring = false; // privat modus o.l.: les tallet, men ikke tell (ellers telles hvert besøk)
+  }
+  try {
+    const tell = lagring && !besoktFor;
+    const svar = await fetch(`${TELLER}/${tell ? "hit" : "get"}/${TELLER_NOKKEL}`);
+    if (!svar.ok) return;
+    const { value } = await svar.json();
+    if (!Number.isFinite(value)) return;
+    if (tell) {
+      try {
+        localStorage.setItem("snovill-ranking-besokt", "1");
+      } catch {}
+    }
+    $("#besok").textContent = `${heltall.format(value)} unike besøk`;
+    $("#besok").hidden = false;
+  } catch {
+    // Telleren er ikke viktig nok til å vise feil
+  }
+}
+
 start();
+visBesok();
