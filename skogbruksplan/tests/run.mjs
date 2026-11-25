@@ -4279,7 +4279,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
   '1.8': '1b41be6f78760f90',
-  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258',
+  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
@@ -4644,4 +4644,26 @@ test('Tilskudd: ordninger, beløp, region og frister tilpasset gården', async (
   S.drift = { skog: true, jord: true, husdyr: false, valgt: true }; assert.ok(!T.tilskuddsoversikt(S, 2026).liste.some((x) => x.id === 'beitelag'));
   const fr = T.kommendeFrister(o, new Date(2026, 10, 25)); assert.equal(fr[0].tekst.startsWith('Skogkultur'), true); assert.ok(fr.every((x) => x.dager >= 0));
   for (const ord of T.ORDNINGER) assert.match(ord.url, /^https:\/\//, ord.id);
+});
+
+test('EUDR: geolokasjon med 6 desimaler, sjekk, forenklet erklæring og leveranser', async () => {
+  const E = await import('../js/eudr.js'); const { lagDemo } = await import('../js/demo.js');
+  assert.equal(E.STATUS.innfortNorge, false); assert.match(E.STATUS.tekst, /ikke innført i Norge/);
+  const d = lagDemo(2026); d.bestand[0].tiltak = [{ id: 't1', type: 'sluttavvirkning', aar: 2021, status: 'utfort' }];
+  const S = { eiendom: { ...d.eiendom, eier: 'Ola Nordmann' }, bestand: d.bestand, innstillinger: {} };
+  const g = E.geojson(S); const f0 = g.features[0];
+  assert.equal(f0.properties.ProducerCountry, 'NO'); assert.ok(f0.properties.Area > 0);
+  assert.ok(f0.geometry.coordinates[0].every(([x, y]) => Math.abs(x * 1e6 - Math.round(x * 1e6)) < 1e-6 && Math.abs(y * 1e6 - Math.round(y * 1e6)) < 1e-6), '6 desimaler');
+  const r = f0.geometry.coordinates[0]; assert.deepEqual(r[0], r.at(-1), 'lukket ring');
+  assert.equal(E.geojson(S, { bestandIder: [d.bestand[0].id] }).features.length, 1);
+  const v = E.vurdering(S, 2026); assert.equal(v.find((x) => x.id === 'foryngelse').nivaa, 'avvik', 'hogd 2021 uten foryngelse');
+  d.bestand[0].tiltak.push({ type: 'planting', aar: 2022, status: 'utfort' }); assert.equal(E.vurdering(S, 2026).find((x) => x.id === 'foryngelse').nivaa, 'ok');
+  assert.equal(E.samsvar(S, 2026).klar, false, 'manuelle punkter ikke bekreftet');
+  S.eudr = { sjekkliste: Object.fromEntries(E.SJEKKLISTE.filter((x) => !x.auto).map((x) => [x.id, 'ja'])) }; assert.equal(E.samsvar(S, 2026).klar, true);
+  S.eudr.sjekkliste.omdisponert = 'nei'; assert.equal(E.samsvar(S, 2026).klar, false);
+  const k = E.aarligKvantum(S, 2026); assert.ok(k.kg > 0 && k.rader.every((x) => x.vitenskapelig));
+  const fe = E.forenkletErklaering(S, 2026); assert.equal(fe.navn, 'Ola Nordmann'); assert.ok(fe.mangler.includes('adresse')); assert.match(fe.tekst, /2023\/1115/);
+  const fl = E.foreslaLeveranser(S); assert.equal(fl.length, 1); assert.equal(fl[0].fraTiltak, 't1');
+  S.eudr.leveranser = [E.nyLeveranse(null, fl[0])]; assert.equal(E.foreslaLeveranser(S).length, 0, 'ikke foreslått to ganger');
+  const info = E.leveranseInfo(S, S.eudr.leveranser[0]); assert.match(info.treslag, /Picea abies/); assert.equal(info.geolokasjon.features.length, 1);
 });

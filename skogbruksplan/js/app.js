@@ -52,6 +52,7 @@ import { initKsl } from './ksl-ui.js';
 import { initKarbon } from './karbon-ui.js';
 import { initKlima } from './klima-ui.js';
 import { initTilskudd } from './tilskudd-ui.js';
+import { initEudr } from './eudr-ui.js';
 import { initHprSr16 } from './hpr-sr16-ui.js';
 import { lagAjourforingUi } from './ajourforing-ui.js';
 import { lagHurtigTilbud } from './tilbud-hurtig.js';
@@ -80,7 +81,7 @@ import { VEG_TYPER, SKOGTYPER, vegFarge, vegTekst, settVegetasjon } from './vege
 
 const VEIKLASSER_NAVN = (k) => (VEIKLASSER[k] || VEIKLASSER[0]).navn;
 // Oppdrag: valg av tiltak i tiltakslisten og bestand som er uthevet i kartet for oppdraget som er åpent.
-let kslVisning = null; let karbonVisning = null; let klimaVisning = null; let tilskuddVisning = null; let hprVisning = null;
+let kslVisning = null; let karbonVisning = null; let klimaVisning = null; let tilskuddVisning = null; let eudrVisning = null; let hprVisning = null;
 let valgModus = false; let valgteTiltak = new Set(); let maalOppdrag = null; let uthevet = new Set(); let oppdragVisning = null;
 let kartUtvalg = null; // velg-modus: trykk på bestand i kartet og tegnede flater (oppdrag-utvalg.js), deler valgteTiltak
 const VEDLIKEHOLD_NAVN = (t) => VEDLIKEHOLDSTYPER[t]?.navn || t;
@@ -645,11 +646,11 @@ let verdiVisning = null; let takstVisning = null; let skogkarakter = null; let t
 let aiVisning = null;
 let skogbrandVisning = null;
 let skifteplanVisning = null;
-const FANE_TITLER = { planer: 'Planer', nettverk: 'Nettverk', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', skifteplan: 'Skifteplan', ksl: 'KSL', karbon: 'Karbon', klima: 'Klimabalanse', tilskudd: 'Tilskudd', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
+const FANE_TITLER = { planer: 'Planer', nettverk: 'Nettverk', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', skifteplan: 'Skifteplan', ksl: 'KSL', karbon: 'Karbon', klima: 'Klimabalanse', tilskudd: 'Tilskudd', eudr: 'EUDR', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 // Kapittel i brukerveiledningen for hver fane («?» i panelets overskrift).
-const HJELP_FOR_FANE = { planer: 'kom-i-gang', nettverk: 'nettverk', oversikt: 'kom-i-gang', kommune: 'kommune', bestand: 'bestand', tiltak: 'tiltak', framskriving: 'verdi', veier: 'veier', verdi: 'verdi', rapporter: 'rapporter', skogbrand: 'miljo', skifteplan: 'miljo', ksl: 'miljo', karbon: 'miljo', klima: 'karbon', tilskudd: 'kom-i-gang', pefc: 'miljo', ai: 'data', felt: 'felt', data: 'data' };
+const HJELP_FOR_FANE = { planer: 'kom-i-gang', nettverk: 'nettverk', oversikt: 'kom-i-gang', kommune: 'kommune', bestand: 'bestand', tiltak: 'tiltak', framskriving: 'verdi', veier: 'veier', verdi: 'verdi', rapporter: 'rapporter', skogbrand: 'miljo', skifteplan: 'miljo', ksl: 'miljo', karbon: 'miljo', klima: 'karbon', tilskudd: 'kom-i-gang', eudr: 'pefc', pefc: 'miljo', ai: 'data', felt: 'felt', data: 'data' };
 function visFane(navn) {
   if (driftSkjulte(S).faner.has(navn)) navn = 'oversikt'; // 🧭 fanen hører til et driftsområde som er slått av
   const hk = $('#panelHjelp'); if (hk) hk.dataset.hjelp = HJELP_FOR_FANE[navn] || 'kom-i-gang';
@@ -671,6 +672,7 @@ function visFane(navn) {
   if (navn === 'karbon') karbonVisning?.vis();
   if (navn === 'klima') klimaVisning?.tegn();
   if (navn === 'tilskudd') tilskuddVisning?.tegn();
+  if (navn === 'eudr') eudrVisning?.tegn();
   if (navn === 'framskriving') tegnFramskriving();
   if (navn === 'verdi') { verdiVisning?.tegn(); takstVisning?.tegn(); tommerVisning?.tegn(); }
   if (navn === 'nettverk') nettverk?.vis(); else nettverk?.skjul();
@@ -2677,7 +2679,7 @@ async function startGenerering(e) {
 }
 
 // ---------------------------------------------------------------- kommandopalett
-const FANE_IKON = { planer: '▤', nettverk: '💬', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', rapporter: '▦', skogbrand: '🔥', skifteplan: '🌾', karbon: '♲', klima: '🌍', tilskudd: '💰', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
+const FANE_IKON = { planer: '▤', nettverk: '💬', kommune: '◫', oversikt: '◔', bestand: '⬡', tiltak: '✓', framskriving: '↗', veier: '‖', verdi: '¤', rapporter: '▦', skogbrand: '🔥', skifteplan: '🌾', karbon: '♲', klima: '🌍', tilskudd: '💰', eudr: '🌍', pefc: '◈', ai: '✦', felt: '◉', data: '⛁' };
 let planlisteCache = [];
 function kommandoValg(q) {
   listPlaner().then((l) => { planlisteCache = l; });
@@ -2827,6 +2829,7 @@ function kobleHendelser() {
   kslVisning = initKsl({ hentPlan: () => S, endret, melding, nyId, iAar: IAAR, visFane });
   klimaVisning = initKlima({ hentPlan: () => S, endret, iAar: IAAR });
   tilskuddVisning = initTilskudd({ hentPlan: () => S, endret, iAar: IAAR });
+  eudrVisning = initEudr({ hentPlan: () => S, endret, melding, nyId, iAar: IAAR });
   karbonVisning = initKarbon({
     hentPlan: () => S, endret, melding, iAar: IAAR, visFane,
     uthev: (ider) => { uthevet = new Set(ider); oppdaterStiler(); },

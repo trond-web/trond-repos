@@ -4,7 +4,7 @@
 import { arealfordeling } from './markslag.js';
 
 export const OMRADER = {
-  skog: { navn: 'Skog', ikon: '🌲', tekst: 'Bestand, tiltak, framskriving, veier, Skogbrand, karbon og PEFC', faner: ['bestand', 'tiltak', 'framskriving', 'veier', 'skogbrand', 'karbon', 'pefc'] },
+  skog: { navn: 'Skog', ikon: '🌲', tekst: 'Bestand, tiltak, framskriving, veier, Skogbrand, karbon og PEFC', faner: ['bestand', 'tiltak', 'framskriving', 'veier', 'skogbrand', 'karbon', 'pefc', 'eudr'] },
   jord: { navn: 'Jord', ikon: '🌾', tekst: 'Skifteplan med vekster, jordprøver, gjødsling, plantevern og maskin', underfaner: ['skifter', 'gjodsling', 'sproyting', 'maskin'] },
   husdyr: { navn: 'Husdyr', ikon: '🐄', tekst: 'Dyrehold, husdyrgjødsel, fôrbalanse, beiteplan, plass i fjøset og produksjonstilskudd', underfaner: ['husdyr'] },
 };

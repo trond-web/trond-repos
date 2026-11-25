@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.16.0** (2026-11-25) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.17.0** (2026-11-25) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -840,6 +840,31 @@ Oversikt over 19 tilskuddsordninger for skog, jord og husdyr. For hver ordning v
 - **Kommende frister:** 15. mars og 15. oktober (produksjonstilskudd), 15. oktober (RMP), 20. februar (biogass), 15. november (beitelag) og rundt 1. desember (skogkultur).
 - **Følger driftsområdene:** ordninger for skog, jord eller husdyr skjules når området er slått av.
 - **Oppdatering:** hver ordning er merket med datoen den sist ble kontrollert (`KONTROLLERT`). Den ukentlige kildesjekken overvåker sidene for alle ordningene. Den melder fra når satser, frister eller krav endres, når det kommer nye ordninger hos Landbruksdirektoratet, og når katalogen ikke er kontrollert på et halvt år.
+
+## 🌍 EUDR – avskogingsfritt og lovlig tømmer (fanen «EUDR», `js/eudr.js`, `js/eudr-ui.js`)
+
+> ⚠️ **Det er usikkert om og når EUDR blir innført i Norge.** EUs avskogingsforordning (EU) 2023/1115 er ikke tatt inn i EØS-avtalen eller norsk rett, og Klima- og miljødepartementet regner det som lite sannsynlig før 2027. I EU gjelder kravene fra 30. desember 2026 (store og mellomstore) og 30. juni 2027 (små og mikroforetak). Tømmer som selges videre til EU kan likevel trenge dokumentasjonen. Fanen viser statusen øverst.
+
+- **Lavrisiko:** Norge er klassifisert som lavrisikoland. Da holder forenklet aktsomhet, som betyr innsamling av informasjon (trinn 1). Skjæringsdatoen er 31.12.2020.
+- **Sjekk av planen:**
+  - foryngelse etter sluttavvirkning (frist tre år)
+  - hogst i bestand med miljøfigur eller vern
+  - bestand merket omdisponert
+  - kartflater for geolokasjon
+- **Sjekkliste du bekrefter selv:**
+  - ingen avskoging
+  - ingen skogforringelse til plantasje
+  - vernskog og Marka
+  - eierskap og tredjeparts rettigheter
+  - arbeid, HMS og skatt
+- **Roller:**
+  - fullmakt til tømmerkjøperen (vanligst)
+  - mikro- eller liten primærvirksomhet med forenklet engangserklæring (vedlegg III)
+  - virksomhet med aktsomhetserklæring
+- **Geolokasjon:** GeoJSON med 6 desimaler for eiendommen eller for hogstflatene etter 2020. Formatet er det EUs informasjonssystem bruker (ProducerName, ProducerCountry, ProductionPlace, Area). Områder over 4 ha leveres som polygon.
+- **Forenklet erklæring:** utskrift med navn, adresse, HS-koder (4401/4403), treslag med vitenskapelige navn og anslått årlig kvantum i kg. Kvantumet regnes fra planlagt hogst de neste ti årene, eller fra tilveksten. Utskriften har også produksjonsland og den forordningsfastsatte erklæringsteksten.
+- **Leveranser:** registrer hva som er solgt, til hvem og fra hvilke bestand, med erklærings- eller referansenummer. Hver leveranse har en utskrift med informasjon til kjøperen og en egen GeoJSON-fil. Dokumentasjonen skal oppbevares i fem år.
+- **Overvåking:** den ukentlige kildesjekken følger Landbruksdirektoratets EUDR-side og melder fra når status, frister eller krav endres.
 
 ## 🎄 Juletema i den virtuelle skogen (`js/skog3d-jul.js`)
 

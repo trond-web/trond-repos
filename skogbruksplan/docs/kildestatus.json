@@ -1,5 +1,5 @@
 {
- "tid": "2026-11-25T05:34:24.793Z",
+ "tid": "2026-11-25T05:55:19.111Z",
  "kilder": {
   "lov:2005-05-27-31": {
    "id": "lov:2005-05-27-31",
@@ -787,6 +787,69 @@
    ],
    "fingeravtrykk": "67bf5a1091a77ab3"
   },
+  "ldir:eudr": {
+   "id": "ldir:eudr",
+   "gruppe": "Standarder",
+   "navn": "EUDR – status for Norge (Landbruksdirektoratet)",
+   "url": "https://www.landbruksdirektoratet.no/nb/skogbruk/eus-avskogingsforordning-eudr",
+   "ok": true,
+   "utdrag": [
+    "Aktsomhetserklæring i EUs informasjonssystem",
+    "Aktsomhetserklæringen skal registreres i EUs informasjonssystem. Dette kan enten registreres direkte i systemet eller ved å bruke API-et som tilbys av EU-kommisjonen. Veiledningsmateriell for bruk av systemet finnes på EU-kommisjonen sine nettsteder .",
+    "Aktører som omfattes av forenklingene skal sørge for at det sendes inn en forenklet engangs erklæring. Denne erklæringen skal, som spesifisert i forordningen vedlegg 3, inneholde følgende:",
+    "Aktører som omsetter et relevant produkt for første gang i Norge, regnes som en virksomhet. Videre regnes aktører som importerer relevante produkter fra land utenfor EØS som virksomhet. Etter forordningen er også aktører som eksporterer relevante produkter til land utenfor EU/EØS regnet som virksomheter. Det vil avhenge av EØS-komitébeslutningen om dette vil gjelde for Norge.",
+    "Aktører som videreselger et relevant produkt, anses som en forhandler. De relevante produktene er allerede bragt i omsetning på EØS-markedet av en virksomhet, før en forhandler videreselger det. Dette kan for eksempel være en aktør som kjøper tømmer og selger det samme tømmeret videre, eller grossister og detaljister som selger relevante produkter.",
+    "Alle vedtatte endringer i vareomfanget kan finnes på EU-kommisjonens nettsider .",
+    "At noe er EØS-relevant betyr at det faller innenfor EØS-avtalens virkeområde. Regjeringen har besluttet at jordbruksvarer som storfekjøtt og soya holdes utenfor gjennomføringen, fordi dette faller utenfor EØS-avtalens virkeområde.",
+    "Avskogingsforordningen trådte i kraft i EU 29. juni 2023. De fleste av bestemmelsene i forordningen får likevel ikke virkning i EU før 30. desember 2026 for mellomstore og store bedrifter, og fra 30. juni 2027 for små bedrifter eller mikroforetak. For små bedrifter eller mikroforetak som allerede er dekket av tømmerforordingen (EUTR), vil ikrafttredelsesdato være 30. desember 2026. Se mer om ikrafttredelse nedenfor.",
+    "Delvis innlemmelse i Norge",
+    "Den andre nyopprettede kategorien er mikro- og liten primærvirksomhet. Dette er en virksomhet som er etablert i et lavrisiko-land (som Norge), og selv plasserer produkter på markedet som den har dyrket, høstet eller oppalet på egen eiendom. Virksomheten må være en fysisk person eller en mikro eller liten virksomhet for å plasseres i kategorien.",
+    "Dersom produktet som omsettes, er produsert i et land som er klassifisert som lav risiko , kan man gjennomføre en forenklet aktsomhetsvurdering.",
+    "Det er foreløpig uklart for direktoratet om kravet til EORI-nummer vil bestå også for primærvirksomhetene, og hvordan det eventuelt skal håndteres. Vi arbeider med fortløpende med å få klarhet i dette, og forventer nærmere klargjøring fra EU.",
+    "EUDR Acceptance (treningsplattform for informasjonssystemet)",
+    "EUDR Informasjonssystem",
+    "En aktør som kjøper et relevant produkt av en annen EU/EØS-aktør og videreforedler dette til et nytt relevant produkt, vil defineres som en nedstrøms-virksomhet. Dette kan for eksempel være en norsk sjokoladeprodusent som kjøper kakaosmør (relevant produkt) fra en aktør i Sverige, og videreforedler dette til sjokolade (relevant produkt). Dersom aktøren hadde importert kakaosmør fra et tredjeland, vil den bli en vanlig virksomhet og ikke nedstrøms-virksomhet , ettersom det ikke finnes en tidligere plassering på EØS-markedet.",
+    "En virksomhet er etter forordningen enhver fysisk eller juridisk person som i forbindelse med forretningsvirksomhet bringer relevante produkter i omsetning på EU/EØS-markedet for første gang, eller eksporterer dem til land utenfor EU/EØS.",
+    "Endringer i vareomfanget vedtatt 13.7.2026",
+    "Engangs forenklet erklæring for primærvirksomheter",
+    "Etter gjennomføring i norsk rett",
+    "EØS-relevante deler av avskogingsforordningen (Delvis innlemmelse",
+    "For å ta inn avskogingsforordningen i EØS-avtalen må de tre EFTA-landene Norge, Island og Liechtenstein være enige. I tillegg må det også være enighet mellom EFTA-landene og EU. På grunn av forsinkelser i disse prosessene er det lite sannsynlig at forordningen vil bli tatt inn i EØS-avtalen innen nyttår.",
+    "Forenklede regler for aktører nedstrøms i verdikjeden og mikro- og små primærvirksomheter",
+    "Forenklet aktsomhetsvurdering",
+    "Forordningen er per i dag ikke innlemmet i EØS-avtalen og gjennomført i norsk rett. Dette er en pågående prosess ledet av Klima- og miljødepartmentet.",
+    "Forordningen omfatter råvarene storfe, kakao, kaffe, oljepalme, gummi, soya og tre, og avledede relevante produkter av disse råvarene. Fullstendig liste over relevante produkter er listet opp i forordningens vedlegg 1 . Merk at det er gjort endringer i både vareomfanget og andre bestemmelser en rekke ganger. Dette innebærer at det kan være avvik frem til det er publisert nye konsoliderte dokumenter av EU-kommisjonen. Se spesielt vedlegget til den delegerte rettsakten fra juli 2026 som omhandler endringer i vareomfanget.",
+    "Forordningen trådte i kraft i EU 23. juni 2023. De fleste av bestemmelsene i forordningen får likevel ikke virkning i EU før 30. desember 2026 for mellomstore og store bedrifter, og fra 30. juni 2027 for små bedrifter eller mikroforetak. Dette gjelder artiklene 3-13, 16-24, 26, 31 og 32.",
+    "Før forordningen er innført i norsk rett vil ikke innenlands omsetting av relevante råvarer og produkter bli berørt. Dersom du skal eksportere noen av de relevante råvarene eller produktene til et EU-land etter 30. desember 2026 (30. juni 2027 for SMB), må varene være avskogingsfrie. Din kunde i EU må dokumentere at varene ikke stammer fra avskoget areal eller skogforringelse. Dette betyr at du som leverandør må kunne gi dokumentasjon til din kunde som fyller de kravene som aktører i EU må følge etter forordningen.",
+    "Før innføring i norsk rett",
+    "Høsten 2025 ble det innført en ny kategori virksomheter kalt mikro- eller små primærvirksomheter. Dette er virksomheter som får forenklede krav til dokumentasjon. For å kunne benytte deg av de forenklede kravene som stilles må du:",
+    "I forbindelse med forenklingsprosessen har det blitt opprettet to nye kategorier aktører i forordningen. Den ene er nedstrøms virksomheter, som er de aktørene som plasserer produkter på markedet under en ny varekode, men hvor alle relevante innsatsfaktorer i produktet er omfattet av en tidligere aktsomhetserklæring eller forenklet erklæring. Se mer under «Hvem regnes som en virksomhet».",
+    "Inntil videre er ikke EUs informasjonssystem åpnet for norske virksomheter eller myndigheter. Frem til systemet er tilpasset for norsk registrering må derfor en aktør i EU sende inn den første aktsomhetserklæringen. Det vil være ansvarlig myndighet i det respektive EU-landet som har ansvar for å gjennomføre kontroller etter forordningen",
+    "Klima- og miljødepartementet har informert om at det er liten sannsynlighet for at avskogingsforordningen vil bli tatt inn i EØS-avtalen og gjennomført i Norge innen nyttår. Norske virksomheter som eksporterer relevante varer til EU må forberede seg på at prosessen kan ta tid. Selv om EUDR ikke enda er gjennomført i Norge, vil forordningens krav likevel gjelde for produkter som skal eksporteres til EU. Mottageren i EU vil stille større krav til informasjon om produktets opprinnelse enn etter innføring i Norsk lov. Se mer i avsnitt om \"før innføring i norsk rett\" og \"ofte silte spørsmål.",
+    "Navn på primærvirksomhet, adresse og EORI-nummer",
+    "Norge er per i dag klassifisert med lav risiko . Dette betyr at aktører som skal omsette relevante tømmer- og storfeprodukter med opprinnelse i Norge, kun trenger å gjennomføre en forenklet aktsomhetsvurdering. Les om dette under «aktsomhetsvurdering».",
+    "Når egenerklæringen er registrert skal virksomheten motta et erklæringsnummer fra informasjonssystemet. Dette nummeret skal følge varene som plasseres på markedet, dvs. videresendes til neste ledd i verdikjeden.",
+    "Når forordningen blir innført i norsk rett, vil innenlands omsetting av relevante råvarer og produkter også bli berørt. Da må norske produsenter som importerer, produserer, videreforedler eller selger relevante råvarer og produkter, dokumentere at varene oppfyller forordningens krav.",
+    "Omfattet av en aktsomhetserklæring eller forenklet erklæring",
+    "Per oktober 2026 er ikke forordningen innført i norsk rett. Det er lite sannsynlig at forordningen blir tatt inn i EØS-avtalen innen 2027.",
+    "Plassere varer selv på EØS-markedet.",
+    "Registrere en aktsomhetserklæring i EUs Informasjonssystem.",
+    "Registrere seg i informasjonssystemet.",
+    "Regjeringen har bestemt at Norge skal gjennomføre de delene av avskogingsforordningen som er EØS-relevante. Det presiseres at EØS-EFTA-prosessen ikke er ferdigstilt. At noe er EØS-relevant betyr at det er en regel eller et tiltak fra EU som også skal gjelde i Norge fordi vi er med i EØS-avtalen. Dette vil si at landbruksvarer som storfekjøtt og soya kan holdes utenfor gjennomføringen, fordi dette faller utenfor EØS-avtalen. Hva som blir gjeldende for Norge vil avhenge av EØS-komitébeslutningen.",
+    "Regjeringen har bestemt at Norge skal gjennomføre de delene av forordningen som er EØS-relevante. Dette krever en beslutning i EØS-komiteen, som forutsetter enighet mellom EØS/EFTA-landene og EU-landene. Denne prosessen er ikke ferdigstilt.",
+    "Skal fylle ut en engangs forenklet erklæring og registrere denne i informasjonssystemet. Vil motta et erklæringsnummer.",
+    "Som følge av implementeringsproblemer og tekniske utfordringer med det såkalte informasjonssystemet i EU, ble det desember 2025 vedtatt en rekke endringer til forordningen. De viktigste momentene knytter seg til:",
+    "Utsettelse av gjennomføringen med ett år",
+    "Virksomheter må gjennomføre en aktsomhetsvurdering før relevante produkter bringes i omsetning, tilgjengeliggjøres på markedet eller eksporteres fra EØS. Formålet med aktsomhetsvurderingen er å sørge for at produktet som skal omsettes følger forordningens krav i artikkel 3 om å være:",
+    "Virksomheter må som hovedregel registrere en aktsomhetserklæring i EUs informasjonssystem før et relevant produkt importeres, eksporteres eller omsettes i EU.",
+    "Være etablert i et lavrisikoland, slik som Norge er.",
+    "de er omfattet av en aktsomhetserklæring eller forenklet erklæring.",
+    "«SMB» betyr mikroforetak, små og mellomstore bedrifter. Motsetningsvis er «Ikke-SMB» en stor bedrift. Terskelverdiene for hver størrelse er definert i regnskapsdirektivet, som i norsk rett er gjennomført i regnskapsloven.",
+    "Å bringe i omsetning innebærer å gjøre et relevant produkt tilgjengelig på EU/EØS-markedet for første gang. Dette inkluderer import fra land utenfor EU/EØS.",
+    "Å gjøre et produkt tilgjengelig på markedet innebærer enhver levering av et relevant produkt for distribusjon, konsum eller bruk på EØS-markedet i forbindelse med forretningsvirksomhet, med eller uten vederlag."
+   ],
+   "fingeravtrykk": "0d133e755179cf4c"
+  },
   "ldir:rmp": {
    "id": "ldir:rmp",
    "gruppe": "Satser og tilskudd",
@@ -1362,19 +1425,6 @@
    "ok": true,
    "status": 200,
    "fingeravtrykk": "ok"
-  },
-  "lenker": {
-   "id": "lenker",
-   "gruppe": "Lenker i appen",
-   "navn": "Lenker i koden (134 sjekket)",
-   "ok": false,
-   "brutt": [
-    {
-     "url": "https://skogbrannfare.met.no/",
-     "status": 503
-    }
-   ],
-   "fingeravtrykk": "21bfec5812d236ba"
   }
  },
  "kode": {
