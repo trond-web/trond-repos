@@ -332,23 +332,24 @@ function visKommende() {
   const sok = $("#ksok").value.trim().toLowerCase();
   const sortering = $("#ksortering").value;
   let lop = d.lop.map((l, i) => [i, l]).filter(([, l]) => (l.antall[kj] ?? 0) > 0);
+  const treff = sok.length >= 2 ? finnPameldte(sok) : [];
   if (sok) {
-    lop = lop.filter(([, l]) => {
-      if (`${l.navn} ${l.sted ?? ""}`.toLowerCase().includes(sok)) return true;
-      return l.pameldte[kj].some((p) => (typeof p === "number" ? `${d[kj][p][0]} ${d[kj][p][1]}` : `${p[0]} ${p[1]}`).toLowerCase().includes(sok));
-    });
+    const medTreff = new Set(treff.filter((t) => t.kj === kj).map((t) => t.i));
+    lop = lop.filter(([i, l]) => medTreff.has(i) || `${l.navn} ${l.sted ?? ""}`.toLowerCase().includes(sok));
   }
   if (sortering === "styrke") lop.sort((a, b) => b[1].styrke[kj] - a[1].styrke[kj]);
   if (sortering === "pameldte") lop.sort((a, b) => b[1].antall[kj] - a[1].antall[kj]);
   const maks = Math.max(1, ...d.lop.map((l) => l.styrke[kj] ?? 0));
   const oppdatert = new Date(d.oppdatert);
   $("#kommendehint").textContent = `${d.lop.length} kommende renn med påmeldte. Formpoeng fra ${d.sesonger.map((s) => s.navn).join(" og ")}. Påmeldingene ble hentet ${oppdatert.toLocaleDateString("nb-NO", { day: "numeric", month: "long" })}. Trykk på et renn for alle påmeldte.`;
+  const html = [];
+  if (treff.length) html.push(treffTabell(treff, sok));
   if (lop.length === 0) {
-    $("#kommendeliste").innerHTML = `<div class="tom">Ingen kommende renn passer søket.</div>`;
+    $("#kommendeliste").innerHTML = html.join("") + (treff.length ? "" : `<div class="tom">Ingen kommende renn eller påmeldte passer søket.</div>`);
     return;
   }
+  if (treff.length) html.push(`<div class="maned">Renn</div>`);
   let maned = "";
-  const html = [];
   for (const [i, l] of lop) {
     const m = l.dato.slice(0, 7);
     if (sortering === "dato" && m !== maned) {
@@ -374,7 +375,61 @@ function visKommende() {
   $("#kommendeliste").innerHTML = html.join("");
 }
 
-function visKommendeDetalj(i, kj = kommende.kjonn) {
+// Alle påmeldte (begge kjønn) som passer søket, med forventet plassering i hvert renn
+function finnPameldte(sok) {
+  const d = kommende.data;
+  const ut = [];
+  for (const kj of ["M", "K"]) {
+    d.lop.forEach((l, i) => {
+      const liste = l.pameldte[kj] ?? [];
+      const rangerte = l.rangerte[kj] ?? 0;
+      liste.forEach((p, n) => {
+        const kjent = typeof p === "number";
+        const [navn, klubb, fodt] = kjent ? [d[kj][p][0], d[kj][p][1], d[kj][p][3]] : p;
+        if (!`${navn} ${klubb}`.toLowerCase().includes(sok)) return;
+        ut.push({ i, kj, navn, klubb, fodt, forv: kjent ? n + 1 : null, rangerte, antall: l.antall[kj], form: kjent ? d[kj][p][4] : 0 });
+      });
+    });
+  }
+  return ut.sort((a, b) => a.navn.localeCompare(b.navn, "nb") || d.lop[a.i].dato.localeCompare(d.lop[b.i].dato));
+}
+
+function treffTabell(treff, sok) {
+  const d = kommende.data;
+  const vis = treff.slice(0, 200);
+  const rader = vis
+    .map((t) => {
+      const l = d.lop[t.i];
+      const plass = t.forv ? `<b class="${plassKlasse(t.forv)}">${t.forv}.</b> <span class="liten-tekst">av ${heltall.format(t.rangerte)}</span>` : `<span class="liten-tekst">uten resultater</span>`;
+      return `<tr class="klikk" data-ktreff="${t.i}" data-kkj="${t.kj}" data-navn="${esc(t.navn)}">
+        <td><div class="navn">${esc(t.navn)}</div><div class="liten-tekst">${esc([t.kj === "M" ? "Menn" : "Kvinner", t.klubb, t.fodt ? `f. ${t.fodt}` : null].filter(Boolean).join(" · "))}</div></td>
+        <td><div>${esc(l.navn)}</div><div class="liten-tekst">${dato(l.dato, true)}${l.datoAnslatt ? "*" : ""} · ${heltall.format(t.antall)} påmeldt</div></td>
+        <td class="tall">${plass}</td>
+        <td class="tall poeng skjul-smal">${t.form ? tallFormat.format(t.form) : "–"}</td>
+      </tr>`;
+    })
+    .join("");
+  return `<div class="maned">Påmeldte som passer «${esc(sok)}» (${heltall.format(treff.length)})</div>
+    <div class="tabellramme"><table class="tabell">
+      <thead><tr><th>Løper</th><th>Renn</th><th class="tall">Forventet</th><th class="tall skjul-smal">Formpoeng</th></tr></thead>
+      <tbody>${rader}</tbody>
+    </table></div>${treff.length > vis.length ? `<p class="hint">Viser de ${vis.length} første. Skriv mer av navnet for å snevre inn.</p>` : ""}`;
+}
+
+// Filtrerer påmeldingslisten i dialogen, men beholder forventet plassering
+function filtrerDetalj() {
+  const sok = ($("#kdsok")?.value ?? "").trim().toLowerCase();
+  let synlige = 0;
+  document.querySelectorAll("#detalj-innhold [data-s]").forEach((el) => {
+    const vis = !sok || el.dataset.s.includes(sok);
+    el.hidden = !vis;
+    if (vis && el.tagName === "TR") synlige++;
+  });
+  const info = $("#kdinfo");
+  if (info) info.textContent = sok ? `${heltall.format(synlige)} med resultater passer søket.` : "";
+}
+
+function visKommendeDetalj(i, kj = kommende.kjonn, forhandsSok = "") {
   const d = kommende.data;
   const l = d.lop[i];
   const pameldte = l.pameldte[kj] ?? [];
@@ -385,7 +440,7 @@ function visKommendeDetalj(i, kj = kommende.kjonn) {
   const rader = kjente
     .map((p, n) => {
       const sesonger = d.sesonger.map((_, si) => `<td class="tall skjul-smal">${p[7 + si * 2] ? `${p[7 + si * 2]}.` : "–"}</td>`).join("");
-      return `<tr>
+      return `<tr data-s="${esc(`${p[0]} ${p[1]}`.toLowerCase())}">
         <td class="tall ${plassKlasse(n + 1)}">${n + 1}.</td>
         <td><div class="navn">${esc(p[0])}</div><div class="liten-tekst">${esc([p[1], p[2], p[3] ? `f. ${p[3]}` : null].filter(Boolean).join(" · "))}</div></td>
         <td class="tall poeng">${tallFormat.format(p[4])}</td>
@@ -408,12 +463,15 @@ function visKommendeDetalj(i, kj = kommende.kjonn) {
     </div>
     <p class="hint">Påmeldte sortert etter formpoeng (de ${d.regler.beste} beste løpene i fjor og i år, fjorårets teller ${Math.round(d.regler.fjorVekt * 100)} %). Det gir en forventet resultatliste.</p>
     <div class="lenker"><a href="${esc(l.url)}" target="_blank" rel="noopener">Deltakerliste hos arrangøren</a>${l.pamelding ? `<a href="${esc(l.pamelding)}" target="_blank" rel="noopener">Påmelding</a>` : ""}</div>
+    <div class="kontroller"><input id="kdsok" type="search" placeholder="Finn påmeldt løper eller klubb" aria-label="Finn påmeldt løper eller klubb" value="${esc(forhandsSok)}"></div>
+    <p class="hint" id="kdinfo"></p>
     ${kjente.length ? `<div class="tabellramme"><table class="tabell">
       <thead><tr><th class="tall">Forv.</th><th>Løper</th><th class="tall">Formpoeng</th>${sesongKolonner}</tr></thead>
       <tbody>${rader}</tbody>
     </table></div>` : `<div class="tom">Ingen av de påmeldte har resultater fra i fjor eller i år.</div>`}
-    ${ukjente.length ? `<p class="ukjente"><b>Uten resultater i fjor og i år (${heltall.format(ukjente.length)}):</b> ${ukjente.map((p) => esc(p[0])).join(", ")}</p>` : ""}`;
+    ${ukjente.length ? `<p class="ukjente"><b>Uten resultater i fjor og i år (${heltall.format(ukjente.length)}):</b> ${ukjente.map((p) => `<span class="uk" data-s="${esc(`${p[0]} ${p[1]}`.toLowerCase())}">${esc(p[0])}</span>`).join("")}</p>` : ""}`;
   apneDetalj();
+  if (forhandsSok) filtrerDetalj();
 }
 
 function settKommendeKjonn(kj) {
@@ -427,8 +485,14 @@ function settKommendeKjonn(kj) {
 
 document.querySelectorAll("#fane-kommende [data-kkjonn]").forEach((b) => b.addEventListener("click", () => settKommendeKjonn(b.dataset.kkjonn)));
 $("#ksortering").addEventListener("change", () => visKommende());
-$("#ksok").addEventListener("input", () => visKommende());
+let kSokTimer;
+$("#ksok").addEventListener("input", () => {
+  clearTimeout(kSokTimer);
+  kSokTimer = setTimeout(visKommende, 150);
+});
 $("#kommendeliste").addEventListener("click", (e) => {
+  const treffRad = e.target.closest("tr[data-ktreff]");
+  if (treffRad) return visKommendeDetalj(Number(treffRad.dataset.ktreff), treffRad.dataset.kkj, treffRad.dataset.navn);
   const kort = e.target.closest("[data-kommende]");
   if (kort) visKommendeDetalj(Number(kort.dataset.kommende));
 });
@@ -442,10 +506,13 @@ function apneDetalj() {
 }
 
 $("#lukk").addEventListener("click", () => $("#detalj").close());
+$("#detalj").addEventListener("input", (e) => {
+  if (e.target.id === "kdsok") filtrerDetalj();
+});
 $("#detalj").addEventListener("click", (e) => {
   if (e.target === e.currentTarget) e.currentTarget.close();
   const kKnapp = e.target.closest("[data-kdetalj]");
-  if (kKnapp) return visKommendeDetalj(Number(kKnapp.dataset.kdetalj), kKnapp.dataset.kkj);
+  if (kKnapp) return visKommendeDetalj(Number(kKnapp.dataset.kdetalj), kKnapp.dataset.kkj, $("#kdsok")?.value ?? "");
   const kjonnKnapp = e.target.closest("[data-lopkjonn]");
   if (kjonnKnapp) return visLopDetalj(Number(kjonnKnapp.dataset.lop), kjonnKnapp.dataset.lopkjonn);
   const lopRad = e.target.closest("tr[data-lop]");

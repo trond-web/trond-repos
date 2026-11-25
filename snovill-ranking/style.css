@@ -186,3 +186,5 @@ input[type="search"] { flex: 1 1 220px; min-width: 0; }
 .styrke .bar { flex: 1 1 auto; max-width: 220px; height: 8px; border-radius: 999px; background: var(--flate2); overflow: hidden; }
 .styrke .bar span { display: block; height: 100%; border-radius: 999px; background: var(--aksent); }
 .ukjente { font-size: 13px; color: var(--dempet); margin-top: 12px; overflow-wrap: anywhere; }
+.ukjente .uk { display: inline-block; margin-right: 12px; }
+.ukjente .uk[hidden] { display: none; }
