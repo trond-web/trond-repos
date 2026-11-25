@@ -28,6 +28,7 @@
 
   <nav class="faner" role="tablist">
     <button role="tab" data-fane="ranking" class="aktiv" aria-selected="true">Rangering</button>
+    <button role="tab" data-fane="kommende" aria-selected="false">Kommende renn</button>
     <button role="tab" data-fane="lop" aria-selected="false">Løp</button>
     <button role="tab" data-fane="poeng" aria-selected="false">Poengsystemet</button>
   </nav>
@@ -69,6 +70,23 @@
       <button class="flere" id="flere" hidden>Vis flere</button>
     </section>
 
+    <section id="fane-kommende" class="fane">
+      <div class="kontroller">
+        <div class="kjonn" role="group" aria-label="Kjønn">
+          <button data-kkjonn="M" class="aktiv" aria-pressed="true">Menn</button>
+          <button data-kkjonn="K" aria-pressed="false">Kvinner</button>
+        </div>
+        <select id="ksortering" aria-label="Sortering">
+          <option value="dato">Etter dato</option>
+          <option value="styrke">Sterkeste felt først</option>
+          <option value="pameldte">Flest påmeldte først</option>
+        </select>
+        <input id="ksok" type="search" placeholder="Søk etter renn eller påmeldt løper" aria-label="Søk etter renn eller påmeldt løper">
+      </div>
+      <p class="hint" id="kommendehint">Laster påmeldte …</p>
+      <div id="kommendeliste" class="lopliste"></div>
+    </section>
+
     <section id="fane-lop" class="fane">
       <div class="kontroller">
         <input id="lopsok" type="search" placeholder="Søk etter løp eller sted" aria-label="Søk etter løp">
@@ -104,6 +122,9 @@
           <tbody id="r-distanse"></tbody>
         </table></div>
         <p><strong>Feltstyrke</strong> (<span id="r-felt">0,8–1,0</span>) måler hvor sterke de ti beste i løpet er: hvor mange sesongpoeng de har, sammenlignet med nr. 20 på rankingen. Et lokalt turrenn der toppfolka ikke stiller, teller dermed mindre enn et løp der hele eliten går. Rankingen regnes ut i flere runder, slik at feltstyrken og løperpoengene henger sammen.</p>
+        <h3>Kommende renn og formpoeng</h3>
+        <p>For kommende renn hentes påmeldingslistene, og hver påmeldt løper får <strong>formpoeng</strong> ut fra rankingen i fjor og i år: summen av de <span id="r-kbeste">8</span> beste løpspoengene fra begge sesongene, der løp fra i fjor teller <span id="r-fjorvekt">75</span> %. Tidlig i sesongen er det derfor mest fjorårets resultater som teller, og etter hvert tar årets over.</p>
+        <p>Påmeldte løpere sorteres etter formpoeng, som gir en forventet resultatliste. <strong>Feltstyrken</strong> til et renn er formpoengene til de ti beste påmeldte, i prosent av de ti beste i hele rankingen. 100 betyr at hele toppen stiller.</p>
         <h3>Hvilke løp som er med</h3>
         <ul>
           <li><strong>Turrenn og langløp på minst 20 km.</strong> Har arrangøren ikke oppgitt distansen, tas løpet med når vinneren brukte minst 50 minutter. Ordinære langrenn (krets-, sone- og landsrenn med intervallstart), karuseller, mesterskap, sprint, stafetter, ungdomsrenn og klasser uten tidtaking er holdt utenfor.</li>

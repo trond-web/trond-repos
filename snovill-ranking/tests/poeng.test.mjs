@@ -118,3 +118,29 @@ test("feltstyrken holder seg mellom 0,8 og 1 også med delte plasser", () => {
   const r = lagRanking(lop, { sesong: "2025-26", sesongNavn: "2025/26", oppdatert: "x" });
   for (const l of r.lop) if (l.felt.M !== undefined) assert.ok(l.felt.M >= 0.8 && l.felt.M <= 1, `felt ${l.felt.M}`);
 });
+
+test("kommende renn: påmeldte kobles mot i fjor og i år, fjoråret teller 75 %", async () => {
+  const { lagKommende } = await import("../innsamling/kommende.mjs");
+  const lop = (id, dato, rader) => ({ id, kilde: "eq", navn: `Renn ${id}`, dato, km: 50, res: { M: rader, K: [] } });
+  const fjor = lagRanking(
+    [lop("a", "2026-02-01", [rad("Ola Fjor", 100000, { eq: 1 }), rad("Per Begge", 101000, { eq: 2 }), rad("Kari Tredje", 102000)])],
+    { sesong: "2025-26", sesongNavn: "2025/26", oppdatert: "x" },
+  );
+  const iaar = lagRanking(
+    [lop("b", "2026-12-01", [rad("Per Begge", 100000, { eq: 2 }), rad("Nils Ny", 101000, { eq: 3 }), rad("Kari Tredje", 102000)])],
+    { sesong: "2026-27", sesongNavn: "2026/27", oppdatert: "x" },
+  );
+  const pameldt = [{ id: "eq-9-1", kilde: "eq", navn: "Framtidsrennet", arrangement: "Framtidsrennet", dato: "2027-02-01", km: 50, res: { M: [rad("Ola Fjor", 0, { eq: 1 }), rad("Per Begge", 0, { eq: 2 }), rad("Helt Ukjent", 0)], K: [] } }];
+  const k = lagKommende([{ sesong: "2025-26", data: fjor }, { sesong: "2026-27", data: iaar }], pameldt, { oppdatert: "x", iDag: "2026-12-10" });
+  assert.equal(k.lop.length, 1);
+  const l = k.lop[0];
+  assert.equal(l.antall.M, 3);
+  assert.equal(l.rangerte.M, 2);
+  const forste = k.M[l.pameldte.M[0]];
+  assert.equal(forste[0], "Per Begge"); // resultater begge år slår bare i fjor
+  const ola = k.M[l.pameldte.M[1]];
+  const olaFjor = fjor.M.find((p) => p[0] === "Ola Fjor")[4];
+  assert.ok(Math.abs(ola[4] - olaFjor * 0.75) < 0.2, `${ola[4]} vs ${olaFjor}`);
+  assert.deepEqual(l.pameldte.M[2], ["Helt Ukjent", "", null]);
+  assert.ok(l.styrke.M > 0 && l.styrke.M <= 100);
+});

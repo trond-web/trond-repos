@@ -234,6 +234,7 @@ export function kobleLopere(rader) {
     knytt(r.eq && `eq:${r.eq}`, i);
     knytt(r.fis && `fis:${r.fis}`, i);
     knytt(r.nif && `nif:${r.nif}`, i);
+    knytt(r.gruppe && `g:${r.gruppe}`, i); // rader som allerede er kjent som samme person
   });
   // 2) Samme navn: grupper som ikke har motstridende fødselsår slås sammen
   const perNavn = new Map();
@@ -415,6 +416,9 @@ export function lagRanking(alleLop, { sesong, sesongNavn, oppdatert }) {
       const s = sesongPoeng.get(p);
       const sisteKlubb = [...egne].sort((a, b) => utLop[b.li].dato.localeCompare(utLop[a.li].dato)).find((r) => r.klubb)?.klubb ?? "";
       const navn = hyppigst(egne.filter((r) => r.eq).map((r) => r.navn)) ?? hyppigst(egne.map((r) => r.navn));
+      // Med ID-ene, til kobling mot påmeldte og andre sesonger (skrives ikke til fil)
+      const ider = (felt) => [...new Set(egne.map((r) => r[felt]).filter(Boolean))];
+      const intern = { eq: ider("eq"), fis: ider("fis"), nif: ider("nif"), resultater: s.resultater.map((r) => ({ li: r.li, poeng: r.poeng })) };
       personer.push([
         navn,
         sisteKlubb,
@@ -427,6 +431,7 @@ export function lagRanking(alleLop, { sesong, sesongNavn, oppdatert }) {
           .sort((a, b) => utLop[a.li].dato.localeCompare(utLop[b.li].dato))
           .map((r) => [r.li, r.plass, r.tid, r.poeng, r.teller ? 1 : 0]),
       ]);
+      Object.defineProperty(personer.at(-1), "intern", { value: intern, enumerable: false });
     }
     personer.sort((a, b) => b[4] - a[4] || a[6] - b[6] || a[0].localeCompare(b[0], "nb"));
     kjonnUt[kj] = personer;
