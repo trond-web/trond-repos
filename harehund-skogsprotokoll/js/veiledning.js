@@ -45,7 +45,9 @@ export function veiledningHtml() {
       </table>
       <ul>
         <li><strong>Uttak / los:</strong> velg losdyr. Lospoeng gis bare når arten er konstatert. Er du usikker, velg «Ukjent losdyr».</li>
-        <li><strong>Kobling:</strong> velg grunn. Ved LIB, samjag, fare eller forulykket losdyr slås en ny los på samme art sammen med den forrige.</li>
+        <li><strong>Kobling:</strong> velg grunn. Etter <strong>dødtap</strong> eller når du kobler for å slippe på nytt, velg <strong>«Kobling / pause»</strong> – da blir neste los en egen los. Bare når losen avbrytes av LIB, samjag, fare for hundens liv og helse eller forulykket losdyr, slås en ny los på samme art sammen med den forrige (kap. 15.4).</li>
+        <li><strong>Dødtap:</strong> trykk «Dødtap / slutt los» når hunden ikke finner igjen losdyret. Losen slutter der tapet begynte.</li>
+        <li><strong>Gått inn (LIB):</strong> appen spør om hunden påviste losdyret, det vil si sto ved hiet eller berget til dere kom, eller viste det med målbruk. Bare da gis LIB. Svarer du nei, føres det som slutt los.</li>
         <li><strong>Losdyr sett:</strong> velg avstand til hunden. To observasjoner med ulik avstand trengs for nyansering 5.</li>
         <li><strong>Klovdyrjag, Innkalling og Notat</strong> finnes hele tiden. Innkalling fra los utenfor synsvidde trengs for lydighet 5.</li>
         <li><strong>Avslutt prøven</strong> kobler hunden og tar deg til Bedømming.</li>

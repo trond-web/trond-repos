@@ -103,7 +103,7 @@ export function manglerTil(gruppe, losdyr, lospoeng, egenskapspoeng) {
 
 // Kobling som avbryter losen av grunner der en ny los på samme art senere skal slås sammen (kap. 15.4).
 export const KOBLINGSGRUNNER = {
-  pause: 'Kobling / pause',
+  pause: 'Kobling / pause (også etter dødtap)',
   fulltid: 'Jaget full tid',
   lib: 'Losdyr gått inn (LIB)',
   samjag: 'Samjag / fremmed hund',
@@ -111,7 +111,9 @@ export const KOBLINGSGRUNNER = {
   forulykket: 'Losdyr forulykket / sykt / skadet',
   flytting: 'Flytting til ny terrengdel',
 };
-const SAMMENSLAA_ETTER = new Set(['lib', 'samjag', 'fare', 'forulykket']);
+// Etter disse koblingsgrunnene slås en ny los på samme art sammen med den forrige (kap. 15.4). Etter dødtap,
+// pause, full tid eller flytting er den nye losen en egen los.
+export const SAMMENSLAA_ETTER = new Set(['lib', 'samjag', 'fare', 'forulykket']);
 
 export const HENDELSER = {
   slipp: 'Slipp',
