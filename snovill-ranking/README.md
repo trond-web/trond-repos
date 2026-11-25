@@ -40,11 +40,26 @@ Alle tall ligger i `REGLER` i `innsamling/poeng.mjs`.
 Løperne kobles på tvers av løp med FIS-kode, NIF-ID og EQ Timings person-ID. Ellers kobles de på navn,
 og fødselsår og klubb skiller personer med samme navn.
 
+## Kommende renn
+
+Påmeldingslistene til kommende turrenn hentes fra EQ Timing (`/api/Contestants/{id}`). Birken og Vasaloppet
+har ikke åpne påmeldingslister ennå. Hver påmeldt kobles til rankingen med EQ-ID, FIS-kode, NIF-ID eller navn
+og fødselsår, og får formpoeng:
+
+```
+Formpoeng  = summen av de 8 beste løpspoengene i fjor og i år, der fjorårets løp teller 75 %
+Feltstyrke = formpoengene til de 10 beste påmeldte, i prosent av de 10 beste i hele rankingen
+```
+
+De påmeldte sorteres etter formpoeng (forventet resultatliste), og rennene kan sorteres etter feltstyrke.
+Resultatet skrives til `data/kommende.json`. Siste nedlastede påmeldingsliste lagres i `data/kommende/eq.json`.
+
 ## Filer
 
 - `innsamling/hent.mjs` – finner nye løp, henter resultatene og skriver rankingen
 - `innsamling/kilder/*.mjs` – én fil per kilde
 - `innsamling/poeng.mjs` – poengsystemet, sammenslåing av like løp og kobling av løpere
+- `innsamling/kommende.mjs` – kommende renn: formpoeng for påmeldte og feltstyrke
 - `data/lop/<sesong>/*.json` – resultatene per løp (sesongen 2025/26 ligger i repoet)
 - `data/ranking-<sesong>.json`, `data/sesonger.json` – det siden viser
 - `index.html`, `app.js`, `style.css` – siden

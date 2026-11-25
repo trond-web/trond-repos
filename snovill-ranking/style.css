@@ -180,3 +180,8 @@ input[type="search"] { flex: 1 1 220px; min-width: 0; }
   .lopkort .hoyre { grid-column: 2; text-align: left; }
   h1 { font-size: 22px; }
 }
+
+.styrke { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--dempet); margin-top: 4px; }
+.styrke .bar { flex: 1 1 auto; max-width: 220px; height: 8px; border-radius: 999px; background: var(--flate2); overflow: hidden; }
+.styrke .bar span { display: block; height: 100%; border-radius: 999px; background: var(--aksent); }
+.ukjente { font-size: 13px; color: var(--dempet); margin-top: 12px; overflow-wrap: anywhere; }

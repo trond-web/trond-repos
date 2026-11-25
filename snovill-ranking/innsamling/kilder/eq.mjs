@@ -8,7 +8,7 @@ const SPORT_IDER = "2,138,258,267,276,377,419,277";
 
 // Arrangementer som ikke er turrenn/langløp (karuseller, KM, ungdomsrenn, testarrangement osv.)
 const IKKE_LANGLOP =
-  /kopi|kopia|\btest|avlyst|påmelding|karusell|cuprenn|\bcup\b|backyard|terrengløp|rulleski|u\/tid|ute?n tid|utan tid|ingen tid|\bkm\b|\bnm\b|\bnnm\b|\bsm\b|mesterskap|mästerskap|\bdm\b|famil|fortropp|ungdom|barnas|barn |trenings|hodelykt|lysløype|kveldsrenn|onsdagsrenn|sprint|stafett|naborunden|skicross|langrennscross|spark|motbakke|uphill|bakkeløp/i;
+  /kopi|kopia|\btest|avlyst|påmelding|karusell|cuprenn|\bcup\b|backyard|terrengløp|rulleski|u\/tid|ute?n tid|utan tid|ingen tid|\bkm\b|\bnm\b|\bnnm\b|\bsm\b|mesterskap|mästerskap|klubbrenn|showrenn|\bdm\b|famil|fortropp|ungdom|barnas|barn |trenings|hodelykt|lysløype|kveldsrenn|onsdagsrenn|sprint|stafett|naborunden|skicross|langrennscross|spark|motbakke|uphill|bakkeløp/i;
 // For etappenavn gjelder det samme, unntatt KM/NM (ellers faller "Turrenn 30 km" bort)
 const IKKE_ETAPPE = new RegExp(IKKE_LANGLOP.source.replace("|\\bkm\\b|\\bnm\\b", ""), "i");
 // Ordinære langrenn (krets-, sone- og landsrenn) har intervallstart. Turrenn på samme nivå
@@ -132,4 +132,55 @@ export function lopNavn(arr, etappe, antallEtapper) {
   const grunn = arr.navn.replace(/\s*[-–]\s*\d{4}-\d{2}-\d{2}\s*$/, "").trim();
   if (antallEtapper <= 1) return grunn;
   return `${grunn} – ${etappe.etappeNavn || (etappe.km ? `${etappe.km} km` : "")}`.replace(/ – $/, "");
+}
+
+// ---------- Kommende renn og påmeldte ----------
+
+// Arrangementer fram i tid som har påmeldte.
+export async function finnKommende({ fra, til }) {
+  const url = `${API}/Events?dateFrom=${fra}&dateTo=${til}&sportIds=${SPORT_IDER}&take=5000`;
+  const liste = (await hent(url)) ?? [];
+  return liste
+    .filter((e) => e.Meta?.GotContestants && !e.Meta?.GotResults)
+    .filter((e) => !IKKE_LANGLOP.test(e.Name))
+    .filter((e) => {
+      const mnd = Number(e.Date.slice(5, 7));
+      return mnd < 5 || mnd > 10;
+    })
+    .map((e) => ({
+      eqId: e.Id,
+      navn: e.Name.trim(),
+      dato: e.Date.slice(0, 10),
+      land: e.City?.Country?.Ioc ?? e.Organization?.Country?.Ioc ?? null,
+      sted: e.City?.Name ?? null,
+      fis: /FIS/i.test(e.Sportlevel?.Name ?? ""),
+      niva: e.Sportlevel?.Name ?? "",
+      pamelding: e.Signup?.Active ? e.Signup?.ExternalUrl || `https://signup.eqtiming.com/?Event=${e.Id}` : null,
+    }));
+}
+
+const UGYLDIG_STATUS = /avmeld|strøk|stryk|slett|kansell|ikke møtt|dns/i;
+
+// Påmeldte per lang etappe: { etappeId: { M: [...], K: [...] } }, rader som i resultatene men uten tid.
+export async function hentPameldte(arr) {
+  const etapper = await langeEtapper(arr);
+  if (etapper.length === 0) return [];
+  const data = await hent(`${API}/Contestants/${arr.eqId}`);
+  const deltakere = Array.isArray(data) ? data : Object.values(data ?? {});
+  const perEtappe = new Map(etapper.map((e) => [e.etappeId, { ...e, M: [], K: [] }]));
+  for (const d of deltakere) {
+    if (d.Status && (d.Status.Visible === false || UGYLDIG_STATUS.test(d.Status.Navn ?? ""))) continue;
+    const u = d.Utover ?? {};
+    const kjonn = u.Kjonn === "m" ? "M" : u.Kjonn === "f" || u.Kjonn === "k" ? "K" : null;
+    if (!kjonn) continue;
+    const lisens = Object.values(d.Lisens ?? {});
+    const kode = (type) => lisens.find((l) => l.Type === type)?.Kode ?? null;
+    const rad = [penNavn(`${u.Fornavn ?? ""} ${u.Etternavn ?? ""}`), (d.Klubbnavn || u.Klubb?.Navn || "").trim(), u.Land?.IOC ?? null, 0, u.Aar || null, u.UID || null, kode("FISCODE"), kode("NIF PERSONID")];
+    if (!rad[0]) continue;
+    for (const ed of Object.values(d.EtappeDeltaker ?? {})) {
+      const et = perEtappe.get(ed.Etappe?.UID);
+      if (et) et[kjonn].push(rad);
+    }
+  }
+  return [...perEtappe.values()].filter((e) => e.M.length + e.K.length > 0);
 }

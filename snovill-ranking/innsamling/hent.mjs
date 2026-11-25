@@ -13,6 +13,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { sesongFor, sesongPeriode, sesongNavn, iParallell, logg } from "./felles.mjs";
 import { lagRanking } from "./poeng.mjs";
+import { lagKommende } from "./kommende.mjs";
 import * as eq from "./kilder/eq.mjs";
 import * as birken from "./kilder/birken.mjs";
 import * as vasaloppet from "./kilder/vasaloppet.mjs";
@@ -155,7 +156,59 @@ async function lagSesongRanking(sesong) {
   const ranking = lagRanking(lop, { sesong, sesongNavn: sesongNavn(sesong), oppdatert: new Date().toISOString() });
   await skrivJson(path.join(UT, `ranking-${sesong}.json`), ranking);
   logg(`${sesongNavn(sesong)}: ${ranking.lop.length} løp, ${ranking.M.length} menn og ${ranking.K.length} kvinner rangert`);
+  rankinger.set(sesong, ranking);
   return { sesong, navn: sesongNavn(sesong), lop: ranking.lop.length, menn: ranking.M.length, kvinner: ranking.K.length };
+}
+
+const rankinger = new Map();
+
+// Kommende renn med påmeldte (EQ Timing), rangert ut fra rankingen i fjor og i år.
+// Listene hentes på nytt hver gang; siste versjon lagres så --uten-nett også virker.
+async function lagKommendeRenn() {
+  const iaar = sesongFor(new Date());
+  const forrigeAr = Number(iaar.slice(0, 4)) - 1;
+  const fjor = `${forrigeAr}-${String((forrigeAr + 1) % 100).padStart(2, "0")}`;
+  const brukte = [fjor, iaar].filter((s) => rankinger.has(s)).map((s) => ({ sesong: s, data: rankinger.get(s) }));
+  if (brukte.length === 0) return;
+  const lager = path.join(DATA, "kommende", "eq.json");
+  let kommende = await lesJson(lager, []);
+  if (!UTEN_NETT) {
+    try {
+      const { til } = sesongPeriode(iaar);
+      const arrangementer = await eq.finnKommende({ fra: I_DAG, til });
+      const nye = [];
+      await iParallell(arrangementer, 4, async (arr) => {
+        try {
+          const etapper = await eq.hentPameldte(arr);
+          for (const et of etapper) {
+            nye.push({
+              id: eq.lopId(arr, et),
+              kilde: "eq",
+              navn: eq.lopNavn(arr, et, etapper.length),
+              arrangement: arr.navn,
+              dato: arr.dato,
+              km: et.km,
+              land: arr.land,
+              sted: arr.sted,
+              fis: arr.fis,
+              url: `https://live.eqtiming.com/${arr.eqId}#contestants`,
+              pamelding: arr.pamelding,
+              res: { M: et.M, K: et.K },
+            });
+          }
+        } catch (feil) {
+          logg(`  feil: påmeldte ${arr.navn}: ${feil.message}`);
+        }
+      });
+      kommende = nye;
+      await skrivJson(lager, kommende);
+    } catch (feil) {
+      logg(`Kommende renn: ${feil.message} (bruker forrige liste)`);
+    }
+  }
+  const ut = lagKommende(brukte, kommende, { oppdatert: new Date().toISOString(), iDag: I_DAG });
+  await skrivJson(path.join(UT, "kommende.json"), ut);
+  logg(`Kommende renn: ${ut.lop.length} renn, ${ut.lop.reduce((s, l) => s + l.antall.M + l.antall.K, 0)} påmeldte`);
 }
 
 const oversikt = [];
@@ -174,4 +227,5 @@ if (existsSync(path.join(DATA, "lop"))) {
   }
 }
 oversikt.sort((a, b) => b.sesong.localeCompare(a.sesong));
+await lagKommendeRenn();
 await skrivJson(path.join(UT, "sesonger.json"), { oppdatert: new Date().toISOString(), sesonger: oversikt.filter((o) => o.lop > 0) });
