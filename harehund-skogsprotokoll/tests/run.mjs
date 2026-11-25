@@ -249,4 +249,11 @@ test('T etter satte egenskaper gir 0 i alle rubrikker til Arra', () => {
   assert.equal(p.poeng.jaktlyst, 4, 'karakterene beholdes i lagringen');
 });
 
+test('kobling etter dødtap gir egen los; bare LIB, samjag, fare og forulykket slår sammen', () => {
+  const med = (grunn) => beregn(prove([h(0, 'slipp'), h(10, 'uttak', { losdyr: 'hare' }), h(50, 'tap'), h(60, 'slutt'),
+    h(65, 'kobling', { grunn }), h(80, 'slipp'), h(90, 'uttak', { losdyr: 'hare' }), h(130, 'slutt'), h(400, 'avslutt')])).grupper.length;
+  for (const g of ['pause', 'fulltid', 'flytting']) assert.equal(med(g), 2, g);
+  for (const g of ['lib', 'samjag', 'fare', 'forulykket']) assert.equal(med(g), 1, g);
+});
+
 console.log(`\n${ok} tester OK`);

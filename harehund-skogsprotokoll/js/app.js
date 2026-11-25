@@ -1,6 +1,6 @@
 // Skogsprotokoll for harehundprøver – grensesnitt. All logikk for poeng og regler ligger i regler.js.
 import {
-  LOSDYR, LOVLIGE_LOSDYR, RASER, MOMENTER, TILLEGG, SKALA, UTFALL, KOBLINGSGRUNNER, HENDELSER, MIN,
+  SAMMENSLAA_ETTER, LOSDYR, LOVLIGE_LOSDYR, RASER, MOMENTER, TILLEGG, SKALA, UTFALL, KOBLINGSGRUNNER, HENDELSER, MIN,
   beregn, beregnEP, gruppeForRase, alderMnd, klokke, fmtTid, forslagTilleggsopplysninger, sorterHendelser, kravTabell,
 } from './regler.js';
 import { veiledningHtml, UTVIKLER } from './veiledning.js';
@@ -559,9 +559,24 @@ function velgFor(p, type, ekstraFelles = {}, t = undefined) {
     return visArk(`<h2>Uttak – hvilket losdyr?</h2><p class="dempet">Lospoeng gis bare når losdyrets art er konstatert (sett, eller sikkert sporsyn).</p>
       <div class="valg">${[...lovlige, 'ukjent'].map((l) => `<button class="hk ${l === forrige?.losdyr ? 'primar' : ''}" data-valg="${l}">${LOSDYR[l]}</button>`).join('')}</div>`, (v) => reg({ losdyr: v }));
   }
+  if (type === 'lib') {
+    return visArk(`<h2>Losdyr gått inn (LIB)?</h2>
+      <p>LIB gir 20 lospoeng bare når <strong>hunden påviser losdyret</strong>: den står ved hiet eller berget til dere kommer fram, eller viser det tydelig med målbruk.
+      Det gis én gang per dag og krever minst 30 minutter hørt los.</p>
+      <div class="valg"><button class="hk primar" data-valg="ja">Ja – hunden påviste losdyret</button>
+      <button class="hk" data-valg="nei">Nei – registrer som slutt los</button></div>
+      <p class="dempet">Etter LIB skal hunden kobles og slippes i ny terrengdel. Velg da «Losdyr gått inn (LIB)» som grunn for koblingen.</p>`,
+    (v) => (v === 'ja' ? reg({ pavist: true }) : registrer(p, 'slutt', { tekst: 'Mulig LIB, ikke påvist av hunden' }, t ?? Date.now())));
+  }
   if (type === 'kobling') {
-    return visArk(`<h2>Kobling – grunn</h2><div class="valg">${Object.entries(KOBLINGSGRUNNER).map(([k, tx]) => `<button class="hk" data-valg="${k}">${tx}</button>`).join('')}</div>
-      <p class="dempet">Ved LIB, samjag, fare eller forulykket losdyr slås en ny los på samme art sammen med denne.</p>`, (v) => reg({ grunn: v }));
+    const knapp = ([k, tx]) => `<button class="hk kobling-valg ${k === 'pause' ? 'primar' : ''}" data-valg="${k}">${tx}
+      <small>${SAMMENSLAA_ETTER.has(k) ? 'Ny los på samme art slås sammen med denne' : 'Neste los blir en egen los'}</small></button>`;
+    const valg = Object.entries(KOBLINGSGRUNNER);
+    return visArk(`<h2>Kobling – grunn</h2>
+      <p>Etter <strong>dødtap</strong> eller for å slippe på nytt: velg <strong>«Kobling / pause»</strong>. Minuttene fra losen før blir ikke tatt med videre.</p>
+      <div class="valg">${valg.filter(([k]) => !SAMMENSLAA_ETTER.has(k)).map(knapp).join('')}</div>
+      <h3>Avbrutt los – slås sammen med ny los (kap. 15.4)</h3>
+      <div class="valg">${valg.filter(([k]) => SAMMENSLAA_ETTER.has(k)).map(knapp).join('')}</div>`, (v) => reg({ grunn: v }));
   }
   if (type === 'settLosdyr') {
     return visArk(`<h2>Losdyr sett – avstand til hunden</h2><div class="valg">${AVSTANDER.map(([k, tx]) => `<button class="hk" data-valg="${k}">${tx}</button>`).join('')}</div><p class="dempet">Nyansering 5 krever at losdyret er sett minst 2 ganger med ulik avstand.</p>`, (v) => reg({ avstand: v }));
