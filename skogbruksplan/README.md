@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.18.0** (2026-11-25) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.19.0** (2026-11-25) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -80,6 +80,13 @@ Store eiendommer støttes:
 - **Rask geometri:** polygonklipping gjøres med `polygon-clipping`, med Turf som reserve.
 - **Delte bestand:** bestand som NIBIO har lagret som flere flater med samme nummer, slås sammen. Har delene ulike data, får de bokstav etter nummeret (f.eks. 1-45a og 1-45b).
 - **Eksempel:** Flå 22/1 (12 teiger, 11 455 daa) gir 563 bestand på 9 822 daa skog.
+
+### 📈 Dataene skrives fram til i år
+Alder og volum i en ny plan gjelder alltid for inneværende år, og brukeren får beskjed om at dataene er skrevet fram:
+- **Plan fra gnr/bnr** (appen og SkogIQ Felt): SR16 er målt et bestemt år (ofte 5–10 år tilbake). Alder og volum skrives fram fra målingsåret med vekstmodellen. Det gjelder også bestand der bare volumet er kjent. Sammendraget viser for eksempel «Alder og volum i 80 bestand gjaldt 2015 og er skrevet fram 11 år til 2026 med vekstmodellen». Volumet vises som «stående volum i 2026».
+- **Import** (SOSI, GeoJSON, CSV): takståret leses fra filen (TAKSTAAR, REGAAR, REGAAR_KORR, REGISTRERINGSAAR, TAKSERINGSAAR, SP_REGAAR, datoer). Mangler det, kan du fylle inn «Dataene gjelder år». Uten takstår regnes dataene som årets, og importen sier fra om det. Eksporten tar med TAKSTAAR, så en plan som importeres igjen, ikke skrives fram to ganger.
+- **Sikkerhetskopi og eldre planer:** skrives fram når de gjenopprettes eller åpnes et senere år, med melding.
+- Hvert bestand som er skrevet fram, får en merknad («Alder og volum fra … skrevet fram N år fra 2016 til 2026»), og dataåret lagres i `ekstra.DATAAAR`. Fellesfunksjonene er `framskrivListe` og `framskrivTekst` i `js/model.js`.
 
 ## Treslag og volum i bestandsinfoen (`js/treslag.js`)
 

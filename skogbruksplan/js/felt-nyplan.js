@@ -3,6 +3,7 @@
 // Datagrunnlaget (PEFC-miljødata, veier, tømmerpriser) hentes i bakgrunnen etter at planen er åpnet.
 import { eiendomVed, eiendomGrense, kommuneFor, lagSkogbruksplan, GEN_STEG } from './plan-fra-kart.js';
 import { hentDatagrunnlag } from './datagrunnlag.js';
+import { framskrivTekst } from './model.js';
 import { oppdaterKantsone } from './kantsone.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -58,7 +59,8 @@ export function initNyPlanFelt({ kart, L, aapneArk, lukkArk, melding, gpsPos, si
       await lagrePlan(ny); fjernGrense();
       const skog = ny.bestand.reduce((s, b) => s + (b.areal || 0), 0); const vol = ny.bestand.reduce((s, b) => s + (b.volumDaa || 0) * (b.areal || 0), 0);
       aapneArk(`<h2>✓ ${esc(ny.eiendom.navn)} er klar</h2>
-        <div class="tall-rad"><div class="tall"><b>${fmt(skog)}</b><span>daa skog</span></div><div class="tall"><b>${ny.bestand.length}</b><span>bestand</span></div><div class="tall"><b>${fmt(vol)}</b><span>m³ (SR16)</span></div></div>
+        <div class="tall-rad"><div class="tall"><b>${fmt(skog)}</b><span>daa skog</span></div><div class="tall"><b>${ny.bestand.length}</b><span>bestand</span></div><div class="tall"><b>${fmt(vol)}</b><span>${ny.metadata?.framskrevet ? `m³ i ${iAar}` : 'm³ (SR16)'}</span></div></div>
+        ${ny.metadata?.framskrevet ? `<p class="framskrevet-info">📈 ${esc(framskrivTekst(ny.metadata.framskrevet))}</p>` : ''}
         <p class="hint">Miljødata, veier og tømmerpriser hentes i bakgrunnen og legges inn i planen. Planen lagres på mobilen${navigator.onLine ? ' og i skyen når du er logget inn' : ''}, og kan åpnes i fullversjonen.</p>
         <div class="knapper"><button type="button" class="knapp primar" data-np="apne" data-id="${esc(ny.planId)}">Åpne planen</button></div>`, { lav: false });
       // Datagrunnlaget i bakgrunnen – legges inn i planen når det kommer (også om den er åpnet i mellomtiden).

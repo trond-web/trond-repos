@@ -107,6 +107,8 @@ const FELT = {
   merknad: ['MERKNAD', 'KOMMENTAR', 'BESKRIVELSE', 'NOTAT', 'NOTE'],
   miljo: ['MILJOFIGUR', 'NOKKELBIOTOP', 'MIS', 'MILJO'],
   vegetasjon: ['VEGETASJONSTYPE', 'VEGETASJON', 'VEGTYPE', 'VEG_TYPE', 'VEGETASJONSKODE', 'SKOGTYPE'],
+  // Året dataene gjelder for (takst, registrering eller måling). Skrives fram til i år ved import.
+  takstAar: ['TAKSTAAR', 'TAKST_AAR', 'TAKSTÅR', 'REGAAR', 'REG_AAR', 'REGAAR_KORR', 'REGISTRERINGSAAR', 'TAKSERINGSAAR', 'MAALEAAR', 'SP_REGAAR', 'SP_TAKSTAAR', 'DATAFANGSTDATO'],
 };
 
 export function normaliserNokkel(k) {
@@ -189,6 +191,13 @@ export function nyId(prefiks = 'b') {
 }
 
 // Gjør om et vilkårlig attributtsett til et bestandsobjekt. arealGeom er areal fra geometri i daa.
+// Årstall fra et felt: 2015, «2015-06-01», «20150601» eller «registrert 2015». Bare 1950 – i år godtas.
+export function tolkAar(v, iAar = new Date().getFullYear()) {
+  if (v === null || v === undefined || v === '') return null;
+  const m = String(v).match(/(19[5-9]\d|20\d\d)/); const a = m ? Number(m[1]) : null;
+  return a && a <= iAar ? a : null;
+}
+
 export function normaliserBestand(props, geometri, arealGeomDaa, iAar = new Date().getFullYear()) {
   const p = {};
   for (const [k, v] of Object.entries(props || {})) p[normaliserNokkel(k)] = v;
@@ -244,7 +253,7 @@ export function normaliserBestand(props, geometri, arealGeomDaa, iAar = new Date
     ...(() => { const u = Object.fromEntries(['treantallFor', 'treantallEtter', 'hoydeBar', 'hoydeLauv'].map((k) => [k, tall(hent(k))]).filter(([, v]) => v !== null && v >= 0)); return Object.keys(u).length ? { ungskog: { ...u, kilde: 'import' } } : {}; })(),
     tiltak,
     ekstra,
-    takstAar: iAar,
+    takstAar: tolkAar(hent('takstAar'), iAar) || iAar,
     geometri: geometri || null,
   };
 }
@@ -437,6 +446,28 @@ export function framskrivTilAar(b, iAar = new Date().getFullYear()) {
   }
   b.takstAar = iAar;
   return aar;
+}
+
+// Skriver alle bestand med eldre data fram til i år, legger en merknad på hvert av dem og gir et sammendrag:
+// { antall, fra (eldste dataår), til (nyeste dataår), aar: iAar }. kilde brukes i merknaden («importert fil» osv.).
+export function framskrivListe(liste, iAar = new Date().getFullYear(), { kilde = '', merknad = true } = {}) {
+  let antall = 0; let fra = null; let til = null;
+  for (const b of liste || []) {
+    const dataAar = Number(b.takstAar); if (!dataAar || dataAar >= iAar) continue;
+    const fv = b.volumDaa; const fa = b.alder;
+    const n = framskrivTilAar(b, iAar); if (!n) continue;
+    if (fv === b.volumDaa && fa === b.alder) continue; // ingenting å skrive fram (mangler alder og volum)
+    antall++; fra = fra === null ? dataAar : Math.min(fra, dataAar); til = til === null ? dataAar : Math.max(til, dataAar);
+    b.ekstra = { ...(b.ekstra || {}), DATAAAR: dataAar };
+    if (merknad) b.merknad = [b.merknad, `Alder og volum${kilde ? ` fra ${kilde}` : ''} skrevet fram ${n} år fra ${dataAar} til ${iAar}`].filter(Boolean).join('; ');
+  }
+  return { antall, fra, til, aar: iAar };
+}
+// Kort tekst om framskrivingen til brukeren.
+export function framskrivTekst(f) {
+  if (!f?.antall) return '';
+  const aar = f.fra === f.til ? `${f.fra}` : `${f.fra}–${f.til}`;
+  return `Alder og volum i ${f.antall} bestand gjaldt ${aar} og er skrevet fram ${f.aar - f.til === f.aar - f.fra ? f.aar - f.fra : `${f.aar - f.til}–${f.aar - f.fra}`} år til ${f.aar} med vekstmodellen. Hvert bestand har en merknad om dette.`;
 }
 
 export function arligTilvekstDaa(b) {

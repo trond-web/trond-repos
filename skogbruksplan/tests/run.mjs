@@ -4646,6 +4646,24 @@ test('Tilskudd: ordninger, beløp, region og frister tilpasset gården', async (
   for (const ord of T.ORDNINGER) assert.match(ord.url, /^https:\/\//, ord.id);
 });
 
+test('Ny plan: data fra tidligere år skrives fram til i år, med merknad og sammendrag', async () => {
+  const M = await import('../js/model.js'); const I = await import('../js/importers.js');
+  assert.equal(M.tolkAar('2015-06-01', 2026), 2015); assert.equal(M.tolkAar(20180901, 2026), 2018); assert.equal(M.tolkAar('2031', 2026), null); assert.equal(M.tolkAar('', 2026), null);
+  // CSV fra en plan taksert 2016: alder og volum skrives fram ti år.
+  const r = I.lesCsv('BESTANDNR;TRESLAG;BONITET;ALDER;VOLUM_DAA;AREAL;REGAAR\n1;G;17;50;20;10;2016\n2;F;11;80;12;5;2016\n3;G;14;40;15;8;', 2026);
+  assert.equal(r.bestand[0].takstAar, 2016); assert.equal(r.bestand[2].takstAar, 2026, 'uten takstår regnes dataene som årets');
+  const f = M.framskrivListe(r.bestand, 2026, { kilde: 'importert fil' });
+  assert.deepEqual([f.antall, f.fra, f.til, f.aar], [2, 2016, 2016, 2026]);
+  assert.equal(r.bestand[0].alder, 60); assert.ok(r.bestand[0].volumDaa > 20); assert.equal(r.bestand[0].takstAar, 2026);
+  assert.match(r.bestand[0].merknad, /skrevet fram 10 år fra 2016 til 2026/); assert.equal(r.bestand[0].ekstra.DATAAAR, 2016);
+  assert.equal(r.bestand[2].alder, 40, 'årets data endres ikke');
+  assert.match(M.framskrivTekst(f), /2 bestand gjaldt 2016 og er skrevet fram 10 år til 2026/);
+  // Ingen dobbel framskriving: andre runde gjør ingenting, og internt dataår (DATAAAR) leses ikke som takstår.
+  assert.equal(M.framskrivListe(r.bestand, 2026).antall, 0);
+  const igjen = M.normaliserBestand({ BESTANDNR: '1', ALDER: 60, VOLUM_DAA: 30, TAKSTAAR: 2026, DATAAAR: 2016, PLAN_REGISTRERT: 2012 }, null, 10, 2026);
+  assert.equal(igjen.takstAar, 2026);
+});
+
 test('EUDR: hogstoppdrag blir leveranse med bestand, kjøper og målt mengde', async () => {
   const E = await import('../js/eudr.js'); const OP = await import('../js/oppdrag.js'); const { lagDemo } = await import('../js/demo.js');
   const S = lagDemo(2026); let n = 0; const nyId = (p) => `${p}${++n}`;

@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.19.0 – 📈 Nye planer skrives fram til i år – og du får vite det (2026-11-25)
+
+*Forbedret.* Alder og volum i en ny plan gjelder nå alltid for i år. Planer fra gnr/bnr: SR16 er målt for flere år siden, og alder og volum skrives fram med vekstmodellen, også der bare volumet er kjent. Sammendraget sier nå tydelig hvor mange bestand som er skrevet fram og fra hvilket år, og volumet vises som stående volum i år. Import av SOSI, GeoJSON og CSV: takståret leses fra filen (TAKSTAAR, REGAAR o.l.), eller du fyller det inn i det nye feltet «Dataene gjelder år». Før ble importerte data alltid regnet som årets. Sikkerhetskopier skrives også fram. Hvert bestand får en merknad om framskrivingen.
+
 ## 2.18.0 – 🪓 EUDR i hogstoppdragene – og raskere oppdrag (2026-11-25)
 
 *Forbedret.* EUDR henger nå sammen med hogst- og tynningsoppdragene. Hvert hogstoppdrag har en egen EUDR-fane som sjekker bestandene i oppdraget: miljøfigur, omdisponering, plan for foryngelse, kartflater, tømmerkjøper og sjekklisten. Når oppdraget markeres som utført, lages leveransen automatisk med bestand, tømmerkjøper og mengde – målt av hogstmaskinen når produksjonsfilene er lest inn. Du kan skrive ut informasjonen til kjøperen og laste ned geolokasjonen rett fra oppdraget. Det er fortsatt usikkert om og når EUDR blir innført i Norge. Oppdragene er også mye raskere: på en eiendom med 720 bestand tok et fanebytte før rundt ett sekund, og å endre et felt tok 2,5–6 sekunder. Nå skjer begge deler med en gang. Kartet tegner bare bestandene som faktisk er endret, og skjemaet beholder fokuset mens du skriver.

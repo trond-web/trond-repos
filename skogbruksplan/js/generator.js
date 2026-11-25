@@ -681,8 +681,8 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
     if (status) b.ekstra = { ...b.ekstra, VURDERING: status === 'urort' ? 'Urørt siden taksten' : 'Endret siden taksten – fra SR16' };
     // Skriv fram fra dataåret til i dag. Urørt planbestand: alderen er allerede dagens, så den settes tilbake til
     // målingsåret først, og volum og alder skrives fram sammen.
-    if (dataAar && dataAar < iAar && b.alder !== null && b.alder !== undefined) {
-      if (status === 'urort') b.alder = Math.max(0, b.alder - (iAar - dataAar));
+    if (dataAar && dataAar < iAar && ((b.alder !== null && b.alder !== undefined) || (b.volumDaa !== null && b.volumDaa !== undefined))) {
+      if (status === 'urort' && b.alder !== null && b.alder !== undefined) b.alder = Math.max(0, b.alder - (iAar - dataAar));
       b.takstAar = dataAar; const n = framskrivTilAar(b, iAar);
       if (n) { b.ekstra = { ...b.ekstra, DATAAAR: dataAar }; if (status !== 'urort') b.merknad = [b.merknad, `Alder og volum fra SR16 skrevet fram ${n} år fra ${dataAar} til ${iAar}`].filter(Boolean).join('; '); else b.merknad = [b.merknad, `Volum fra SR16 (${dataAar}) skrevet fram ${n} år til ${iAar}`].filter(Boolean).join('; '); }
     }
@@ -761,6 +761,7 @@ export async function genererPlan({ kommune, gnr, bnr, festenr = 0 }, { turf, kl
       eiendomDaa, skogDaa, antallFraPlan: plan.length, antallSr16: sr16Data.length, mis: mis.length,
       planRegistrert: planAar.join(', ') || null,
       sr16Aar,
+      framskrevet: (() => { const l = bestand.filter((b) => b.ekstra?.DATAAAR); if (!l.length) return null; const a = l.map((b) => Number(b.ekstra.DATAAAR)); return { antall: l.length, fra: Math.min(...a), til: Math.max(...a), aar: iAar }; })(),
       ar5: Object.fromEntries(Object.entries(ar5Sum).map(([k, v]) => [k, Math.round(v * 10) / 10])),
       kilder: ['Kartverket eiendom-API', 'NIBIO skogbruksplan/hogstklasser', 'NIBIO SR16 (SRV)', 'NIBIO MiS', 'NIBIO AR5'],
     },
