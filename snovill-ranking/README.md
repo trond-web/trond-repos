@@ -55,6 +55,12 @@ Feltstyrke = formpoengene til de 10 beste påmeldte, i prosent av de 10 beste i 
 De påmeldte sorteres etter formpoeng (forventet resultatliste), og rennene kan sorteres etter feltstyrke.
 Resultatet skrives til `data/kommende.json`. Siste nedlastede påmeldingslister lagres i `data/kommende/pameldte.json`.
 
+## Besøksteller
+
+Antall unike besøk vises nederst på siden. Telleren ligger hos [Abacus](https://abacus.jasoncameron.dev)
+(`trond-web-snovill-ranking/unike-besok`), en gratis teller uten innlogging. Hver nettleser telles bare første
+gang den besøker siden (merket i `localStorage`), og bare den publiserte siden på github.io telles.
+
 ## Filer
 
 - `innsamling/hent.mjs` – finner nye løp, henter resultatene og skriver rankingen
