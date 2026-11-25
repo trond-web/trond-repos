@@ -362,7 +362,7 @@ function visKommende() {
       .join(", ");
     const [, mnd, dag] = l.dato.split("-");
     html.push(`<button class="lopkort" data-kommende="${i}">
-      <div class="dato"><b>${Number(dag)}</b>${KORT_MND[Number(mnd) - 1]}</div>
+      <div class="dato"><b>${Number(dag)}</b>${KORT_MND[Number(mnd) - 1]}${l.datoAnslatt ? "*" : ""}</div>
       <div class="info">
         <div class="tittel">${esc(l.navn)}</div>
         <div class="vinnere">${favoritter ? `Favoritter: ${favoritter}` : "Ingen påmeldte med resultater ennå"}</div>
@@ -380,7 +380,7 @@ function visKommendeDetalj(i, kj = kommende.kjonn) {
   const pameldte = l.pameldte[kj] ?? [];
   const kjente = pameldte.filter((p) => typeof p === "number").map((p) => d[kj][p]);
   const ukjente = pameldte.filter((p) => typeof p !== "number");
-  $("#detalj-tittel").innerHTML = `<h2>${esc(l.navn)}</h2><div class="liten-tekst">${dato(l.dato)} · ${esc([l.km ? `${l.km} km` : null, l.sted, l.land].filter(Boolean).join(" · "))}</div>`;
+  $("#detalj-tittel").innerHTML = `<h2>${esc(l.navn)}</h2><div class="liten-tekst">${dato(l.dato)}${l.datoAnslatt ? " (anslått dato)" : ""} · ${esc([l.km ? `${l.km} km` : null, l.sted, l.land].filter(Boolean).join(" · "))}</div>`;
   const sesongKolonner = d.sesonger.map((s) => `<th class="tall skjul-smal">Rank ${esc(s.navn)}</th>`).join("");
   const rader = kjente
     .map((p, n) => {

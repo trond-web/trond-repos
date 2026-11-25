@@ -162,7 +162,7 @@ async function lagSesongRanking(sesong) {
 
 const rankinger = new Map();
 
-// Kommende renn med påmeldte (EQ Timing), rangert ut fra rankingen i fjor og i år.
+// Kommende renn med påmeldte (EQ Timing og Birken), rangert ut fra rankingen i fjor og i år.
 // Listene hentes på nytt hver gang; siste versjon lagres så --uten-nett også virker.
 async function lagKommendeRenn() {
   const iaar = sesongFor(new Date());
@@ -170,7 +170,7 @@ async function lagKommendeRenn() {
   const fjor = `${forrigeAr}-${String((forrigeAr + 1) % 100).padStart(2, "0")}`;
   const brukte = [fjor, iaar].filter((s) => rankinger.has(s)).map((s) => ({ sesong: s, data: rankinger.get(s) }));
   if (brukte.length === 0) return;
-  const lager = path.join(DATA, "kommende", "eq.json");
+  const lager = path.join(DATA, "kommende", "pameldte.json");
   let kommende = await lesJson(lager, []);
   if (!UTEN_NETT) {
     try {
@@ -200,6 +200,17 @@ async function lagKommendeRenn() {
           logg(`  feil: påmeldte ${arr.navn}: ${feil.message}`);
         }
       });
+      // Birken: påmeldingslisten er også startlisten
+      try {
+        for (const l of await birken.finnKommende({ fra: I_DAG, til })) {
+          const res = await birken.hentPameldte(l);
+          if (res.M.length + res.K.length === 0) continue;
+          const { arrId, arr100, ar, ...rest } = l;
+          nye.push({ ...rest, res });
+        }
+      } catch (feil) {
+        logg(`  feil: påmeldte Birken: ${feil.message}`);
+      }
       kommende = nye;
       await skrivJson(lager, kommende);
     } catch (feil) {

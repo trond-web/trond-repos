@@ -12,7 +12,7 @@ const runde1 = (x) => Math.round(x * 10) / 10;
 
 function nivaFraTidligere(lop, rankinger) {
   for (const r of rankinger) {
-    const like = r.data.lop.filter((l) => l.kilde === "eq" && sammeNavn(l.navn, lop.navn));
+    const like = r.data.lop.filter((l) => l.kilde === lop.kilde && sammeNavn(l.navn, lop.navn));
     if (like.length === 0) continue;
     const best = like.sort((a, b) => Math.abs((a.km ?? 40) - (lop.km ?? 40)) - Math.abs((b.km ?? 40) - (lop.km ?? 40)))[0];
     return best.niva;
@@ -32,6 +32,7 @@ export function lagKommende(rankinger, kommendeLop, { oppdatert, iDag }) {
     id: l.id,
     navn: pentLopsnavn(l.navn) || l.navn,
     dato: l.dato,
+    datoAnslatt: !!l.datoAnslatt,
     km: l.km ?? null,
     land: l.land ?? null,
     sted: l.sted ?? null,

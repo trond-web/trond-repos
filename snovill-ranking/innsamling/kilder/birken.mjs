@@ -4,6 +4,9 @@ import { hent, logg } from "../felles.mjs";
 
 const ROT = "https://tiur.birken.no/embed";
 const MAKS_PER_SOK = 750;
+// Påmeldingslister / startlister ligger på en egen tjeneste med samme oppbygning (maks 1000 rader per søk)
+const START_ROT = "https://start.birk.run/embed";
+const MAKS_PER_STARTSOK = 1000;
 
 // Skiløpene som regnes som langløp. Arr100 er Birkens faste løpsnummer.
 const LOP = {
@@ -12,13 +15,14 @@ const LOP = {
   3: { km: 28, navn: "HalvBirken ski" },
 };
 
-let oppsettCache = null;
-async function oppsett() {
-  if (oppsettCache) return oppsettCache;
-  const js = await hent(`${ROT}/result.ashx?m=fill&t=result&v=2`, { tekst: true });
+const oppsettCache = new Map();
+async function oppsett(rot = ROT) {
+  if (oppsettCache.has(rot)) return oppsettCache.get(rot);
+  const js = await hent(`${rot}/result.ashx?m=fill&t=result&v=2`, { tekst: true });
   const liste = (navn) => JSON.parse(js.match(new RegExp(`${navn} = (\\[.*?\\]);`))?.[1] ?? "[]");
-  oppsettCache = { arr: liste("brkArrList"), klasser: liste("brkKlasseList"), puljer: liste("brkPuljeList") };
-  return oppsettCache;
+  const o = { arr: liste("brkArrList"), klasser: liste("brkKlasseList"), puljer: liste("brkPuljeList") };
+  oppsettCache.set(rot, o);
+  return o;
 }
 
 // Tredje lørdag i mars brukes når datoen ikke finnes andre steder.
@@ -52,13 +56,13 @@ export async function finnLop({ fra, til }) {
   return ut;
 }
 
-async function sok(filter) {
+async function sok(filter, rot = ROT) {
   const rader = [];
   let fra = 0;
   let maks = 0;
   for (;;) {
     const f = { ...filter, ...(fra ? { _resultatpunkt: String(fra) } : {}) };
-    const url = `${ROT}/result.ashx?m=search&f=${encodeURIComponent(JSON.stringify(f))}&json=0`;
+    const url = `${rot}/result.ashx?m=search&f=${encodeURIComponent(JSON.stringify(f))}&json=0`;
     // Svarene kan inneholde kontrolltegn (f.eks. tabulator i klubbnavn), som ikke er lov i JSON
     const svar = (await hent(url, { tekst: true }))?.replace(/[\u0000-\u001f]+/g, " ");
     if (!svar || svar.trim() === "[]") break;
@@ -75,13 +79,65 @@ async function sok(filter) {
 }
 
 // Henter alle rader for et filter, og deler opp når tjenesten kapper listen.
-async function sokAlle(filter, nivaer) {
-  const { rader, maks } = await sok(filter);
-  if (maks < MAKS_PER_SOK || nivaer.length === 0) return rader;
+async function sokAlle(filter, nivaer, rot = ROT, maksPerSok = MAKS_PER_SOK) {
+  const { rader, maks } = await sok(filter, rot);
+  if (maks < maksPerSok || nivaer.length === 0) return rader;
   const [nokkel, verdier] = nivaer[0];
   const alle = [];
-  for (const v of verdier) alle.push(...(await sokAlle({ ...filter, [nokkel]: v }, nivaer.slice(1))));
+  for (const v of verdier) alle.push(...(await sokAlle({ ...filter, [nokkel]: v }, nivaer.slice(1), rot, maksPerSok)));
   return alle;
+}
+
+// ---------- Påmeldte (startlister) ----------
+
+// Kommende Birken-løp med påmeldingsliste. Påmeldingslisten er også startlisten.
+export async function finnKommende({ fra, til }) {
+  const { arr } = await oppsett(START_ROT);
+  const vinterAr = Number(til.slice(0, 4));
+  return arr
+    .filter((a) => a.SportId === 1 && a.ResYear === vinterAr && LOP[a.Arr100])
+    .map((a) => ({
+      id: `birken-${a.ArrId}`,
+      kilde: "birken",
+      arrId: a.ArrId,
+      arr100: a.Arr100,
+      ar: a.ResYear,
+      navn: LOP[a.Arr100].navn,
+      arrangement: a.Navn,
+      dato: tredjeLordagIMars(a.ResYear),
+      datoAnslatt: true,
+      km: LOP[a.Arr100].km,
+      land: "NOR",
+      sted: "Rena–Lillehammer",
+      url: "https://birken.no/no/startlister",
+      pamelding: "https://birken.no/no/pamelding",
+    }))
+    .filter((l) => l.dato >= fra && l.dato <= til);
+}
+
+const IKKE_DELTAKER = new Set(["LEDU", "UTID"]); // ledsager og trim uten tid
+
+export async function hentPameldte(lop) {
+  const { klasser, puljer } = await oppsett(START_ROT);
+  const ar = lop.ar;
+  const klasseIder = klasser.filter((k) => k.ArrId === lop.arr100 && k.fromYear <= ar && k.toYear >= ar).map((k) => k.ListeId);
+  const puljeIder = [...new Set(puljer.filter((p) => p.ArrId === lop.arr100 && p.fromYear <= ar && p.toYear >= ar).map((p) => p.ListeId))];
+  const res = {};
+  for (const kjonn of ["M", "K"]) {
+    const egne = klasseIder.filter((k) => k.startsWith(kjonn) || k.endsWith(kjonn));
+    const rader = await sokAlle({ arr: lop.arrId, sport: 1, kjonn }, [["klasseid", egne], ["puljeid", puljeIder]], START_ROT, MAKS_PER_STARTSOK);
+    const sett = new Map();
+    for (const r of rader) {
+      if (IKKE_DELTAKER.has(r.KlasseId)) continue;
+      const navn = `${String(r._Fornavn ?? "").trim()} ${String(r._Etternavn ?? "").trim()}`.trim();
+      if (!navn) continue;
+      const aar = Number(r["_Født"]) || null;
+      const nokkel = `${navn}|${aar}|${r.KlasseId}`;
+      sett.set(nokkel, [navn, String(r.Klubbnavn ?? "").trim(), r.Nat || null, 0, aar, null, null, null]);
+    }
+    res[kjonn] = [...sett.values()];
+  }
+  return res;
 }
 
 export async function hentResultater(lop) {
