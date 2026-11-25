@@ -42,8 +42,9 @@ og fødselsår og klubb skiller personer med samme navn.
 
 ## Kommende renn
 
-Påmeldingslistene til kommende turrenn hentes fra EQ Timing (`/api/Contestants/{id}`). Birken og Vasaloppet
-har ikke åpne påmeldingslister ennå. Hver påmeldt kobles til rankingen med EQ-ID, FIS-kode, NIF-ID eller navn
+Påmeldingslistene til kommende turrenn hentes fra EQ Timing (`/api/Contestants/{id}`) og Birken
+(`start.birk.run/embed/result.ashx`, der påmeldingslisten også er startlisten for Birkebeinerrennet,
+SkøyteBirken og SkiBirken 28 km). Vasaloppet har ikke åpne påmeldingslister ennå. Hver påmeldt kobles til rankingen med EQ-ID, FIS-kode, NIF-ID eller navn
 og fødselsår, og får formpoeng:
 
 ```
@@ -52,7 +53,7 @@ Feltstyrke = formpoengene til de 10 beste påmeldte, i prosent av de 10 beste i 
 ```
 
 De påmeldte sorteres etter formpoeng (forventet resultatliste), og rennene kan sorteres etter feltstyrke.
-Resultatet skrives til `data/kommende.json`. Siste nedlastede påmeldingsliste lagres i `data/kommende/eq.json`.
+Resultatet skrives til `data/kommende.json`. Siste nedlastede påmeldingslister lagres i `data/kommende/pameldte.json`.
 
 ## Filer
 
