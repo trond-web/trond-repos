@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Utkast til godkjenning hos behandlingsansvarlig |
 | **Dato** | 2026-11-11 |
-| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.14 (`js/personvern.js`) |
+| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.15 (`js/personvern.js`) |
 | **Behandlingsansvarlig** | Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no. Organisasjonsnummer legges inn når foretak er etablert |
 | **Neste gjennomgang** | Ved endringene i kapittel 8, og senest 2027-11-11 |
 
@@ -53,14 +53,14 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | Behandling (id) | Opplysninger | Grunnlag | Lagring |
 |---|---|---|---|
 | Konto og innlogging (`konto`) | E-post, navn, passord-hash, roller, godkjenninger | Avtale | Til kontoen slettes |
-| Profil (`profil`) | Kontakt, foretak, adresse, kommune, fritekst, valgfritt profilbilde (vises i Nettverk, bare for innloggede) | Avtale | Til endret eller slettet |
+| Profil (`profil`) | Kontakt, foretak, adresse, kommune, fritekst, valgfritt profilbilde (vises i Nettverk, bare for innloggede). Rådgivere: rådgivertype, beskrivelse og valg om synlighet i katalogen | Avtale | Til endret eller slettet |
 | Bruksstatistikk (`bruk`) | Sidevisninger, kall, aktive minutter og faner per dag | Berettiget interesse (kan slås av) | 400 dager |
 | Tilbakemeldinger og forslag (`tilbakemelding`) | Stjerner, type, fritekst, fane, versjon, navn og e-post; status og svar fra administrator | Brukerens initiativ | Til kontoen slettes, eller administrator sletter |
 | Skylagring (`sky`) | Skogbruksplaner med eiendom, notater, bilder og sporlogger | Avtale | Til brukeren sletter; 10 versjoner og 30 dager i papirkurv |
 | Overføring mellom enheter (`synk`) | Plan eller drone-rute med tilfeldig id | Brukerens initiativ | 90 dager (planer) og 14 dager (droneoppdrag) |
 | Tilbudsforespørsler (`tilbud`) | Oppdrag, kontakt, mottakere, svar | Brukerens initiativ | 180 dager uten bruk |
 | Deling med tømmerkjøper (`tommer`) | Utvalgte bestand, volumer, kontakt | Brukerens initiativ | Til sluttdato, senest 180 dager uten bruk |
-| Nettverk og chat (`nettverk`) | Koblinger, chatmeldinger, lest-status | Avtale | Til koblingen eller kontoen slettes; høyst 2000 meldinger per kobling |
+| Nettverk og chat (`nettverk`) | Koblinger (også til en eller flere rådgivere), chatmeldinger, lest-status | Avtale | Til koblingen eller kontoen slettes; høyst 2000 meldinger per kobling |
 | John Deere (`jd`) | Tilgangsnøkler til Operations Center | Brukerens initiativ | Til brukeren kobler fra |
 | Kart og offentlige data (`offentlig`) | Koordinater og eiendomsnummer i oppslag; IP-adressen hos leverandørene | Avtale | Lagres ikke av SkogIQ.ai |
 | Spør AI (`ai`) | Spørsmål og plansammendrag til Anthropic, med brukerens egen nøkkel | Brukerens initiativ | Lagres ikke på serveren |
@@ -82,7 +82,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 - **Dataminimering:**
   - E-post er eneste obligatoriske kontaktopplysning.
   - Profilfeltene er frivillige.
-  - Katalogen i Nettverk viser aldri e-post.
+  - Katalogen i Nettverk viser aldri e-post. Rådgivere vises bare når de selv har valgt det (versjon 1.15).
   - Skogeiere kan ikke ses av andre skogeiere, og aktører kan ikke søke etter skogeiere.
   - Maskinimporten (HPR) bruker ikke førerfeltene (`OperatorDefinition`).
 - **Lagringsbegrensning:**

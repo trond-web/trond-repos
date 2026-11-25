@@ -1,4 +1,4 @@
-// Nettverk mellom skogeiere og aktører (innkjøpere og entreprenører): koblinger og chat. Bare Node sitt
+// Nettverk mellom skogeiere og aktører (innkjøpere, entreprenører og rådgivere): koblinger og chat. Bare Node sitt
 // standardbibliotek. Data i minnet, og i en fil (NETTVERK_FIL, ellers nettverk.json ved siden av BRUKER_FIL).
 //
 //   * Statistikk: hvor mange skogeiere, innkjøpere og entreprenører som er registrert.
@@ -11,7 +11,11 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 
-export const AKTOR_ROLLER = ['innkjoper', 'entreprenor'];
+export const AKTOR_ROLLER = ['innkjoper', 'entreprenor', 'radgiver'];
+export const ROLLE_NAVN = { innkjoper: 'innkjøper', entreprenor: 'entreprenør', radgiver: 'rådgiver' };
+// Rådgivere vises i katalogen bare når de selv har valgt det (profil.radgiver.synlig). Uten kommuner gjelder de hele landet.
+const radgiverSynlig = (b) => b?.profil?.radgiver?.synlig === true;
+const synligSom = (b, r) => roller(b).includes(r) && (r !== 'radgiver' || radgiverSynlig(b));
 export const MAKS_TEKST = 2000; export const MAKS_MELDINGER = 2000; export const MAKS_PER_MINUTT = 30;
 const id = () => randomBytes(8).toString('hex');
 const tekst = (v, n) => String(v ?? '').trim().slice(0, n);
@@ -21,7 +25,7 @@ const roller = (b) => b?.profil?.roller || [];
 const kommunerFor = (b) => (Array.isArray(b?.profil?.kommuner) ? b.profil.kommuner : []);
 const nrm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 export function kommuneSett(lister) { const nr = new Set(); const navn = new Set(); const liste = []; for (const k of lister.flat()) { if (!k) continue; const n = String(k.nr || '').trim(); const v = nrm(k.navn); if (!/^\d{4}$/.test(n) && !v) continue; if ((n && nr.has(n)) || (!n && navn.has(v))) continue; if (/^\d{4}$/.test(n)) nr.add(n); else if (v) navn.add(v); /* navn brukes bare der nummer mangler (flere kommuner heter det samme, f.eks. Våler) */ liste.push({ ...(n ? { nr: n } : {}), navn: k.navn || '' }); } return { nr, navn, liste }; }
-const treffer = (aktor, sett) => kommunerFor(aktor).some((k) => sett.nr.has(k.nr) || sett.navn.has(nrm(k.navn)));
+const treffer = (aktor, sett, rolle = '') => (rolle === 'radgiver' && kommunerFor(aktor).length === 0) || kommunerFor(aktor).some((k) => sett.nr.has(k.nr) || sett.navn.has(nrm(k.navn)));
 
 export function lagNettverk({ fil = null, brukere, naa = () => Date.now(), skogKommuner = () => [] } = {}) {
   let data = { koblinger: {}, meldinger: {}, lest: {} };
@@ -29,7 +33,7 @@ export function lagNettverk({ fil = null, brukere, naa = () => Date.now(), skogK
   let t = null; const lagre = () => { if (!fil) return; clearTimeout(t); t = setTimeout(() => { try { writeFileSync(fil, JSON.stringify(data)); } catch { /* ignorer */ } }, 500); };
   const sendt = new Map(); // bruker → tidspunkter (spamgrense)
   const feil = (status, f) => ({ feil: f, status });
-  const kort = (b) => (b ? { bruker: b.navn, navn: b.visning || b.navn, foretak: b.profil?.foretak || '', kommune: b.profil?.kommune || '', roller: roller(b), bilde: b.profil?.bilde || null, kommuner: kommunerFor(b).map((k) => k.navn) } : null);
+  const kort = (b) => (b ? { bruker: b.navn, navn: b.visning || b.navn, foretak: b.profil?.foretak || '', kommune: b.profil?.kommune || '', roller: roller(b), bilde: b.profil?.bilde || null, kommuner: kommunerFor(b).map((k) => k.navn), ...(roller(b).includes('radgiver') && b.profil?.radgiver ? { radgiver: { typer: b.profil.radgiver.typer || [], beskrivelse: b.profil.radgiver.beskrivelse || '', synlig: !!b.profil.radgiver.synlig } } : {}) } : null);
   const mine = (u) => Object.values(data.koblinger).filter((k) => k.skogeier === u || k.aktor === u);
   const motpart = (k, u) => (k.skogeier === u ? k.aktor : k.skogeier);
   const ulest = (k, u) => { const sist = data.lest[`${k.id}|${u}`] || 0; return (data.meldinger[k.id] || []).filter((m) => m.fra !== u && m.tid > sist).length; };
@@ -39,13 +43,14 @@ export function lagNettverk({ fil = null, brukere, naa = () => Date.now(), skogK
     statistikk() {
       const alle = brukere.alle().filter((b) => !b.sperret);
       const n = (r) => alle.filter((b) => roller(b).includes(r)).length;
-      return { skogeiere: n('skogeier'), innkjopere: n('innkjoper'), entreprenorer: n('entreprenor') };
+      return { skogeiere: n('skogeier'), innkjopere: n('innkjoper'), entreprenorer: n('entreprenor'), radgivere: alle.filter((b) => synligSom(b, 'radgiver')).length };
     },
     // Aktørene i katalogen (for skogeiere). q søker i navn, foretak og kommune.
     // kommuner (valgfritt): kommuneSett – da vises bare aktører som opererer i minst én av kommunene.
     aktorer(u, { q = '', rolle = '', kommuner = null } = {}) {
       const s = String(q || '').toLowerCase().trim();
-      return brukere.alle().filter((b) => !b.sperret && b.navn !== u && roller(b).some((r) => AKTOR_ROLLER.includes(r)) && (!rolle || roller(b).includes(rolle)) && (!kommuner || treffer(b, kommuner)))
+      const relevante = (b) => (rolle ? [rolle] : AKTOR_ROLLER).filter((r) => synligSom(b, r));
+      return brukere.alle().filter((b) => !b.sperret && b.navn !== u && relevante(b).length && (!kommuner || relevante(b).some((r) => treffer(b, kommuner, r))))
         .map(kort).filter((k) => !s || `${k.navn} ${k.foretak} ${k.kommune} ${k.kommuner.join(' ')}`.toLowerCase().includes(s))
         .map((k) => ({ ...k, kobling: mine(u).find((x) => motpart(x, u) === k.bruker && x.status !== 'avsluttet' && x.status !== 'avslatt')?.status || null }))
         .sort((a, b) => a.navn.localeCompare(b.navn, 'nb')).slice(0, 200);
@@ -67,12 +72,16 @@ export function lagNettverk({ fil = null, brukere, naa = () => Date.now(), skogK
       if (!meg) return feil(401, 'Logg inn');
       if (!ann || ann.sperret) return feil(404, 'Fant ingen bruker med den adressen i SkogIQ.ai. Be vedkommende registrere seg først.');
       if (ann.navn === u) return feil(400, 'Du kan ikke koble deg til deg selv');
-      if (!AKTOR_ROLLER.includes(rolle)) return feil(400, 'Velg innkjøper eller entreprenør');
+      if (!AKTOR_ROLLER.includes(rolle)) return feil(400, 'Velg innkjøper, entreprenør eller rådgiver');
       // Hvem er skogeier og hvem er aktør i koblingen?
       let skogeier; let aktor;
-      if (roller(meg).includes('skogeier') && roller(ann).includes(rolle)) { skogeier = u; aktor = ann.navn; }
+      if (roller(meg).includes('skogeier') && roller(ann).includes(rolle)) {
+        // Rådgivere bestemmer selv om skogeiere kan be om kobling (de kan alltid invitere skogeiere selv).
+        if (rolle === 'radgiver' && !radgiverSynlig(ann)) return feil(403, 'Rådgiveren tar ikke imot forespørsler fra skogeiere i nettverket');
+        skogeier = u; aktor = ann.navn;
+      }
       else if (roller(meg).includes(rolle) && roller(ann).includes('skogeier')) { skogeier = ann.navn; aktor = u; }
-      else return feil(400, roller(meg).includes('skogeier') ? `Brukeren er ikke registrert som ${rolle === 'innkjoper' ? 'innkjøper' : 'entreprenør'}` : 'Den du inviterer, er ikke registrert som skogeier');
+      else return feil(400, roller(meg).includes('skogeier') ? `Brukeren er ikke registrert som ${ROLLE_NAVN[rolle]}` : 'Den du inviterer, er ikke registrert som skogeier');
       const fins = Object.values(data.koblinger).find((k) => k.skogeier === skogeier && k.aktor === aktor && k.rolle === rolle && ['foresporsel', 'aktiv'].includes(k.status));
       if (fins) {
         // Har den andre parten allerede bedt om det samme, godtas koblingen.
@@ -139,7 +148,10 @@ export function nettverkApi(nett, { bruker, cors = () => ({}) }, req, res, sti, 
       // Skogeieren ser bare aktører i kommunene der hen har skog. Klienten sender kommunene til planene på enheten.
       const klient = [...(q.get('kommuner') || '').split(',').filter((x) => /^\d{4}$/.test(x)).map((nr) => ({ nr })), ...(q.get('kommunenavn') || '').split('|').map((x) => x.trim()).filter(Boolean).slice(0, 50).map((navn) => ({ navn: navn.slice(0, 60) }))];
       const sett = nett.skogKommunerFor(u, klient);
-      return json(200, { aktorer: sett.liste.length ? nett.aktorer(u, { q: q.get('q') || '', rolle: q.get('rolle') || '', kommuner: sett }) : [], mineKommuner: sett.liste, manglerKommune: !sett.liste.length });
+      const rolle = q.get('rolle') || '';
+      // Uten kjente kommuner vises bare rådgivere som gjelder hele landet.
+      const aktorer = sett.liste.length ? nett.aktorer(u, { q: q.get('q') || '', rolle, kommuner: sett }) : (!rolle || rolle === 'radgiver' ? nett.aktorer(u, { q: q.get('q') || '', rolle: 'radgiver', kommuner: sett }) : []);
+      return json(200, { aktorer, mineKommuner: sett.liste, manglerKommune: !sett.liste.length });
     }
     if (sti === '/api/nettverk/koblinger' && req.method === 'POST') { const b = await kropp(); return b ? svar(nett.be(u, b)) : json(400, { feil: 'Ugyldig forespørsel' }); }
     const m = sti.match(/^\/api\/nettverk\/koblinger\/([a-f0-9]{16})(\/meldinger)?$/); if (!m) return json(404, { feil: 'Finnes ikke' });

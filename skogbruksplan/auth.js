@@ -33,6 +33,17 @@ export const ROLLER = ['skogeier', 'bonde', 'radgiver', 'entreprenor', 'annet'];
 // Brukerroller (én eller flere per bruker, obligatorisk ved registrering). Lagres i profilen som «roller».
 // Den eldre enkeltrollen «rolle» over beholdes bare for å foreslå roller til brukere som ble registrert før.
 export const BRUKERROLLER = { skogeier: 'Skogeier/gårdbruker', entreprenor: 'Entreprenør', innkjoper: 'Innkjøper', radgiver: 'Rådgiver / regnskapsfører', offentlig: 'Offentlig' };
+// Rådgivere beskriver hva slags rådgiver de er (én eller flere typer og en kort tekst), og velger om skogeiere og
+// gårdbrukere kan finne dem og knytte seg til dem under Nettverk (synlig). Lagres i profilen som «radgiver».
+export const RADGIVER_TYPER = ['skogbruk', 'landbruk', 'regnskap', 'revisjon', 'skatt', 'juridisk', 'finans', 'forsikring', 'annet'];
+export const RADGIVER_MAKS = 600;
+export function rensRadgiver(r) {
+  if (!r || typeof r !== 'object') return null;
+  const typer = [...new Set((Array.isArray(r.typer) ? r.typer : []).map((x) => String(x || '').trim().toLowerCase()).filter((x) => RADGIVER_TYPER.includes(x)))];
+  return { typer, beskrivelse: String(r.beskrivelse ?? '').trim().slice(0, RADGIVER_MAKS), synlig: r.synlig === true };
+}
+// Mangler rådgiveren opplysningene (registrert før de ble innført)? Da må de fylles inn ved innlogging.
+export const radgiverMangler = (profil) => (profil?.roller || []).includes('radgiver') && !(profil?.radgiver?.typer?.length && profil.radgiver.beskrivelse && typeof profil.radgiver.synlig === 'boolean');
 export const rensRoller = (r) => [...new Set((Array.isArray(r) ? r : r == null ? [] : [r]).map((x) => String(x || '').trim().toLowerCase()).filter((x) => BRUKERROLLER[x]))];
 // Versjoner som «1.10» sammenlignes tall for tall. Brukeren må godta på nytt når godtatt versjon er eldre enn kreverGodkjenning.
 export const sammenlignVersjon = (a, b) => { const x = String(a || '0').split('.').map(Number); const y = String(b || '0').split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return Math.sign(d); } return 0; };
@@ -94,7 +105,7 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
   const glemtIp = new Map(); // ip → [tidspunkter for «glemt passord»]
   const nyReset = (b, ms) => { const token = randomBytes(24).toString('base64url'); store.lagre({ ...b, reset: { hash: sha(token), exp: naa() + ms } }); return token; };
   const erAdmin = (u) => { const b = store?.hent(u); return !!(store ? b && (b.rolle === 'admin' || admins.has(b.navn)) : enkel && u === bruker); };
-  const offentlig = (b) => ({ bruker: b.navn, navn: b.visning || b.navn, epost: b.epost || '', admin: erAdmin(b.navn), roller: b.profil?.roller || [], ...(b.profil ? { profil: b.profil } : {}), vilkar: { godtatt: b.vilkar?.versjon || null, tid: b.vilkar?.tid || null, gjeldende: VILKAR.versjon, kreves: maaGodta(b) }, statistikk: !b.ingenStatistikk });
+  const offentlig = (b) => ({ bruker: b.navn, navn: b.visning || b.navn, epost: b.epost || '', admin: erAdmin(b.navn), roller: b.profil?.roller || [], ...(b.profil ? { profil: b.profil } : {}), radgiverMangler: radgiverMangler(b.profil), vilkar: { godtatt: b.vilkar?.versjon || null, tid: b.vilkar?.tid || null, gjeldende: VILKAR.versjon, kreves: maaGodta(b) }, statistikk: !b.ingenStatistikk });
   // Godkjenning av vilkår og personvernerklæring: siste godkjenning, og en logg over alle (dokumentasjon).
   const godkjenning = (b, versjon, kilde) => { const v = { versjon, tid: naa(), kilde }; return { vilkar: v, vilkarLogg: [...(b.vilkarLogg || []), v].slice(-20) }; };
   const finn = (u) => store?.finn(u) || null;
@@ -223,6 +234,13 @@ export function lagInnlogging({ bruker = '', passord = '', hemmelighet = '', reg
       if (data.roller !== undefined) { const rr = rensRoller(data.roller); if (!rr.length) return { feil: 'Velg minst én rolle', status: 400 }; p.roller = rr; }
       // Kommuner (innkjøpere og entreprenører: hvor de opererer; skogeiere: hvor de har skog). [{ nr, navn }].
       if (data.kommuner !== undefined) p.kommuner = rensKommuner(data.kommuner);
+      if (data.radgiver !== undefined) {
+        const rg = rensRadgiver(data.radgiver); if (!rg) return { feil: 'Ugyldige rådgiveropplysninger', status: 400 };
+        if (!rg.typer.length) return { feil: 'Velg hva slags rådgiver du er', status: 400 };
+        if (rg.beskrivelse.length < 10) return { feil: 'Beskriv kort hva du hjelper skogeiere og gårdbrukere med', status: 400 };
+        if (typeof data.radgiver.synlig !== 'boolean') return { feil: 'Velg om skogeiere og gårdbrukere kan knytte seg til deg', status: 400 };
+        p.radgiver = rg;
+      }
       if (p.telefon && !/^[+\d\s()-]{5,30}$/.test(p.telefon)) return { feil: 'Ugyldig telefonnummer', status: 400 };
       if (p.orgnr && !/^\d{3}\s?\d{3}\s?\d{3}$/.test(p.orgnr)) return { feil: 'Organisasjonsnummer har 9 siffer', status: 400 };
       if (p.postnr && !/^\d{4}$/.test(p.postnr)) return { feil: 'Postnummer har 4 siffer', status: 400 };
