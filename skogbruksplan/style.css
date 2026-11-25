@@ -1600,3 +1600,17 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .kl-effekt { font-weight: 700; color: var(--accent); white-space: nowrap; }
 .kl-inn { display: flex; align-items: center; gap: 6px; } .kl-inn input { width: 120px; }
 @media (max-width: 560px) { .kl-kpi b { font-size: 18px; } }
+
+/* 💰 Tilskudd */
+.ts-gruppe h3 { margin: 16px 0 8px; }
+.ts-kort { border: 1px solid var(--grid); border-radius: 12px; padding: 0 14px; margin-bottom: 8px; background: var(--surface); }
+.ts-kort > summary { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 12px 0; cursor: pointer; list-style: none; }
+.ts-kort > summary::-webkit-details-marker { display: none; }
+.ts-tittel { display: flex; flex-direction: column; gap: 2px; }
+.ts-belop { font-weight: 700; color: var(--accent); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ts-aktuell { border-left: 4px solid var(--accent); } .ts-ikke { opacity: .75; }
+.ts-grunn { margin: 0 0 6px; font-weight: 600; }
+.ts-sats input { width: 70px; } .ts-lenker { font-size: 13px; }
+.ts-deler td { font-size: 12.5px; }
+.ts-frister { display: flex; flex-direction: column; } .ts-frister > div { display: grid; grid-template-columns: 150px 1fr auto; gap: 8px; padding: 6px 0; border-top: 1px solid var(--grid); font-size: 13px; }
+@media (max-width: 560px) { .ts-frister > div { grid-template-columns: 1fr; gap: 2px; } }

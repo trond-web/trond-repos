@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.15.0** (2026-11-21) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.16.0** (2026-11-25) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -826,6 +826,20 @@ Skogeieren velger selv hvilke innkjøpere og entreprenører i nettverket (aktive
   - Alle nye svar og avslag vises under **Nettverk › 📬 Svar på forespørslene dine**, med merke på fanen. Kilden er `GET /api/tilbud/nye-svar`.
   - «Se og sammenlign» åpner oppdraget. Merket forsvinner når svarene er sett (`…/svar?sett=1`).
 - **Påminnelse:** to dager før svarfristen får nettverksmottakere som verken har svart eller takket nei, én automatisk påminnelse i chatten. Serveren sjekker hver time.
+
+## 💰 Tilskudd – hva gården kan søke om (fanen «Tilskudd», `js/tilskudd.js`, `js/tilskudd-ui.js`)
+
+Oversikt over 19 tilskuddsordninger for skog, jord og husdyr. For hver ordning vises status for denne gården (aktuell, kan bli aktuell, ikke aktuell) og hvorfor, et anslag i kroner der det kan regnes ut, krav og vilkår, frist, hvem som forvalter ordningen, og lenker til Landbruksdirektoratet og til Statsforvalteren i fylket.
+- **Tilpasset hvor gården ligger:** fylket og Statsforvalteren hentes fra kommunenummeret. Kystfylkene og Nord-Norge får egne vurderinger, og kommunelister (for eksempel vindfall etter stormen Amy) sjekkes.
+- **Beløp ut fra planen:**
+  - produksjons- og avløsertilskudd (satsene i Husdyr-fanen)
+  - drenering, 4 000 kr/daa, fra grøfteplanene
+  - gjødsling av skog (40 %) og tettere planting (30 %) av planlagte tiltak
+  - skogkultur ut fra kostnaden ved planlagte tiltak og kommunens sats, som du legger inn
+- **Regionale ordninger** (RMP, skogkultur, veibygging, beitelag, taubane): satsene fastsettes av Statsforvalteren og kommunen. Appen viser hvilke tiltak som kan være aktuelle for deg, og lenker dit.
+- **Kommende frister:** 15. mars og 15. oktober (produksjonstilskudd), 15. oktober (RMP), 20. februar (biogass), 15. november (beitelag) og rundt 1. desember (skogkultur).
+- **Følger driftsområdene:** ordninger for skog, jord eller husdyr skjules når området er slått av.
+- **Oppdatering:** hver ordning er merket med datoen den sist ble kontrollert (`KONTROLLERT`). Den ukentlige kildesjekken overvåker sidene for alle ordningene. Den melder fra når satser, frister eller krav endres, når det kommer nye ordninger hos Landbruksdirektoratet, og når katalogen ikke er kontrollert på et halvt år.
 
 ## 🎄 Juletema i den virtuelle skogen (`js/skog3d-jul.js`)
 

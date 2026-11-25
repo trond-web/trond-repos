@@ -39,6 +39,14 @@ export const SIDER = [
   { id: 'ldir:tettere-planting', gruppe: 'Satser og tilskudd', navn: 'Tilskudd til tettere planting (klimatiltak)', url: `${LDIR}/skogbruk/ordninger-for-skogbruk/tilskudd-til-tettere-skogplanting-som-klimatiltak`, linjer: /prosent|%|planter/i },
   { id: 'ldir:veibygging', gruppe: 'Satser og tilskudd', navn: 'Tilskudd til veibygging i skog', url: `${LDIR}/skogbruk/ordninger-for-skogbruk/tilskudd-til-veibygging-i-skog`, linjer: /prosent|%|kr/i },
   { id: 'ldir:skogordninger', gruppe: 'Satser og tilskudd', navn: 'Ordninger for skogbruk (nye ordninger)', url: `${LDIR}/skogbruk/ordninger-for-skogbruk`, lenker: /ordninger-for-skogbruk\// },
+  { id: 'ldir:jordordninger', gruppe: 'Satser og tilskudd', navn: 'Ordninger for jordbruk (nye ordninger)', url: `${LDIR}/jordbruk/ordninger-for-jordbruk`, lenker: /ordninger-for-jordbruk\/[^/]+$/ },
+  ...[['drenering', 'Drenering av jordbruksjord', 'jordbruk/ordninger-for-jordbruk/tilskudd-til-drenering-av-jordbruksjord'], ['smil', 'SMIL', 'jordbruk/ordninger-for-jordbruk/tilskudd-til-spesielle-miljotiltak-i-jordbruket-smil'],
+    ['biogass', 'Husdyrgjødsel til biogass', 'jordbruk/ordninger-for-jordbruk/tilskudd-for-a-levere-husdyrgjodsel-til-biogassanlegg'], ['beitelag', 'Drift av beitelag (OBB)', 'jordbruk/ordninger-for-jordbruk/tilskudd-til-drift-av-beitelag-obb'],
+    ['beiteomrader', 'Tiltak i beiteområder', 'jordbruk/ordninger-for-jordbruk/tilskudd-til-tiltak-i-beiteomrader'], ['avlosning-sykdom', 'Avløsning ved sykdom og fødsel', 'jordbruk/ordninger-for-jordbruk/soke-tilskudd-til-avlosning-ved-sykdom-og-fodsel'],
+    ['skogbruksplan', 'Skogbruksplanlegging', 'skogbruk/ordninger-for-skogbruk/tilskudd-til-skogbruksplanlegging-med-miljoregistreringer'], ['miljotiltak-skog', 'Miljøtiltak i skog', 'skogbruk/ordninger-for-skogbruk/tilskudd-til-miljotiltak-i-skog'],
+    ['taubane', 'Taubane, hest og andre driftsmetoder', 'skogbruk/ordninger-for-skogbruk/tilskudd-til-skogsdrift-med-taubane-hest-og-andre-driftsmetoder'], ['tommerkai', 'Tømmerkai', 'skogbruk/ordninger-for-skogbruk/tilskudd-til-tommerkai'],
+    ['vindfall-amy', 'Vindfall etter stormen Amy', 'skogbruk/ordninger-for-skogbruk/tilskudd-til-opprydding-av-vindfall-etter-stormen-amy-den-4.oktober-2025'],
+  ].map(([id, navn, sti]) => ({ id: `ldir:${id}`, gruppe: 'Satser og tilskudd', navn: `Tilskudd: ${navn}`, url: `${LDIR}/${sti}`, linjer: /prosent|%|kr |kroner|frist|inntil|per dekar|per dyr|kommuner/i })),
   { id: 'ldir:rmp', gruppe: 'Satser og tilskudd', navn: 'Regionalt miljøtilskudd', url: `${LDIR}/jordbruk/ordninger-for-jordbruk/regionalt-miljotilskudd-rmb`, linjer: /frist|søknad|kr/i },
   { id: 'pefc:standard', gruppe: 'Standarder', navn: 'Norsk PEFC Skogstandard', url: 'https://www.pefc.no/vare-standarder/norsk-pefc-skog-standard', linjer: /PEFC N|gjeldende|revisjon|ny standard|høring/i },
   { id: 'ksl:oversikt', gruppe: 'Standarder', navn: 'KSL-standarden – kapitler', url: 'https://www.ksl.no/ksl-standarden/', lenker: /ksl-standarden\/[a-z]/ },
@@ -101,6 +109,7 @@ async function sjekkAlt({ lenker = false } = {}) {
   const { STANDARD } = await import(path.join(ROT, 'js/pefc.js'));
   const { STANDARD_INNSTILLINGER } = await import(path.join(ROT, 'js/model.js'));
   const { PT_KILDE } = await import(path.join(ROT, 'js/husdyr.js'));
+  const TS = await import(path.join(ROT, 'js/tilskudd.js')); kode.tilskuddKontrollert = TS.KONTROLLERT; kode.tilskuddUrler = TS.ORDNINGER.map((o) => o.url);
   kode.ksl = Object.fromEntries(KSL_KAPITLER.map((k) => [k.nr, k.versjon])); kode.pefc = STANDARD.kode; kode.ptAar = PT_KILDE.aar; kode.pris = STANDARD_INNSTILLINGER.pris; kode.drift = STANDARD_INNSTILLINGER.drift;
 
   for (const k of LOVER) {
@@ -112,7 +121,7 @@ async function sjekkAlt({ lenker = false } = {}) {
     const r = await hent(s.url);
     if (!r.ok) { ut[s.id] = { ...s, ok: false, status: r.status, feil: r.feil }; continue; }
     const linjer = rensHtml(r.body);
-    const utdrag = s.lenker ? [...new Set([...r.body.matchAll(/href="([^"#]+)"/g)].map((m) => m[1].replace(/&#x2F;/g, '/')).filter((h) => s.lenker.test(h)))].sort() : linjer.filter((l) => s.linjer.test(l) && l.length < 600);
+    const utdrag = s.lenker ? [...new Set([...r.body.matchAll(/href="([^"#]+)"/g)].map((m) => m[1].replace(/&#x2F;/g, '/')).filter((h) => s.lenker.test(h)))].sort() : [...new Set(linjer.filter((l) => s.linjer.test(l) && l.length < 600).map((l) => l.replace(/^Regelverk /, '')))].sort(); // rekkefølgen på siden betyr ikke noe
     ut[s.id] = { ...s, lenker: undefined, linjer: undefined, ok: true, utdrag, fingeravtrykk: sha(utdrag.join('\n')) };
   }
   for (const [nr, side] of Object.entries(KSL_SIDER)) {
@@ -158,6 +167,8 @@ export function vurder(naa, forrige) {
     if (k.lovdata && k.opphevet && !k.kjentOpphevet) legg('viktig', k, `Forskriften/loven er opphevet (${k.opphevetDato}).`, 'Finn den nye forskriften og oppdater krav og lenker i appen.');
     if (k.id.startsWith('ksl:') && k.iKoden && k.versjon && k.versjon !== k.iKoden) legg('viktig', k, `Ny versjon ${k.versjon} (appen har ${k.iKoden}).`, `Les inn den nye PDF-en med verktoy/ksl-fra-pdf.py og oppdater js/ksl-standard.js.`);
     if (k.id === 'pefc:standard') { const koder = [...new Set((k.utdrag || []).join(' ').match(/PEFC N ?\d+:\d{4}/g) || [])]; if (koder.some((x) => x.replace(' ', '') !== naa.kode.pefc.replace(' ', '') && x !== naa.kode.pefc)) legg('viktig', k, `Siden nevner ${koder.join(', ')} – appen bruker ${naa.kode.pefc}.`, 'Sjekk om ny PEFC-standard er vedtatt, og oppdater js/pefc.js og js/pefc-data.js.'); }
+    // Nye tilskuddsordninger: lenker som har kommet til siden forrige uke (oversiktssidene for skog og jord).
+    if ((k.id === 'ldir:skogordninger' || k.id === 'ldir:jordordninger') && f?.utdrag) { const nye = (k.utdrag || []).filter((h) => !f.utdrag.includes(h) && /tilskudd|tilskot|kompensasjon|erstatning/.test(h)); if (nye.length) legg('viktig', k, `Ny ordning: ${nye.map((h) => h.split('/').pop()).join(', ')}.`, 'Vurder å legge den inn i js/tilskudd.js (fanen Tilskudd) med krav, sats og frist.'); }
     if (k.id === 'ldir:pt-oversikt') { const aar = Math.max(0, ...(k.utdrag || []).map((h) => Number((h.match(/satser-?(\d{4})/) || [])[1]) || 0)); const ny = (k.utdrag || []).find((h) => /endelige-satser/.test(h)); if (aar > naa.kode.ptAar) legg('viktig', k, `Nye satser for ${aar} er publisert (appen bruker ${naa.kode.ptAar}).`, 'Oppdater PT og PT_KILDE i js/husdyr.js.'); else if (ny && f?.utdrag && !f.utdrag.includes(ny)) legg('info', k, 'Lenken til endelige satser er endret.'); }
     if (k.id === 'pris:tommer' && Math.abs(k.avvik) > 0.1) legg('viktig', k, `SSB-snittet for ${k.aar} er ${k.ssbPris} kr/m³, mens standardprisene i appen gir ca. ${k.appSnitt} kr/m³ (${k.avvik > 0 ? '+' : ''}${Math.round(k.avvik * 100)} %).`, `Oppdater STANDARD_INNSTILLINGER.pris i js/model.js, f.eks. til gran ${k.forslag?.G}, furu ${k.forslag?.F}, lauv ${k.forslag?.L} kr/m³. Planer som er kalibrert mot kommunen, påvirkes ikke.`);
     if (k.id === 'lenker' && k.brutt?.length) legg('varsel', k, `${k.brutt.length} lenker virker ikke: ${k.brutt.map((b) => `${b.url} (${b.status})`).join(', ')}`, 'Finn ny adresse og oppdater koden.');
@@ -171,6 +182,8 @@ export function vurder(naa, forrige) {
       }
     }
   }
+  // Tilskuddskatalogen bør kontrolleres minst hvert halvår.
+  const tk = naa.kode?.tilskuddKontrollert; if (tk && (Date.parse(naa.tid) - Date.parse(tk)) / 864e5 > 180) funn.push({ nivaa: 'varsel', gruppe: 'Satser og tilskudd', navn: 'Tilskuddskatalogen (js/tilskudd.js)', url: '', tekst: `Sist kontrollert ${tk}.`, tiltak: 'Gå gjennom satser, krav og frister i js/tilskudd.js og oppdater KONTROLLERT.' });
   const rang = { viktig: 0, varsel: 1, info: 2 };
   return funn.sort((a, b) => rang[a.nivaa] - rang[b.nivaa]);
 }

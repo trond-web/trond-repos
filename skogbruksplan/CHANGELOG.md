@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.16.0 – 💰 Tilskudd du kan søke om (2026-11-25)
+
+*Nytt.* Den nye fanen Tilskudd viser hvilke ordninger gården kan søke om – produksjonstilskudd, avløsning, regionalt miljøtilskudd, drenering, SMIL, skogkultur, klimatiltak i skog, veibygging, beitelag og flere. For hver ordning ser du om den er aktuell for deg og hvorfor, hva den kan gi i kroner ut fra planen, krav og vilkår, frist og hvem du søker hos. Alt tilpasses fylket og kommunen gården ligger i, med lenke til Statsforvalteren der satsene er regionale, og du får en oversikt over de neste fristene. Satser og krav sjekkes hver uke mot Landbruksdirektoratet, så du får beskjed når noe endres eller det kommer nye ordninger.
+
 ## 2.15.0 – 🎄 Jul i den virtuelle skogen (2026-11-21)
 
 *Nytt.* Fra 20. november til nyttår står det et pyntet juletre med stjerne, lys og gaver i den virtuelle skogen. Nisser og reinsdyr holder deg med selskap, og de lave granene rundt deg har fått julepynt. Det virker også med VR-briller. Knappen 🎄 Jul skjuler pynten, og temaet forsvinner av seg selv 1. januar. Administrator kan nå også slette enkelte sikkerhetskopier på admin-siden.

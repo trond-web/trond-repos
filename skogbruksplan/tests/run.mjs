@@ -4623,3 +4623,25 @@ test('Juletema i den virtuelle skogen: 20. november – 31. desember', async () 
   assert.equal(erJul3d(d(11, 19)), false); assert.equal(erJul3d(d(11, 20)), true); assert.equal(erJul3d(d(12, 24)), true);
   assert.equal(erJul3d(d(12, 31)), true); assert.equal(erJul3d(new Date(2027, 0, 1, 0, 1)), false, 'fjernes 1. januar'); assert.equal(erJul3d(d(7, 1)), false);
 });
+
+test('Tilskudd: ordninger, beløp, region og frister tilpasset gården', async () => {
+  const T = await import('../js/tilskudd.js'); const { lagDemo } = await import('../js/demo.js');
+  assert.equal(T.region({ eiendom: { kommunenr: '3412' } }).fylke, 'Innlandet');
+  assert.match(T.region({ eiendom: { kommunenr: '1103' } }).statsforvalter.url, /nn\/rogaland/);
+  assert.ok(T.region({ eiendom: { kommunenr: '1804' } }).nord);
+  const d = lagDemo(2026); d.bestand[0].tiltak = [{ type: 'ungskogpleie', aar: 2026, status: 'planlagt' }, { type: 'gjodsling', aar: 2027, status: 'planlagt' }];
+  const S = { eiendom: { ...d.eiendom, kommunenr: '3412', kommune: 'Løten' }, bestand: d.bestand,
+    skifteplan: { skifter: [{ id: 'a', areal: 100, vekster: { 2026: { kultur: 'engNorm2' } }, drenering: { status: 'plan', plan: { okonomi: { areal: 20, tilskudd: 80000 } } } }], dyrehold: { dyr: [{ id: 's', slag: 'sau', antall: 50 }] } } };
+  const o = T.tilskuddsoversikt(S, 2026); const f = (id) => o.liste.find((x) => x.id === id);
+  assert.equal(f('drenering').status, 'aktuell'); assert.equal(f('drenering').belop.kr, 80000);
+  assert.equal(f('gjodsling-skog').status, 'aktuell'); assert.ok(f('gjodsling-skog').belop.kr > 0);
+  assert.equal(f('skogkultur').belop.kr, null, 'trenger kommunens sats'); assert.equal(f('skogkultur').belop.sats, 'skogkultur');
+  S.tilskudd = { satser: { skogkultur: 40 } }; assert.ok(T.tilskuddsoversikt(S, 2026).liste.find((x) => x.id === 'skogkultur').belop.kr > 0);
+  assert.ok(f('produksjonstilskudd').belop.kr > 0); assert.equal(f('vindfall-amy').status, 'ikke');
+  assert.equal(T.tilskuddsoversikt({ ...S, eiendom: { kommunenr: '5059', kommune: 'Orkland' } }, 2026).liste.find((x) => x.id === 'vindfall-amy').status, 'aktuell');
+  assert.ok(o.sum >= 80000); assert.match(f('rmp').frist, /15\. oktober/);
+  // Driftsområder: ordninger for husdyr vises ikke når husdyr er slått av
+  S.drift = { skog: true, jord: true, husdyr: false, valgt: true }; assert.ok(!T.tilskuddsoversikt(S, 2026).liste.some((x) => x.id === 'beitelag'));
+  const fr = T.kommendeFrister(o, new Date(2026, 10, 25)); assert.equal(fr[0].tekst.startsWith('Skogkultur'), true); assert.ok(fr.every((x) => x.dager >= 0));
+  for (const ord of T.ORDNINGER) assert.match(ord.url, /^https:\/\//, ord.id);
+});
