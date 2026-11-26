@@ -120,6 +120,15 @@ export const KAPITLER = [
       ${steg(['Åpne oppdraget › <b>Maskin</b>.', 'Velg versjon og koordinatsystem (standardvalgene passer de fleste maskiner).', '<b>Last ned filsett (ZIP)</b>, kopier til minnepinne og importer i maskinen (se LES_MEG.txt).', 'Etter drift: <b>Les inn produksjonsfiler</b> (.hpr, .fpr …) og trykk <b>Gå gjennom endringer i planen</b> – se <a href="#" data-hjelp="ajourforing">Ajourføring fra hogstmaskindata</a>.'])}`,
   },
   {
+    id: 'entreprenor', ikon: '📲', tittel: 'SkogIQ Entreprenør – oppdrag i felt for entreprenører',
+    tekst: `<p>Skogeieren tildeler oppdraget og gjør miljøsjekken på web. Entreprenøren gjennomfører det i <b>SkogIQ Entreprenør</b> (entreprenor.html) på mobilen – uten PDF-skjema. Støtter hogst, tynning og skogkultur.</p>
+      <h4>Som skogeier</h4>
+      ${steg(['Lag oppdraget og gå gjennom <b>Sjekkliste</b>-fanen (miljøsjekken).', 'Under <b>Utfører</b>: velg en entreprenør du er koblet til i Nettverk, og trykk <b>📲 Send oppdraget</b>. Entreprenøren får hele planen og en beskjed i chatten.', 'Følg framdriften under Utfører (🔄 Oppdater). Du kan sende en oppdatert plan eller trekke oppdraget tilbake.', 'Når oppdraget er ferdigmeldt: se rapporten med avvik, bilder og signatur, og trykk <b>Ta inn rapporten i planen og godkjenn</b>. Tiltakene blir utført med dato, areal og mengde. <b>Åpne igjen</b> sender det tilbake til entreprenøren.'])}
+      <h4>Som entreprenør</h4>
+      ${steg(['Åpne SkogIQ Entreprenør (lenke under Nettverk) og velg oppdraget. Kartet viser hele planen, bestandene i oppdraget, miljøfigurer, kantsone og driftsveg. Trykk <b>Last ned kart for offline</b> før du drar ut.', '<b>Framdrift</b>: sett hvert bestand til Pågår eller Ferdig, med datoer, utført areal og mengde (m³, planter …).', '<b>Miljø</b>: svar OK, Avvik eller Ikke aktuelt på hvert punkt. ✓ web viser hva skogeieren har bekreftet.', '<b>Avvik</b>: type, beskrivelse, bilder og posisjon (GPS eller trykk i kartet).', '<b>Ferdig</b>: skriv navn, signer med fingeren og ferdigmeld. Alt lagres på telefonen og sendes når du har nett.'])}
+      ${tips('Entreprenøren må være koblet til skogeieren i Nettverk og registrert med rollen entreprenør.')}`,
+  },
+  {
     id: 'proveflater', ikon: '🎯', tittel: 'Virtuelle prøveflater fra hogstmaskindata',
     tekst: `<p>Når du leser inn en hpr-fil under <b>Data › Hogstmaskindata</b>, lages det prøveflater på 400 m² (radius 11,3 m) i et nett med 40 m mellomrom over arealet maskinen hogde. Stammene på hver flate gir stammetall, grunnflate, middeldiameter, anslått høyde, volum og treslag – som en prøveflate i takst, men målt av maskinen.</p>
       ${steg(['Les inn hpr-fila (eller prøv med simulert hogst).', 'Se tabellen per bestand: volum fra prøveflatene mot planens volum, med avvik og vurdering.', 'Ved flatehogst kan planens volum i andre hogstmodne bestand med samme treslag justeres med samme faktor – <b>Juster</b>. Det kan angres.', 'Last ned flatene som CSV eller GeoJSON til takstfirma eller rådgiver, eller vis dem i kartet.'])}

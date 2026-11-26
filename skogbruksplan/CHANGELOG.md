@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.23.0 – 📲 SkogIQ Entreprenør – feltløsning for entreprenører (2026-11-26)
+
+*Nytt.* Skogeieren tildeler oppdraget og gjør miljøsjekken på web, og sender det med hele planen til en entreprenør i Nettverk (Oppdrag › Utfører). Entreprenøren gjennomfører oppdraget i SkogIQ Entreprenør på mobilen. Der registreres framdrift og mengde per bestand, miljøsjekken i felt, avvik med bilde og posisjon, og ferdigmelding med signatur – uten PDF-skjema, og det fungerer uten nett. Rapporten går tilbake til skogeieren, som tar den inn i planen med ett trykk: tiltakene blir utført med dato, areal og mengde. Støtter hogst, tynning og skogkultur. Personvernerklæringen er oppdatert (versjon 1.16), og alle må godta vilkårene på nytt fordi planen nå kan deles med en entreprenør.
+
 ## 2.22.1 – Panelet kan vises igjen etter at det er skjult (2026-11-26)
 
 *Rettet.* Når panelet til høyre ble skjult med pila, havnet pila utenfor skjermen, så panelet ikke kunne åpnes igjen. Nå ligger pila i stripen som er igjen, og et trykk hvor som helst på stripen viser panelet. Panelet åpnes også når du velger en fane i menyen.

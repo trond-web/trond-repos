@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Utkast til godkjenning hos behandlingsansvarlig |
 | **Dato** | 2026-11-11 |
-| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.15 (`js/personvern.js`) |
+| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.16 (`js/personvern.js`) |
 | **Behandlingsansvarlig** | Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no. Organisasjonsnummer legges inn når foretak er etablert |
 | **Neste gjennomgang** | Ved endringene i kapittel 8, og senest 2027-11-11 |
 
@@ -61,6 +61,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | Tilbudsforespørsler (`tilbud`) | Oppdrag, kontakt, mottakere, svar | Brukerens initiativ | 180 dager uten bruk |
 | Deling med tømmerkjøper (`tommer`) | Utvalgte bestand, volumer, kontakt | Brukerens initiativ | Til sluttdato, senest 180 dager uten bruk |
 | Nettverk og chat (`nettverk`) | Koblinger (også til en eller flere rådgivere), chatmeldinger, lest-status | Avtale | Til koblingen eller kontoen slettes; høyst 2000 meldinger per kobling |
+| Oppdrag til entreprenør (`feltoppdrag`) | Oppdraget og hele skogbruksplanen sendt til én valgt entreprenør i nettverket; entreprenørens rapport med framdrift, miljøsjekk, avvik med bilder og posisjon, navn og signatur | Avtale | Til oppdraget trekkes eller en konto slettes; høyst 1 år etter avslutning |
 | John Deere (`jd`) | Tilgangsnøkler til Operations Center | Brukerens initiativ | Til brukeren kobler fra |
 | Kart og offentlige data (`offentlig`) | Koordinater og eiendomsnummer i oppslag; IP-adressen hos leverandørene | Avtale | Lagres ikke av SkogIQ.ai |
 | Spør AI (`ai`) | Spørsmål og plansammendrag til Anthropic, med brukerens egen nøkkel | Brukerens initiativ | Lagres ikke på serveren |
@@ -124,6 +125,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | R14 | Fritekst i tilbakemeldinger kan inneholde personopplysninger om andre (`tilbakemelding`) | Bare administrator ser tilbakemeldingene; teksten er begrenset til 3000 tegn og 10 per time; slettes med kontoen; administrator kan slette enkeltmeldinger | L | L | **Lav** |
 | R15 | Skogkarakteren brukes som rangering eller profilering av skogeieren (`skogkarakter`) | Beregnes i nettleseren fra eierens egne data og vises bare for eieren; ingen sammenligning med andre og ingen visning for kjøpere, kommune eller andre; deles bare når eieren selv skriver ut karakterbeviset eller laster ned stempelet; forklarbare indikatorer, «ukjent» gir ikke minuspoeng; erklæringen 1.8 krever ny godkjenning | L | M | **Lav**. Deling uten eierens handling, sammenligning eller bruk for andre krever ny vurdering (kap. 8 punkt 2) |
 | R16 | Uautorisert tilgang til en skogeiers planer via integrasjons-API-et, lekket nøkkel eller for vid tilgang (`api`) | Nøkkel opprettes bare av administrator etter avtale med brukeren og gjelder én brukers egne planer; lese- eller skrivetilgang; bare SHA-256 av hemmeligheten lagres; vises én gang; kan trekkes tilbake; 300 kall/min; alle kall logges (uten innhold); skrivinger blir ny planversjon (kan rulles tilbake fra historikken); If-Match mot overskriving; slettes med kontoen; erklæring 1.9 krever ny godkjenning | L | M | **Lav–middels**. Systemnøkler med tilgang til flere brukere, eller utlevering til nye mottakere uten brukerens avtale, krever ny vurdering og databehandleravtale |
+| R18 | Hele skogbruksplanen hos en entreprenør, og entreprenørens bilder, posisjon og signatur hos skogeieren (`feltoppdrag`) | Sendes bare på skogeierens initiativ, til én entreprenør hen er koblet til i Nettverk; tilgang bare for de to partene; skogeieren kan trekke oppdraget tilbake; slettes med begge kontoer og senest ett år etter avslutning; bilder nedskalert i nettleseren; posisjon bare for avvik entreprenøren registrerer (ingen sporing); erklæring 1.16 krever ny godkjenning | L | M | **Lav**. Planen ligger også på entreprenørens telefon (lokal kopi) til oppdraget fjernes der. |
 | R17 | Stemmeopptak til nettleserleverandør i USA (`tale`) | Av til brukeren sier ja i en egen dialog som forklarer hvor lyden går; lytter bare mens brukeren trykker 🎙 eller holder inne grepet; SkogIQ.ai lagrer verken lyd eller tekst; tekstfelt og forslag virker uten tale | L | M | **Lav**. Ikke særlige kategorier; stemmen brukes ikke til å identifisere noen. |
 
 **Samlet restrisiko:** lav, bortsett fra **R6** (middels til lagring utenfor Railway er satt opp) og **R7/R11** (lav–middels) inntil tiltakene under er gjennomført. Ingen restrisiko er høy, så forhåndsdrøfting med Datatilsynet (art. 36) er ikke nødvendig.

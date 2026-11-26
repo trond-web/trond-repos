@@ -1,0 +1,64 @@
+/* SkogIQ Entreprenør – bygger på felt.css. */
+.ent-merke { font-size: 10.5px; font-weight: 700; background: #8a4b00; color: #fff; border-radius: 6px; padding: 1px 5px; margin-left: 4px; vertical-align: 2px; letter-spacing: .2px; }
+.ent-synk { position: fixed; left: 10px; right: 70px; top: calc(74px + var(--topp)); z-index: 999; background: var(--surface); border-radius: 12px; padding: 8px 12px; box-shadow: var(--skygge); font-size: 13px; font-weight: 600; }
+.ent .fab { background: #c26a00; box-shadow: 0 6px 20px rgba(194, 106, 0, .4); }
+.ent-status { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: color-mix(in srgb, var(--f) 16%, transparent); color: var(--f); white-space: nowrap; }
+.ent-topp { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; margin-right: 44px; }
+.ent-topp h2 { margin-right: 0 !important; }
+.ent-rad { grid-template-columns: minmax(0, 1fr) auto; }
+.ent-framdrift { display: grid; gap: 6px; margin: 10px 0; }
+.ent-bar { height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; box-shadow: inset 0 0 0 1px var(--border); }
+.ent-bar i { display: block; height: 100%; background: var(--ok); border-radius: 99px; transition: width .3s; }
+.ent-framdrift span { font-size: 13px; color: var(--text-2); }
+.ent-instruks { background: #fff6e2; border-left: 4px solid #c26a00; border-radius: 8px; padding: 8px 12px; font-size: 14px; }
+.ent-dl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin: 6px 0; }
+.ent-dl div { background: var(--surface-2); border-radius: 10px; padding: 7px 10px; }
+.ent-dl dt { font-size: 11.5px; color: var(--muted); } .ent-dl dd { margin: 0; font-weight: 650; }
+.ent-prikk { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--f); vertical-align: -1px; margin: 0 4px 0 6px; box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.25); }
+.ent-linjer { display: grid; gap: 8px; }
+.ent-linje { background: var(--surface-2); border-radius: 14px; overflow: hidden; }
+.ent-linje.apen { outline: 2px solid var(--accent); }
+.ent-linje-topp { width: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; border: 0; background: none; text-align: left; padding: 12px; }
+.ent-linje-topp small { display: block; color: var(--muted); font-size: 12.5px; }
+.ent-linje-topp .ent-prikk { margin: 0; width: 16px; height: 16px; }
+.ent-pil { color: var(--muted); }
+.ent-miljo { color: #c2187a; }
+.ent-linje-skjema { padding: 0 12px 12px; display: grid; gap: 10px; }
+.ent-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface); border-radius: 12px; padding: 3px; gap: 3px; box-shadow: inset 0 0 0 1px var(--border); }
+.ent-seg button { border: 0; background: none; border-radius: 9px; padding: 10px 6px; font-weight: 650; font-size: 14px; }
+.ent-seg.liten button { padding: 7px 4px; font-size: 13px; }
+.ent-seg button.aktiv { background: var(--accent); color: #fff; }
+.ent-seg button.aktiv.avvik { background: #c93a55; }
+.ent-seg button.aktiv.ikke-aktuelt { background: #6f7d75; }
+.ent-felt2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ent-felt2 label, .ent-full { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.ent-full { margin: 8px 0; }
+.ent-felt2 input, .ent-full input, .ent-full textarea, .ent-full select, .ent-felt2 select, .ent-mp textarea, .ent-linje-skjema textarea { width: 100%; font: inherit; font-size: 15px; border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: var(--surface); color: var(--text); }
+.ent-miljo-liste { display: grid; gap: 8px; }
+.ent-mp { background: var(--surface-2); border-radius: 12px; padding: 10px; display: grid; gap: 8px; }
+.ent-mp-tekst { font-size: 14px; }
+.ent-mp-tekst small { color: var(--muted); font-size: 11.5px; }
+.ent-mp-tekst .ent-web { color: var(--ok); font-weight: 700; } .ent-mp-tekst .ent-ikke-web { color: #b06a00; }
+.ent-pos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--text-2); margin: 6px 0; }
+.ent-bilder { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.ent-bilde { position: relative; width: 84px; height: 84px; border-radius: 12px; overflow: hidden; background: var(--surface-2); display: grid; place-items: center; }
+.ent-bilde img { width: 100%; height: 100%; object-fit: cover; }
+.ent-bilde button { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 13px; }
+.ent-bilde.ny { border: 2px dashed var(--border); cursor: pointer; font-size: 24px; grid-template-rows: auto auto; }
+.ent-bilde.ny span { font-size: 12px; color: var(--muted); }
+.ent-avvik-ikon { width: 48px; height: 48px; border-radius: 8px; background: #fde8ec; display: grid; place-items: center; font-size: 22px; }
+.rad:has(.ent-avvik-ikon), .rad:has(img) { grid-template-columns: auto minmax(0, 1fr); }
+.ent-avvik-merke span { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px #c93a55, var(--skygge); font-size: 15px; }
+.ent-etikett { background: none; border: 0; text-align: center; font: 700 12px/1.1 var(--font); color: #10241c; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; transform: translate(-50%, -50%); }
+.ent-etikett:not(.i-oppdrag) { color: #5b6b62; font-weight: 600; font-size: 11px; }
+.ent-etikett span { margin-left: 2px; color: #0a6a0a; }
+.ent-mangler { background: #fff6e2; border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+.ent-mangler ul { margin: 4px 0 0; padding-left: 18px; }
+.ent-klar { color: var(--ok); font-weight: 700; }
+.ent-varsel { background: #fde8ec; color: #8a1f33; border-radius: 10px; padding: 8px 12px; }
+.ent-signatur { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; margin: 8px 0; }
+.ent-signatur canvas { grid-column: 1 / -1; width: 100%; height: 150px; background: #fff; border: 1.5px dashed var(--border); border-radius: 12px; touch-action: none; }
+.ent-signatur-bilde { width: 100%; max-width: 360px; background: #fff; border-radius: 12px; border: 1px solid var(--border); }
+.ent-bunntekst { margin-top: 18px; }
+.ent-bunntekst a { color: var(--accent); }
+body.velger-punkt #kart { cursor: crosshair; }

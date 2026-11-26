@@ -13,6 +13,7 @@ import { STATUS as TILBUD_STATUS } from './tilbud.js';
 import { lagStanfordUi } from './stanford-ui.js';
 import { oppdragVurdering, synkLeveranse, STATUS as EU_STATUS } from './eudr.js';
 import { skrivLeveranseInfo, lastNedLeveranseGeo } from './eudr-ui.js';
+import { lagFeltoppdragUi } from './feltoppdrag-ui.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -38,6 +39,8 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
   const driftsvegUi = lagDriftsvegUi({ hentPlan, endret, melding, okonomi, visLag: visDriftsveg });
   // Skiltplan og arbeidsvarsling (skiltplan-ui.js).
   const skiltUi = lagSkiltplanUi({ hentPlan, endret, melding, visLag: visSkilt });
+  // Send oppdraget til entreprenørens feltløsning (SkogIQ Entreprenør) og ta rapporten inn i planen.
+  const feltUi = lagFeltoppdragUi({ hentPlan, endret, melding, settUtfort });
 
   function mengdeTekst(o, s) {
     const ot = typeFor(o.type);
@@ -160,7 +163,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
         <div class="knapperad"><button class="knapp liten" data-oh="legg-til" type="button">+ Legg til flere ${esc(ot.kort.toLowerCase())}-tiltak</button></div>
         <div class="op-fare"><button class="knapp liten fare" data-oh="slett" type="button">Slett oppdraget</button><span class="hint">Tiltakene blir liggende i tiltaksplanen.</span></div>`,
       planlegging: () => `<p class="hint op-intro">Planlegg drifta før du bestiller: hvor maskinene skal kjøre, og hvilke skilt og søknader som trengs. Begge forslagene kan beholdes eller slettes.</p>${driftsvegUi.html(o)}${skiltUi.html(o)}`,
-      utforer: () => `<p class="hint op-intro">Be om tilbud fra en eller flere utførere, eller skriv inn utføreren direkte hvis avtalen allerede er klar.</p>${tilbudUi.html(o)}<h4 class="undertittel">Utfører</h4>${skjemaUtforer}`,
+      utforer: () => `<p class="hint op-intro">Be om tilbud fra en eller flere utførere, eller skriv inn utføreren direkte hvis avtalen allerede er klar.</p>${tilbudUi.html(o)}<h4 class="undertittel">Utfører</h4>${skjemaUtforer}${feltUi.html(o, tegn)}`,
       maskin: () => `<p class="hint op-intro">Filsett til hogstmaskin og lassbærer før drift, og produksjonsfilene tilbake etter drift.</p>${stanfordUi.html(o)}`,
       eudr: () => eudrHtml(o),
       sjekkliste: () => `<p class="hint op-intro">Krav og praktiske punkter for ${esc(ot.kort.toLowerCase())}. Kryss av etter hvert. PEFC-kravpunktene står bak.</p>
@@ -256,6 +259,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     if (valgt && finn(valgt) && e.target.closest('[data-sf]') && await stanfordUi.klikk(e, finn(valgt), tegn)) return;
     if (valgt && finn(valgt) && e.target.closest('[data-dv]') && driftsvegUi.klikk(e, finn(valgt), tegn)) return;
     if (valgt && finn(valgt) && e.target.closest('[data-sp]') && skiltUi.klikk(e, finn(valgt), tegn)) return;
+    if (valgt && finn(valgt) && e.target.closest('[data-fo]') && await feltUi.klikk(e, finn(valgt), tegn)) return;
     const rad = e.target.closest('[data-oppdrag]');
     if (rad) { apne(rad.dataset.oppdrag); return; }
     const h = e.target.closest('[data-oh]'); if (!h) return;

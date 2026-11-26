@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.22.1** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.23.0** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -469,6 +469,34 @@ Feltappen lager flyruter for ortofoto som åpnes i **DJI Pilot 2**. Logikken lig
 **Støttede droner** (kodene fra WPML): Mavic 3 Enterprise, Multispectral og Thermal, Matrice 3D, M30 og M350 RTK med H20. Kameraparametrene (sensor, oppløsning, brennvidde) ligger i `DRONER`. Zenmuse P1/L2 og Matrice 4E mangler i WPML-dokumentasjonen og er ikke med ennå.
 
 **Beta:** Ruten er laget etter DJIs offentlige WPML-spesifikasjon, men er ikke testet på alle droner og fastvareversjoner. DJI Pilot 2 kan regenerere linjene fra malen. Kontroller alltid ruten i Pilot 2 før du flyr.
+
+## 📲 SkogIQ Entreprenør – feltløsning for entreprenører (`entreprenor.html`, `js/entreprenor-app.js`, `js/feltoppdrag.js`, `feltoppdrag.js`)
+Skogeieren tildeler oppdraget, lager det og gjør miljøsjekken på web. Entreprenøren gjennomfører det i en egen feltløsning på mobilen, uten PDF-skjema. Støtter hogst, tynning og lukket hogst, og skogkultur (planting, suppleringsplanting, markberedning, ungskogpleie og gjødsling).
+
+**Skogeier (web, Oppdrag › Utfører, `js/feltoppdrag-ui.js`):**
+- Velg en entreprenør du er koblet til i Nettverk, og send oppdraget.
+  - Entreprenøren får oppdraget og hele planen, og en beskjed i chatten.
+  - Appen varsler hvis miljøsjekken (sjekklisten) ikke er fullført.
+- Følg status, framdrift, avvik og miljøsjekk. Du kan sende en oppdatert plan eller trekke oppdraget tilbake.
+- Ferdigmeldte oppdrag vises med tabell per bestand, avvik med bilder og posisjon, merknad og signatur.
+  - «Ta inn rapporten i planen og godkjenn»: tiltakene blir utført med dato, areal og mengde (`brukRapport`), og `utfortRapport` lagres.
+  - «Åpne igjen» sender oppdraget tilbake til entreprenøren.
+
+**Entreprenør (SkogIQ Entreprenør, `entreprenor.html`):**
+- **Oppdrag:** liste over oppdrag fra skogeiere. Kartet viser hele planen, og bestandene i oppdraget er farget etter framdrift. Kartet viser også miljøfigurer og nøkkelbiotoper, kantsone, driftsveg og velteplasser, GPS og tre kartlag.
+- **Framdrift:** status per bestand (ikke startet, pågår, ferdig) med datoer, utført areal og mengde (m³, planter, kg, trær per daa) og merknad.
+- **Miljø:** oppdragstypens sjekkliste (PEFC) med skogeierens svar fra web og entreprenørens svar i felt: OK, avvik med merknad eller ikke aktuelt.
+- **Avvik:** type, beskrivelse, bestand, tidspunkt og posisjon (GPS eller trykk i kartet), og opptil 6 bilder som skaleres ned på telefonen. Avvikene vises som merker i kartet.
+- **Ferdig:** sammendrag, det som mangler, timer, merknad, navn og signatur med fingeren, så ferdigmelding.
+- **Offline:** alt lagres i IndexedDB og sendes når det er nett. «Last ned kart for offline» lagrer kartflisene for oppdraget. Ved konflikt mot en annen enhet vinner telefonen.
+
+**Server (`feltoppdrag.js`, `/api/feltoppdrag`):**
+- Bare de to partene har tilgang, og kobling i Nettverk kreves når oppdraget sendes.
+- Rapporten skrives med versjon (409 ved utdatert versjon), og bare kjente felt og bilder lagres (`rensRapport`). Bildene må være data-URL-er som JPEG, PNG eller WebP.
+- Beskjeder går i chatten når oppdraget er sendt, oppdatert, ferdigmeldt, trukket eller åpnet igjen.
+- Oppdragene slettes med kontoen til begge parter og senest ett år etter at de er avsluttet. De er med i «Last ned mine data».
+
+**Personvern:** erklæring 1.16 med ny behandling `feltoppdrag`. Hele planen deles med en valgt entreprenør, så endringen er vesentlig, og alle må godta vilkårene på nytt. DPIA-en har fått R18.
 
 ## 🗺️ Ryddig kart: «Her ligger», tegnforklaring og meldinger
 - **«Her ligger»** (`hvaErHer` i `js/app.js`): ett klikk eller trykk i kartet gir én samlet boks.
