@@ -140,9 +140,11 @@ function lagreSnart() {
   }, 300);
 }
 let meldingTimer;
-function melding(tekst, ms = 3500) {
-  const m = $('#melding'); m.textContent = tekst; m.hidden = false;
-  clearTimeout(meldingTimer); meldingTimer = setTimeout(() => { m.hidden = true; }, ms);
+// Én melding om gangen nederst. Varigheten følger lengden (lange meldinger står lenger), og et trykk lukker den.
+function melding(tekst, ms = null) {
+  const m = $('#melding'); m.textContent = tekst; m.hidden = false; m.classList.toggle('lang', String(tekst).length > 90);
+  const tid = typeof ms === 'number' ? ms : Math.min(9000, Math.max(3500, String(tekst).length * 55));
+  clearTimeout(meldingTimer); meldingTimer = setTimeout(() => { m.hidden = true; }, tid);
 }
 function lastNed(navn, innhold, type = 'application/octet-stream') {
   const url = URL.createObjectURL(innhold instanceof Blob ? innhold : new Blob([innhold], { type }));
@@ -238,10 +240,11 @@ function initKart() {
     if (kartKlikk) { kartKlikk(e.latlng); return; }
     if (deling) { leggTilDelepunkt(e.latlng); return; }
     if (tegning) { leggTilTegnepunkt(e.latlng); return; }
-    settValgtPunkt(e.latlng);
-    if (punktLagAktive()) visPunktInfo(e.latlng);
+    hvaErHer(e.latlng);
   });
   kart.on('zoomend', () => { oppdaterEtiketter(); visMisMerker(); oppdaterNaboEtiketter(); });
+  // Mens en infoboks er åpen, viker den lukkede tegnforklaringen (mobil), så boksene ikke ligger oppå hverandre.
+  kart.on('popupopen', () => document.body.classList.add('popup-apen')); kart.on('popupclose', () => document.body.classList.remove('popup-apen'));
   kart.on('overlayadd overlayremove', () => { oppdaterEtiketter(); visMisMerker(); tegnLegend(); });
   kart.on('overlayadd overlayremove', (e) => { if (e.layer === artsfunnLag) kart.attributionControl[e.type === 'overlayadd' ? 'addAttribution' : 'removeAttribution']('Artsfunn © Artsdatabanken (CC BY 4.0)'); });
   kart.on('overlayadd', (e) => { if (e.layer === artsfunnLag) { if (S.artsfunn) tegnArtsfunn(); else hentArtsfunnForPlan(); } if (e.layer === bratthetLag) visBratthet(); if (e.layer === fuktLag) beregnFukt(); if ((e.layer === kpLag || e.layer === rpLag) && !S.arealplan) hentPlaner({ stille: true }); if (e.layer === naboLag) visNaboer(); });
@@ -309,7 +312,7 @@ function fargeFor(b) {
   return null;
 }
 
-let legendLukket = window.innerWidth <= 860;
+const LEGEND_LS = 'skogiq-tegnforklaring'; let legendLukket = (() => { try { return localStorage.getItem(LEGEND_LS) !== 'apen'; } catch { return true; } })();
 function tegnLegend() {
   const modus = $('#fargeEtter').value;
   const rad = (farge, tekst) => `<div><i style="background:${farge}${HK_FARGER.includes(farge) ? ';box-shadow:inset 0 0 0 1.5px #1b1c19' : ''}"></i>${esc(tekst)}</div>`;
@@ -333,39 +336,41 @@ function tegnLegend() {
   const kat = [...new Set((S.markslag || []).map((f) => f.kategori))];
   const mis = misFigurer(S);
   if (mis.length && kart.hasLayer(misLag)) {
-    html += `<b style="display:block;margin-top:6px">Miljø</b>`;
+    html += `<b class="leg-tittel">Miljø</b>`;
     if (mis.some((f) => f.type === 'mis')) html += `<div><i style="${misLegendStil}"></i>Nøkkelbiotop (MiS)</div>`;
     if (mis.some((f) => f.type === 'miljofigur')) html += `<div><i style="${miljoLegendStil}"></i>Miljøfigur (bestand)</div>`;
   }
   const vr = S.veier || {};
-  if (fuktLag && kart.hasLayer(fuktLag)) html += `<b style="display:block;margin-top:6px">💧 Markfuktighet (dybde til grunnvann)</b>${FUKT_KLASSER.map((k) => rad(k.farge, k.leg)).join('')}<div class="hint" style="font-size:11px">Over 1 m: tørt (ikke farget). Våt mark gir sporskader.</div>`;
-  if (artsfunnLag && kart.hasLayer(artsfunnLag) && S.artsfunn) html += `<b style="display:block;margin-top:6px">Rødlistede artsfunn</b>${Object.entries(AF.KATEGORI).map(([k, v]) => rad(v.farge, `${k} – ${v.navn}`)).join('')}<div class="hint" style="font-size:11px">Artskart, Artsdatabanken. Ingen funn ≠ ingen arter.</div>`;
-  if (kantsoneLag && kart.hasLayer(kantsoneLag) && S.kantsone?.geometri) html += `<b style="display:block;margin-top:6px">Vann</b>${rad('rgba(59,143,232,.45)', `Kantsone mot bekk, elv og vann – ${S.kantsone.bredde || 15} m${S.kantsone.bred ? `, ${S.kantsone.bred} m i edellauv-, høgstaude-, storbregne- og sumpskog` : ''}`)}`;
-  if ((ninLag && kart.hasLayer(ninLag)) || (artLag && kart.hasLayer(artLag)) || (kulturLag && kart.hasLayer(kulturLag))) html += `<b style="display:block;margin-top:6px">Natur og kulturminner</b>${kart.hasLayer(ninLag) ? rad(NATUR.FARGE.nin, 'Naturtyper (NiN) – mørkere = høyere kvalitet') : ''}${kart.hasLayer(artLag) ? rad(NATUR.FARGE.art, 'Arter – funksjonsområder') : ''}${kart.hasLayer(kulturLag) ? rad(KULTUR.FARGE, 'Kulturminner (Riksantikvaren)') : ''}<div class="hint" style="font-size:11px">Klikk i kartet for naturtype, art og faktaark.</div>`;
+  if (fuktLag && kart.hasLayer(fuktLag)) html += `<b class="leg-tittel">💧 Markfuktighet (dybde til grunnvann)</b>${FUKT_KLASSER.map((k) => rad(k.farge, k.leg)).join('')}<div class="hint" style="font-size:11px">Over 1 m: tørt (ikke farget). Våt mark gir sporskader.</div>`;
+  if (artsfunnLag && kart.hasLayer(artsfunnLag) && S.artsfunn) html += `<b class="leg-tittel">Rødlistede artsfunn</b>${Object.entries(AF.KATEGORI).map(([k, v]) => rad(v.farge, `${k} – ${v.navn}`)).join('')}<div class="hint" style="font-size:11px">Artskart, Artsdatabanken. Ingen funn ≠ ingen arter.</div>`;
+  if (kantsoneLag && kart.hasLayer(kantsoneLag) && S.kantsone?.geometri) html += `<b class="leg-tittel">Vann</b>${rad('rgba(59,143,232,.45)', `Kantsone mot bekk, elv og vann – ${S.kantsone.bredde || 15} m${S.kantsone.bred ? `, ${S.kantsone.bred} m i edellauv-, høgstaude-, storbregne- og sumpskog` : ''}`)}`;
+  if ((ninLag && kart.hasLayer(ninLag)) || (artLag && kart.hasLayer(artLag)) || (kulturLag && kart.hasLayer(kulturLag))) html += `<b class="leg-tittel">Natur og kulturminner</b>${kart.hasLayer(ninLag) ? rad(NATUR.FARGE.nin, 'Naturtyper (NiN) – mørkere = høyere kvalitet') : ''}${kart.hasLayer(artLag) ? rad(NATUR.FARGE.art, 'Arter – funksjonsområder') : ''}${kart.hasLayer(kulturLag) ? rad(KULTUR.FARGE, 'Kulturminner (Riksantikvaren)') : ''}<div class="hint" style="font-size:11px">Klikk i kartet for naturtype, art og faktaark.</div>`;
   if (naboLag && kart.hasLayer(naboLag)) {
     const o = naboData?.oppsummert;
-    html += `<b style="display:block;margin-top:6px">🏡 Naboeiendommer</b>${Object.entries(NABO.STATUS).map(([k, st]) => rad(`${st.farge}${st.fyll ? '' : ';background:transparent;border:2px solid ' + st.farge}`, `${st.navn}${o ? ` (${o[k].antall})` : ''}`)).join('')}<div class="hint" style="font-size:11px">${naboStatus ? esc(naboStatus) : 'Klikk på en eiendom – mangler den plan, kan du lage den.'}</div>`;
+    html += `<b class="leg-tittel">🏡 Naboeiendommer</b>${Object.entries(NABO.STATUS).map(([k, st]) => rad(`${st.farge}${st.fyll ? '' : ';background:transparent;border:2px solid ' + st.farge}`, `${st.navn}${o ? ` (${o[k].antall})` : ''}`)).join('')}<div class="hint" style="font-size:11px">${naboStatus ? esc(naboStatus) : 'Klikk på en eiendom – mangler den plan, kan du lage den.'}</div>`;
   }
   if ((kpLag && kart.hasLayer(kpLag)) || (rpLag && kart.hasLayer(rpLag))) {
     const vis = (S.arealplan?.formal || []).slice(0, 6);
-    html += `<b style="display:block;margin-top:6px">🏘 Arealplaner</b>${vis.length ? vis.map((f) => rad(f.farge, `${f.navn}${f.plan === 'rp' ? ' (reg.)' : ''}`)).join('') : ['lnfr', 'spredt', 'bolig', 'fritid', 'gronn', 'samferdsel'].map((g) => rad(PLAN_GRUPPER[g].farge, PLAN_GRUPPER[g].navn)).join('')}<div class="hint" style="font-size:11px">Skravur = hensynssone. Klikk i kartet for formål og planer.</div>`;
+    html += `<b class="leg-tittel">🏘 Arealplaner</b>${vis.length ? vis.map((f) => rad(f.farge, `${f.navn}${f.plan === 'rp' ? ' (reg.)' : ''}`)).join('') : ['lnfr', 'spredt', 'bolig', 'fritid', 'gronn', 'samferdsel'].map((g) => rad(PLAN_GRUPPER[g].farge, PLAN_GRUPPER[g].navn)).join('')}<div class="hint" style="font-size:11px">Skravur = hensynssone. Klikk i kartet for formål og planer.</div>`;
   }
-  if (kart.hasLayer(bratthetLag)) html += `<b style="display:block;margin-top:6px">⛰ Bratthet (helning)</b>${BRATT_KLASSER.slice(1).map((k) => rad(k.farge, k.navn)).join('')}<div class="hint" style="font-size:11px">Over 50 %: ikke drivbart med vanlige skogsmaskiner.</div>`;
+  if (kart.hasLayer(bratthetLag)) html += `<b class="leg-tittel">⛰ Bratthet (helning)</b>${BRATT_KLASSER.slice(1).map((k) => rad(k.farge, k.navn)).join('')}<div class="hint" style="font-size:11px">Over 50 %: ikke drivbart med vanlige skogsmaskiner.</div>`;
   const harBil = (vr.veier || []).some((v) => (VEIKLASSER[v.klasse] || VEIKLASSER[0]).bilvei); const harTrak = (vr.veier || []).some((v) => !(VEIKLASSER[v.klasse] || VEIKLASSER[0]).bilvei);
   if (harBil || harTrak || vr.stier?.length) {
     const strek = (farge, monster, h = 3) => `<i style="height:${h}px;align-self:center;background:${monster ? `repeating-linear-gradient(90deg, ${farge} 0 ${monster[0]}px, transparent ${monster[0]}px ${monster[0] + monster[1]}px)` : farge}"></i>`;
-    html += '<b style="display:block;margin-top:6px">Veier</b>'
+    html += '<b class="leg-tittel">Veier</b>'
       + (harBil ? `<div>${strek('#8a8a85', null, 4)}Bilvei</div>` : '')
       + (harTrak ? `<div>${strek(VEISTIL.traktorvei.farge, [6, 3])}Traktorvei</div>` : '')
       + (vr.stier?.length ? `<div>${strek(VEISTIL.sti.farge, [2, 4])}Sti</div>` : '');
   }
-  if (kat.length && kart.hasLayer(markslagLag)) html += `<b style="display:block;margin-top:6px">Uproduktiv mark</b>${Object.keys(MARKSLAG).filter((k) => kat.includes(k)).map((k) => `<div>${symbolRute(k)} ${esc(MARKSLAG[k].kort)}</div>`).join('')}`;
+  if (kat.length && kart.hasLayer(markslagLag)) html += `<b class="leg-tittel">Uproduktiv mark</b>${Object.keys(MARKSLAG).filter((k) => kat.includes(k)).map((k) => `<div>${symbolRute(k)} ${esc(MARKSLAG[k].kort)}</div>`).join('')}`;
   if (kart.hasLayer(tiltaksflateLag)) {
     const fl = synligeTiltaksflater(S, { iAar: IAAR });
-    if (fl.length) html += `<b style="display:block;margin-top:6px">Tiltaksflater</b>${fl.some(({ t }) => t.status === 'utfort') ? '<div><i style="background:#1f8f5a;opacity:.6;box-shadow:inset 0 0 0 1.5px #0d4d30"></i>Utført (siste 2 år)</div>' : ''}${fl.some(({ t }) => t.status !== 'utfort') ? '<div><i style="background:repeating-linear-gradient(45deg,#2a78d6 0 3px,#cfe0f7 3px 6px);box-shadow:inset 0 0 0 1.5px #1d4f91"></i>Planlagt</div>' : ''}<div class="hint" style="font-size:11px">Klikk i flaten for å se tiltaket</div>`;
+    if (fl.length) html += `<b class="leg-tittel">Tiltaksflater</b>${fl.some(({ t }) => t.status === 'utfort') ? '<div><i style="background:#1f8f5a;opacity:.6;box-shadow:inset 0 0 0 1.5px #0d4d30"></i>Utført (siste 2 år)</div>' : ''}${fl.some(({ t }) => t.status !== 'utfort') ? '<div><i style="background:repeating-linear-gradient(45deg,#2a78d6 0 3px,#cfe0f7 3px 6px);box-shadow:inset 0 0 0 1.5px #1d4f91"></i>Planlagt</div>' : ''}<div class="hint" style="font-size:11px">Klikk i flaten for å se tiltaket</div>`;
   }
   html += andreVisning?.legend() || '';
-  $('#kartLegend').innerHTML = `<button type="button" class="legend-knapp" aria-expanded="${!legendLukket}">Tegnforklaring ${legendLukket ? '▸' : '▾'}</button><div class="legend-innhold" ${legendLukket ? 'hidden' : ''}>${html}</div>`;
+  const seksjoner = (html.match(/<b[ >]/g) || []).length || (html ? 1 : 0);
+  $('#kartLegend').innerHTML = html ? `<button type="button" class="legend-knapp" aria-expanded="${!legendLukket}"><span aria-hidden="true">🗺</span> Tegnforklaring${legendLukket && seksjoner > 1 ? ` <span class="legend-antall">${seksjoner}</span>` : ''} <span class="legend-pil" aria-hidden="true">${legendLukket ? '▸' : '▾'}</span></button><div class="legend-innhold" ${legendLukket ? 'hidden' : ''}>${html}</div>` : '';
+  $('#kartLegend').classList.toggle('apen', !legendLukket);
 }
 
 // Flater registrert på tiltakene i valgt bestand (sporlogg eller tegnet), vist over bestandet.
@@ -375,40 +380,76 @@ function tegnTiltaksflater() {
   tiltaksflateLag.clearLayers();
   for (const { t } of synligeTiltaksflater(S, { iAar: IAAR })) L.geoJSON(t.dekning, { pane: 'tiltakPane', style: tiltakStil(t, t.id === valgtTiltakId), interactive: false }).addTo(tiltaksflateLag);
 }
-// Klikk i kartet: ligger det tiltaksflater der, vises en liste med tiltakene og bestandet; ellers åpnes bestandet.
-function identifiser(ll, b) {
-  const h = (kart.hasLayer(tiltaksflateLag) ? treffVed(S, ll.lat, ll.lng, { iAar: IAAR }) : { tiltak: [], bestand: b });
-  if (!h.tiltak.length) { velgBestand(b.id, { zoom: false }); visFane('bestand'); return; }
+// 🔎 «Her ligger»: ett klikk i kartet gir én samlet boks med det som finnes i punktet – tiltak, bestand og
+// uproduktiv mark med en gang, og naturtyper, arter, kulturminner og arealplan når de er hentet. Bestandet markeres i
+// kartet og i Bestand-fanen, men panelet bytter ikke fane av seg selv. Tomme kilder vises ikke.
+let hvaNr = 0;
+function hvaErHer(ll) {
+  const nr = ++hvaNr; settValgtPunkt(ll);
+  const pt = [ll.lng, ll.lat];
+  const b = S.bestand.find((x) => x.geometri && punktIGeometri(pt, x.geometri)) || null;
+  const ms = kart.hasLayer(markslagLag) ? (S.markslag || []).find((f) => f.geometri && MARKSLAG[f.kategori] && punktIGeometri(pt, f.geometri)) : null;
+  const h = kart.hasLayer(tiltaksflateLag) ? treffVed(S, ll.lat, ll.lng, { iAar: IAAR }) : { tiltak: [], bestand: b };
   const best = h.bestand || b;
-  const div = document.createElement('div'); div.className = 'treff-popup';
+  if (best && best.id !== valgtId) velgBestand(best.id, { zoom: false });
+  const div = document.createElement('div'); div.className = 'hva-her';
   // Innholdet byttes ut ved klikk. Leaflet ser da ikke lenger at klikket var i popupen og lukker den – stopp klikket her.
   L.DomEvent.disableClickPropagation(div); div.addEventListener('click', (e) => e.stopPropagation());
+  const hoved = document.createElement('div'); const ekstra = document.createElement('div'); ekstra.className = 'hva-ekstra'; div.append(hoved, ekstra);
+  const bestandRad = (x) => { const k = hk(x); return `<div class="hva-rad"><i style="background:${fargeFor(x) || 'var(--surface-2)'}"></i><div><b>Bestand ${esc(x.nr)}</b>${x.miljo ? ' <span class="hva-merke">miljøfigur</span>' : ''}<small>${esc([TRESLAG[x.treslag], x.bonitet ? `bonitet ${x.bonitet}` : '', k ? `HK ${HK_ROMERTALL[k]}` : '', x.alder != null ? `${x.alder} år` : '', x.volumDaa != null ? `${fmt(x.volumDaa, 1)} m³/daa` : '', `${fmt(x.areal, 1)} daa`].filter(Boolean).join(' · '))}</small></div></div>`; };
+  const markRad = (f) => `<div class="hva-rad">${symbolRute(f.kategori)}<div><b>${esc(MARKSLAG[f.kategori].navn)}</b><small>${esc([f.nr ? `figur ${f.nr}` : '', `${fmt(f.areal, 1)} daa`, f.ar5?.treslag && f.ar5.treslag !== 'Ikke tresatt' ? f.ar5.treslag.toLowerCase() : '', f.ar5?.grunnforhold ? f.ar5.grunnforhold.toLowerCase() : ''].filter(Boolean).join(' · '))}</small></div></div>`;
+  const standard = () => {
+    valgtTiltakId = null; tegnTiltaksflater();
+    hoved.innerHTML = `${best ? bestandRad(best) : ''}${ms ? markRad(ms) : ''}${best ? '<div class="knapperad hva-knapper"><button type="button" class="knapp liten primar" data-hva="bestand">Åpne bestandet</button><button type="button" class="knapp liten" data-hva="zoom">Zoom</button></div>' : ''}`;
+    hoved.onclick = (e) => { const k = e.target.closest('[data-hva]')?.dataset.hva; if (k === 'bestand') { kart.closePopup(); velgBestand(best.id, { zoom: false }); visFane('bestand'); if (erMobil()) settArk('halv'); } if (k === 'zoom') { kart.closePopup(); velgBestand(best.id); } };
+  };
+  // Tiltaksflater i punktet: liste med tiltakene og bestandet, og et kort per tiltak.
   const liste = () => {
     valgtTiltakId = null; tegnTiltaksflater();
-    div.innerHTML = `<b>Her ligger</b><div class="treff-liste">${h.tiltak.map(({ b: tb, t }, i) => `<button type="button" data-treff="${i}"><span class="treff-ikon ${t.status === 'utfort' ? 'utfort' : 'planlagt'}"></span><span><b>${esc(tiltakNavn(t))}</b><small>${esc(tiltakLinje(tb, t))} · bestand ${esc(tb.nr)}</small></span></button>`).join('')}
-      <button type="button" data-treff="bestand"><span class="treff-ikon bestand"></span><span><b>Bestand ${esc(best.nr)}</b><small>${esc(TRESLAG[best.treslag] || '')}${best.bonitet ? ` · bonitet ${esc(best.bonitet)}` : ''} · ${fmt(best.areal, 1)} daa</small></span></button></div>`;
+    hoved.innerHTML = `<div class="treff-liste">${h.tiltak.map(({ b: tb, t }, i) => `<button type="button" data-treff="${i}"><span class="treff-ikon ${t.status === 'utfort' ? 'utfort' : 'planlagt'}"></span><span><b>${esc(tiltakNavn(t))}</b><small>${esc(tiltakLinje(tb, t))} · bestand ${esc(tb.nr)}</small></span></button>`).join('')}
+      ${best ? `<button type="button" data-treff="bestand"><span class="treff-ikon bestand"></span><span><b>Bestand ${esc(best.nr)}</b><small>${esc(TRESLAG[best.treslag] || '')}${best.bonitet ? ` · bonitet ${esc(best.bonitet)}` : ''} · ${fmt(best.areal, 1)} daa</small></span></button>` : ''}</div>${ms ? markRad(ms) : ''}`;
+    hoved.onclick = (e) => {
+      const v = e.target.closest('[data-treff]')?.dataset.treff; if (v == null) return;
+      if (v === 'bestand') { kart.closePopup(); velgBestand(best.id, { zoom: false }); visFane('bestand'); return; }
+      kort(Number(v));
+    };
   };
   const kort = (i) => {
     const { b: tb, t } = h.tiltak[i]; valgtTiltakId = t.id; tegnTiltaksflater();
     const utfort = t.status === 'utfort';
-    div.innerHTML = `<b>${esc(tiltakNavn(t))}</b> <span class="hint">${utfort ? 'utført' : 'planlagt'}</span>
+    hoved.innerHTML = `<b>${esc(tiltakNavn(t))}</b> <span class="hint">${utfort ? 'utført' : 'planlagt'}</span>
       <dl class="treff-dl">${tiltakDetaljer(tb, t).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>${t.kommentar ? `<p class="hint" style="margin:4px 0">${esc(t.kommentar)}</p>` : ''}
-      <div class="knapperad" style="margin:6px 0 0"><button type="button" class="knapp liten primar" data-k="endre">✎ Endre</button><button type="button" class="knapp liten" data-k="utfort">${utfort ? 'Angre utført' : '✓ Utført'}</button><button type="button" class="knapp liten" data-k="bestand">Bestand ${esc(tb.nr)}</button>${h.tiltak.length > 1 ? '<button type="button" class="knapp liten" data-k="tilbake">‹ Liste</button>' : ''}</div>`;
-    div.onclick = (e) => {
+      <div class="knapperad" style="margin:6px 0 0"><button type="button" class="knapp liten primar" data-k="endre">✎ Endre</button><button type="button" class="knapp liten" data-k="utfort">${utfort ? 'Angre utført' : '✓ Utført'}</button><button type="button" class="knapp liten" data-k="bestand">Bestand ${esc(tb.nr)}</button>${h.tiltak.length > 1 || best ? '<button type="button" class="knapp liten" data-k="tilbake">← Tilbake</button>' : ''}</div>`;
+    hoved.onclick = (e) => {
       const k = e.target.closest('[data-k]')?.dataset.k; if (!k) return;
       if (k === 'endre') { kart.closePopup(); aapneTiltakDialog(tb, t); }
       if (k === 'utfort') { settUtfort(tb, t, !utfort); endret({ kart: true }); if (valgtId === tb.id) visDetalj(); kort(i); }
       if (k === 'bestand') { kart.closePopup(); velgBestand(tb.id, { zoom: false }); visFane('bestand'); }
-      if (k === 'tilbake') { liste(); div.onclick = listeKlikk; }
+      if (k === 'tilbake') liste();
     };
   };
-  const listeKlikk = (e) => {
-    const v = e.target.closest('[data-treff]')?.dataset.treff; if (v == null) return;
-    if (v === 'bestand') { kart.closePopup(); velgBestand(best.id, { zoom: false }); visFane('bestand'); return; }
-    kort(Number(v));
-  };
-  if (h.tiltak.length === 1) kort(0); else { liste(); div.onclick = listeKlikk; }
-  L.popup({ maxWidth: 320, minWidth: 240, className: 'treff-pop' }).setLatLng(ll).setContent(div).openOn(kart).on('remove', () => { valgtTiltakId = null; tegnTiltaksflater(); });
+  if (h.tiltak.length === 1 && !best) kort(0); else if (h.tiltak.length) liste(); else standard();
+  const harHoved = !!hoved.innerHTML.trim();
+  const plan = !!kpLag && (kart.hasLayer(kpLag) || kart.hasLayer(rpLag));
+  const hent = punktLagAktive();
+  if (!harHoved && !hent) return;
+  let popup = null;
+  const apne = () => { popup = L.popup({ maxWidth: 340, minWidth: 250, className: 'hva-pop', autoPanPaddingTopLeft: erMobil() ? [16, 180] : [60, 140], autoPanPaddingBottomRight: erMobil() ? [16, 24] : [40, 60] }).setLatLng(ll).setContent(div).openOn(kart).on('remove', () => { if (valgtTiltakId) { valgtTiltakId = null; tegnTiltaksflater(); } }); };
+  if (harHoved || plan) apne();
+  if (!hent) return;
+  if (popup) ekstra.innerHTML = '<p class="hint hva-laster">Henter natur, kulturminner og planer …</p>';
+  Promise.all([
+    plan ? planPunktHtml(ll) : '',
+    kart.hasLayer(ninLag) ? naturPunktHtml(ll, 'nin', { stille: true }) : '',
+    kart.hasLayer(artLag) ? naturPunktHtml(ll, 'art', { stille: true }) : '',
+    kart.hasLayer(kulturLag) ? kulturPunktHtml(ll, { stille: true }) : '',
+  ]).then((deler) => {
+    if (nr !== hvaNr) return;
+    const html = deler.filter(Boolean).map((x) => `<section class="hva-del">${x}</section>`).join('');
+    if (!html) { if (popup) { if (harHoved) ekstra.remove(); else ekstra.innerHTML = '<p class="hint">Ingen registreringer i dette punktet.</p>'; popup.update(); } return; }
+    ekstra.innerHTML = html;
+    if (!popup) apne(); else popup.update();
+  });
 }
 function stilFor(b) {
   const farge = fargeFor(b);
@@ -447,8 +488,7 @@ function tegnMarkslag() {
   for (const f of S.markslag || []) {
     const m = MARKSLAG[f.kategori]; if (!m || !f.geometri) continue;
     const l = L.geoJSON(f.geometri, { style: { color: '#5b5346', weight: 0.8, opacity: 0.8, fillColor: symbolFyll(f.kategori), fillOpacity: 0.95 } });
-    l.bindTooltip(`<b>${esc(f.nr)} ${esc(m.navn)}</b><br>${fmt(f.areal, 1)} daa${f.ar5?.treslag && f.ar5.treslag !== 'Ikke tresatt' ? ` · ${esc(f.ar5.treslag.toLowerCase())}` : ''}${f.ar5?.grunnforhold ? ` · ${esc(f.ar5.grunnforhold.toLowerCase())}` : ''}`, { sticky: true });
-    l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (deling) { leggTilDelepunkt(e.latlng); return; } if (tegning) leggTilTegnepunkt(e.latlng); });
+    l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (deling) { leggTilDelepunkt(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } const b = S.bestand.find((x) => x.geometri && punktIGeometri([e.latlng.lng, e.latlng.lat], x.geometri)); if (valgModus && b && kartVelg(b)) return; hvaErHer(e.latlng); });
     l.addTo(markslagLag);
   }
 }
@@ -465,7 +505,7 @@ function tegnBestandKart(zoom = false) {
   for (const b of S.bestand) {
     if (!b.geometri) continue;
     const lag = L.geoJSON(b.geometri, { style: () => stilFor(b) });
-    lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (deling) { leggTilDelepunkt(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } if (valgModus && kartVelg(b)) return; identifiser(e.latlng, b); if (punktLagAktive() && !document.querySelector('.treff-popup')) visPunktInfo(e.latlng); });
+    lag.on('click', (e) => { L.DomEvent.stopPropagation(e); if (kartKlikk) { kartKlikk(e.latlng); return; } if (deling) { leggTilDelepunkt(e.latlng); return; } if (tegning) { leggTilTegnepunkt(e.latlng); return; } if (valgModus && kartVelg(b)) return; hvaErHer(e.latlng); });
     lag.addTo(bestandLag);
     lagPerBestand.set(b.id, lag);
     const pt = etikettPunkt(b.geometri);
@@ -1661,7 +1701,6 @@ document.addEventListener('click', (e) => {
   }
 });
 // Klikk i kartet med plankart på: formål, hensynssoner og planer i punktet.
-let planPunktNr = 0;
 async function planPunktHtml(ll) {
   const lag = [[PLAN_KART.kp.url, 'arealformal_kp,arealformal_kdp,hensynssone-bestemmelsesomrade_kp,hensynssone-bestemmelsesomrade_kdp,kpomrade,kdpomrade'], [PLAN_KART.rp.url, 'arealformal_vn2,hensynssoner_vn2,rpomrade_vn2']];
   try {
@@ -1694,24 +1733,6 @@ async function kulturPunktHtml(ll, { stille = false } = {}) {
     if (!liste.length) return stille ? '' : '<b class="punkt-tittel">🏛 Kulturminner</b><span class="hint">Ingen registrert i dette punktet.</span>';
     return `<b class="punkt-tittel">🏛 Kulturminner</b>${liste.slice(0, 5).map((k) => `<div style="margin-top:3px">${k.lenke ? `<a href="${esc(k.lenke)}" target="_blank" rel="noopener">${esc(k.navn)}</a>` : `<b>${esc(k.navn)}</b>`}<br><small>${esc([k.kategori, k.art, k.vern].filter(Boolean).join(' · '))}${k.sikringssone ? ' · sikringssone' : ''}</small></div>`).join('')}<div class="hint" style="margin-top:3px">${liste.some(KULTUR.erFredet) ? 'Fredet: inngrep er forbudt, også i sikringssonen (minst 5 m). Ikke kjør over eller felle trær inn i kulturminnet.' : 'Ta hensyn ved hogst og kjøring (PEFC krav 30).'}</div>`;
   } catch { return stille ? '' : '<span class="hint">Klarte ikke å hente kulturminner.</span>'; }
-}
-async function visPunktInfo(ll) {
-  const nr = ++planPunktNr;
-  // Planlagene gir alltid popup; naturlagene (på som standard) bare når det finnes noe i punktet.
-  const plan = kart.hasLayer(kpLag) || kart.hasLayer(rpLag);
-  const popup = plan ? L.popup({ maxWidth: 340 }).setLatLng(ll).setContent('<span class="hint">Henter informasjon …</span>').openOn(kart) : null;
-  const deler = await Promise.all([
-    plan ? planPunktHtml(ll) : '',
-    kart.hasLayer(ninLag) ? naturPunktHtml(ll, 'nin', { stille: !plan }) : '',
-    kart.hasLayer(artLag) ? naturPunktHtml(ll, 'art', { stille: !plan }) : '',
-    kart.hasLayer(kulturLag) ? kulturPunktHtml(ll, { stille: !plan }) : '',
-  ]);
-  if (nr !== planPunktNr) return;
-  const html = deler.filter(Boolean).join('<hr>');
-  if (!html) return;
-  if (popup) popup.setContent(`<div class="punkt-info">${html}</div>`);
-  else if (!document.querySelector('.leaflet-popup')) L.popup({ maxWidth: 340 }).setLatLng(ll).setContent(`<div class="punkt-info">${html}</div>`).openOn(kart);
-  else { const p = document.querySelector('.leaflet-popup-content'); if (p) p.insertAdjacentHTML('beforeend', `<div class="punkt-info"><hr>${html}</div>`); }
 }
 
 // ---------------------------------------------------------------- bratthet
@@ -2291,6 +2312,7 @@ function endret({ kart: kartEndret = false, zoom = false, bare = null } = {}) {
 }
 
 async function lastDemo() {
+  window.dispatchEvent(new Event('skogiq-plan-apnet'));
   const d = lagDemo(IAAR);
   await nyArbeidsplan({ ...d.eiendom });
   S.bestand = d.bestand;
@@ -2531,6 +2553,7 @@ async function sikreKantsone({ tving = false, stille = false } = {}) {
 }
 
 async function aapnePlan(id) {
+  window.dispatchEvent(new Event('skogiq-plan-apnet'));
   stoppDeling(); sisteDeling = null;
   if (id === S.planId) { visFane('oversikt'); zoomTilAlle(); return; }
   const plan = await hentPlan(id);
@@ -2963,7 +2986,8 @@ function kobleHendelser() {
     const v = e.target.closest('[data-vis]'); if (v) { e.preventDefault(); velgBestand(v.dataset.vis); visFane('bestand'); }
   });
   $('#fargeEtter').addEventListener('change', () => { if ($('#fargeEtter').value === 'framskrevet') visFane('framskriving'); oppdaterStiler(); });
-  $('#kartLegend').addEventListener('click', (e) => { if (e.target.closest('.legend-knapp')) { legendLukket = !legendLukket; tegnLegend(); } });
+  $('#melding').addEventListener('click', () => { $('#melding').hidden = true; clearTimeout(meldingTimer); });
+  $('#kartLegend').addEventListener('click', (e) => { if (e.target.closest('.legend-knapp')) { legendLukket = !legendLukket; try { localStorage.setItem(LEGEND_LS, legendLukket ? 'lukket' : 'apen'); } catch { /* privat modus */ } tegnLegend(); } });
   L.DomEvent.disableClickPropagation($('#kartLegend'));
   L.DomEvent.disableClickPropagation($('.kartverktoy'));
   L.DomEvent.disableClickPropagation($('#tegnHjelp'));
@@ -3138,6 +3162,9 @@ async function visVelkomst(meg, { tving = false } = {}) {
       v = await Promise.race([hentVaer(geoTilUtm((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2, 33), { nveBase: `${SYNK_API}/api/nve` }), new Promise((ok) => setTimeout(() => ok(null), 6000))]);
     } catch { v = null; }
   }
+  // Vent til andre dialoger (vilkår, roller, driftsområder) er lukket – velkomsten skal ikke legge seg oppå dem.
+  for (let i = 0; i < 60 && document.querySelector('dialog[open]'); i++) await new Promise((ok) => setTimeout(ok, 1000));
+  if ($('#velkomst')) return;
   const sted = S.eiendom?.navn || S.eiendom?.kommune || '';
   const w = lagVelkomst({ navn: meg.navn || meg.bruker, bruker: meg.bruker, S, v, sted });
   const el = document.createElement('section'); el.id = 'velkomst'; el.className = 'velkomst'; el.setAttribute('role', 'status');
@@ -3169,7 +3196,11 @@ async function visVelkomst(meg, { tving = false } = {}) {
     if (e.target.closest('.velkomst-lukk') || h === 'lukk') lukk();
     else if (h) { lukk(); visFane(h === 'planer' ? 'planer' : h === 'nettverk' ? 'nettverk' : 'tiltak'); if (erMobil()) settArk('halv'); }
   });
-  setTimeout(() => { if (document.body.contains(el)) lukk(); }, 45000);
+  // Velkomsten skal ikke stå i veien: den lukkes når kartet tas i bruk eller en plan åpnes, og etter 25 sekunder.
+  const iBruk = () => { if (document.body.contains(el)) lukk(); };
+  setTimeout(() => { $('#kart')?.addEventListener('pointerdown', iBruk, { once: true }); }, 800);
+  window.addEventListener('skogiq-plan-apnet', iBruk, { once: true });
+  setTimeout(iBruk, 25000);
 }
 
 start();
