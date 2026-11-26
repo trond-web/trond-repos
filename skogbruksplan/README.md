@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.24.0** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.25.0** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -597,6 +597,7 @@ Modulen dekker dokumentasjonskravene i KSL-standarden fra Stiftelsen Norsk Mat f
   - Kapittel 1 *Generelle krav til gården* (versjon 2026.8): 44 spørsmål, hvorav 19 krever dokumentasjon.
   - Kapittel 10 *Helse, miljø og sikkerhet* (versjon 2026.9): 56 spørsmål, hvorav 18 krever dokumentasjon.
   - Kapittel 15 *Grovfôr, korn, frø, olje- og belgvekster* (versjon 2024.4): 4 spørsmål. Kapittelet velges automatisk når gården har skifter.
+  - Planteproduksjon: kapittel 20 *Potet* (2026.9, 11 spørsmål), 25 *Grønnsaker, frukt og bær* (2026.8, 20 spørsmål), 60 *Honning* (2023.10, 46 spørsmål) og 110 *Juletre* (2024.3, 13 spørsmål). 20 og 25 velges automatisk når skifteplanen har potet eller grønnsaker. Honning og juletre velger du selv.
   - Dokumentasjonssymbolet er lest ut av PDF-ene. «Hva kreves» viser et utdrag av «For å oppfylle dette kravet må du».
 - **Egenrevisjon per år:** Hvert spørsmål besvares Ja, Nei eller Ikke aktuelt, med kommentar.
   - «Nei» oppretter et avvik med frist om én måned.
@@ -1015,6 +1016,13 @@ For gårder med melkekyr, ammekyr, ungdyr, okser, sau, geit, hest, ponni, alpakk
   - Dyrerom (fjøs, sauehus, stall, hønsehus) legges inn med areal, driftsform og dyr. Driftsbygninger kan hentes fra landbrukstaksten.
   - Viser om det er nok plass, og hvor mange dyr til det er plass til.
   - Varsel for båsfjøs med storfe: løsdriftskravet gjelder fra 1. januar 2034.
+- **🏛 Mattilsynet – husdyrhold og matproduksjon** (`js/mattilsynet.js`, `js/mattilsynet-ui.js`): det Mattilsynet kan be om ved tilsyn, vurdert ut fra dyreholdet. Hvert krav har status (OK, delvis, mangler, avvik) og lenke til forskriften på Lovdata.
+  - Virksomhet og rutiner: produsentnummer og registrering, tilsynsrutine (storfe inne og fjørfe minst to ganger daglig), smittevern, egen brønn og melkehenting.
+  - Husdyrregisteret: antall registrert mot dyreholdet for storfe, småfe og svin, med dato for siste sjekk. Avvik over 10 % eller sjekk eldre enn ett år gir «delvis».
+  - Beredskapsplan for strømbrudd, vann, ventilasjon, alarm, brann og kontakter. For fjørfe og svin kreves alarm og aggregat, og testen skal være ført i tilsynsloggen siste år.
+  - Journaler: sykdom og dødelighet (mistanke om smittsom sykdom som ikke er meldt gir avvik), tilsyn og teknisk kontroll, temperatur for melk og egg (melk høyst 8 °C ved daglig henting og 6 °C ellers), vannprøver, fôr (sporbarhet), kadaver og besøkslogg. Hver journal kan lastes ned som CSV.
+  - Legemiddeljournalen ligger fortsatt under Krav og frister, og er med i vurderingen og tilsynsmappen.
+  - **📁 Tilsynsmappe:** én utskrift med status, dyrehold, plass i dyrerom, rutiner, beredskapsplan, legemiddeljournal (5 år), alle journaler og KSL-kapitlene.
 - **Produksjonstilskudd – anslag:** de endelige satsene for søknadsåret 2025 fra Landbruksdirektoratet. Tar med husdyrtilskudd (trinnvis), tilskudd til små og mellomstore melkebruk, driftstilskudd (melk, geitemelk, spesialisert storfe), beite- og utmarksbeitetilskudd (fra beiteplanen), arealtilskudd for grovfôr og korn per arealsone, kulturlandskapstilskudd og avløsertilskudd (høyst 139 100 kr). Arealsonen velges, og regionen for gris og høns hentes fra kommunen. Ikke med: økologisk drift, bevaringsverdige raser, RMP, lam og kje, og tak for antall dyr. Satsene ligger i `PT` i `js/husdyr.js` og må oppdateres hvert år.
 - Alle tall per dyr er typiske anslag for norske forhold og bør tilpasses egen drift.
 

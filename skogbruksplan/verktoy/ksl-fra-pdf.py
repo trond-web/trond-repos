@@ -2,8 +2,8 @@
 # Bruk: python3 verktoy/ksl-fra-pdf.py ut.json kapittel1.pdf kapittel2.pdf ...  (krever pdftotext og pdfplumber)
 # Kapittelnavn og lenker for husdyrkapitlene står i NAVN og URL. Se over resultatet før det legges inn.
 import sys, re, json, subprocess, pdfplumber
-NAVN = {1: 'Generelle krav til gården', 10: 'Helse, miljø og sikkerhet (HMS)', 15: 'Grovfôr, korn, frø, olje- og belgvekster', 30: 'Drøvtyggere – generelt', 31: 'Storfe', 32: 'Småfe', 35: 'Melk', 40: 'Svin', 50: 'Fjørfe – generelt', 51: 'Eggproduksjon', 52: 'Oppal fjørfe', 53: 'Slaktekyllingproduksjon', 54: 'Kalkun, ender og gjess', 70: 'Hest i næring'}
-URL = {1: 'generelle-krav-til-garden', 10: 'helse-miljo-og-sikkerhet', 15: 'grovfor-korn-fro-olje-og-belgvekster', 30: 'drovtyggere-generelt', 31: 'storfe', 32: 'smafe', 35: 'melk', 40: 'svin', 50: 'fjorfe-generelt', 51: 'eggproduksjon', 52: 'oppal-fjorfe', 53: 'slaktekylling', 54: 'kalkun-ender-og-gjess', 70: 'hest-i-naering'}
+NAVN = {1: 'Generelle krav til gården', 10: 'Helse, miljø og sikkerhet (HMS)', 15: 'Grovfôr, korn, frø, olje- og belgvekster', 30: 'Drøvtyggere – generelt', 31: 'Storfe', 32: 'Småfe', 35: 'Melk', 40: 'Svin', 50: 'Fjørfe – generelt', 51: 'Eggproduksjon', 52: 'Oppal fjørfe', 53: 'Slaktekyllingproduksjon', 54: 'Kalkun, ender og gjess', 70: 'Hest i næring', 20: 'Potet', 25: 'Grønnsaker, frukt og bær', 60: 'Honning', 110: 'Juletre'}
+URL = {1: 'generelle-krav-til-garden', 10: 'helse-miljo-og-sikkerhet', 15: 'grovfor-korn-fro-olje-og-belgvekster', 30: 'drovtyggere-generelt', 31: 'storfe', 32: 'smafe', 35: 'melk', 40: 'svin', 50: 'fjorfe-generelt', 51: 'eggproduksjon', 52: 'oppal-fjorfe', 53: 'slaktekylling', 54: 'kalkun-ender-og-gjess', 70: 'hest-i-naering', 20: 'potet', 25: 'gronnsaker-frukt-og-baer', 60: 'honning', 110: 'juletre'}
 QRE = re.compile(r'^(\d+\.\d+\.\d+)\b')
 SKRAP = re.compile(r'(\s{2,}(Ja|Nei|Ikke|aktuelt|Svar))+\s*$')
 def dokmap(pdf):

@@ -1689,3 +1689,14 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .tr-ikon.terminal { --c: #10241c; }
 .tr-ikon.hinder { --c: #d03b3b; color: #d03b3b; }
 .tr-ikon.henger { --c: #e0a800; color: #8a5a00; }
+
+/* Skifteplan › Husdyr › Mattilsynet */
+.mt-status { display: grid; gap: 6px; margin: 8px 0 12px; }
+.mt-krav { display: grid; grid-template-columns: 70px 1fr auto; gap: 10px; align-items: start; padding: 6px 0; border-top: 1px solid var(--border); }
+.mt-faner { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.mt-faner button { border: 1px solid var(--border); background: transparent; color: inherit; border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+.mt-faner button.aktiv { background: var(--accent); border-color: var(--accent); color: #fff; }
+.mt-faner small { opacity: .7; margin-left: 2px; }
+.mt-rad-avvik td { background: color-mix(in srgb, var(--critical, #d03b3b) 12%, transparent); }
+@media (max-width: 640px) { .mt-krav { grid-template-columns: 64px 1fr; } .mt-krav > .knapp { grid-column: 2; justify-self: start; } }
+.mt-krav .pille { text-align: center; }

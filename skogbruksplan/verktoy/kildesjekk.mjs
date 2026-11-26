@@ -57,7 +57,7 @@ export const SIDER = [
   { id: 'nibio:gjodsling-eng', gruppe: 'Veiledere', navn: 'NIBIO Gjødslingshåndbok: eng', url: 'https://www.nibio.no/tema/jord/gjodslingshandbok/gjodslingsnormer/6.eng-og-forvekster', linjer: /kg|FEm|N|P|K/ },
 ];
 // KSL-kapitlene vi har i appen: siden lenker til PDF-en, og versjonen står i filnavnet.
-const KSL_SIDER = { 1: 'generelle-krav-til-garden', 10: 'helse-miljo-og-sikkerhet', 15: 'grovfor-korn-fro-olje-og-belgvekster', 30: 'drovtyggere-generelt', 31: 'storfe', 32: 'smafe', 35: 'melk', 40: 'svin', 50: 'fjorfe-generelt', 51: 'eggproduksjon', 52: 'oppal-fjorfe', 53: 'slaktekylling', 54: 'kalkun-ender-og-gjess', 70: 'hest-i-naering' };
+const KSL_SIDER = { 1: 'generelle-krav-til-garden', 10: 'helse-miljo-og-sikkerhet', 15: 'grovfor-korn-fro-olje-og-belgvekster', 20: 'potet', 25: 'gronnsaker-frukt-og-baer', 30: 'drovtyggere-generelt', 31: 'storfe', 32: 'smafe', 35: 'melk', 40: 'svin', 50: 'fjorfe-generelt', 51: 'eggproduksjon', 52: 'oppal-fjorfe', 53: 'slaktekylling', 54: 'kalkun-ender-og-gjess', 60: 'honning', 70: 'hest-i-naering', 110: 'juletre' };
 // SSB-tabeller: når de oppdateres, kan prisene og kostnadene i appen kalibreres på nytt.
 const SSB_TABELLER = { '03794': 'Bruttoverdi avvirkning for salg (tømmerpriser)', '03895': 'Avvirkning for salg etter sortiment', '06108': 'Kostnader og tilskudd til skogkultur', '05543': 'Gjødsling av skog – areal og kostnad', '09066': 'Skogfondregnskapet' };
 // Datakilder appen henter fra (bare tilgjengelighet).

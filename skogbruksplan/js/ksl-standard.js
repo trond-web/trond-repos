@@ -1,5 +1,5 @@
 // KSL-standarden (Stiftelsen Norsk Mat): sjekklister for egenrevisjon, lest ut av de offisielle PDF-ene (nb-no) med
-// verktoy/ksl-fra-pdf.py. Versjoner: 1 2026.9d, 10 2026.10b, 15 2026.10, 30 2026.7, 31 2026.7, 32 2026.7, 35 2026.10, 40 2026.6, 50 2026.10, 51 2026.7, 52 2026.7, 53 2026.3, 54 2026.7, 70 2026.9.
+// verktoy/ksl-fra-pdf.py. Versjoner: 1 2026.9d, 10 2026.10b, 15 2026.10, 20 2026.9, 25 2026.8, 30 2026.7, 31 2026.7, 32 2026.7, 35 2026.10, 40 2026.6, 50 2026.10, 51 2026.7, 52 2026.7, 53 2026.3, 54 2026.7, 60 2023.10, 70 2026.9, 110 2024.3.
 // dok = spørsmålet er merket med dokumentasjonssymbolet. krav = utdrag av «For å oppfylle dette kravet må du».
 // Nye versjoner oppdages av den ukentlige kildesjekken (verktoy/kildesjekk.mjs).
 export const KSL_KAPITLER = [
@@ -1183,6 +1183,323 @@ export const KSL_KAPITLER = [
     "tekst": "Tørker, rullerer og kjøler du korn og frø til lagerfast vare?",
     "dok": false,
     "krav": []
+   }
+  ]
+ },
+ {
+  "nr": 20,
+  "navn": "Potet",
+  "versjon": "2026.9",
+  "url": "https://www.ksl.no/ksl-standarden/potet/",
+  "seksjoner": [
+   {
+    "nr": "20.1",
+    "navn": "Plantehelse"
+   },
+   {
+    "nr": "20.2",
+    "navn": "Setting"
+   },
+   {
+    "nr": "20.3",
+    "navn": "Høsting, lagring og transport"
+   },
+   {
+    "nr": "20.4",
+    "navn": "Sortering og pakking av egne poteter i emballasje og kasser direkte"
+   }
+  ],
+  "sporsmal": [
+   {
+    "nr": "20.1.1",
+    "tekst": "Har du rutiner som hindrer smitte av karanteneskadegjørere, for eksempel potetpest, i potetproduksjon?",
+    "dok": false,
+    "krav": [
+     "Gjøre deg kjent med aktuelle karanteneskadegjørere: lys ringråte, potetkreft, hvit potetcystenematode og gul potetcystenematode.",
+     "Ha et driftsopplegg som hindrer smitte mellom skifter, det vil si å legge opp driften slik at jord og plantemateriale ikke flyttes mellom skifter. Dette innebærer særlig å rengjøre maskiner og utstyr, unngå blanding av partier og ha kontroll på vannavrenning.",
+     "Varsle Mattilsynet ved mistanke om karanteneskadegjørere (se lenken under krav)."
+    ]
+   },
+   {
+    "nr": "20.1.2",
+    "tekst": "Følger du Nasjonal bransjestandard for PCN i potetproduksjonen?",
+    "dok": false,
+    "krav": [
+     "",
+     "Ha kunnskap om PCN-status på alle aktuelle skifter der det dyrkes potet.",
+     "Ta regelmessige jordprøver for å sjekke PCN-status, minimum hvert fjerde potetår på alle potetarealer som inngår i driften.",
+     "Bruke Mattilsynets PCN-register for å holde oversikt over funn og status.",
+     "Registeret er et viktig verktøy, spesielt når jordleie inngår i produksjonen.",
+     "Melde fra til Mattilsynet umiddelbart hvis du har mistanke om eller får påvist angrep av gul eller hvit potetcystenematode (PCN).",
+     "Følge anbefalingene i punkt 4.2 i bransjestandarden og bestemmelsene i",
+     "Mattilsynets veileder for prøvetaking for PCN."
+    ]
+   },
+   {
+    "nr": "20.2.1",
+    "tekst": "Har du skiftenotering som viser hvilke sorter som er brukt på de enkelte skiftene?",
+    "dok": true,
+    "krav": [
+     "Notere hvilke sorter som er brukt på de ulike skiftene",
+     "Dersom det er påvist PCN på bruksenheten er det et bransjekrav at du noterer dette."
+    ]
+   },
+   {
+    "nr": "20.3.1",
+    "tekst": "Er transportutstyr rengjort før bruk for å unngå forurensning og spredning av PCN?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "20.3.2",
+    "tekst": "Er lageret rengjort før sesongstart, og oppbevares det kun poteter i lagringsrommet?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "20.3.3",
+    "tekst": "Har du rutiner for innlagring og nedkjøling av poteter med riktig temperatur og luftfuktighet?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "20.3.4",
+    "tekst": "Har du rutiner som sikrer at du kan spore hvilket skifte potetene er dyrket på ved innlagring?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "20.3.5",
+    "tekst": "Dokumenterer du bruk av antigromiddel ved produksjon av industripotet?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "20.4.1",
+    "tekst": "Har du gjennomført risikovurdering for pakking av poteter knyttet til produktkvalitet og hygiene?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "20.4.2",
+    "tekst": "Har du rengjøringsrutiner for rom og utstyr brukt til sortering, pakking og lagring?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "20.4.3",
+    "tekst": "Foregår vask, sortering, pakking og utlasting ved optimal temperatur for å bevare potetkvaliteten?",
+    "dok": false,
+    "krav": []
+   }
+  ]
+ },
+ {
+  "nr": 25,
+  "navn": "Grønnsaker, frukt og bær",
+  "versjon": "2026.8",
+  "url": "https://www.ksl.no/ksl-standarden/gronnsaker-frukt-og-baer/",
+  "seksjoner": [
+   {
+    "nr": "25.1",
+    "navn": "Frø, plantemateriale og dyrkningsmedier"
+   },
+   {
+    "nr": "25.2",
+    "navn": "Plantehelse"
+   },
+   {
+    "nr": "25.3",
+    "navn": "Mattrygghet - produksjonshygiene"
+   },
+   {
+    "nr": "25.4",
+    "navn": "Høsting, transport og lagring"
+   },
+   {
+    "nr": "25.5",
+    "navn": "Pakking av egne produkter i emballasje og kasser direkte til"
+   }
+  ],
+  "sporsmal": [
+   {
+    "nr": "25.1.1",
+    "tekst": "Har du registrert art, sort og partinummer for innkjøpt såvare, og art og sort for egen såvare?",
+    "dok": true,
+    "krav": [
+     "Innkjøpt såvare"
+    ]
+   },
+   {
+    "nr": "25.1.2",
+    "tekst": "Hvis du bruker spesielle dyrkingsmedier, har du registrert hva slags medier du har brukt?",
+    "dok": true,
+    "krav": [
+     "Dokumentere bruk av spesielle dyrkingsmedier. Dette defineres som produkter av jord, torv og/eller syntetiske stoffer for dyrking av planter.",
+     "Benytte regnskapsbilag eller tilsvarende dokumentasjon som viser innkjøp og bruk."
+    ]
+   },
+   {
+    "nr": "25.1.3",
+    "tekst": "Veksthus: Dersom du har brukt spesialpreparater for veksthus, er organisk avfall lagret i minst ett år på tett underlag og skjermet fra nedbør?",
+    "dok": false,
+    "krav": [
+     "Vegetativt avfall, jordblandinger, vekstmedium og lignende som fjernes fra veksthuset, skal lagres i minst ett år på tett underlag og skjermet fra nedbør på en slik måte at det ikke gir avrenning til omgivelsene.",
+     "Dette gjelder kun hvis det er behandlet med spesialpreparater.",
+     "Per april 2026 gjelder dette kun ett plantevernmiddel (Mainspring)."
+    ]
+   },
+   {
+    "nr": "25.2.1",
+    "tekst": "Produserer du planter for omsetning, og oppfyller du i så fall kravene til dokumentasjon i § 5 i forskrift om plantehelse?",
+    "dok": true,
+    "krav": [
+     "Sørge for at du og dine ansatte har nødvendig kompetanse.",
+     "Gjennomføre internkontroll (KSL).",
+     "Kunne fremlegge relevant dokumentasjon til Mattilsynet ved behov.",
+     "Hindre spredning av karanteneskadegjørere.",
+     "Melde fra dersom det oppdages karanteneskadegjørere på eiendommen.",
+     "Kun omsette kvalitetsvare.",
+     "Sørge for korrekt merking av varer som skal omsettes.",
+     "Følge kulturspesifikke krav for frilandsplanter, eple, pære, prunus, potet, jordbær, bringebær, kepaløk og prydplanter i veksthus."
+    ]
+   },
+   {
+    "nr": "25.3.1",
+    "tekst": "Har du risikovurdert alle vannkilder som brukes til vanning?",
+    "dok": true,
+    "krav": [
+     "Gjennomføre en skriftlig risikovurdering dersom: 1. du bruker private vannkilder, 2. produktene skal spises rå, og 3. vannet er i direkte kontakt med produktet. (Bruk gjerne skjemaet under «Krav».)",
+     "Iverksette nødvendige tiltak for å hindre forurensning dersom risikovurderingen viser behov for det."
+    ]
+   },
+   {
+    "nr": "25.3.2",
+    "tekst": "Har du tatt vannprøver fra hver enkelt private vannkilde for vanningssesongen slik at analyseresultatet foreligger før høsting?",
+    "dok": true,
+    "krav": [
+     "Ta minst én vannprøve per vanninntak i løpet av vanningssesongen.",
+     "Analysere vannet for E. coli som minimum, og vurdere analyse for andre sykdomsfremkallende bakterier dersom det er relevant.",
+     "Ha analyseresultat tilgjengelig før avlingen høstes.",
+     "Utføre dette for alle private vannkilder du bruker, slik at du har oversikt over vannkvaliteten. (Dryppvanning er unntatt.)"
+    ]
+   },
+   {
+    "nr": "25.3.3",
+    "tekst": "Har du dokumentert når du vannet siste gang før høsting, samt vurdert vannkvaliteten med tanke på når du seinest bør vanne?",
+    "dok": true,
+    "krav": [
+     "Dokumentere hvilken dag du vannet avlingen siste gang før høsting.",
+     "Vurdere vannkvaliteten med tanke på når du seinest bør vanne."
+    ]
+   },
+   {
+    "nr": "25.3.4",
+    "tekst": "Er vannkilder til vanningsvann merket av på kart?",
+    "dok": true,
+    "krav": [
+     "Merke aktuelle vannkilder til vanningsvann av på et kart.",
+     "Dette kan gjøres ved å markere vannkildene fysisk/digitalt i gårdskart fra",
+     "NIBIO, CropPlan, eller andre digitale hjelpemidler."
+    ]
+   },
+   {
+    "nr": "25.3.5",
+    "tekst": "Kan det dokumenteres at alle som arbeider i produksjonen har fått nødvendig opplæring om helserisiko og hygiene knyttet til produkthåndtering, på et språk de forstår?",
+    "dok": true,
+    "krav": [
+     "Gi opplæring i helserisiko og hygiene til alle som arbeider i bedriften.",
+     "Opplæringen skal gjøre dem i stand til å forstå hvilke forhold som kan påvirke produktene slik at de kan utgjøre en helserisiko for forbrukerne (se eksempler i spørsmål 25.3.6).",
+     "Tilpasse opplæringen til den enkeltes arbeidsoppgaver, og sikre at den gis på et språk de forstår.",
+     "Dokumentere gjennomført opplæring ved hjelp av skjemaet i «kravliste» eller andre egnete verktøy."
+    ]
+   },
+   {
+    "nr": "25.3.6",
+    "tekst": "Har du rutiner på gården som sikrer god personhygiene under høsting og pakking?",
+    "dok": false,
+    "krav": [
+     "Gode rutiner ved høsting og pakking",
+     "Håndvask og tilrettelegging for dette",
+     "Renhold og bruk av toalett",
+     "Renhold av arbeidsklær",
+     "Renhold av kniver, sakser og annet utstyr"
+    ]
+   },
+   {
+    "nr": "25.3.7",
+    "tekst": "Har du en plan for rengjøring og loggføring av utført renhold på toaletter/sanitæranlegg ?",
+    "dok": true,
+    "krav": [
+     "På toalettene skal det henge et renholdsskjema for loggføring av utført renhold."
+    ]
+   },
+   {
+    "nr": "25.3.8",
+    "tekst": "Har du eget tilleggsbevis for gnagermidler, eller avtale med et godkjent skadedyrfirma for å forebygge og bekjempe skadedyr?",
+    "dok": true,
+    "krav": [
+     "Ha tilleggskurs i gnagerbekjempelse i tillegg til gyldig autorisasjonsbevis for plantevernmidler, eller",
+     "bruke et godkjent skadedyrfirma for kontinuerlig forebygging og bekjempelse av skadedyr, også når virksomheten ikke er i drift.",
+     "Dokumentere bekjempelse av skadedyr.",
+     "Forebygge skadedyr aktivt i lager-, emballasje- og produksjonslokaler."
+    ]
+   },
+   {
+    "nr": "25.3.9",
+    "tekst": "Har du gjort en risikovurdering av skiftene i produksjonen? (Se oversikt over minimumspunkt i veilederen)",
+    "dok": false,
+    "krav": [
+     "Vurder mulige farer og risiko for at produktene kan bli forurenset i løpet av vekstsesongen, slik at du eventuelt kan redusere disse farene med aktuelle tiltak.",
+     "Spesielt viktig der du tar i bruk nye skifter, og der du dyrker produkter som kan spises rå.",
+     "Fyll ut \"skjema risikovurdering\" der hvor du anser det aktuelt."
+    ]
+   },
+   {
+    "nr": "25.4.1",
+    "tekst": "Har du rutiner som hindrer forurensning under høsting, transport og lagring?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "25.4.2",
+    "tekst": "Har du rutiner og logg for nedkjøling og temperaturkontroll?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "25.4.3",
+    "tekst": "Rengjør du utstyr, kasser og lager regelmessig?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "25.5.1",
+    "tekst": "Har du gjort risikovurdering for pakking og emballering?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "25.5.2",
+    "tekst": "Har du rutiner for rengjøring av pakkerom og utstyr?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "25.5.3",
+    "tekst": "Bruker du godkjent emballasje for næringsmidler?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "25.5.4",
+    "tekst": "Sikrer du riktig temperatur og rent vaskevann under pakking?",
+    "dok": false,
+    "krav": [
+     "sørge for at innlasting, vasking, sortering og pakking skjer ved temperaturer som er tilpasset produktet",
+     "bruke rent vaskevann under pakking",
+     "sikre at siste skyllevann holder drikkevannskvalitet"
+    ]
    }
   ]
  },
@@ -3053,6 +3370,324 @@ export const KSL_KAPITLER = [
   ]
  },
  {
+  "nr": 60,
+  "navn": "Honning",
+  "versjon": "2023.10",
+  "url": "https://www.ksl.no/ksl-standarden/honning/",
+  "seksjoner": [
+   {
+    "nr": "60.1",
+    "navn": "Registrering"
+   },
+   {
+    "nr": "60.2",
+    "navn": "Smittevern"
+   },
+   {
+    "nr": "60.3",
+    "navn": "Sykdomsbehandling"
+   },
+   {
+    "nr": "60.4",
+    "navn": "Avl"
+   },
+   {
+    "nr": "60.5",
+    "navn": "Fôring"
+   },
+   {
+    "nr": "60.6",
+    "navn": "Vokshåndtering"
+   },
+   {
+    "nr": "60.7",
+    "navn": "Behandling, pakking og lagring av honning"
+   },
+   {
+    "nr": "60.8",
+    "navn": "Generelle krav for de som ikke har andre produksjoner enn honning"
+   }
+  ],
+  "sporsmal": [
+   {
+    "nr": "60.1.1",
+    "tekst": "Er bigården din merket med navn, adresse og telefonnummer?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.1.2",
+    "tekst": "Har du registrert alle bigårdsplassene dine hos Mattilsynet?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.1.3",
+    "tekst": "Har du meldt fra til Mattilsynet om bigårdsplasser som du ikke lenger bruker?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.1.4",
+    "tekst": "Er du registrert som honningselger hos Mattilsynet?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.1.5",
+    "tekst": "Selger du honning i stor skala, og er du i så fall registrert hos Mattilsynet som honningvirksomhet?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.1.6",
+    "tekst": "Oppfyller du vilkårene for å flytte biene dine i Norge?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.2.1",
+    "tekst": "Setter du inn tiltak for å opprettholde god hygiene i bigården?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.2.2",
+    "tekst": "Melder du fra til Mattilsynet ved mistanke om eller påvisning av liste 2- eller liste 3-sykdommer?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.2.3",
+    "tekst": "Har du i følgende situasjoner satt inn tiltak for å hindre smittespredning: • ved mistanke om eller påvisning av liste 2-sykdom uansett landsdel • ved påvist varroainfeksjon utenfor region C • ved påvist trakémiddinfeksjon utenfor sone B1?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.2.4",
+    "tekst": "Har du overholdt forbudet mot å føre bier i alle utviklingstrinn og kubemateriell fra region C til region A og B?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.2.5",
+    "tekst": "Har du overholdt forbudet mot å føre bier og yngel ut av sone B1?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.2.6",
+    "tekst": "Har du overholdt flytteforbudet i forbindelse med plantesykdommen pærebrann?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.2.7",
+    "tekst": "Setter du inn tiltak for å forebygge sverming fra bigården din?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.2.8",
+    "tekst": "Plasserer du innfangede svermer i en svermebigård?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.2.9",
+    "tekst": "Flytter du innfangede svermer etter fire dager?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.2.10",
+    "tekst": "Er dronning og bifolk norske?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.2.11",
+    "tekst": "Unngår du å bruke brukt kubemateriell fra utlandet?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.2.12",
+    "tekst": "Kontrollerer du bier fra svermebigårder før du tar dem inn i en ordinær bigård?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.2.13",
+    "tekst": "Kommer bier (inkludert dronninger) og utbygde vokstavler som du har kjøpt, fra en registrert bigård?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.2.14",
+    "tekst": "Kan du bekrefte at kubemateriell du har kjøpt brukt, er rengjort og ikke har vært i kontakt med bier de siste 10 døgnene?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.2.15",
+    "tekst": "Har du notert datoen og bikubenes identifikasjonsmerke hver gang du har flyttet bifolk mellom registrerte bigårdsplasser?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.2.16",
+    "tekst": "Fører du liste over alle forsendelser av bier, kubemateriell og vokstavler til og fra registrerte bigårder ved kjøp, salg, utleie, utlån og gaver?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.3.1",
+    "tekst": "Sikrer du at biene ikke blir tilført forbudte stoffer, og at honningen ikke inneholder restmengder av forbudte stoffer, forurensende stoffer eller restmengder av veterinærpreparater?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.3.2",
+    "tekst": "Fører du liste over sykdomsbehandlinger med dato og behandlingstype?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.4.1",
+    "tekst": "Har du sikret at du ikke har flyttet bier i konflikt med reinavlsområder?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.4.2",
+    "tekst": "Har du sikret at du ikke har flyttet bier i konflikt med parestasjoner?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.5.1",
+    "tekst": "Fôrer du biene på en slik måte at det ikke utgjør fare for honningforfalskning?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.5.2",
+    "tekst": "Dokumenterer du fôringstidspunkter, fôrmengde og fôrtype?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.6.1",
+    "tekst": "Tar du vare på bivoksen?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.6.2",
+    "tekst": "Sørger du for nødvendige hygienetiltak og forsvarlig oppbevaring av voks mm.?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.6.3",
+    "tekst": "Unngår du å bruke bieprodukter fra utlandet eller andres bigård i Norge, bortsett fra godkjent voks?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.6.4",
+    "tekst": "Kan du dokumentere at du bare bruker varmebehandlet voks?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.7.1",
+    "tekst": "Merker du honning til salg og gaver riktig?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.7.2",
+    "tekst": "Selger du honningen din i ny og ren emballasje som er godkjent for bruk til næringsmidler?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.7.3",
+    "tekst": "Transporterer du honning med påsatt lokk og i lukket vogn eller henger med presenning?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.7.4",
+    "tekst": "Behandler du honningen slik at den holder riktig kvalitet?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.8.1",
+    "tekst": "Er nødvendig dokumentasjon knyttet til KSL og drifta oversiktlig og tilgjengelig for dem som skal se den?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.8.2",
+    "tekst": "Har du oversikt over alle driftsmidler du har kjøpt, og alle produkter du har solgt fra bigården (ett ledd fram og ett ledd tilbake)?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.8.3",
+    "tekst": "Kan du dokumentere at brukt utstyr som du har kjøpt fra utlandet, var rengjort og eventuelt desinfisert før det ble sendt til Norge, og at denne behandlingen ble gjentatt etter at du mottok utstyret?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.8.4",
+    "tekst": "Forebygger og bekjemper du skadedyr?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.8.5",
+    "tekst": "Dersom du har observert skadedyr som kan gå utover mattryggheten, dokumenterer du hvor de finnes, og hvor mye det finnes av dem? Og har du satt i gang tiltak for å bekjempe dem?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.8.6",
+    "tekst": "Har du dokumentert hvilke skadedyrmidler du bruker, og hvor disse er plassert?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "60.8.7",
+    "tekst": "Vet du at du skal melde fra til Mattilsynet og varemottakerne hvis du mistenker at produktene dine er helseskadelige, og at du i så fall skal ha rutiner for å tilbakekalle de aktuelle produktene?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.8.8",
+    "tekst": "Leverer du alt farlig avfall til godkjent mottak?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.8.9",
+    "tekst": "Leverer du annet produksjonsavfall til godkjent mottak?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "60.8.10",
+    "tekst": "Bruker du landbruksfolie og annen emballasje fra leverandører som er medlem i Grønt Punkt Norge?",
+    "dok": true,
+    "krav": []
+   }
+  ]
+ },
+ {
   "nr": 70,
   "navn": "Hest i næring",
   "versjon": "2026.9",
@@ -3886,6 +4521,114 @@ export const KSL_KAPITLER = [
     "krav": [
      "oppgavene i stallen og sikre at ansatte som kjører hester i trening, eller håndterer hester i krevende situasjoner, har nødvendig erfaring og ferdigheter."
     ]
+   }
+  ]
+ },
+ {
+  "nr": 110,
+  "navn": "Juletre",
+  "versjon": "2024.3",
+  "url": "https://www.ksl.no/ksl-standarden/juletre/",
+  "seksjoner": [
+   {
+    "nr": "110.1",
+    "navn": "Skjøtselstiltak"
+   },
+   {
+    "nr": "110.2",
+    "navn": "Nye juletrefelt"
+   },
+   {
+    "nr": "110.3",
+    "navn": "Plantevern"
+   },
+   {
+    "nr": "110.4",
+    "navn": "Gjødsling"
+   },
+   {
+    "nr": "110.5",
+    "navn": "Hogst av juletrefelt"
+   }
+  ],
+  "sporsmal": [
+   {
+    "nr": "110.1.1",
+    "tekst": "Registerer du skjøtselstiltak og høstinger for det enkelte plantefelt?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "110.2.1",
+    "tekst": "Er det søkt omdisponering til produksjon av juletrær på dyrket mark eller tidligere dyrket mark?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "110.2.2",
+    "tekst": "Benyttes det utenlandske treslag i produksjonen? (edelgranarter og utenlandske granarter som eks. serbergran) Om ja, er det gitt tillatelse til planting av utenlandske treslag fra Statsforvalteren?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "110.2.3",
+    "tekst": "Importerer virksomheten planter selv? Hvis ja: Er virksomheten registrert som planteimportør hos Mattilsynet?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "110.2.4",
+    "tekst": "Importerer virksomheten planter selv? Hvis ja: Er plantepartiet registrert og godkjent brukt iht forskrift om skogfrø og skogplanter?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "110.3.1",
+    "tekst": "Kan du dokumentere at plantevernmidler brukt i juletreproduksjonen kun er brukt av personer med autorisasjonsbevis?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "110.3.2",
+    "tekst": "Er plantevernmidlene brukt i samsvar med godkjent etikett?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "110.3.3",
+    "tekst": "Oppfyller du kravene til integrert plantevern, beskyttelse av vannmiljø og journalføring ved å følge de åtte prinsippene for integrert plantevern, gjøre tiltak for å redusere risikoen for forurensning av vann og føre plantevernjournal (journal for integrert plantevern, journal for vannbeskyttelse og sprøytejournal)?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "110.3.4",
+    "tekst": "Oppbevarer du plantevernmidlene avlåst og merket slik forskriften krever, og i henhold til eventuelle tilleggskrav som står på etiketten?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "110.3.5",
+    "tekst": "Merker du arealer som er behandlet med plantevernmidler, og som er åpne for allmenn ferdsel, med plakater i samsvar med Mattilsynets mal?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "110.4.1",
+    "tekst": "Har du søkt og fått godkjenning om bruk av husdyrgjødsel i juletrefeltet?",
+    "dok": true,
+    "krav": []
+   },
+   {
+    "nr": "110.4.2",
+    "tekst": "Har du en gjødslingsplan og skiftekart for juletrefeltet / feltene?",
+    "dok": false,
+    "krav": []
+   },
+   {
+    "nr": "110.5.1",
+    "tekst": "Rapporterer virksomheten salg av juletrær i virkesdatabasen j.f. forskrift om skogfond o.a.?",
+    "dok": false,
+    "krav": []
    }
   ]
  }
