@@ -1667,3 +1667,10 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .hva-del .punkt-tittel { font-size: 12px; color: var(--text-2); }
 .hva-del + .hva-del { border-top: 1px dashed var(--grid); padding-top: 6px; }
 .hva-laster { margin: 0; }
+/* Oppdrag › Utfører: SkogIQ Entreprenør */
+.fo { margin-top: 14px; border-top: 1px solid var(--grid); padding-top: 10px; }
+.fo .knapperad select { min-width: 220px; }
+.fo-avvik { display: grid; gap: 8px; }
+.fo-avvik-rad { display: flex; gap: 8px; align-items: flex-start; background: var(--surface-2); border-radius: 10px; padding: 8px; font-size: 13px; }
+.fo-avvik-rad img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; }
+.fo-signatur { max-width: 320px; width: 100%; background: #fff; border: 1px solid var(--border); border-radius: 10px; }

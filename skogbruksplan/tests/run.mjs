@@ -4279,7 +4279,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
   '1.8': '1b41be6f78760f90',
-  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976',
+  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976', '1.16': 'a85bfccb66c6fc14',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
@@ -4717,6 +4717,45 @@ test('Prøveflater: 400 m² fra hogstmaskindata, sammendrag mot planen og kalibr
   assert.equal(P.brukKalibrering(S2, syn, kal), 0, 'ikke kalibrert to ganger');
   assert.equal(P.angreKalibrering(S2), 1); assert.equal(S2.bestand[0].volumDaa, 25); assert.equal(S2.bestand[0].merknad, ''); assert.ok(!S2.bestand[0].ekstra.KALIBRERT);
   assert.equal(P.brukKalibrering(S2, syn, { ...kal, faktor: 1.6 }), 0, 'store avvik justeres ikke');
+});
+
+test('Feltoppdrag: skogeier sender oppdrag til entreprenør i nettverket, entreprenøren rapporterer, rapporten tas inn i planen', async () => {
+  const { lagFeltoppdrag, rensRapport } = await import('../feltoppdrag.js'); const FO = await import('../js/feltoppdrag.js'); const OP = await import('../js/oppdrag.js'); const { lagDemo } = await import('../js/demo.js');
+  const S = lagDemo(2026); S.planId = 'p1'; let n = 0; const nyId = (p) => `${p}${++n}`;
+  const b1 = S.bestand[0]; const b2 = S.bestand[1]; const t1 = { id: 't1', type: 'planting', aar: 2026 }; const t2 = { id: 't2', type: 'planting', aar: 2026 }; b1.tiltak = [t1]; b2.tiltak = [t2];
+  const { oppdrag: [o] } = OP.lagOppdrag(S, [{ bestand: b1, tiltak: t1 }, { bestand: b2, tiltak: t2 }], { nyId, iAar: 2026 });
+  const varsler = []; let tid = 1e12;
+  const fo = lagFeltoppdrag({ naa: () => tid, koblet: (a, b) => [a, b].sort().join() === ['ent@x.no', 'ola@x.no'].join(), erEntreprenor: (u) => u === 'ent@x.no' || u === 'annen@x.no', varsle: (f, t2_, h) => varsler.push(h) });
+  assert.equal(fo.send('ola@x.no', { utforer: 'annen@x.no', oppdrag: o, plan: S, planId: 'p1' }).status, 403, 'må være koblet i nettverket');
+  assert.equal(fo.send('ola@x.no', { utforer: 'ent@x.no', oppdrag: { ...o, type: 'vei' }, plan: S, planId: 'p1' }).status, 400, 'vei støttes ikke ennå');
+  const s = fo.send('ola@x.no', { utforer: 'ent@x.no', oppdrag: o, plan: S, planId: 'p1' }); assert.equal(s.status, 'sendt'); assert.deepEqual(varsler, ['ny']);
+  assert.equal(fo.send('ola@x.no', { utforer: 'ent@x.no', oppdrag: o, plan: S, planId: 'p1' }).ny, false, 'samme oppdrag sendt på nytt oppdaterer');
+  assert.equal(fo.liste('ent@x.no').length, 1); assert.equal(fo.hent('fremmed@x.no', s.id).status, 404, 'andre har ikke tilgang');
+  const d = fo.hent('ent@x.no', s.id); assert.equal(d.status, 'mottatt'); assert.equal(d.plan.bestand.length, S.bestand.length, 'entreprenøren får hele planen');
+  // Entreprenøren registrerer framdrift, miljøsjekk og avvik
+  let r = FO.nyRapport(d.plan, d.oppdrag); assert.ok(FO.mangler(d.plan, d.oppdrag, r).length >= 2);
+  r.linjer.t1 = { status: 'ferdig', start: '2026-11-20', ferdig: '2026-11-21', areal: 12.5, mengde: 2600, merknad: '' };
+  r.linjer.t2 = { status: 'pagar', start: '2026-11-21', ferdig: '', areal: null, mengde: null, merknad: '' };
+  for (const p of FO.miljoPunkter(d.oppdrag, r)) r.miljo[p.id] = { svar: 'ok' };
+  r.avvik.push({ id: 'a1', type: 'kjoreskade', beskrivelse: 'Spor ved bekken, utbedret', tid: '2026-11-21T10:00', pos: [11.36, 60.88], bestandId: b1.id, utbedret: true, bilder: ['data:image/jpeg;base64,AAAA', 'javascript:alert(1)'] });
+  assert.equal(FO.mangler(d.plan, d.oppdrag, r).length, 1, 'ett bestand gjenstår');
+  let x = fo.rapport('ent@x.no', s.id, { rapport: r, grunnVersjon: 0 }); assert.equal(x.status, 'pagar'); assert.equal(x.versjon, 1);
+  assert.equal(fo.rapport('ent@x.no', s.id, { rapport: r, grunnVersjon: 0 }).status, 409, 'utdatert versjon');
+  assert.equal(fo.rapport('ola@x.no', s.id, { rapport: r, grunnVersjon: 1 }).status, 403, 'bare entreprenøren skriver rapporten');
+  assert.deepEqual(fo._data().delinger[s.id].rapport.avvik[0].bilder, ['data:image/jpeg;base64,AAAA'], 'bare bilder (ikke skript) lagres');
+  r.linjer.t2 = { status: 'ferdig', start: '2026-11-21', ferdig: '2026-11-22', areal: 8, mengde: 1700, merknad: 'Bratt' };
+  assert.deepEqual(FO.mangler(d.plan, d.oppdrag, r), []);
+  assert.throws(() => FO.ferdigmeld(r, { navn: '', signatur: '' }));
+  r = FO.ferdigmeld(r, { navn: 'Per Planter', signatur: 'data:image/png;base64,iVBOR', merknad: 'Takk', dato: '2026-11-22' });
+  x = fo.rapport('ent@x.no', s.id, { rapport: r, grunnVersjon: 1 }); assert.equal(x.status, 'ferdigmeldt'); assert.ok(varsler.includes('ferdigmeldt'));
+  // Skogeieren tar rapporten inn i planen og godkjenner
+  const fra = fo.hent('ola@x.no', s.id); const endrede = FO.brukRapport(S, o, FO.sikreRapport(fra.plan, fra.oppdrag, fra.rapport), { kilde: 'Plant AS' });
+  assert.equal(endrede.length, 2); assert.equal(t1.utfortRapport.mengde, 2600); assert.equal(t1.arealDaa, 12.5); assert.equal(o.status, 'utfort'); assert.equal(o.feltrapport.avvik[0].bilder, 1); assert.equal(o.feltrapport.slutt.navn, 'Per Planter');
+  assert.equal(fo.status('ent@x.no', s.id, 'godkjenn').status, 403); assert.equal(fo.status('ola@x.no', s.id, 'godkjenn').status, 'godkjent');
+  assert.equal(fo.rapport('ent@x.no', s.id, { rapport: r, grunnVersjon: 2 }).status, 409, 'godkjent rapport kan ikke endres');
+  // Rens av rapport og sletting med kontoen
+  assert.deepEqual(rensRapport({ linjer: { 'x y': {} }, slutt: { navn: 'A' } }).linjer, {}); assert.equal(rensRapport({ slutt: { navn: 'A' } }).slutt, null, 'ferdigmelding krever signatur');
+  assert.equal(fo.eksport('ent@x.no').length, 1); fo.slettBruker('ent@x.no'); assert.equal(fo.liste('ola@x.no').length, 0);
 });
 
 test('EUDR: hogstoppdrag blir leveranse med bestand, kjøper og målt mengde', async () => {

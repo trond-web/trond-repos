@@ -14,6 +14,7 @@ import { lagTilbudRelay, tilbudApi, erMottakerKall } from './tilbud-relay.js';
 import { rensSvar as rensTommerSvar, sjekkSvar as sjekkTommerSvar } from './js/tommer-felles.js';
 import { lagSkyLager, skyApi } from './sky-lager.js';
 import { lagNettverk, nettverkApi } from './nettverk.js';
+import { lagFeltoppdrag, feltoppdragApi } from './feltoppdrag.js';
 import { lagApiNokler } from './api-nokler.js';
 import { apiV1, apiNoklerAdmin } from './api-v1.js';
 import { lagBackup, lagS3, backupApi } from './backup.js';
@@ -38,7 +39,7 @@ const TYPER = {
   '.sos': 'text/plain; charset=utf-8',
 };
 // Mapper og filer som ikke skal publiseres.
-const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|api-v1\.js|api-nokler\.js|api-dok\.js|backup\.js|tilbakemelding\.js|profilbilde\.js|package(-lock)?\.json|railway\.json)$|\/\./;
+const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|feltoppdrag\.js|api-v1\.js|api-nokler\.js|api-dok\.js|backup\.js|tilbakemelding\.js|profilbilde\.js|package(-lock)?\.json|railway\.json)$|\/\./;
 const KOMPRIMER = /^(text\/|application\/(json|geo\+json|manifest\+json)|image\/svg)/;
 
 const SIKKERHET = {
@@ -113,9 +114,9 @@ const innlogging = lagInnlogging({
   bruker: process.env.APP_BRUKER || '', passord: process.env.APP_PASSORD || '', hemmelighet: process.env.APP_HEMMELIGHET || '',
   registrering: process.env.APP_REGISTRERING === '1', fil: process.env.BRUKER_FIL || null, admin: process.env.APP_ADMIN || '', kode: process.env.APP_REGISTRERINGSKODE || '',
   sendEpost: lagEpostSender({ nokkel: process.env.EPOST_NOKKEL || '', fra: process.env.EPOST_FRA || '' }),
-  ekstraBruker: (u) => ({ sky: sky.bruk(u) }), vedSlett: (u, b) => { sky.slettBruker(u); apiNokler.slettForBruker(u); nettverk?.slettBruker(u); tilbakemelding?.slettBruker(u); if (b?.profil?.bilde) profilbilder.slett(b.profil.bilde); },
+  ekstraBruker: (u) => ({ sky: sky.bruk(u) }), vedSlett: (u, b) => { sky.slettBruker(u); feltoppdrag?.slettBruker(u); apiNokler.slettForBruker(u); nettverk?.slettBruker(u); tilbakemelding?.slettBruker(u); if (b?.profil?.bilde) profilbilder.slett(b.profil.bilde); },
   // Innsyn/dataportabilitet: planlisten i skyen (planene eksporteres fra appen) og nettverket med chat.
-  eksport: (u) => ({ apiNokler: apiNokler.forBruker(u), skylagring: { ...sky.bruk(u), planer: [...sky.liste(u), ...sky.liste(u, { slettede: true })] }, nettverk: nettverk?.eksport(u) || null, tilbakemeldinger: tilbakemelding?.eksport(u) || [], profilbilde: (() => { const id = innlogging.lager?.hent(u)?.profil?.bilde; return id ? profilbilder.dataUrl(id) : null; })() }),
+  eksport: (u) => ({ apiNokler: apiNokler.forBruker(u), skylagring: { ...sky.bruk(u), planer: [...sky.liste(u), ...sky.liste(u, { slettede: true })] }, nettverk: nettverk?.eksport(u) || null, feltoppdrag: feltoppdrag?.eksport(u) || [], tilbakemeldinger: tilbakemelding?.eksport(u) || [], profilbilde: (() => { const id = innlogging.lager?.hent(u)?.profil?.bilde; return id ? profilbilder.dataUrl(id) : null; })() }),
 });
 // Uten innlogging (lokal utvikling) brukes én lokal bruker med profil i minnet.
 const lokalProfil = { navn: 'Lokal bruker', epost: '' };
@@ -126,6 +127,18 @@ const skyOppsett = {
 };
 // Nettverk mellom skogeiere, innkjøpere og entreprenører med chat (nettverk.js). Krever registrering av brukere.
 const nettverk = innlogging.registrering ? lagNettverk({ skogKommuner: (u) => sky.liste(u).map((p) => ({ nr: p.meta?.kommunenr || '', navn: p.meta?.kommune || '' })), fil: process.env.NETTVERK_FIL || (process.env.BRUKER_FIL ? path.join(path.dirname(process.env.BRUKER_FIL), 'nettverk.json') : null), brukere: { hent: (u) => innlogging.lager.hent(u), alle: () => innlogging.lager.alle() } }) : null;
+// Feltoppdrag til entreprenører (feltoppdrag.js): skogeieren sender oppdrag med planen til en entreprenør i nettverket,
+// entreprenøren rapporterer fra SkogIQ Entreprenør. Beskjeder går i chatten deres.
+const feltoppdrag = innlogging.registrering ? lagFeltoppdrag({
+  fil: process.env.FELTOPPDRAG_FIL || iData('feltoppdrag.json'),
+  koblet: (a, b) => !!nettverk?.koblingMellom(a, b),
+  erEntreprenor: (u) => (innlogging.lager.hent(u)?.profil?.roller || []).includes('entreprenor'),
+  varsle: (fra, til, hva, d) => {
+    const kid = nettverk?.koblingMellom(fra, til); if (!kid) return;
+    const t = { ny: `🚜 Nytt oppdrag i SkogIQ Entreprenør: ${d.nr} ${d.tittel} (${d.eiendom}). Åpne entreprenor.html for å gjennomføre det.`, oppdatert: `🔄 Oppdraget ${d.nr} er oppdatert av skogeieren – åpne det på nytt i SkogIQ Entreprenør.`, ferdigmeldt: `✅ Oppdraget ${d.nr} ${d.tittel} er ferdigmeldt med signatur. Se rapporten under oppdraget › Utfører.`, trukket: `↩️ Oppdraget ${d.nr} er trukket tilbake av skogeieren.`, gjenapnet: `🔁 Oppdraget ${d.nr} er åpnet igjen av skogeieren – se merknadene og ferdigmeld på nytt.` }[hva];
+    if (t) nettverk.send(fra, kid, t);
+  },
+}) : null;
 // Profilbilder (profilbilde.js) i <datamappe>/profilbilder; id-en ligger i profilen.
 const profilbilder = lagProfilbilder({ mappe: iData('profilbilder') });
 // Tilbakemeldinger og forbedringsforslag (tilbakemelding.js), på volumet.
@@ -140,7 +153,7 @@ const backup = lagBackup({
   mappe: DATA, nokkel: process.env.BACKUP_NOKKEL || '',
   s3: s3Oppsett ? lagS3({ endpoint: process.env.BACKUP_S3_ENDPOINT, bucket: process.env.BACKUP_S3_BUCKET, region: process.env.BACKUP_S3_REGION || 'eu-central-1', id: process.env.BACKUP_S3_NOKKEL_ID, hemmelig: process.env.BACKUP_S3_HEMMELIG, prefiks: process.env.BACKUP_S3_PREFIKS || 'skogiq/' }) : null,
   beholdLokalt: Number(process.env.BACKUP_BEHOLD_LOKALT) || 7, beholdS3: Number(process.env.BACKUP_BEHOLD_S3) || 30, intervallTimer: Number(process.env.BACKUP_INTERVALL_TIMER) || 24,
-  forKopi: () => { innlogging.lager?.flush?.(); tilbakemelding?.flush(); },
+  forKopi: () => { innlogging.lager?.flush?.(); tilbakemelding?.flush(); feltoppdrag?.flush(); },
 });
 backup.start();
 if (DATA && !process.env.BACKUP_NOKKEL) console.warn('BACKUP_NOKKEL er ikke satt – sikkerhetskopiene lagres ukryptert og bare på volumet.');
@@ -181,6 +194,7 @@ const server = http.createServer(async (req, res) => {
   }, req, res, sti, { cors: corsFor, ekstraHoder: SIKKERHET })) return;
   if (skyApi(sky, skyOppsett, req, res, sti, SIKKERHET)) return;
   if (nettverkApi(nettverk, skyOppsett, req, res, sti, SIKKERHET)) return;
+  if (feltoppdragApi(feltoppdrag, { ...skyOppsett, navn: (u) => innlogging.meg(u)?.navn || u }, req, res, sti, SIKKERHET)) return;
   if (tilbakemeldingApi(tilbakemelding, { meg: (q) => { const o = innlogging.fraForesporsel(q); if (!o) return null; const m = innlogging.meg(o.u); return { bruker: o.u, navn: m?.navn || o.u, admin: innlogging.erAdmin(o.u) }; }, cors: corsFor }, req, res, sti, SIKKERHET)) return;
   if (planApi(planRelay, req, res, sti, SIKKERHET)) return;
   if (jdApi(jdRelay, req, res, sti, SIKKERHET)) return;
