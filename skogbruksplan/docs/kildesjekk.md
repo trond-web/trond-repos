@@ -13,9 +13,9 @@ forslag til endring (pull request). Ingenting flettes inn uten at eieren godkjen
 | Standarder | Norsk PEFC Skogstandard, alle 14 KSL-kapitler i appen | Standardkode og versjon i PDF-filnavnet sammenlignes med koden |
 | Veiledere | Mattilsynet (storfe, hest), NIBIO Gjødslingshåndbok (korn, eng) | Endringer i relevante linjer |
 | Priser og kostnader | SSB 03794/03895 (tømmerpris), 06108 (skogkultur), 05543 (gjødsling), 09066 (skogfond) | Nye tall, og SSB-snittprisen mot standardprisene i `js/model.js` (varsel ved over 10 % avvik) |
-| Datakilder | NIBIO (AR5, SR16, beite, jordsmonn, markfuktighet), Miljødirektoratet, Kartverket, Geonorge, NVDB, MET, SSB | Svarer tjenesten? |
+| Datakilder | NIBIO (AR5, SR16, beite, jordsmonn, markfuktighet), Miljødirektoratet, Kartverket, Geonorge, NVDB (også bruksklasse for tømmertransport, type 900), MET, SSB, Valhalla (lastebilruting) | Svarer tjenesten? |
 | Lenker i appen | Alle lenker i `js/*.js` og `*.html` | Døde lenker (404/410/5xx) |
-| For hånd | Rundskriv om konsesjon (regjeringen.no blokkerer roboter), jordbruksavtalen, Statsforvalterens NMSK-satser, prislister og driftspriser fra skogeierandelslagene | Står i rapporten; den ukentlige oppgaven søker etter dem på nettet |
+| For hånd | Tømmerterminalene i `js/transport.js` (Lierstranda avvikles etter planen innen utgangen av 2027 – fjern eller bytt terminal når den stenger), rundskriv om konsesjon (regjeringen.no blokkerer roboter), jordbruksavtalen, Statsforvalterens NMSK-satser, prislister og driftspriser fra skogeierandelslagene | Står i rapporten; den ukentlige oppgaven søker etter dem på nettet |
 
 Referansen fra forrige kjøring ligger i `docs/kildestatus.json`. Rapporten deler funn i 🔴 viktig (krav eller satser
 i appen må trolig endres), 🟡 varsel (kilde eller lenke virker ikke) og ℹ️ info (nye tall uten at appen må endres).

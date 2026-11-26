@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.23.0** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.24.0** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -469,6 +469,25 @@ Feltappen lager flyruter for ortofoto som åpnes i **DJI Pilot 2**. Logikken lig
 **Støttede droner** (kodene fra WPML): Mavic 3 Enterprise, Multispectral og Thermal, Matrice 3D, M30 og M350 RTK med H20. Kameraparametrene (sensor, oppløsning, brennvidde) ligger i `DRONER`. Zenmuse P1/L2 og Matrice 4E mangler i WPML-dokumentasjonen og er ikke med ennå.
 
 **Beta:** Ruten er laget etter DJIs offentlige WPML-spesifikasjon, men er ikke testet på alle droner og fastvareversjoner. DJI Pilot 2 kan regenerere linjene fra malen. Kontroller alltid ruten i Pilot 2 før du flyr.
+
+## 🚛 Tømmertransport til terminal (Veier, `js/transport.js`, `js/transport-ui.js`)
+Brukeren legger inn velteplass eller hentested i kartet, eller velger en velteplass fra veiregisteret. SkogIQ beregner kjøreruten for tømmerbilen til terminalen og kontrollerer hele ruten mot åpne data, slik at ingen kjører der de ikke har lov.
+- **Kjørerute:** [Valhalla](https://valhalla1.openstreetmap.de) med lastebilprofil (lengde, vekt, høyde, bredde 2,55 m), OpenStreetMap og norske kjøreinstruksjoner. Sendes fra nettleseren, med bare koordinatene til velteplass og terminal (FOSSGIS e.V., EU).
+- **Bruksklasse for tømmertransport** (NVDB vegobjekttype 900): tillatt totalvekt (for eksempel BkT8 – 60 tonn, Bk10 – 50 tonn) og maks vogntoglengde (12,4 / 15 / 19,5 / 22 / 24 m).
+  - Vinterbruksklasse og telerestriksjoner (aksellast) gjelder når dagens dato er innenfor perioden.
+  - «Spesiell begrensning» bruker de egne feltene for totalvekt og lengde.
+- **Høydebegrensning** (591) og **trafikkreguleringer** (856): «Forbudt for lastebil og trekkbil», «Forbudt for motortrafikk», «kun tillatt for varetransport/kjøring til eiendommer» (usikker), med filter hos NVDB.
+- **Skogsbilveiene i planen** (landbruksveiklasse): klasse 4 bare uten henger, klasse 5 bare vinter, klasse 3 bare sommer, og klasse 7–8 er traktorvei. Andre private veier vises som «ukjent».
+- **Matching:** punkter hver 25. m langs ruten mot nærmeste NVDB-veglenke innenfor 14 m som går i samme retning, slik at kryssende veier, bruer og undergang ikke telles.
+  - Høydehindre teller bare på samme vegnummer.
+  - Korte treff på ramper (KD/SD) og kryssende veier med annet vegnummer filtreres bort.
+  - NVDB hentes i UTM33 med 2 m geometritoleranse, per rute på ca. 2,2 × 2,2 km, og ruter som er hentet, gjenbrukes.
+- **Anbefaling:** hele ruten er tillatt; eller kjør uten henger fra velteplassen til hengerplassen (H) der begrensningen slutter; eller kjør uten henger hele veien; eller omkjøring (Valhalla med `exclude_polygons` rundt strekningene som ikke er tillatt, opptil 3 forsøk).
+- **Antall lass:** anslått fra volumet (m³ per lass for hvert kjøretøy) med kjøring tur–retur.
+- **Kart:** ruten er farget etter status (grønn, gul, grå, rød), med markører for velteplass, terminal, hengerplass og hindre. Omkjøringen vises blå stiplet.
+- **Terminal:** Lierstranda tømmerterminal (Drammen havn, innkjøringen ved Terminalen, 3414 Lierstranda) er standard. Den avvikles etter planen innen utgangen av 2027, og appen sier fra om det. Det står også i den ukentlige kildesjekken (for hånd). Leveringsplassen kan også velges fritt i kartet.
+- **Juridisk:** veglistene gjelder, og NVDB er databasen bak dem. Appen viser lenke til veglistene.
+- **Personvern:** erklæring 1.17 med FOSSGIS (Valhalla) som ny tredjepart, og alle må godta vilkårene på nytt.
 
 ## 📲 SkogIQ Entreprenør – feltløsning for entreprenører (`entreprenor.html`, `js/entreprenor-app.js`, `js/feltoppdrag.js`, `feltoppdrag.js`)
 Skogeieren tildeler oppdraget, lager det og gjør miljøsjekken på web. Entreprenøren gjennomfører det i en egen feltløsning på mobilen, uten PDF-skjema. Støtter hogst, tynning og lukket hogst, og skogkultur (planting, suppleringsplanting, markberedning, ungskogpleie og gjødsling).

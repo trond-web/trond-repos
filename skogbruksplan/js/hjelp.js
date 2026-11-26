@@ -120,6 +120,12 @@ export const KAPITLER = [
       ${steg(['Åpne oppdraget › <b>Maskin</b>.', 'Velg versjon og koordinatsystem (standardvalgene passer de fleste maskiner).', '<b>Last ned filsett (ZIP)</b>, kopier til minnepinne og importer i maskinen (se LES_MEG.txt).', 'Etter drift: <b>Les inn produksjonsfiler</b> (.hpr, .fpr …) og trykk <b>Gå gjennom endringer i planen</b> – se <a href="#" data-hjelp="ajourforing">Ajourføring fra hogstmaskindata</a>.'])}`,
   },
   {
+    id: 'transport', ikon: '🚛', tittel: 'Tømmertransport til terminal – kjørerute uten blemmer',
+    tekst: `<p>Under <b>Veier › Tømmertransport til terminal</b> beregner SkogIQ kjøreruten for tømmerbilen fra velteplassen til terminalen og kontrollerer hver veistrekning mot <b>bruksklasse for tømmertransport</b> (tillatt totalvekt og vogntoglengde), <b>vinterbruksklasse og telerestriksjoner</b> som gjelder i dag, <b>høydebegrensninger</b> og <b>lastebilforbud</b> i NVDB, og mot skogsbilveiene i planen.</p>
+      ${steg(['Velg velteplass (fra veiregisteret) eller trykk <b>Velg i kartet</b>.', 'Velg terminal – Lierstranda er standard – eller en annen leveringsplass i kartet.', 'Velg kjøretøy (fullt tømmervogntog 24 m / 60 t er standard) og høyde med last. Skriv gjerne inn volumet for å få antall lass.', 'Trykk <b>Beregn og kontroller ruten</b>. Ruten farges i kartet: grønn tillatt, gul sesong (tele/vinter), grå ukjent (privat vei), rød ikke tillatt.', 'Les anbefalingen: kjør uten henger til <b>hengerplassen</b> (H i kartet) og koble på der, kjør uten henger hele veien, eller bruk <b>omkjøringen</b> (blå stiplet).'])}
+      ${tips('Veglistene fra Statens vegvesen og skiltingen på stedet gjelder juridisk. Private veier som ikke er registrert, vises som «ukjent» – avklar med veieier. Lierstranda tømmerterminal avvikles etter planen innen utgangen av 2027.')}`,
+  },
+  {
     id: 'entreprenor', ikon: '📲', tittel: 'SkogIQ Entreprenør – oppdrag i felt for entreprenører',
     tekst: `<p>Skogeieren tildeler oppdraget og gjør miljøsjekken på web. Entreprenøren gjennomfører det i <b>SkogIQ Entreprenør</b> (entreprenor.html) på mobilen – uten PDF-skjema. Støtter hogst, tynning og skogkultur.</p>
       <h4>Som skogeier</h4>

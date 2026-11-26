@@ -4279,7 +4279,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
   '1.8': '1b41be6f78760f90',
-  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976', '1.16': 'a85bfccb66c6fc14',
+  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976', '1.16': 'a85bfccb66c6fc14', '1.17': 'db0ca4fb428144e9',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
@@ -4717,6 +4717,46 @@ test('Prøveflater: 400 m² fra hogstmaskindata, sammendrag mot planen og kalibr
   assert.equal(P.brukKalibrering(S2, syn, kal), 0, 'ikke kalibrert to ganger');
   assert.equal(P.angreKalibrering(S2), 1); assert.equal(S2.bestand[0].volumDaa, 25); assert.equal(S2.bestand[0].merknad, ''); assert.ok(!S2.bestand[0].ekstra.KALIBRERT);
   assert.equal(P.brukKalibrering(S2, syn, { ...kal, faktor: 1.6 }), 0, 'store avvik justeres ikke');
+});
+
+test('Tømmertransport: rute kontrolleres mot bruksklasse, høyde og forbud – uten henger og hengerplass der det trengs', async () => {
+  const T = await import('../js/transport.js');
+  // Polyline (Google-format, 6 desimaler): to punkter
+  assert.deepEqual(T.dekodPolyline('_izlhA~rlgdF_{geC~ywl@'), [[-120.2, 38.5], [-120.95, 40.7]]);
+  assert.deepEqual(T.wktLinjer('LINESTRING Z (60.1 10.1 5, 60.2 10.2 6)'), [[[10.1, 60.1], [10.2, 60.2]]]);
+  // Bruksklasse: vanlig, spesiell, vinter og tele
+  const o = (eg, vegref = 'FV1 S1D1 m0-100') => ({ id: Math.random(), egenskaper: Object.entries(eg).map(([navn, verdi]) => ({ navn, verdi })), lokasjon: { vegsystemreferanser: [{ kortform: vegref }] } });
+  assert.deepEqual([T.tolkBruksklasse(o({ Bruksklasse: 'BkT8 - 40 tonn', 'Maks vogntoglengde': '15,00' })).vekt, T.tolkBruksklasse(o({ Bruksklasse: 'BkT8 - 40 tonn', 'Maks vogntoglengde': '15,00' })).lengde], [40, 15]);
+  assert.equal(T.tolkBruksklasse(o({ Bruksklasse: 'Spesiell begrensning', 'Spesiell begrensning, totalvekt': 24, 'Maks vogntoglengde': '12,40' })).vekt, 24);
+  const vint = T.tolkBruksklasse(o({ Bruksklasse: 'Bk10 - 60 tonn', 'Bruksklasse vinter': 'Bk10 - 50 tonn', 'Vinterbruksklasse fra dato': '2026-11-01', 'Vinterbruksklasse til dato': '2027-03-31', 'Telerestriksjon fra dato': '2026-11-20', 'Telerestriksjon til dato': '2026-12-01', 'Aksellast teleløsning': '6 tonn' }), '2026-11-26');
+  assert.equal(vint.vekt, 50); assert.ok(vint.vinter); assert.equal(vint.tele.aksellast, 6);
+  assert.equal(T.tolkRegulering(o({ Trafikkreguleringer: 'Forbudt for lastebil og trekkbil' })).forbud, true);
+  assert.equal(T.tolkRegulering(o({ Trafikkreguleringer: 'Forbudt for lastebil og trekkbil m unntak' })).forbud, false);
+  // Rute rett nordover 10 km. De første 2 km: kommunal vei BkT8 – 40 t, 15 m. Resten: Bk10 – 60 t, 24 m.
+  const lon = 10.5; const lat0 = 60; const dl = 10000 / 111195; const linje = Array.from({ length: 101 }, (_, i) => [lon, lat0 + (dl * i) / 100]);
+  const del = (fra, til) => [[lon, lat0 + dl * fra], [lon, lat0 + dl * til]];
+  const bk = [{ ...T.tolkBruksklasse(o({ Bruksklasse: 'BkT8 - 40 tonn', 'Maks vogntoglengde': '15,00' }, 'KV10 S1D1 m0-2000')), linjer: [del(0, 0.2)] }, { ...T.tolkBruksklasse(o({ Bruksklasse: 'Bk10 - 60 tonn', 'Maks vogntoglengde': '24,00' }, 'FV20 S1D1 m0-8000')), linjer: [del(0.2, 1)] }];
+  // Kryssende vei med lav bru (øst–vest) ved 5 km: skal ikke regnes som begrensning for ruten.
+  const kryss = [[lon - 0.01, lat0 + dl * 0.5], [lon + 0.01, lat0 + dl * 0.5]];
+  bk.push({ ...T.tolkBruksklasse(o({ Bruksklasse: 'Bk6 - 28 tonn', 'Maks vogntoglengde': '12,40' }, 'KV99 S1D1 m0-10')), linjer: [kryss] });
+  const hoyde = [{ ...T.tolkHoyde(o({ 'Skilta høyde': 3.4 }, 'KV99 S1D1 m5')), linjer: [[[lon, lat0 + dl * 0.5]]] }];
+  const data = { bruksklasse: bk, hoyde, regulering: [], planVeier: [] };
+  const full = T.analyser(linje, data, T.KJORETOY.vogntog24); const bil = T.analyser(linje, data, T.KJORETOY.bil);
+  assert.ok(!full.ok); assert.ok(Math.abs(full.ikkeM - 2000) < 120, `ca. 2 km ikke tillatt (${full.ikkeM})`); assert.equal(full.hindre.length, 0, 'lav bru på kryssende vei teller ikke');
+  assert.ok(bil.ok, 'tømmerbil uten henger kan kjøre hele ruten');
+  const an = T.anbefaling(full, bil, T.KJORETOY.vogntog24);
+  assert.equal(an.niva, 'uten-henger-start'); assert.ok(Math.abs(an.hengerplass.m - 2050) < 100, 'hengerplass rett etter begrensningen');
+  // Lastebilforbud midt på ruten: ikke tillatt selv uten henger → omkjøring
+  const reg = [{ ...T.tolkRegulering(o({ Trafikkreguleringer: 'Forbudt for lastebil og trekkbil' }, 'FV20 S1D1 m5000')), linjer: [del(0.6, 0.62)] }];
+  const d2 = { ...data, regulering: reg };
+  assert.equal(T.anbefaling(T.analyser(linje, d2, T.KJORETOY.vogntog24), T.analyser(linje, d2, T.KJORETOY.bil), T.KJORETOY.vogntog24).niva, 'omkjoring');
+  assert.ok(T.unngaaPolygoner(T.analyser(linje, d2, T.KJORETOY.vogntog24)).length >= 2);
+  // Skogsbilvei i planen, klasse 4: bare uten henger. Ingen data: ukjent.
+  const pv = { bruksklasse: [], hoyde: [], regulering: [], planVeier: [{ klasse: 4, navn: 'Lia skogsbilvei', linjer: [del(0, 1)] }] };
+  assert.ok(T.analyser(linje, pv, T.KJORETOY.vogntog24).ikkeM > 9000); assert.ok(T.analyser(linje, pv, T.KJORETOY.bil).ok);
+  assert.ok(T.analyser(linje, { bruksklasse: [], hoyde: [], regulering: [], planVeier: [] }, T.KJORETOY.bil).ukjentM > 9000);
+  assert.deepEqual(T.lass(420, T.KJORETOY.vogntog24, 50000), { lass: 10, km: 1000 });
+  assert.ok(T.TERMINALER.lierstranda.merk.includes('2027'));
 });
 
 test('Feltoppdrag: skogeier sender oppdrag til entreprenør i nettverket, entreprenøren rapporterer, rapporten tas inn i planen', async () => {

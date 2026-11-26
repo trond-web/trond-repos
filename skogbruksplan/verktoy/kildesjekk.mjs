@@ -68,9 +68,12 @@ const ENDEPUNKTER = [
   ['Miljødirektoratet naturtyper', 'https://kart.miljodirektoratet.no/arcgis/rest/services/naturtyper_nin/MapServer?f=json'], ['Kartverket topo', 'https://cache.kartverket.no/v1/wmts/1.0.0/WMTSCapabilities.xml'],
   ['Geonorge matrikkel/eiendom', 'https://ws.geonorge.no/kommuneinfo/v1/kommuner'], ['NVDB', 'https://nvdbapiles.atlas.vegvesen.no/vegnett/api/v4/veglenkesekvenser/segmentert?kommune=3401&antall=1'], ['MET værvarsel', 'https://api.met.no/weatherapi/locationforecast/2.0/status'],
   ['SSB API', 'https://data.ssb.no/api/v0/no/table/03794'],
+  ['Valhalla lastebilruting (tømmertransport)', 'https://valhalla1.openstreetmap.de/status'],
+  ['NVDB bruksklasse tømmertransport (900)', 'https://nvdbapiles.atlas.vegvesen.no/vegobjekttyper/900'],
 ];
 // Kan ikke hentes automatisk (blokkerer roboter) – må sjekkes for hånd.
 export const MANUELT = [
+  ['Tømmerterminaler i Veier › Tømmertransport (Lierstranda avvikles etter planen innen utgangen av 2027 – bytt terminal i js/transport.js når den stenger)', 'https://www.drammenhavn.no/'],
   ['Rundskriv M-1/2021 Konsesjon, priskontroll og boplikt', 'https://www.regjeringen.no/no/dokumenter/konsesjon-priskontroll-og-boplikt/id2849398/'],
   ['Jordbruksavtalen (nye satser etter jordbruksoppgjøret i mai/juni)', 'https://www.regjeringen.no/no/tema/mat-fiske-og-landbruk/jordbruk/jordbruksavtalen/id2350633/'],
   ['Statsforvalteren: NMSK-satser og retningslinjer i ditt fylke (ungskogpleie, planting, veibygging)', 'https://www.statsforvalteren.no/'],
