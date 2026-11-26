@@ -1700,3 +1700,23 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .mt-rad-avvik td { background: color-mix(in srgb, var(--critical, #d03b3b) 12%, transparent); }
 @media (max-width: 640px) { .mt-krav { grid-template-columns: 64px 1fr; } .mt-krav > .knapp { grid-column: 2; justify-self: start; } }
 .mt-krav .pille { text-align: center; }
+
+/* Oppdrag › 🔥 Samråd (skogbrannfare) */
+.sr-banner { display: grid; gap: 4px; margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border-left: 4px solid var(--farge); font-size: 13px; }
+.sr-banner .knapp { justify-self: start; margin-top: 4px; }
+.sr-status { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border-left: 4px solid var(--farge); margin: 8px 0; }
+.sr-status > i { width: 26px; height: 26px; border-radius: 50%; background: var(--farge); color: #fff; display: grid; place-items: center; font-style: normal; font-weight: 700; }
+.sr-dager { display: flex; gap: 2px; margin: 0 0 12px; }
+.sr-dager span { flex: 1; min-width: 0; height: 26px; border-radius: 4px; display: grid; place-items: end center; }
+.sr-dager small { font-size: 9px; color: #fff; text-shadow: 0 0 2px rgba(0,0,0,.6); padding-bottom: 2px; }
+.sr-skjema { border-top: 1px solid var(--border); padding-top: 8px; }
+.sr-hode { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.sr-risiko { display: grid; gap: 6px; }
+.sr-risiko > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: center; }
+.sr-deltakere { display: grid; gap: 6px; }
+.sr-deltaker { display: grid; grid-template-columns: 1.3fr 1fr 1fr .9fr auto auto; gap: 6px; align-items: center; }
+.sr-deltaker input, .sr-deltaker select, .sr-risiko input { min-width: 0; }
+.sr-ok { color: var(--good, #0ca30c); font-size: 12px; white-space: nowrap; }
+.sr-mangler { margin: 12px 0; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, #c77800 10%, transparent); font-size: 13px; }
+.sr-mangler ul { margin: 4px 0 0 18px; padding: 0; }
+@media (max-width: 720px) { .sr-risiko > div, .sr-deltaker { grid-template-columns: 1fr; } }

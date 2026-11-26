@@ -12,6 +12,7 @@ import { misFigurer, misKartlag } from './miljokart.js';
 import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import * as FO from './feltoppdrag.js';
 import { oppdragHensyn as markaOppdragHensyn } from './marka.js';
+import * as SR from './samrad.js';
 import { VERSJON } from './versjon.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -172,6 +173,9 @@ function visOppdrag() {
     ${o.merknad ? `<h3>Instruks fra skogeieren</h3><p class="ent-instruks">${esc(o.merknad).replace(/\n/g, '<br>')}</p>` : ''}
     ${felt ? `<h3>Oppdraget</h3><dl class="ent-dl">${felt}</dl>` : ''}
     ${(() => { const mh = markaOppdragHensyn(S(), [...new Set(linjer(S(), o).map((x) => x.bestand.id))]); return mh ? `<p class="ent-instruks">🌲 ${esc(mh.tekst)}</p>` : ''; })()}
+    ${(() => { const st = SR.status(o, o.samradFare?.dager || []); if (st.id === 'ikke-relevant') return ''; const g = st.g?.skjema;
+      return `<h3>🔥 Skogbrannfare og samråd</h3><p class="${['mangler', 'utlopt', 'stans'].includes(st.id) ? 'ent-varsel' : 'hint'}">${esc(st.k.tekst)}${st.id === 'mangler' ? ' Samrådsskjemaet er ikke fullført – ta kontakt med oppdragsgiveren før drift.' : st.id === 'utlopt' ? ' Tiden for nytt samråd er passert.' : st.id === 'stans' ? ' Siste samråd besluttet å stanse driften.' : ''}</p>
+        ${g ? `<p class="hint">Samråd ${esc(datoNb(g.dato))} kl. ${esc(g.tid)}: ${esc(SR.BESLUTNING[g.beslutning] || '')}${g.tidsrom ? ` (${esc(g.tidsrom)})` : ''}.</p><button type="button" class="knapp" data-samrad-pdf="${esc(g.id)}">⬇ Samrådsskjema (PDF)</button>` : ''}`; })()}
     <h3>Miljøsjekk</h3><p class="hint">Skogeieren har bekreftet ${mp.filter((p) => p.web).length} av ${mp.length} punkter på web. Du har sjekket ${mp.filter((p) => p.felt).length} i felt.</p>
     ${aktiv.rapport.avvik.length ? `<p class="hint">⚠️ ${aktiv.rapport.avvik.length} avvik registrert.</p>` : ''}
     ${aktiv.d.status === 'trukket' ? '<p class="ent-varsel">Skogeieren har trukket tilbake oppdraget.</p>' : ''}
@@ -296,6 +300,7 @@ async function lastNedKart() {
 $('#arkInnhold').addEventListener('click', async (e) => {
   const t = e.target;
   const ap = t.closest('[data-apne]'); if (ap) { await apneOppdrag(ap.dataset.apne); return; }
+  const sp = t.closest('[data-samrad-pdf]'); if (sp) { const o = O(); const sk = (o.samrad || []).find((x) => x.id === sp.dataset.samradPdf); if (sk) { const url = URL.createObjectURL(new Blob([SR.pdf(S(), o, sk, { signatur: `SkogIQ Entreprenør ${VERSJON}` })], { type: 'application/pdf' })); const a = document.createElement('a'); a.href = url; a.download = SR.filnavn(S(), o, sk); document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1500); } return; }
   const g = t.closest('[data-gaa]')?.dataset.gaa;
   if (g === 'liste') { visListe(); return; } if (g === 'synk') { aktiv.ulagret = true; synk(); return; } if (g === 'offline') { lastNedKart(); return; }
   if (g === 'nytt-avvik') { nyttAvvik = nyAvvikUtkast(); settVisning('avvik'); return; }

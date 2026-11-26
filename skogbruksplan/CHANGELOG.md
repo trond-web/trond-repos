@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.27.0 – 🔥 Samrådsskjema ved skogbrannfare i hogstoppdrag (2026-11-26)
+
+*Nytt.* Hogst- og tynningsoppdrag har fått fanen «🔥 Samråd». Skogbrannfaren fra Meteorologisk institutt hentes for oppdragets bestand. Ved stor fare er samråd mellom entreprenør og tømmerkjøper eller oppdragsgiver obligatorisk, og ved ekstra stor fare skal brannvesenet forespørres. Skjemaet fylles ut digitalt, og mye hentes fra planen. Det dekker risikovurdering, utstyr, sikringstiltak, beslutning, tid for nytt samråd og deltakere. Entreprenør og oppdragsgiver bekrefter skjemaet digitalt. Det ferdige skjemaet lastes ned som PDF eller sendes rett til brannvesenet. Du får varsel når samråd mangler eller tiden for nytt samråd er passert, også når oppdraget settes i gang. Personvernerklæringen er oppdatert til versjon 1.19, fordi skjemaet lagrer navn og telefon til deltakerne. Du trenger ikke godta på nytt.
+
 ## 2.26.1 – 🌲 Diskret markagrense i kartet (2026-11-26)
 
 *Forbedret.* Markagrensa vises nå som en tynn, stiplet grønn linje uten fyllfarge, slik at bestandene og kartet under er lette å se.

@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.26.1** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.27.0** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -621,6 +621,28 @@ Modulen dekker dokumentasjonskravene i KSL-standarden fra Stiftelsen Norsk Mat f
 - **Begrensninger:**
   - Husdyr-, potet- og hagebrukskapitlene er ikke med.
   - Egenrevisjonen må fortsatt registreres på ksl.no.
+
+## 🔥 Samråd ved skogbrannfare (hogst- og tynningsoppdrag, `js/samrad.js`, `js/samrad-ui.js`, `js/pdf-enkel.js`)
+
+Hogst- og tynningsoppdrag (sluttavvirkning, tynning og lukket hogst) har en egen fane, «🔥 Samråd». Den følger «Retningslinjer for skogsdrift og skjøtsel i skogbrannsesongen» (Skogbrand m.fl., april 2026).
+
+- **Når er samråd obligatorisk?** Skogbrannfareindeksen (FWI) fra Meteorologisk institutt hentes for oppdragets bestand og vises dag for dag. Perioden er oppdragsperioden, eller de neste 13 dagene hvis den ikke er satt.
+  - **Stor fare (rød):** samråd mellom entreprenør/maskinfører og tømmerkjøper/oppdragsgiver er obligatorisk.
+  - **Ekstra stor fare (mørkerød):** brannvesenet skal i tillegg forespørres om å delta eller få kopi. Skjemaet må da også ha adkomst, mobildekning og kontaktnumre, vanntilgang, og utstyr og personer som kan bidra ved brann.
+- **Varsler:** Oversikten i oppdraget viser et varsel når samråd mangler, når tiden for nytt samråd er passert, eller når siste samråd stanset driften. Det samme gjelder når oppdraget settes til «Pågår».
+- **Skjemaet fylles ut digitalt.** Mye hentes fra planen: eiendom, bestand, nøyaktig posisjon, faren i dag og høyeste fare i perioden, mobildekning og vannkilder fra Skogbrand-fanen, og entreprenør og tømmerkjøper fra oppdraget. Innholdet er:
+  - risikovurdering i seks punkter
+  - utstyr (beredskapspakke, kurs, flyttbar vannkilde)
+  - sikringstiltak
+  - beslutning (normal, med tiltak, bare i avtalte tidsrom, stans)
+  - kostnadsfordeling og tid for nytt samråd
+  - brannvesenet
+  - deltakere
+  Punktene fra MEFs samrådsskjema er også med.
+- **Bekreftelse:** Entreprenør og tømmerkjøper/oppdragsgiver må bekrefte digitalt. Endres skjemaet etterpå, nullstilles bekreftelsene.
+- **Nytt samråd** bygger på det forrige. Tidligere samråd ligger i historikken med egen PDF.
+- **PDF:** Skjemaet lastes ned som en ekte PDF (`js/pdf-enkel.js`, uten avhengigheter). «Send til brannvesenet» deler PDF-en på mobil. På PC lastes den ned, og det åpnes en ferdig e-post til brannvesenet. Dato for kopien registreres.
+- **SkogIQ Entreprenør:** viser status for samrådet og har PDF-en. Bruk «Send oppdatert plan» etter samrådet.
 
 ## Oppdrag (Tiltak → Oppdrag)
 

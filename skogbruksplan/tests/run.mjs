@@ -4279,7 +4279,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
   '1.8': '1b41be6f78760f90',
-  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976', '1.16': 'a85bfccb66c6fc14', '1.17': 'db0ca4fb428144e9', '1.18': '118453b512546180',
+  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976', '1.16': 'a85bfccb66c6fc14', '1.17': 'db0ca4fb428144e9', '1.18': '118453b512546180', '1.19': '6e094b29259ad9e0',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
@@ -4898,4 +4898,44 @@ test('Oslomarka: markagrensa fra WFS, andel av eiendom og bestand, varsler for v
   assert.ok(gl.some((l) => l.some(([x]) => Math.abs(x - 10.1) < 1e-9)), 'grensa ved 10.1 er med');
   const ute = MK.analyser({ boks: [11, 61, 11.1, 61.1], polygoner: [] }, sq(11.02, 61.02, 0.01), { punktIGeometri, bestand: [] });
   assert.equal(ute.iMarka, false); assert.equal(MK.vurdering(ute).niva, 'ok'); assert.equal(MK.oppdragHensyn({ marka: ute }, ['x']), null);
+});
+
+test('Samråd ved skogbrannfare: obligatorisk ved stor fare, skjema, bekreftelse, nytt samråd og PDF', async () => {
+  const SR = await import('../js/samrad.js'); const { lagPdf, rensTekst } = await import('../js/pdf-enkel.js');
+  const sq = (x, y, d) => ({ type: 'Polygon', coordinates: [[[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]]] });
+  const S = { eiendom: { navn: 'Øvre Åsen', gnrbnr: '12/3', kommune: 'Løten' }, bestand: [{ id: 'b1', nr: '7', geometri: sq(11.3, 60.8, 0.01), tiltak: [{ id: 't1', type: 'sluttavvirkning', aar: 2027 }] }],
+    skogbrand: { beredskap: { kontakt: 'Kari Skogeier', telefon: '900 00 000', mobil: 'God dekning' }, vannkilder: [{ navn: 'Svarttjern', geometri: { type: 'Point', coordinates: [11.31, 60.81] } }] } };
+  const o = { id: 'o1', nr: 'O-2027-1', type: 'sluttavvirkning', status: 'bestilt', periode: { fra: '2027-06-10', til: '2027-06-20' }, linjer: [{ bestandId: 'b1', tiltakId: 't1' }], utforer: { navn: 'Skogdrift AS', kontakt: 'Per Maskin', telefon: '911 11 111' }, felt: { kjoper: 'Glommen Mjøsen Skog' } };
+  const dag = (dato, fwi) => ({ dato, fwi });
+  const idag = '2027-06-08';
+  assert.equal(SR.krav(o, [dag('2027-06-12', 8)], { idag }).paakrevd, false, 'gul fare: ikke påkrevd');
+  const rod = [dag('2027-06-09', 30), dag('2027-06-12', 25)]; // 09 er før perioden og teller ikke
+  const k = SR.krav(o, rod, { idag }); assert.ok(k.paakrevd && !k.brannvesen); assert.equal(k.fare.maks.dato, '2027-06-12'); assert.match(k.tekst, /obligatorisk/);
+  assert.ok(SR.krav(o, [dag('2027-06-15', 45)], { idag }).brannvesen, 'ekstra stor fare: brannvesenet');
+  assert.equal(SR.krav({ ...o, type: 'ungskogpleie' }, rod, { idag }).gjelder, false, 'bare hogst og tynning');
+  assert.equal(SR.krav(o, [], { idag }).ukjent, true);
+  assert.equal(SR.status(o, rod, { idag, naa: new Date('2027-06-08T10:00') }).id, 'mangler');
+  // Nytt skjema er fylt ut fra planen og oppdraget
+  let n = 0; const sk = SR.nytt(S, o, { nyId: (p) => `${p}${++n}`, dager: rod, idag, naa: new Date('2027-06-08T10:00') });
+  assert.equal(sk.sted.bestand, '7'); assert.match(sk.sted.posisjon, /60\.80\d+ N, 11\.30\d+ Ø/); assert.match(sk.risiko.vann.merknad, /Svarttjern/); assert.equal(sk.risiko.mobil.merknad, 'God dekning');
+  assert.equal(sk.deltakere[0].navn, 'Per Maskin'); assert.equal(sk.deltakere[1].firma, 'Glommen Mjøsen Skog'); assert.equal(sk.fare.maks.nivaa, 'rod');
+  assert.ok(SR.mangler(sk).length > 3);
+  for (const r of SR.RISIKO) sk.risiko[r.id].ok = true;
+  Object.assign(sk, { beslutning: 'begrenset', tidsrom: 'kl. 03–11', nyttSamrad: '2027-06-09T08:00' }); sk.utstyr.pakke = true;
+  sk.deltakere[1].navn = 'Ola Innkjøper'; sk.deltakere[0].bekreftet = '2027-06-08T10:05:00Z';
+  assert.deepEqual(SR.mangler(sk), ['bekreftelse fra tømmerkjøper / oppdragsgiver']);
+  sk.deltakere[1].bekreftet = '2027-06-08T10:06:00Z'; assert.deepEqual(SR.mangler(sk), []);
+  assert.ok(SR.mangler(sk, { brannvesen: true }).some((x) => /brannvesenet er forespurt/.test(x)), 'ekstra stor fare krever mer');
+  o.samrad = [sk];
+  assert.equal(SR.status(o, rod, { idag, naa: new Date('2027-06-08T12:00') }).id, 'ok');
+  assert.equal(SR.status(o, rod, { idag, naa: new Date('2027-06-09T09:00') }).id, 'utlopt', 'tid for nytt samråd er passert');
+  o.samrad = [{ ...sk, beslutning: 'stans', nyttSamrad: '' }]; assert.equal(SR.status(o, rod, { idag, naa: new Date('2027-06-08T12:00') }).id, 'stans');
+  // PDF
+  const pdf = SR.pdf(S, o, sk); const tekst = String.fromCharCode(...pdf);
+  assert.ok(tekst.startsWith('%PDF-1.4') && tekst.trimEnd().endsWith('%%EOF'));
+  assert.match(tekst, /\/Type \/Page /); assert.match(tekst, /Samr\\345dsskjema/, 'å i WinAnsi');
+  const xref = Number(tekst.match(/startxref\n(\d+)/)[1]); assert.equal(tekst.slice(xref, xref + 4), 'xref', 'xref-offset stemmer');
+  assert.equal(SR.filnavn(S, o, sk), 'samradsskjema-O-2027-1-2027-06-08.pdf');
+  assert.equal(rensTekst('🔥 Brann ➜ x'), 'Brann -> x');
+  const lang = lagPdf(Array.from({ length: 120 }, (_, i) => ({ type: 'kv', etikett: `Rad ${i}`, verdi: 'x' }))); assert.ok((String.fromCharCode(...lang).match(/\/Type \/Page /g) || []).length >= 3, 'sideskift');
 });
