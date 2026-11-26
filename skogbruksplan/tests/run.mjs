@@ -4893,6 +4893,9 @@ test('Oslomarka: markagrensa fra WFS, andel av eiendom og bestand, varsler for v
   assert.match(MK.transportVarsel(S, [10.09, 60.03]).tekst, /§ 10 bokstav c/); assert.equal(MK.transportVarsel(S, [10.11, 60.03]), null);
   assert.equal(MK.oppdragHensyn(S, ['inne', 'ute']).antall, 1); assert.equal(MK.oppdragHensyn(S, ['ute']), null);
   bestand.push({ id: 'ny', geometri: sq(10.09, 60.05, 0.004) }); assert.ok(MK.oppdaterBestand(m, bestand, punktIGeometri)); assert.equal(m.bestand.ny, 1);
+  const gl = MK.grenselinjer(m); assert.ok(gl.length >= 1, 'grenselinjer');
+  for (const l of gl) for (let i = 1; i < l.length; i++) { const [a, b] = [l[i - 1], l[i]]; assert.ok(!(a[0] === b[0] && (a[0] === m.boks[0] || a[0] === m.boks[2])) && !(a[1] === b[1] && (a[1] === m.boks[1] || a[1] === m.boks[3])), 'ingen linjer langs kanten av utsnittet'); }
+  assert.ok(gl.some((l) => l.some(([x]) => Math.abs(x - 10.1) < 1e-9)), 'grensa ved 10.1 er med');
   const ute = MK.analyser({ boks: [11, 61, 11.1, 61.1], polygoner: [] }, sq(11.02, 61.02, 0.01), { punktIGeometri, bestand: [] });
   assert.equal(ute.iMarka, false); assert.equal(MK.vurdering(ute).niva, 'ok'); assert.equal(MK.oppdragHensyn({ marka: ute }, ['x']), null);
 });

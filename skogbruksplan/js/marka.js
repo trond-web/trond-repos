@@ -6,7 +6,7 @@
 
 export const WFS = 'https://wfs.geonorge.no/skwms1/wfs.markagrensen';
 export const WMS = 'https://wms.geonorge.no/skwms1/wms.markagrensen';
-export const WMS_LAG = 'lovVirkeonraade,lovVirkeonraadeGrense';
+export const WMS_LAG = 'lovVirkeonraadeGrense'; // bare grenselinja – fyllfargen tar for mye oppmerksomhet i kartet
 const LOV = 'https://lovdata.no/dokument/NL/lov/2009-06-05-35';
 export const HJEMMEL = {
   lov: { navn: 'Markaloven', url: LOV },
@@ -71,6 +71,25 @@ function iRing([x, y], r) {
   }
   return inne;
 }
+// Grenselinjene til visning i kartet: ringene delt opp i linjer, uten bitene som bare er kanten av utsnittet.
+export function grenselinjer(m) {
+  if (!m?.polygoner || !m.boks) return [];
+  const [x0, y0, x1, y1] = m.boks; const e = 1e-6;
+  const paaKant = (a, b) => (Math.abs(a[0] - x0) < e && Math.abs(b[0] - x0) < e) || (Math.abs(a[0] - x1) < e && Math.abs(b[0] - x1) < e)
+    || (Math.abs(a[1] - y0) < e && Math.abs(b[1] - y0) < e) || (Math.abs(a[1] - y1) < e && Math.abs(b[1] - y1) < e);
+  const ut = [];
+  for (const rs of m.polygoner) for (const r of rs) {
+    let linje = [];
+    for (let i = 0; i < r.length; i++) {
+      const a = r[i]; const b = r[(i + 1) % r.length];
+      if (paaKant(a, b)) { if (linje.length > 1) ut.push(linje); linje = []; continue; }
+      if (!linje.length) linje.push(a); linje.push(b);
+    }
+    if (linje.length > 1) ut.push(linje);
+  }
+  return ut;
+}
+
 // Ligger punktet [lon, lat] innenfor markagrensa? null = ukjent (ikke hentet, eller utenfor området som er lagret).
 export function punktIMarka(m, pt) {
   if (!m?.polygoner || !pt) return null;

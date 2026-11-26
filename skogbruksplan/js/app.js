@@ -201,7 +201,8 @@ function initKart() {
   const planWms = (k, navn) => L.tileLayer.wms(PLAN_KART[k].url, { layers: PLAN_KART[k].lag, format: 'image/png', transparent: true, opacity: 0.55, pane: 'analysePane', maxZoom: 20, attribution: `${navn} © kommunene / DiBK` });
   kpLag = planWms('kp', 'Kommuneplan'); rpLag = planWms('rp', 'Reguleringsplaner');
   // Markagrensa (markaloven) – Kartverket / Klima- og miljødepartementet.
-  markaLag = L.tileLayer.wms(MARKA.WMS, { layers: MARKA.WMS_LAG, format: 'image/png', transparent: true, opacity: 0.85, pane: 'analysePane', maxZoom: 20, attribution: 'Markagrensa © Kartverket / KLD' });
+  // Tegnes som en tynn stiplet linje uten fyll fra grensa i planen (S.marka). Uten den: bare grenselinja fra Kartverkets WMS.
+  markaLag = L.featureGroup();
   // Eiendomsgrenser med gårds- og bruksnummer (Kartverket matrikkel, synlig fra ca. 1:40 000).
   naboLag = L.featureGroup();
   // NiN-naturtyper og arter av nasjonal forvaltningsinteresse (Miljødirektoratet). Klikk i kartet viser detaljer.
@@ -251,6 +252,7 @@ function initKart() {
   kart.on('popupopen', () => document.body.classList.add('popup-apen')); kart.on('popupclose', () => document.body.classList.remove('popup-apen'));
   kart.on('overlayadd overlayremove', () => { oppdaterEtiketter(); visMisMerker(); tegnLegend(); });
   kart.on('overlayadd overlayremove', (e) => { if (e.layer === artsfunnLag) kart.attributionControl[e.type === 'overlayadd' ? 'addAttribution' : 'removeAttribution']('Artsfunn © Artsdatabanken (CC BY 4.0)'); });
+  kart.on('overlayadd', (e) => { if (e.layer === markaLag) tegnMarkaLag(); });
   kart.on('overlayadd', (e) => { if (e.layer === artsfunnLag) { if (S.artsfunn) tegnArtsfunn(); else hentArtsfunnForPlan(); } if (e.layer === bratthetLag) visBratthet(); if (e.layer === fuktLag) beregnFukt(); if ((e.layer === kpLag || e.layer === rpLag) && !S.arealplan) hentPlaner({ stille: true }); if (e.layer === naboLag) visNaboer(); });
   // På flyfoto tegnes bestandene som i skogbruksplankart: gule grenser og hvit tekst.
   kart.on('baselayerchange', (e) => {
@@ -1719,13 +1721,21 @@ async function hentMarka({ stille = false } = {}) {
     const g = await MARKA.hent(geom);
     if (plan !== S) return;
     S.marka = MARKA.analyser(g, geom, { punktIGeometri, bestand: S.bestand });
+    if (kart.hasLayer(markaLag)) tegnMarkaLag();
     endret({ kart: false }); if (valgtId) visDetalj();
     if (S.marka.iMarka) melding(`🌲 ${MARKA.vurdering(S.marka).tittel}. Se Oversikt › Oslomarka.`, 6000);
   } catch (e) { markaFeil = e.message || 'Klarte ikke å hente markagrensa.'; if (!stille) melding(markaFeil, 6000); }
   finally { markaHenter = false; tegnMarka(); }
 }
+function tegnMarkaLag() {
+  if (!markaLag) return; markaLag.clearLayers();
+  const linjer = MARKA.grenselinjer(S.marka);
+  if (linjer.length) markaLag.addLayer(L.polyline(linjer.map((l) => l.map(([x, y]) => [y, x])), { color: '#2f7d32', weight: 2, opacity: 0.75, dashArray: '8 6', interactive: false, pane: 'analysePane', attribution: 'Markagrensa © Kartverket / KLD' }));
+  else if (!S.marka) markaLag.addLayer(L.tileLayer.wms(MARKA.WMS, { layers: MARKA.WMS_LAG, format: 'image/png', transparent: true, opacity: 0.5, pane: 'analysePane', maxZoom: 20, attribution: 'Markagrensa © Kartverket / KLD' }));
+}
 function tegnMarka() {
   const kort = $('#markaKort'); const el = $('#marka'); if (!kort || !el) return;
+  if (kart?.hasLayer(markaLag)) tegnMarkaLag();
   const geom = eiendomGeom(); const naer = geom && nerMarka(geom);
   if (!S.marka && naer && !markaHenter && markaForsokFor !== S) { markaFeil = null; queueMicrotask(() => hentMarka({ stille: true })); }
   kort.hidden = !naer && !S.marka?.iMarka;
@@ -1740,7 +1750,7 @@ function tegnMarka() {
 }
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-marka-hent]')) { e.preventDefault(); delete S.marka; markaFeil = null; hentMarka(); }
-  if (e.target.closest('[data-marka-kart]')) { e.preventDefault(); if (!kart.hasLayer(markaLag)) markaLag.addTo(kart); zoomTilAlle(); melding('Markagrensa vises i kartet (grønt område er innenfor).', 5000); }
+  if (e.target.closest('[data-marka-kart]')) { e.preventDefault(); if (!kart.hasLayer(markaLag)) markaLag.addTo(kart); zoomTilAlle(); melding('Markagrensa vises som en stiplet grønn linje i kartet.', 5000); }
 });
 // Klikk i kartet med plankart på: formål, hensynssoner og planer i punktet.
 async function planPunktHtml(ll) {

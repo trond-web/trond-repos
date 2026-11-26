@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.26.1 – 🌲 Diskret markagrense i kartet (2026-11-26)
+
+*Forbedret.* Markagrensa vises nå som en tynn, stiplet grønn linje uten fyllfarge, slik at bestandene og kartet under er lette å se.
+
 ## 2.26.0 – 🌲 Oslomarka og markagrensa (2026-11-26)
 
 *Nytt.* Ligger eiendommen i området rundt Oslo, sjekkes markagrensa automatisk mot Kartverkets kartdata. Under Oversikt ser du hvor stor del av eiendommen og hvilke bestand som ligger i Marka, og hva markaloven betyr for deg. Hogst og skogkultur er tillatt. Bygging er forbudt, også veier, med mindre en kommunal plan åpner for det eller kommunen gir dispensasjon. Motorferdsel følger markaloven, men transport i skogbruket er tillatt. Det skal også tas hensyn til friluftslivet. Markagrensa er et eget kartlag. Du får varsel når en planlagt vei går gjennom Marka, informasjon når velteplassen for tømmertransport ligger i Marka, og hensynene følger med i oppdragene til entreprenøren.
