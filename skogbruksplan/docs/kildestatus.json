@@ -1,5 +1,5 @@
 {
- "tid": "2026-11-25T05:55:19.111Z",
+ "tid": "2026-11-26T15:40:29.387Z",
  "kilder": {
   "lov:2005-05-27-31": {
    "id": "lov:2005-05-27-31",
@@ -1422,6 +1422,24 @@
    "gruppe": "Datakilder",
    "navn": "SSB API",
    "url": "https://data.ssb.no/api/v0/no/table/03794",
+   "ok": true,
+   "status": 200,
+   "fingeravtrykk": "ok"
+  },
+  "api:Valhalla lastebilruting (tømmertransport)": {
+   "id": "api:Valhalla lastebilruting (tømmertransport)",
+   "gruppe": "Datakilder",
+   "navn": "Valhalla lastebilruting (tømmertransport)",
+   "url": "https://valhalla1.openstreetmap.de/status",
+   "ok": true,
+   "status": 200,
+   "fingeravtrykk": "ok"
+  },
+  "api:NVDB bruksklasse tømmertransport (900)": {
+   "id": "api:NVDB bruksklasse tømmertransport (900)",
+   "gruppe": "Datakilder",
+   "navn": "NVDB bruksklasse tømmertransport (900)",
+   "url": "https://nvdbapiles.atlas.vegvesen.no/vegobjekttyper/900",
    "ok": true,
    "status": 200,
    "fingeravtrykk": "ok"

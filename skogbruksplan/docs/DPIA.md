@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Utkast til godkjenning hos behandlingsansvarlig |
 | **Dato** | 2026-11-11 |
-| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.16 (`js/personvern.js`) |
+| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.17 (`js/personvern.js`) |
 | **Behandlingsansvarlig** | Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no. Organisasjonsnummer legges inn når foretak er etablert |
 | **Neste gjennomgang** | Ved endringene i kapittel 8, og senest 2027-11-11 |
 
@@ -74,7 +74,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 - Nettleseren snakker med SkogIQ-serveren (HTTPS, Bearer-token eller HttpOnly-kapsel).
 - Serveren lagrer data i JSON-filer på et Railway-volum.
 - Nettleseren henter kart og fagdata direkte fra offentlige kilder.
-- Valgfrie integrasjoner: Anthropic (fra nettleseren), nettleserens talegjenkjenning (Google, Apple eller Meta, fra nettleseren), John Deere (via serveren) og Resend (e-post for glemt passord, via serveren).
+- Valgfrie integrasjoner: Anthropic (fra nettleseren), nettleserens talegjenkjenning (Google, Apple eller Meta, fra nettleseren), John Deere (via serveren), Resend (e-post for glemt passord, via serveren) og Valhalla hos FOSSGIS e.V. i Tyskland (kjørerute for tømmerbil, fra nettleseren, bare koordinatene til velteplass og terminal; erklæring 1.17).
 - **Sikkerhetskopi** (`backup.js`): hele datamappen pakkes, komprimeres og krypteres (AES-256-GCM) én gang i døgnet. Kopiene ligger på volumet (7 stykker) og, når det er satt opp, i S3-kompatibel lagring i EU utenfor Railway (30 stykker). Nøkkelen (`BACKUP_NOKKEL`) oppbevares utenfor Railway, og kopier sendes aldri ut ukryptert.
 
 ## 3. Nødvendighet og proporsjonalitet
@@ -115,7 +115,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | R4 | Kartlegging av skogeiere, for eksempel innkjøpere som finner hvem som har hogstmoden skog (`nettverk`, `tommer`) | Skogeiere vises ikke i katalogen; aktører når bare skogeiere som har bedt om kobling eller som de kjenner e-posten til; skogeieren styrer all deling | L | M | **Lav**. Se trigger 8.2. |
 | R5 | Trakassering eller spam i chat (`nettverk`) | Den andre parten må godta koblingen; høyst 30 meldinger/min og 2000 tegn; koblingen kan avsluttes; administrator kan sperre kontoer | L | M | **Lav**. Mangler «Rapporter»-knapp (T5). |
 | R6 | Tap av data eller manglende tilgjengelighet (`sky`) | Versjonshistorikk (10), papirkurv (30 dager), lokal kopi på enhetene, eksport av planer; daglig kryptert sikkerhetskopi på volumet og utenfor Railway (`backup.js`), gjenoppretting testet med `verktoy/gjenopprett-backup.mjs`; alle mellomlagre lagres på volumet (ikke bare i minnet) | L | M | **Lav** når lagring utenfor Railway og `BACKUP_NOKKEL` er satt. **Middels** til da (T2). Mistes nøkkelen, kan kopiene ikke leses, så den må oppbevares sikkert utenfor Railway. |
-| R7 | Overføring til tredjeland og leverandørtilgang (alle) | Lagring i EU (Amsterdam); Anthropic bare med brukerens egen nøkkel; e-post bare når slått på | L | M | **Lav–middels** til databehandleravtaler er inngått (T3). Google Fonts og CDN-er ser IP-adressen (T7). |
+| R7 | Overføring til tredjeland og leverandørtilgang (alle) | Lagring i EU (Amsterdam); Anthropic bare med brukerens egen nøkkel; e-post bare når slått på | L | M | **Lav–middels** til databehandleravtaler er inngått (T3). Google Fonts og CDN-er ser IP-adressen (T7). Valhalla (FOSSGIS, EU) får bare koordinatene til velteplass og terminal når brukeren beregner en tømmerrute. |
 | R8 | Plandata til KI-leverandør (`ai`) | Skjer bare når brukeren stiller et spørsmål, med egen nøkkel og etter Anthropics vilkår; opplyst i erklæringen | L | L | **Lav** |
 | R9 | Overvåking av ansatte via GPS og sporlogg i Felt (`sky`, `lokal`) | Sporlogg startes og stoppes av brukeren, knyttes til ett tiltak, og er ingen kontinuerlig sporing | L | M | **Lav**. Arbeidsgivere som bruker Felt på ansatte, er selv ansvarlige og må informere (T8). |
 | R10 | Kobling av maskindata (HPR, John Deere) til fører (`jd`) | Importen bruker ikke førerfeltene; John Deere-nøkler bare på serveren | L | M | **Lav**. Endres dette, kreves ny DPIA (8.1). |

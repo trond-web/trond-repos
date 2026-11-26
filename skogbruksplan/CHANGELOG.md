@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.24.0 – 🚛 Tømmertransport til terminal – uten blemmer (2026-11-26)
+
+*Nytt.* Under Veier › Tømmertransport legger du inn velteplass eller hentested i kartet. SkogIQ beregner kjøreruten for tømmerbilen til Lierstranda tømmerterminal (eller en annen leveringsplass) og kontrollerer hele ruten mot åpne data fra NVDB: bruksklasse for tømmertransport (totalvekt og vogntoglengde), vinterbruksklasse og telerestriksjoner som gjelder i dag, høydebegrensninger og lastebilforbud. Skogsbilveiene i planen er også med. Der fullt vogntog ikke er tillatt, viser appen om det går uten henger, og hvor hengeren kan kobles på, eller den finner en omkjøring. Du ser også antall lass. Lierstranda avvikles etter planen innen utgangen av 2027, og det står i appen. Personvernerklæringen er oppdatert (versjon 1.17) med rutetjenesten Valhalla (FOSSGIS, EU), og alle må godta vilkårene på nytt.
+
 ## 2.23.0 – 📲 SkogIQ Entreprenør – feltløsning for entreprenører (2026-11-26)
 
 *Nytt.* Skogeieren tildeler oppdraget og gjør miljøsjekken på web, og sender det med hele planen til en entreprenør i Nettverk (Oppdrag › Utfører). Entreprenøren gjennomfører oppdraget i SkogIQ Entreprenør på mobilen. Der registreres framdrift og mengde per bestand, miljøsjekken i felt, avvik med bilde og posisjon, og ferdigmelding med signatur – uten PDF-skjema, og det fungerer uten nett. Rapporten går tilbake til skogeieren, som tar den inn i planen med ett trykk: tiltakene blir utført med dato, areal og mengde. Støtter hogst, tynning og skogkultur. Personvernerklæringen er oppdatert (versjon 1.16), og alle må godta vilkårene på nytt fordi planen nå kan deles med en entreprenør.

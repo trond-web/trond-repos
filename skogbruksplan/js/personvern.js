@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.16', dato: '2026-11-26', kreverGodkjenning: '1.16' };
+export const VILKAR = { versjon: '1.17', dato: '2026-11-26', kreverGodkjenning: '1.17' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -96,6 +96,7 @@ export const TREDJEPARTER = [
   { navn: 'Resend', rolle: 'Sender e-post for glemt passord, når e-post er slått på (databehandler)', land: 'USA, EUs standardavtaler (SCC).' },
   { navn: 'jsDelivr, unpkg og Google Fonts', rolle: 'Programbiblioteker og skrifttyper som nettleseren henter', land: 'Globale nettverk. Ser IP-adressen din.' },
   { navn: 'Anthropic', rolle: 'Spør AI, bare med din egen API-nøkkel', land: 'USA.' },
+  { navn: 'FOSSGIS e.V. (Valhalla, OpenStreetMap)', rolle: 'Beregner kjøreruten for tømmerbilen fra velteplassen til terminalen (Veier › Tømmertransport), bare når du trykker «Beregn». Får koordinatene til velteplassen og terminalen og bilens mål – ikke navn eller annen informasjon om deg.', land: 'Tyskland (EU). Ser IP-adressen din.' },
   { navn: 'Nettleserens talegjenkjenning (Google, Apple, Meta)', rolle: 'Gjør tale til tekst hos SkogIQ-lederen, bare når du har sagt ja og trykker 🎙', land: 'USA. Etter nettleserleverandørens vilkår.' },
   { navn: 'Deere & Company', rolle: 'John Deere Operations Center, bare når du kobler til', land: 'USA.' },
   { navn: 'Offentlige kartkilder', rolle: 'Kartverket, NIBIO, MET, NVE, Miljødirektoratet, Artsdatabanken, Statens vegvesen, Riksantikvaren m.fl.', land: 'Norge.' },

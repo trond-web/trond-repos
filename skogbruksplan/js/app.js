@@ -54,6 +54,7 @@ import { initKlima } from './klima-ui.js';
 import { initTilskudd } from './tilskudd-ui.js';
 import { initEudr } from './eudr-ui.js';
 import { initHprSr16 } from './hpr-sr16-ui.js';
+import { initTransport } from './transport-ui.js';
 import { lagAjourforingUi } from './ajourforing-ui.js';
 import { lagHurtigTilbud } from './tilbud-hurtig.js';
 import { lagMaaling } from './maaling-ui.js';
@@ -686,7 +687,7 @@ function angreDeling() {
 
 // ---------------------------------------------------------------- faner
 let kommuneVisning = null;
-let veiVisning = null; let sokVisning = null; /* 🔎 egenskapssøk (js/sok-ui.js) */ let egneLagVisning = null; // 📌 egne kartlag (GPX/KML/KMZ, js/egne-lag-ui.js)
+let veiVisning = null; let transportVisning = null; /* 🚛 tømmertransport (js/transport-ui.js) */ let sokVisning = null; /* 🔎 egenskapssøk (js/sok-ui.js) */ let egneLagVisning = null; // 📌 egne kartlag (GPX/KML/KMZ, js/egne-lag-ui.js)
 let pefcVisning = null;
 let verdiVisning = null; let takstVisning = null; let skogkarakter = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null; let maaling = null; let nettverk = null;
 let aiVisning = null;
@@ -706,7 +707,7 @@ function visFane(navn) {
   if (skogbrandVisning) { if (navn === 'skogbrand') setTimeout(() => skogbrandVisning.vis(), 0); else skogbrandVisning.skjul(); }
   if (skifteplanVisning) { if (navn === 'skifteplan') setTimeout(() => skifteplanVisning.vis(), 0); else skifteplanVisning.skjul(); }
   veiVisning?.synlig(navn !== 'kommune');
-  if (navn === 'veier') veiVisning?.vis();
+  if (navn === 'veier') { veiVisning?.vis(); transportVisning?.vis(); } else transportVisning?.skjul();
   if (kommuneVisning) { if (navn === 'kommune') kommuneVisning.vis(); else { kommuneVisning.skjul(); tegnLegend(); } }
   $('.kartverktoy').hidden = navn === 'kommune';
   $$('.faner button').forEach((b) => b.classList.toggle('aktiv', b.dataset.fane === navn));
@@ -2299,7 +2300,7 @@ function endret({ kart: kartEndret = false, zoom = false, bare = null } = {}) {
   frResultat = null;
   for (const b of S.bestand) for (const t of b.tiltak || []) if (!t.id) t.id = nyId('t'); // eldre importerte tiltak uten id
   lagreSnart();
-  if (kartEndret) { tegnBestandKart(zoom); tegnKantsone(); if (S.eiendom?.grense && !S.kantsone?.bred) setTimeout(() => sikreKantsone(), 0); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); egneLagVisning?.oppdater(); sokVisning?.tegn(); } else oppdaterStiler();
+  if (kartEndret) { tegnBestandKart(zoom); tegnKantsone(); if (S.eiendom?.grense && !S.kantsone?.bred) setTimeout(() => sikreKantsone(), 0); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); egneLagVisning?.oppdater(); sokVisning?.tegn(); if (!$('#fane-veier').hidden) transportVisning?.oppdater(); } else oppdaterStiler();
   tegnOversikt();
   tegnBestandTabell();
   tegnTiltak();
@@ -2835,6 +2836,7 @@ function kobleHendelser() {
   sokVisning.tegn();
   egneLagVisning = initEgneLag({ L, kart, lagKontroll: () => lagKontroll, hentPlan: () => S, endret, melding, nyId, panel: $('#egneLagPanel') });
   egneLagVisning.oppdater();
+  transportVisning = initTransport({ kart, hentPlan: () => S, endret, melding, settKartKlikk: (fn) => { kartKlikk = fn; }, padding: () => synligPadding(kart, 40) });
   veiVisning = initVeier({
     kart, hentPlan: () => S, endret, melding, nyId,
     settKartKlikk: (fn) => { kartKlikk = fn; },
