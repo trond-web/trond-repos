@@ -11,6 +11,7 @@ import { typeFor, linjer } from './oppdrag.js';
 import { misFigurer, misKartlag } from './miljokart.js';
 import { flisUrler, FLIS_CACHE } from './offline-kart.js';
 import * as FO from './feltoppdrag.js';
+import { oppdragHensyn as markaOppdragHensyn } from './marka.js';
 import { VERSJON } from './versjon.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -170,6 +171,7 @@ function visOppdrag() {
     <div class="ent-framdrift"><div class="ent-bar"><i style="width:${Math.round(f.andel * 100)}%"></i></div><span><b>${f.ferdig} av ${f.totalt}</b> bestand ferdig · ${fmt(f.areal, 1)} av ${fmt(f.planAreal, 1)} daa${FO.MENGDE[o.type] && f.mengde ? ` · ${fmt(f.mengde)} ${FO.MENGDE[o.type].enhet}` : ''}</span></div>
     ${o.merknad ? `<h3>Instruks fra skogeieren</h3><p class="ent-instruks">${esc(o.merknad).replace(/\n/g, '<br>')}</p>` : ''}
     ${felt ? `<h3>Oppdraget</h3><dl class="ent-dl">${felt}</dl>` : ''}
+    ${(() => { const mh = markaOppdragHensyn(S(), [...new Set(linjer(S(), o).map((x) => x.bestand.id))]); return mh ? `<p class="ent-instruks">🌲 ${esc(mh.tekst)}</p>` : ''; })()}
     <h3>Miljøsjekk</h3><p class="hint">Skogeieren har bekreftet ${mp.filter((p) => p.web).length} av ${mp.length} punkter på web. Du har sjekket ${mp.filter((p) => p.felt).length} i felt.</p>
     ${aktiv.rapport.avvik.length ? `<p class="hint">⚠️ ${aktiv.rapport.avvik.length} avvik registrert.</p>` : ''}
     ${aktiv.d.status === 'trukket' ? '<p class="ent-varsel">Skogeieren har trukket tilbake oppdraget.</p>' : ''}

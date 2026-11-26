@@ -6,6 +6,7 @@ import {
   hentTraktorveierOgStier, slaaInnFkb, VEISTIL,
 } from './veier.js';
 import { fmt } from './charts.js';
+import { veiVarsel as markaVeiVarsel } from './marka.js';
 import { synligPadding } from './kartutsnitt.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -134,6 +135,7 @@ export function initVeier({ kart, hentPlan, endret, melding, nyId, settKartKlikk
         <div><b>${esc(TILSTAND[v.tilstand || 'ukjent'].navn)}</b><span>tilstand</span></div>
         ${ny ? `<div><b>${fmt(ny.netto)} kr</b><span>byggekostnad etter ${inn().tilskuddProsent} % tilskudd (brutto ${fmt(ny.brutto)})</span></div>` : ''}
       </div>
+      ${(() => { const mv = markaVeiVarsel(hentPlan(), v); return mv ? `<p class="sf-varsel">🌲 ${esc(mv.tekst)} <a href="${mv.hjemmel.url}" target="_blank" rel="noopener">${esc(mv.hjemmel.navn)}</a></p>` : ''; })()}
       <form class="skjema tre-kol" id="veiSkjema">
         <label>Navn <input name="navn" value="${esc(v.navn)}"></label>
         <label>Vegnummer <input name="vegnummer" value="${esc(v.vegnummer)}" placeholder="f.eks. SV630"></label>

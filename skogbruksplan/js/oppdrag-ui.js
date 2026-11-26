@@ -1,6 +1,7 @@
 // «Oppdrag» i Tiltak-fanen: liste og detalj for oppdrag laget av valgte tiltak, med felt og sjekkliste per
 // oppdragstype, status, utfører, kart og utskrift av arbeidsordre. Logikken ligger i oppdrag.js.
 import { OPPDRAGSTYPER, OPPDRAGSSTATUS, AKTIVE_STATUS, HOGSTOPPDRAG, typeFor, linjer, sammendrag, fjernLinje, slettOppdrag, stegFor } from './oppdrag.js';
+import { oppdragHensyn as markaOppdragHensyn } from './marka.js';
 import { KRAVPUNKTER } from './pefc.js';
 import { svgKart } from './rapporter.js';
 import { VEIKLASSER, VEISTIL } from './veier.js';
@@ -152,6 +153,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
           ${ot.felt.map((f) => feltHtml(f, o.felt?.[f.id])).join('')}
           <label class="hel">Merknad / instruks til utfører <textarea name="merknad" rows="3">${esc(o.merknad)}</textarea></label>
         </form>
+        ${(() => { const mh = markaOppdragHensyn(hentPlan(), [...new Set(ls.map((x) => x.bestand.id))]); return mh ? `<p class="sf-varsel">🌲 ${esc(mh.tekst)} <a href="${mh.hjemmel.url}" target="_blank" rel="noopener">Markaloven</a></p>` : ''; })()}
         <h4 class="undertittel">Tiltak i oppdraget <span class="hint">${ls.length}</span></h4>
         ${ls.map(({ bestand: b, tiltak: t }) => { const ok = okonomi({ ...t, bestand: b }); return `<div class="tiltak-rad${t.status === 'utfort' ? ' status-utfort' : ''}">
           <span class="hint">${t.aar}</span>

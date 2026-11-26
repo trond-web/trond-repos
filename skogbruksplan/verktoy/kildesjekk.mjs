@@ -23,7 +23,7 @@ const LD = (id, navn, type = 'SF') => ({ id: `lov:${id}`, gruppe: 'Lover og fors
 export const LOVER = [
   LD('2005-05-27-31', 'Skogbrukslova', 'NL'), LD('2006-06-07-593', 'Forskrift om berekraftig skogbruk'), LD('2004-02-04-447', 'Forskrift om tilskudd til nærings- og miljøtiltak i skogbruket (NMSK)'),
   LD('2015-05-28-550', 'Forskrift om planlegging og godkjenning av veier for landbruksformål'), LD('2003-11-28-98', 'Konsesjonsloven', 'NL'), LD('1974-06-28-58', 'Odelslova', 'NL'),
-  LD('2009-06-19-100', 'Naturmangfoldloven', 'NL'), LD('2025-01-29-115', 'Forskrift om lagring og bruk av gjødsel'), LD('2015-05-06-455', 'Forskrift om plantevernmidler'),
+  LD('2009-06-05-35', 'Markaloven', 'NL'), LD('2015-09-04-1032', 'Markalovforskriften'),   LD('2009-06-19-100', 'Naturmangfoldloven', 'NL'), LD('2025-01-29-115', 'Forskrift om lagring og bruk av gjødsel'), LD('2015-05-06-455', 'Forskrift om plantevernmidler'),
   LD('2014-12-19-1817', 'Forskrift om produksjonstilskudd og avløsertilskudd'), LD('2009-06-19-97', 'Dyrevelferdsloven', 'NL'), LD('2004-04-22-665', 'Forskrift om hold av storfe'),
   LD('2005-02-18-160', 'Forskrift om velferd for småfe'), LD('2001-12-12-1494', 'Forskrift om hold av høns og kalkun'), LD('2003-02-18-175', 'Forskrift om hold av svin'),
   LD('2005-06-02-505', 'Forskrift om velferd for hest'), LD('1996-12-06-1127', 'Internkontrollforskriften'), LD('2005-10-07-1219', 'Skiltforskriften'),
@@ -70,6 +70,8 @@ const ENDEPUNKTER = [
   ['SSB API', 'https://data.ssb.no/api/v0/no/table/03794'],
   ['Valhalla lastebilruting (tømmertransport)', 'https://valhalla1.openstreetmap.de/status'],
   ['NVDB bruksklasse tømmertransport (900)', 'https://nvdbapiles.atlas.vegvesen.no/vegobjekttyper/900'],
+  ['Markagrensa (Kartverket WFS)', 'https://wfs.geonorge.no/skwms1/wfs.markagrensen?service=WFS&request=GetCapabilities'],
+  ['Markagrensa (Kartverket WMS)', 'https://wms.geonorge.no/skwms1/wms.markagrensen?service=WMS&request=GetCapabilities'],
 ];
 // Kan ikke hentes automatisk (blokkerer roboter) – må sjekkes for hånd.
 export const MANUELT = [
