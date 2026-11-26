@@ -4867,3 +4867,32 @@ test('Mattilsynet: krav ut fra dyreholdet, journaler, Husdyrregisteret, beredska
   const P = { skifteplan: { skifter: [{ id: 's1', vekster: { 2026: { kultur: pot }, 2025: { kultur: gr } } }] } };
   assert.deepEqual(KSL.sikreKsl(P).kapitler, [1, 10, 15, 20, 25]); P.ksl.kapitler = [1, 10, 15]; P.ksl.fravalgt = [25]; assert.deepEqual(KSL.sikreKsl(P).kapitler, [1, 10, 15, 20]);
 });
+
+test('Oslomarka: markagrensa fra WFS, andel av eiendom og bestand, varsler for vei, transport og oppdrag', async () => {
+  const MK = await import('../js/marka.js'); const { punktIGeometri } = await import('../js/proj.js');
+  // Marka = kvadrat 10.0–10.1 / 60.0–60.1 med et hull; GML slik Kartverket leverer (lon lat med srsName=EPSG:4326)
+  const ring = (x0, y0, x1, y1) => `${x0} ${y0} ${x1} ${y0} ${x1} ${y1} ${x0} ${y1} ${x0} ${y0}`;
+  const gml = `<wfs:FeatureCollection><wfs:member><app:LovVirkeområde><gml:Polygon gml:id="p"><gml:exterior><gml:LinearRing><gml:posList>${ring(10, 60, 10.1, 60.1)}</gml:posList></gml:LinearRing></gml:exterior><gml:interior><gml:LinearRing><gml:posList>${ring(10.06, 60.04, 10.07, 60.05)}</gml:posList></gml:LinearRing></gml:interior></gml:Polygon></app:LovVirkeområde></wfs:member></wfs:FeatureCollection>`;
+  assert.equal(MK.tolkGml(gml)[0].length, 2, 'ytre ring og hull');
+  const sq = (x, y, d) => ({ type: 'Polygon', coordinates: [[[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]]] });
+  const eiendom = sq(10.08, 60.02, 0.04); // halvparten innenfor (10.08–10.10), halvparten utenfor
+  let url = ''; const g = await MK.hent(eiendom, { hentTekst: async (u) => { url = u; return gml; } });
+  assert.match(url, /wfs\.markagrensen.*typeNames=app%3ALovVirkeomr%C3%A5de.*bbox=/);
+  assert.ok(g.polygoner[0][0].every(([x, y]) => x >= g.boks[0] - 1e-9 && x <= g.boks[2] + 1e-9 && y >= g.boks[1] - 1e-9 && y <= g.boks[3] + 1e-9), 'klippet til området rundt eiendommen');
+  const bestand = [{ id: 'inne', geometri: sq(10.085, 60.03, 0.005) }, { id: 'ute', geometri: sq(10.105, 60.03, 0.005) }, { id: 'hull', geometri: sq(10.062, 60.042, 0.005) }];
+  const m = MK.analyser(g, eiendom, { punktIGeometri, bestand });
+  assert.ok(m.iMarka && Math.abs(m.andel - 0.5) < 0.05, `andel ${m.andel}`);
+  assert.deepEqual(m.bestand, { inne: 1 }, 'bestand i hullet og utenfor er ikke i Marka');
+  assert.equal(MK.punktIMarka(m, [10.065, 60.045]), false); assert.equal(MK.punktIMarka(m, [10.09, 60.03]), true); assert.equal(MK.punktIMarka(m, [12, 60]), null, 'utenfor lagret område = ukjent');
+  assert.match(MK.vurdering(m).tittel, /50 % av eiendommen/); assert.equal(MK.vurdering(m).regler.length, 4);
+  const S = { marka: m };
+  assert.equal(MK.bestandAndel(S, 'inne'), 1); assert.equal(MK.bestandAndel(S, 'ute'), 0); assert.equal(MK.bestandAndel({}, 'inne'), null);
+  const vei = { status: 'planlagt', geometri: { type: 'LineString', coordinates: [[10.09, 60.03], [10.11, 60.03]] } };
+  assert.ok(Math.abs(MK.veiVarsel(S, vei).andel - 0.5) < 0.1); assert.match(MK.veiVarsel(S, vei).tekst, /§ 5/);
+  assert.equal(MK.veiVarsel(S, { ...vei, status: 'eksisterende' }), null, 'bare veier som skal bygges');
+  assert.match(MK.transportVarsel(S, [10.09, 60.03]).tekst, /§ 10 bokstav c/); assert.equal(MK.transportVarsel(S, [10.11, 60.03]), null);
+  assert.equal(MK.oppdragHensyn(S, ['inne', 'ute']).antall, 1); assert.equal(MK.oppdragHensyn(S, ['ute']), null);
+  bestand.push({ id: 'ny', geometri: sq(10.09, 60.05, 0.004) }); assert.ok(MK.oppdaterBestand(m, bestand, punktIGeometri)); assert.equal(m.bestand.ny, 1);
+  const ute = MK.analyser({ boks: [11, 61, 11.1, 61.1], polygoner: [] }, sq(11.02, 61.02, 0.01), { punktIGeometri, bestand: [] });
+  assert.equal(ute.iMarka, false); assert.equal(MK.vurdering(ute).niva, 'ok'); assert.equal(MK.oppdragHensyn({ marka: ute }, ['x']), null);
+});

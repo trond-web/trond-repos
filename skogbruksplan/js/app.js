@@ -2,6 +2,7 @@ import { visBruker, registrerBruk, innloggetBruker, gyldigToken } from './innlog
 import { initEgneLag } from './egne-lag-ui.js';
 import { ER_EGET_LAG } from './egne-lag.js';
 import { lagVelkomst } from './velkommen.js';
+import * as MARKA from './marka.js';
 import { arealM2, punktIGeometri, bbox, fraWgs84, etikettPunkt, utmTilGeo } from './proj.js';
 import { lagSosi } from './sosi.js';
 import {
@@ -159,7 +160,7 @@ function filnavn(ending) {
 
 // ---------------------------------------------------------------- kart
 let kartKlikk = null; // overstyrer kartklikk mens en annen modul tegner (f.eks. veier)
-let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let kpLag = null; let rpLag = null; let eiendomGrenseLag = null; let naboLag = null; let ninLag = null; let artLag = null; let artsfunnLag = null; let kulturLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
+let kart; let bestandLag; let bratthetLag = null; let fuktLag = null; let kpLag = null; let rpLag = null; let markaLag = null; let eiendomGrenseLag = null; let naboLag = null; let ninLag = null; let artLag = null; let artsfunnLag = null; let kulturLag = null; let misLag; let misMerker = null; let markslagLag; let regLag; let gpsMarkor; let gpsSirkel; let valgtPunkt;
 const lagPerBestand = new Map();
 const etikettPerBestand = new Map();
 let kantsoneLag = null; let kantsoneHenter = false; const kantsoneFeilet = new Set(); // planer der hentingen feilet (prøves ikke igjen før «Oppdater kantsoner»)
@@ -199,6 +200,8 @@ function initKart() {
   // Kommuneplan og reguleringsplaner (DiBK, nasjonalt arealplankart). Klikk i kartet viser formål og hensynssoner.
   const planWms = (k, navn) => L.tileLayer.wms(PLAN_KART[k].url, { layers: PLAN_KART[k].lag, format: 'image/png', transparent: true, opacity: 0.55, pane: 'analysePane', maxZoom: 20, attribution: `${navn} © kommunene / DiBK` });
   kpLag = planWms('kp', 'Kommuneplan'); rpLag = planWms('rp', 'Reguleringsplaner');
+  // Markagrensa (markaloven) – Kartverket / Klima- og miljødepartementet.
+  markaLag = L.tileLayer.wms(MARKA.WMS, { layers: MARKA.WMS_LAG, format: 'image/png', transparent: true, opacity: 0.85, pane: 'analysePane', maxZoom: 20, attribution: 'Markagrensa © Kartverket / KLD' });
   // Eiendomsgrenser med gårds- og bruksnummer (Kartverket matrikkel, synlig fra ca. 1:40 000).
   naboLag = L.featureGroup();
   // NiN-naturtyper og arter av nasjonal forvaltningsinteresse (Miljødirektoratet). Klikk i kartet viser detaljer.
@@ -226,7 +229,7 @@ function initKart() {
   kart.createPane('egneLagPane'); kart.getPane('egneLagPane').style.zIndex = 460;
   etikettLag = L.layerGroup();
   regLag = L.featureGroup().addTo(kart);
-  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'ØK-kart med høydekurver (N5)': ok, 'ØK førsteutgave (historisk)': okForste, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '💧 Kantsone 15 m mot bekker, elver og vann': kantsoneLag, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, '🌿 Naturtyper (NiN, Miljødirektoratet)': ninLag, '🦉 Arter av nasjonal forvaltningsinteresse': artLag, '🦋 Rødlistede artsfunn (Artskart)': artsfunnLag, '🏛 Kulturminner (Riksantikvaren)': kulturLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
+  lagKontroll = L.control.layers({ 'Topografisk (gråtone)': graa, 'Topografisk': topo, 'ØK-kart med høydekurver (N5)': ok, 'ØK førsteutgave (historisk)': okForste, 'Flyfoto': flyfoto, 'Satellitt (Sentinel-2, 2018–2025)': satellitt.lag }, { ...overlays, '💧 Kantsone 15 m mot bekker, elver og vann': kantsoneLag, '⛰ Bratthet – drivbarhet (Kartverket)': bratthetLag, '💧 Markfuktighet – våt mark (NIBIO)': fuktLag, '🏘 Kommuneplan – arealformål og hensynssoner': kpLag, '📐 Reguleringsplaner': rpLag, '🌲 Markagrensa (Oslomarka)': markaLag, '🏠 Eiendomsgrenser og gnr/bnr (Kartverket)': eiendomGrenseLag, '🏡 Naboeiendommer – har eller mangler skogbruksplan': naboLag, '🌿 Naturtyper (NiN, Miljødirektoratet)': ninLag, '🦉 Arter av nasjonal forvaltningsinteresse': artLag, '🦋 Rødlistede artsfunn (Artskart)': artsfunnLag, '🏛 Kulturminner (Riksantikvaren)': kulturLag, 'Tiltaksflater (sporlogg/tegnet)': tiltaksflateLag, 'Nøkkelbiotoper (MiS)': misLag, 'Markslag – uproduktiv mark (AR5)': markslagLag, 'Bestand': bestandLag, 'Registreringer': regLag }, { position: 'topleft' }).addTo(kart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kart);
   // NiN-naturtyper og arter vises som standard i kartet i alle faner (som nøkkelbiotopene). Valget huskes.
   const NATUR_LS = 'skogiq-natur-lag';
@@ -833,6 +836,7 @@ function tegnOversikt() {
   tegnInnsikt();
   tegnArealfordeling();
   tegnArealplan();
+  tegnMarka();
   const s = sammendrag(S.bestand, inn());
   const kpi = (verdi, etikett, under = '') => `<div class="kpi"><div class="verdi">${verdi}</div><div class="etikett">${etikett}</div>${under ? `<div class="under">${under}</div>` : ''}</div>`;
   const planlagt = alleTiltak().filter((t) => t.status !== 'utfort');
@@ -1037,6 +1041,7 @@ function visDetalj() {
     ${artsSeksjonHtml(b)}
     ${b.markfukt ? (() => { const v = fuktVurdering(b.markfukt); return `<div class="bratt-linje fukt-${v.niva}"><div class="bratt-stolpe">${FUKT_KLASSER.map((k) => (b.markfukt.andeler[k.id] ? `<span style="flex:${b.markfukt.andeler[k.id]};background:${k.farge}" title="${esc(k.leg)}: ${Math.round(b.markfukt.andeler[k.id] * 100)} %"></span>` : '')).join('')}${b.markfukt.andeler.torr ? `<span style="flex:${b.markfukt.andeler.torr};background:#e6e1c8" title="Tørt: ${Math.round(b.markfukt.andeler.torr * 100)} %"></span>` : ''}</div><span>💧 ${esc(v.tekst)}</span></div>`; })() : ''}
     ${(() => { const nv = (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade', 'kulturminne'].includes(o.type) && o.geometri && b.geometri && overlapper(b.geometri, o.geometri)); return nv.length ? `<div class="bratt-linje plan-2"><span>${nv.slice(0, 4).map((o) => `${o.type === 'artsomrade' ? '🦉' : o.type === 'kulturminne' ? '🏛' : '🌿'} ${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : esc(o.navn)}`).join('<br>')}${nv.length > 4 ? `<br><small>+ ${nv.length - 4} til</small>` : ''}<br><small>${nv.some((o) => o.type === 'kulturminne') ? 'Kulturminne: ikke kjør over eller skad det, og hold sikringssonen fri (PEFC krav 30). ' : ''}${nv.some((o) => o.type !== 'kulturminne') ? 'Naturtype eller art – vurderes av skogbiologisk kompetanse før hogst (PEFC krav 22).' : ''}</small></span></div>` : ''; })()}
+    ${MARKA.bestandAndel(S, b.id) ? `<div class="bratt-linje plan-1"><span>🌲 <b>${MARKA.bestandAndel(S, b.id) >= 0.99 ? 'I Marka' : `${Math.round(MARKA.bestandAndel(S, b.id) * 100)} % i Marka`}</b> <span>Hogst er tillatt, men veier og terrenginngrep krever plan eller dispensasjon, og stier og løyper skal holdes åpne.</span> <a href="${MARKA.HJEMMEL.lov.url}" target="_blank" rel="noopener">Markaloven</a></span></div>` : ''}
     ${S.arealplan?.bestand?.[b.id] ? (() => { const t = planBestandTekst(S.arealplan.bestand[b.id]); return t?.tekst ? `<div class="bratt-linje plan-${t.alvor}"><div class="bratt-stolpe">${S.arealplan.bestand[b.id].formal.map((f) => `<span style="flex:${f.andel};background:${formalInfo(f.kode).farge}" title="${esc(formalInfo(f.kode).navn)}: ${Math.round(f.andel * 100)} %"></span>`).join('')}</div><span>🏘 ${esc(t.tekst)}${t.raad ? `<br><small>${esc(t.raad)}</small>` : ''}</span></div>` : ''; })() : ''}
     ${b.bratthet ? (() => { const v = brattVurdering(b.bratthet); return `<div class="bratt-linje bratt-${v.niva}"><div class="bratt-stolpe">${BRATT_KLASSER.map((k) => (b.bratthet.andel[k.id] ? `<span style="flex:${b.bratthet.andel[k.id]};background:${k.farge || '#cfe3c7'}" title="${esc(k.navn)}: ${Math.round(b.bratthet.andel[k.id] * 100)} %"></span>` : '')).join('')}</div><span>⛰ ${esc(v.tekst)}</span></div>`; })() : ''}
     <form class="skjema tre-kol" id="detaljSkjema">
@@ -1700,6 +1705,42 @@ document.addEventListener('click', (e) => {
     e.preventDefault(); if (!kart.hasLayer(kpLag)) kpLag.addTo(kart); if (S.arealplan?.dekning?.rp > 0 && !kart.hasLayer(rpLag)) rpLag.addTo(kart);
     tegnLegend(); zoomTilAlle(); melding('Planene vises i kartet. Klikk i kartet for arealformål, hensynssoner og planlenke.', 5000);
   }
+});
+// ---------------------------------------------------------------- Oslomarka (markaloven)
+// Hentes automatisk én gang per plan når eiendommen ligger i området rundt Oslo, og lagres i planen (S.marka).
+const MARKA_OMRADE = [10.1, 59.7, 11.1, 60.4]; // grovt område rundt Marka – andre steder hentes ingenting
+let markaHenter = false; let markaForsokFor = null; let markaFeil = null;
+const nerMarka = (g) => { const [x0, y0, x1, y1] = bbox([g]); return x1 > MARKA_OMRADE[0] && x0 < MARKA_OMRADE[2] && y1 > MARKA_OMRADE[1] && y0 < MARKA_OMRADE[3]; };
+async function hentMarka({ stille = false } = {}) {
+  const geom = eiendomGeom(); markaForsokFor = S;
+  if (markaHenter || !geom) return;
+  markaHenter = true; const plan = S; tegnMarka();
+  try {
+    const g = await MARKA.hent(geom);
+    if (plan !== S) return;
+    S.marka = MARKA.analyser(g, geom, { punktIGeometri, bestand: S.bestand });
+    endret({ kart: false }); if (valgtId) visDetalj();
+    if (S.marka.iMarka) melding(`🌲 ${MARKA.vurdering(S.marka).tittel}. Se Oversikt › Oslomarka.`, 6000);
+  } catch (e) { markaFeil = e.message || 'Klarte ikke å hente markagrensa.'; if (!stille) melding(markaFeil, 6000); }
+  finally { markaHenter = false; tegnMarka(); }
+}
+function tegnMarka() {
+  const kort = $('#markaKort'); const el = $('#marka'); if (!kort || !el) return;
+  const geom = eiendomGeom(); const naer = geom && nerMarka(geom);
+  if (!S.marka && naer && !markaHenter && markaForsokFor !== S) { markaFeil = null; queueMicrotask(() => hentMarka({ stille: true })); }
+  kort.hidden = !naer && !S.marka?.iMarka;
+  if (kort.hidden) return;
+  if (!S.marka) { el.innerHTML = markaHenter || markaForsokFor !== S ? '<p class="hint">Sjekker markagrensa for eiendommen …</p>' : `<p class="hint">${esc(markaFeil || 'Markagrensa er ikke sjekket.')}</p><button type="button" class="knapp liten" data-marka-hent>Sjekk markagrensa</button>`; return; }
+  if (MARKA.oppdaterBestand(S.marka, S.bestand, punktIGeometri)) S.marka.iMarka = S.marka.andel > 0 || Object.keys(S.marka.bestand).length > 0;
+  const v = MARKA.vurdering(S.marka); const ib = Object.keys(S.marka.bestand || {}).length;
+  el.innerHTML = `<div class="plan-topp${v.niva === 'ok' ? '' : ' plan-begrenset'}"><b>🌲 ${esc(v.tittel)}</b></div>
+    <p class="hint"><span>${esc(v.tekst)}</span>${S.marka.iMarka ? ` <span>${ib} bestand ligger helt eller delvis i Marka.</span>` : ''}</p>
+    ${v.regler.length ? `<ul class="plan-liste marka-regler">${v.regler.map((r) => `<li class="${r.id === 'skog' ? 'mulig' : 'begr'}"><b>${r.ikon} ${esc(r.tittel)}</b><span>${esc(r.tekst)} <a href="${r.hjemmel.url}" target="_blank" rel="noopener">${esc(r.hjemmel.navn)}</a></span></li>`).join('')}</ul>` : ''}
+    <div class="plan-knapper"><button type="button" class="knapp liten primar" data-marka-kart>Vis markagrensa i kartet</button><button type="button" class="knapp liten" data-marka-hent>Oppdater</button><span class="hint">Kilde <a href="${MARKA.HJEMMEL.kart.url}" target="_blank" rel="noopener">${esc(MARKA.HJEMMEL.kart.navn)}</a> <span>sjekket ${esc(S.marka.hentet)}.</span> <span>Juridisk grense er den som er fastsatt i lov og forskrift.</span></span></div>`;
+}
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-marka-hent]')) { e.preventDefault(); delete S.marka; markaFeil = null; hentMarka(); }
+  if (e.target.closest('[data-marka-kart]')) { e.preventDefault(); if (!kart.hasLayer(markaLag)) markaLag.addTo(kart); zoomTilAlle(); melding('Markagrensa vises i kartet (grønt område er innenfor).', 5000); }
 });
 // Klikk i kartet med plankart på: formål, hensynssoner og planer i punktet.
 async function planPunktHtml(ll) {

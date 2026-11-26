@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.26.0 – 🌲 Oslomarka og markagrensa (2026-11-26)
+
+*Nytt.* Ligger eiendommen i området rundt Oslo, sjekkes markagrensa automatisk mot Kartverkets kartdata. Under Oversikt ser du hvor stor del av eiendommen og hvilke bestand som ligger i Marka, og hva markaloven betyr for deg. Hogst og skogkultur er tillatt. Bygging er forbudt, også veier, med mindre en kommunal plan åpner for det eller kommunen gir dispensasjon. Motorferdsel følger markaloven, men transport i skogbruket er tillatt. Det skal også tas hensyn til friluftslivet. Markagrensa er et eget kartlag. Du får varsel når en planlagt vei går gjennom Marka, informasjon når velteplassen for tømmertransport ligger i Marka, og hensynene følger med i oppdragene til entreprenøren.
+
 ## 2.25.0 – 🏛 Mattilsynet-krav for husdyrhold og KSL for planteproduksjon (2026-11-26)
 
 *Nytt.* Under Skifteplan › Husdyr ligger en ny del for Mattilsynet. Den viser hvilke krav som gjelder for dyreholdet ditt, med status og lenke til forskriften. Der fører du journalene Mattilsynet kan be om ved tilsyn, som sykdom og dødelighet, tilsyn og teknisk kontroll, temperatur for melk og egg, vannprøver, fôr, kadaver og besøkslogg. Du legger også inn produsentnummer, tilsynsrutine, smittevern og beredskapsplan, og avstemmer mot Husdyrregisteret. Umeldt mistanke om smittsom sykdom og melk over 8 °C varsles. Knappen 📁 Tilsynsmappe skriver ut alt samlet, også legemiddeljournalen. KSL har fått kapitlene Potet, Grønnsaker, frukt og bær, Honning og Juletre. Potet og grønnsaker velges automatisk ut fra skifteplanen. Personvernerklæringen er oppdatert til versjon 1.18, fordi besøksloggen lagrer navn på besøkende i planen din. Du trenger ikke godta på nytt.

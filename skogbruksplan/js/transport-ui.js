@@ -3,6 +3,7 @@
 // vogntog ikke er tillatt, foreslås å kjøre uten henger (med hengerplass) eller en omkjøring. Logikken: transport.js.
 import * as T from './transport.js';
 import { fmt } from './charts.js';
+import { transportVarsel as markaTransportVarsel } from './marka.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const VALHALLA = 'https://valhalla1.openstreetmap.de/route';
@@ -137,6 +138,7 @@ export function initTransport({ kart, hentPlan, endret, melding, settKartKlikk, 
         <label>Volum som skal kjøres (m³, valgfritt)<input type="number" min="0" step="10" data-tr="m3" value="${esc(t.m3 ?? '')}"></label>
       </div>
       ${T.TERMINALER[t.terminal]?.merk ? `<p class="sf-varsel">⚠ ${esc(T.TERMINALER[t.terminal].merk)}</p>` : ''}
+      ${(() => { const mv = markaTransportVarsel(hentPlan(), t.velteplass?.pos); return mv ? `<p class="sf-varsel">🌲 ${esc(mv.tekst)} <a href="${mv.hjemmel.url}" target="_blank" rel="noopener">${esc(mv.hjemmel.navn)}</a></p>` : ''; })()}
       <div class="knapperad"><button type="button" class="knapp primar" data-tr="beregn" ${arbeider ? 'disabled' : ''}>Beregn og kontroller ruten</button>${r ? '<button type="button" class="knapp liten" data-tr="kart">Vis i kartet</button>' : ''}</div>
       ${arbeider ? `<p class="hs-arbeider">⏳ ${esc(arbeider)}</p>` : ''}
       ${r ? `<p class="hint">Beregnet ${esc(new Date(r.beregnet).toLocaleString('nb-NO'))} for ${esc(T.KJORETOY[r.kjoretoy]?.navn || '')}, høyde ${esc(String(r.hoyde).replace('.', ','))} m. ${fmt(r.nvdb?.bruksklasse)} veglenker med bruksklasse, ${fmt(r.nvdb?.hoyde)} høydebegrensninger og ${fmt(r.nvdb?.regulering)} trafikkreguleringer langs ruten.</p>

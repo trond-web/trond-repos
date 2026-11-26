@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.25.0** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.26.0** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -2259,6 +2259,26 @@ Kartlaget viser eiendommene rundt eiendommen som er åpen, og om de har skogbruk
     som er åpen, lagres først.
   - En eiendom med plan i SkogIQ.ai får **«Åpne planen»**.
 - Tegnforklaringen viser antall per status. Når en annen plan åpnes, hentes naboeiendommene for den.
+
+## 🌲 Oslomarka og markagrensa (`js/marka.js`)
+
+Når eiendommen ligger i området rundt Oslo, sjekkes markagrensa automatisk. Grensa (lovens virkeområde) hentes fra Kartverkets WFS (`wfs.geonorge.no/skwms1/wfs.markagrensen`, Klima- og miljødepartementet). Den klippes til et område på et par kilometer rundt eiendommen og lagres i planen (`S.marka`), slik at sjekkene virker uten nett. Andre steder i landet hentes ingenting.
+
+- **Oversikt › Oslomarka – markaloven:**
+  - hvor stor andel av eiendommen som ligger i Marka, og hvor mange bestand
+  - hva loven betyr for skogeieren, med lenker til Lovdata:
+    - Skogbehandling og hogst er unntatt (§ 2).
+    - Bygging er forbudt, også veier (§ 5). Landbrukstiltak kan bare tillates med plan (§ 6) eller dispensasjon (§ 15).
+    - Motorferdsel følger markaloven (§ 10), ikke motorferdselloven. Transport i skogbruksnæringen er tillatt, og grusvei regnes som utmark.
+    - Det skal tas hensyn til friluftslivet.
+- **Kartlag** «🌲 Markagrensa (Oslomarka)» (WMS med område og grenselinje).
+- **Bestand:** andel i Marka i bestandsdetaljene.
+- **Veier:** en planlagt vei eller en vei under bygging som går gjennom Marka, får varsel om byggeforbudet.
+- **Tømmertransport:** når velteplassen ligger i Marka, får du informasjon om § 10.
+- **Oppdrag og SkogIQ Entreprenør:** hensyn for bestandene i oppdraget som ligger i Marka (stier og løyper, motorferdsel, nye veier).
+- Den ukentlige kildesjekken følger med på markaloven, markalovforskriften og tjenestene til Kartverket.
+
+Kartgrensa er et hjelpemiddel. Juridisk gjelder grensa som er fastsatt i lov og forskrift.
 
 ## Kommunale planer og reguleringer – muligheter og begrensninger
 
