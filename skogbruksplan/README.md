@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.26.0** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.26.1** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -2271,7 +2271,7 @@ Når eiendommen ligger i området rundt Oslo, sjekkes markagrensa automatisk. Gr
     - Bygging er forbudt, også veier (§ 5). Landbrukstiltak kan bare tillates med plan (§ 6) eller dispensasjon (§ 15).
     - Motorferdsel følger markaloven (§ 10), ikke motorferdselloven. Transport i skogbruksnæringen er tillatt, og grusvei regnes som utmark.
     - Det skal tas hensyn til friluftslivet.
-- **Kartlag** «🌲 Markagrensa (Oslomarka)» (WMS med område og grenselinje).
+- **Kartlag** «🌲 Markagrensa (Oslomarka)»: en tynn, stiplet grønn linje uten fyll, tegnet fra grensa i planen. Er grensa ikke hentet ennå, vises bare grenselinja fra Kartverkets WMS.
 - **Bestand:** andel i Marka i bestandsdetaljene.
 - **Veier:** en planlagt vei eller en vei under bygging som går gjennom Marka, får varsel om byggeforbudet.
 - **Tømmertransport:** når velteplassen ligger i Marka, får du informasjon om § 10.
