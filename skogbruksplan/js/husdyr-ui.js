@@ -2,6 +2,7 @@
 import { DYRESLAG, FORUTSETNINGER, tomtDyrehold, nyttDyr, verdier, husdyrgjodsel, forbalanse, kontrollerHusdyr, fordelHusdyrgjodsel, beiteplan, kontrollerBeite, nyBeiteperiode, beitekapasitet, dm, dyrerom, kontrollerRom, nyttRom, FORSKRIFTER, produksjonstilskudd, PT_KILDE, SONER, ptRegion } from './husdyr.js';
 import { gjodselbehov, KULTURER, JORDSMONN_KARTLAG } from './skifteplan.js';
 import { fmt } from './charts.js';
+import { lagMattilsynetUi } from './mattilsynet-ui.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const n0 = (x) => fmt(Math.round(x || 0), 0);
@@ -11,6 +12,7 @@ const GRUPPER = [...new Set(Object.values(DYRESLAG).map((d) => d.gruppe))];
 const status = (x, ok = 'Nok', ikke = 'Underskudd') => (x >= 0 ? `<span class="hd-ok">✓ ${ok}</span>` : `<span class="hd-ikke">✕ ${ikke}</span>`);
 
 export function lagHusdyrUi({ SP, aar, hentPlan, lagre, melding, nyId, visGjodsling }) {
+  const mt = lagMattilsynetUi({ hentPlan, lagre, melding, nyId });
   const DH = () => { const p = SP(); if (!p.dyrehold) p.dyrehold = tomtDyrehold(); if (!p.dyrehold.forutsetninger) p.dyrehold.forutsetninger = {}; return p.dyrehold; };
 
   function dyrHtml(dh) {
@@ -135,9 +137,10 @@ export function lagHusdyrUi({ SP, aar, hentPlan, lagre, melding, nyId, visGjodsl
       const NIV = { avvik: '✕', varsel: '!', info: 'i' };
       return `${dyrHtml(dh)}
         ${funn.length ? `<div class="kort">${funn.map((x) => `<div class="sp-funn" style="--farge:${x.nivaa === 'avvik' ? 'var(--critical)' : x.nivaa === 'varsel' ? '#c77800' : 'var(--accent)'}"><i>${NIV[x.nivaa]}</i><div><b>${esc(x.tittel)}</b><div class="hint">${esc(x.tekst)}</div></div></div>`).join('')}</div>` : ''}
-        ${gjodselHtml(g, dh, a)}${forHtml(f, a)}${beiteHtml(a)}${romHtml()}${tilskuddHtml(a)}`;
+        ${gjodselHtml(g, dh, a)}${forHtml(f, a)}${beiteHtml(a)}${romHtml()}${mt.html()}${tilskuddHtml(a)}`;
     },
     klikk(e) {
+      if (mt.klikk(e)) return true;
       const k = e.target.closest('[data-hd]'); if (!k) return false;
       const dh = DH(); const hva = k.dataset.hd;
       if (hva === 'ny') { dh.dyr.push({ ...nyttDyr(k.dataset.slag || 'melkeku', nyId) }); lagre(false); return true; }
@@ -170,6 +173,7 @@ export function lagHusdyrUi({ SP, aar, hentPlan, lagre, melding, nyId, visGjodsl
       return false;
     },
     endring(e) {
+      if (mt.endring(e)) return true;
       const t = e.target; const dh = DH();
       if (t.dataset.hdDh) { dh[t.dataset.hdDh] = tall(t.value); lagre(false); return true; }
       if (t.dataset.hdFu) { dh.forutsetninger[t.dataset.hdFu] = tall(t.value); lagre(false); return true; }

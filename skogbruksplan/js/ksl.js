@@ -3,7 +3,7 @@
 // kulturminner). Ingen DOM – kan testes i Node. Kravpunktene ligger i ksl-standard.js.
 import { KSL_KAPITLER } from './ksl-standard.js';
 import { kslKapitlerFor } from './husdyr.js';
-import { aktiveSkifter, kontroller as skifteKontroller, avstandTilVann, IPV } from './skifteplan.js';
+import { aktiveSkifter, kontroller as skifteKontroller, avstandTilVann, IPV, KULTURER } from './skifteplan.js';
 
 export { KSL_KAPITLER };
 export const KSL_KILDER = {
@@ -66,7 +66,10 @@ export function sikreKsl(S) {
   S.ksl = { ...tomKsl(), ...(S.ksl || {}) };
   if (!S.ksl.kapitler.includes(15) && S.skifteplan?.skifter?.length && !S.ksl.kapitlerValgt) S.ksl.kapitler = [...S.ksl.kapitler, 15];
   // Husdyrkapitlene legges til ut fra dyreholdet (Skifteplan › Husdyr), unntatt de brukeren selv har tatt bort.
-  const fra = S.ksl.fravalgt || []; const nye = kslKapitlerFor(S).filter((n) => !S.ksl.kapitler.includes(n) && !fra.includes(n));
+  // Potet (20) og grønnsaker, frukt og bær (25) legges til når skifteplanen har slike vekster. Honning (60) og juletre (110) velges selv.
+  const grupper = new Set((S.skifteplan?.skifter || []).flatMap((s) => Object.values(s.vekster || {}).map((v) => KULTURER[v?.kultur]?.gruppe)));
+  const plante = [grupper.has('potet') && 20, grupper.has('gronnsaker') && 25].filter(Boolean);
+  const fra = S.ksl.fravalgt || []; const nye = [...new Set([...kslKapitlerFor(S), ...plante])].filter((n) => !S.ksl.kapitler.includes(n) && !fra.includes(n));
   if (nye.length) S.ksl.kapitler = [...S.ksl.kapitler, ...nye].sort((a, b) => a - b);
   return S.ksl;
 }

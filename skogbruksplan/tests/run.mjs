@@ -4279,7 +4279,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
   '1.8': '1b41be6f78760f90',
-  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976', '1.16': 'a85bfccb66c6fc14', '1.17': 'db0ca4fb428144e9',
+  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976', '1.16': 'a85bfccb66c6fc14', '1.17': 'db0ca4fb428144e9', '1.18': '118453b512546180',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
@@ -4842,4 +4842,28 @@ test('EUDR: geolokasjon med 6 desimaler, sjekk, forenklet erklæring og leverans
   const fl = E.foreslaLeveranser(S); assert.equal(fl.length, 1); assert.equal(fl[0].fraTiltak, 't1');
   S.eudr.leveranser = [E.nyLeveranse(null, fl[0])]; assert.equal(E.foreslaLeveranser(S).length, 0, 'ikke foreslått to ganger');
   const info = E.leveranseInfo(S, S.eudr.leveranser[0]); assert.match(info.treslag, /Picea abies/); assert.equal(info.geolokasjon.features.length, 1);
+});
+
+test('Mattilsynet: krav ut fra dyreholdet, journaler, Husdyrregisteret, beredskap og KSL for planteproduksjon', async () => {
+  const MT = await import('../js/mattilsynet.js');
+  assert.equal(MT.vurdering({})[0].id, 'ingen', 'uten dyr vises bare en melding');
+  const S = { skifteplan: { dyrehold: { dyr: [{ id: 'd1', slag: 'melkeku', antall: 30 }, { id: 'd2', slag: 'slaktekylling', antall: 1000 }], rom: [{ id: 'r1', navn: 'Gamlefjøset', type: 'basfjos' }] } } };
+  const idag = '2026-11-26'; const v = (id) => MT.vurdering(S, { idag }).find((k) => k.id === id);
+  assert.equal(v('registrert').status, 'mangler'); assert.equal(v('register-Storfe').status, 'mangler'); assert.equal(v('beredskap').status, 'mangler');
+  assert.match(v('tilsyn').navn, /to ganger daglig/); assert.equal(v('losdrift').status, 'delvis'); assert.match(v('losdrift').tekst, /2033/);
+  assert.equal(v('sykdom').status, 'delvis', 'slaktekylling krever daglig registrering');
+  const m = MT.sikre(S); m.virksomhet.produsentnr = '1234'; m.virksomhet.registrert = true; m.register.Storfe = { antall: 20, dato: '2026-11-01' };
+  assert.equal(v('registrert').status, 'ok'); assert.equal(v('register-Storfe').status, 'delvis', '20 mot 30 i dyreholdet'); m.register.Storfe.antall = 30; assert.equal(v('register-Storfe').status, 'ok');
+  m.journal.sykdom.push({ id: 'x1', dato: '2026-11-25', hendelse: 'Syk', smitte: true, meldt: false }); assert.equal(v('sykdom').status, 'avvik', 'umeldt smittemistanke');
+  m.journal.temperatur.push({ id: 't1', dato: '2026-11-20', sted: 'Melketank', temp: 9 }); assert.equal(v('melk').status, 'avvik');
+  assert.equal(MT.vurdering(S, { idag, henting: 'ikke-daglig' }).find((k) => k.id === 'melk').navn, 'Melkekjøling (høyst 6 °C)');
+  Object.assign(m.beredskap, { strom: 'Aggregat', vann: 'Tank', brann: 'Plan', kontakter: 'Veterinær', ventilasjon: 'Nød', alarm: 'SMS' });
+  assert.equal(v('beredskap').status, 'delvis', 'alarm og aggregat ikke testet siste år'); m.journal.tilsyn.push({ id: 'a', dato: '2026-10-01', hva: 'Test av alarm og aggregat' }); assert.equal(v('beredskap').status, 'ok');
+  for (const k of MT.vurdering(S, { idag })) assert.ok(MT.STATUS[k.status] && (!k.hjemmel || k.hjemmel.url.startsWith('https://')), k.id);
+  const c = MT.csv(S, 'sykdom').split('\n'); assert.equal(c.length, 2); assert.match(c[1], /"Ja"/);
+  // KSL: planteproduksjonen, og potet og grønnsaker legges til fra skifteplanen
+  for (const nr of [20, 25, 60, 110]) assert.ok(KSL.KSL_KAPITLER.find((k) => k.nr === nr)?.sporsmal.length > 5, `KSL ${nr}`);
+  const pot = Object.entries(SP.KULTURER).find(([, k]) => k.gruppe === 'potet')[0]; const gr = Object.entries(SP.KULTURER).find(([, k]) => k.gruppe === 'gronnsaker')[0];
+  const P = { skifteplan: { skifter: [{ id: 's1', vekster: { 2026: { kultur: pot }, 2025: { kultur: gr } } }] } };
+  assert.deepEqual(KSL.sikreKsl(P).kapitler, [1, 10, 15, 20, 25]); P.ksl.kapitler = [1, 10, 15]; P.ksl.fravalgt = [25]; assert.deepEqual(KSL.sikreKsl(P).kapitler, [1, 10, 15, 20]);
 });

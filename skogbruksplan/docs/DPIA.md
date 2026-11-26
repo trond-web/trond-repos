@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Utkast til godkjenning hos behandlingsansvarlig |
 | **Dato** | 2026-11-11 |
-| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.17 (`js/personvern.js`) |
+| **Bygger på** | Vilkår og personvernerklæring, erklæring versjon: 1.18 (`js/personvern.js`) |
 | **Behandlingsansvarlig** | Trond Harald Sand (SkogIQ.ai), trond@strafferunden.no. Organisasjonsnummer legges inn når foretak er etablert |
 | **Neste gjennomgang** | Ved endringene i kapittel 8, og senest 2027-11-11 |
 
@@ -56,7 +56,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | Profil (`profil`) | Kontakt, foretak, adresse, kommune, fritekst, valgfritt profilbilde (vises i Nettverk, bare for innloggede). Rådgivere: rådgivertype, beskrivelse og valg om synlighet i katalogen | Avtale | Til endret eller slettet |
 | Bruksstatistikk (`bruk`) | Sidevisninger, kall, aktive minutter og faner per dag | Berettiget interesse (kan slås av) | 400 dager |
 | Tilbakemeldinger og forslag (`tilbakemelding`) | Stjerner, type, fritekst, fane, versjon, navn og e-post; status og svar fra administrator | Brukerens initiativ | Til kontoen slettes, eller administrator sletter |
-| Skylagring (`sky`) | Skogbruksplaner med eiendom, notater, bilder og sporlogger | Avtale | Til brukeren sletter; 10 versjoner og 30 dager i papirkurv |
+| Skylagring (`sky`) | Skogbruksplaner med eiendom, notater, bilder og sporlogger, og husdyrjournalene (besøksloggen har navn og firma på besøkende) | Avtale | Til brukeren sletter; 10 versjoner og 30 dager i papirkurv |
 | Overføring mellom enheter (`synk`) | Plan eller drone-rute med tilfeldig id | Brukerens initiativ | 90 dager (planer) og 14 dager (droneoppdrag) |
 | Tilbudsforespørsler (`tilbud`) | Oppdrag, kontakt, mottakere, svar | Brukerens initiativ | 180 dager uten bruk |
 | Deling med tømmerkjøper (`tommer`) | Utvalgte bestand, volumer, kontakt | Brukerens initiativ | Til sluttdato, senest 180 dager uten bruk |
@@ -127,6 +127,7 @@ GDPR artikkel 35 krever DPIA når en behandling *sannsynligvis vil medføre høy
 | R16 | Uautorisert tilgang til en skogeiers planer via integrasjons-API-et, lekket nøkkel eller for vid tilgang (`api`) | Nøkkel opprettes bare av administrator etter avtale med brukeren og gjelder én brukers egne planer; lese- eller skrivetilgang; bare SHA-256 av hemmeligheten lagres; vises én gang; kan trekkes tilbake; 300 kall/min; alle kall logges (uten innhold); skrivinger blir ny planversjon (kan rulles tilbake fra historikken); If-Match mot overskriving; slettes med kontoen; erklæring 1.9 krever ny godkjenning | L | M | **Lav–middels**. Systemnøkler med tilgang til flere brukere, eller utlevering til nye mottakere uten brukerens avtale, krever ny vurdering og databehandleravtale |
 | R18 | Hele skogbruksplanen hos en entreprenør, og entreprenørens bilder, posisjon og signatur hos skogeieren (`feltoppdrag`) | Sendes bare på skogeierens initiativ, til én entreprenør hen er koblet til i Nettverk; tilgang bare for de to partene; skogeieren kan trekke oppdraget tilbake; slettes med begge kontoer og senest ett år etter avslutning; bilder nedskalert i nettleseren; posisjon bare for avvik entreprenøren registrerer (ingen sporing); erklæring 1.16 krever ny godkjenning | L | M | **Lav**. Planen ligger også på entreprenørens telefon (lokal kopi) til oppdraget fjernes der. |
 | R17 | Stemmeopptak til nettleserleverandør i USA (`tale`) | Av til brukeren sier ja i en egen dialog som forklarer hvor lyden går; lytter bare mens brukeren trykker 🎙 eller holder inne grepet; SkogIQ.ai lagrer verken lyd eller tekst; tekstfelt og forslag virker uten tale | L | M | **Lav**. Ikke særlige kategorier; stemmen brukes ikke til å identifisere noen. |
+| R18 | Navn på tredjepersoner i besøksloggen for husdyrholdet (`sky`, `lokal`) | Bare navn, firma og om personen har vært i dyrerommet eller hatt dyrekontakt i utlandet; formålet er smittevern (dyrehelseforskriften), brukeren fører selv og kan slette føringer; deles ikke | L | L | **Lav**. Gården er ansvarlig for å informere besøkende om loggen. |
 
 **Samlet restrisiko:** lav, bortsett fra **R6** (middels til lagring utenfor Railway er satt opp) og **R7/R11** (lav–middels) inntil tiltakene under er gjennomført. Ingen restrisiko er høy, så forhåndsdrøfting med Datatilsynet (art. 36) er ikke nødvendig.
 

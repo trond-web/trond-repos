@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.25.0 – 🏛 Mattilsynet-krav for husdyrhold og KSL for planteproduksjon (2026-11-26)
+
+*Nytt.* Under Skifteplan › Husdyr ligger en ny del for Mattilsynet. Den viser hvilke krav som gjelder for dyreholdet ditt, med status og lenke til forskriften. Der fører du journalene Mattilsynet kan be om ved tilsyn, som sykdom og dødelighet, tilsyn og teknisk kontroll, temperatur for melk og egg, vannprøver, fôr, kadaver og besøkslogg. Du legger også inn produsentnummer, tilsynsrutine, smittevern og beredskapsplan, og avstemmer mot Husdyrregisteret. Umeldt mistanke om smittsom sykdom og melk over 8 °C varsles. Knappen 📁 Tilsynsmappe skriver ut alt samlet, også legemiddeljournalen. KSL har fått kapitlene Potet, Grønnsaker, frukt og bær, Honning og Juletre. Potet og grønnsaker velges automatisk ut fra skifteplanen. Personvernerklæringen er oppdatert til versjon 1.18, fordi besøksloggen lagrer navn på besøkende i planen din. Du trenger ikke godta på nytt.
+
 ## 2.24.0 – 🚛 Tømmertransport til terminal – uten blemmer (2026-11-26)
 
 *Nytt.* Under Veier › Tømmertransport legger du inn velteplass eller hentested i kartet. SkogIQ beregner kjøreruten for tømmerbilen til Lierstranda tømmerterminal (eller en annen leveringsplass) og kontrollerer hele ruten mot åpne data fra NVDB: bruksklasse for tømmertransport (totalvekt og vogntoglengde), vinterbruksklasse og telerestriksjoner som gjelder i dag, høydebegrensninger og lastebilforbud. Skogsbilveiene i planen er også med. Der fullt vogntog ikke er tillatt, viser appen om det går uten henger, og hvor hengeren kan kobles på, eller den finner en omkjøring. Du ser også antall lass. Lierstranda avvikles etter planen innen utgangen av 2027, og det står i appen. Personvernerklæringen er oppdatert (versjon 1.17) med rutetjenesten Valhalla (FOSSGIS, EU), og alle må godta vilkårene på nytt.

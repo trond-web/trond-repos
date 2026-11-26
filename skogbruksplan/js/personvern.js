@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.17', dato: '2026-11-26', kreverGodkjenning: '1.17' };
+export const VILKAR = { versjon: '1.18', dato: '2026-11-26', kreverGodkjenning: '1.17' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -39,7 +39,7 @@ export const BEHANDLINGER = [
     opplysninger: 'Stjerner (1–5), type, teksten du skriver, hvilken del av appen du var i, appversjon, navnet ditt og e-postadressen (brukernavnet), og samtalen med administrator: meldingene begge veier, statusendringer og når meldingene er lest.',
     grunnlag: 'initiativ', lagring: 'Til du sletter kontoen, eller administrator sletter tilbakemeldingen.', mottakere: 'Bare administrator.', api: ['/api/tilbakemelding'] },
   { id: 'sky', navn: 'Skylagring av skogbruksplaner', formaal: 'Lagre planene dine på serveren, slik at de er tilgjengelige på alle enhetene dine.',
-    opplysninger: 'Skogbruksplanene med eiendom, bestand, tiltak, notater, bilder og sporlogger du har lagt inn, verdivurderingen (landbrukstakst) med bygninger, rettigheter og eventuell kjøpesum, og EUDR-dokumentasjon (navn, adresse, e-post og eventuelt EORI-nummer, og navn, adresse og e-post til tømmerkjøpere du registrerer leveranser til).',
+    opplysninger: 'Skogbruksplanene med eiendom, bestand, tiltak, notater, bilder og sporlogger du har lagt inn, verdivurderingen (landbrukstakst) med bygninger, rettigheter og eventuell kjøpesum, og EUDR-dokumentasjon (navn, adresse, e-post og eventuelt EORI-nummer, og navn, adresse og e-post til tømmerkjøpere du registrerer leveranser til), og journalene for husdyrholdet (legemiddeljournal og Mattilsynet-journalene, der besøksloggen har navn og firma på besøkende i dyrerommet).',
     grunnlag: 'avtale', lagring: 'Til du sletter planen. De 10 siste versjonene tas vare på, og slettede planer ligger 30 dager i papirkurven.',
     mottakere: 'Ingen, med mindre du selv deler (se Tilbud, Tømmerkjøper og Nettverk).', api: ['/api/sky'] },
   { id: 'synk', navn: 'Overføring mellom enheter', formaal: 'Flytte en plan mellom PC og SkogIQ Felt med en kort kode, og sende droneoppdrag til fjernkontrollen.',
