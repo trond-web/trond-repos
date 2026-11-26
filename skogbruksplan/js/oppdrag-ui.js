@@ -15,6 +15,7 @@ import { lagStanfordUi } from './stanford-ui.js';
 import { oppdragVurdering, synkLeveranse, STATUS as EU_STATUS } from './eudr.js';
 import { skrivLeveranseInfo, lastNedLeveranseGeo } from './eudr-ui.js';
 import { lagFeltoppdragUi } from './feltoppdrag-ui.js';
+import { lagSamradUi } from './samrad-ui.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -42,6 +43,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
   const skiltUi = lagSkiltplanUi({ hentPlan, endret, melding, visLag: visSkilt });
   // Send oppdraget til entreprenørens feltløsning (SkogIQ Entreprenør) og ta rapporten inn i planen.
   const feltUi = lagFeltoppdragUi({ hentPlan, endret, melding, settUtfort });
+  const samradUi = lagSamradUi({ hentPlan, lagre: () => endret({ kart: false, bare: 'oppdrag' }), melding, nyId });
 
   function mengdeTekst(o, s) {
     const ot = typeFor(o.type);
@@ -101,11 +103,11 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
   }
 
   // Fanene i et oppdrag. Maskin og EUDR bare for hogst.
-  const FANER = [['oversikt', 'Oversikt'], ['planlegging', 'Planlegging'], ['utforer', 'Utfører'], ['maskin', 'Maskin'], ['sjekkliste', 'Sjekkliste'], ['eudr', 'EUDR']];
-  const KUN_HOGST = new Set(['maskin', 'eudr']);
+  const FANER = [['oversikt', 'Oversikt'], ['planlegging', 'Planlegging'], ['utforer', 'Utfører'], ['maskin', 'Maskin'], ['sjekkliste', 'Sjekkliste'], ['samrad', '🔥 Samråd'], ['eudr', 'EUDR']];
+  const KUN_HOGST = new Set(['maskin', 'samrad', 'eudr']);
   function merkerFor(o, s = sammendrag(S(), o, okonomi)) {
     const eu = HOGSTOPPDRAG.includes(o.type) ? oppdragVurdering(S(), o, iAar) : null;
-    return { planlegging: [o.driftsveg?.status === 'beholdt', o.skiltplan?.status === 'beholdt'].filter(Boolean).length ? '✓' : '', utforer: o.utforer?.navn ? '✓' : o.tilbud?.status === 'sendt' ? '…' : '', maskin: o.stanford?.eksportert?.length ? '✓' : '', sjekkliste: `${s.sjekk}/${s.sjekkTotalt}`, eudr: eu ? (eu.avvik ? '!' : eu.leveranse ? '✓' : '') : '' };
+    return { planlegging: [o.driftsveg?.status === 'beholdt', o.skiltplan?.status === 'beholdt'].filter(Boolean).length ? '✓' : '', utforer: o.utforer?.navn ? '✓' : o.tilbud?.status === 'sendt' ? '…' : '', maskin: o.stanford?.eksportert?.length ? '✓' : '', sjekkliste: `${s.sjekk}/${s.sjekkTotalt}`, eudr: eu ? (eu.avvik ? '!' : eu.leveranse ? '✓' : '') : '', samrad: HOGSTOPPDRAG.includes(o.type) ? samradUi.merke(o) : '' };
   }
   // Oppdaterer merkene på fanene og arbeidsflyten uten å tegne hele oppdraget.
   function oppdaterMerker(o) {
@@ -143,7 +145,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
         <label class="hel">E-post <input name="utforer.epost" type="email" value="${esc(o.utforer?.epost)}"></label>
       </form>`;
     const innhold = {
-      oversikt: () => `${stegHtml(o)}
+      oversikt: () => `${hogst ? samradUi.banner(o, tegn) : ''}${stegHtml(o)}
         <form class="skjema to-kol op-skjema" id="oppdragSkjema">
           <label class="hel">Tittel <input name="tittel" value="${esc(o.tittel)}"></label>
           <label>Status <select name="status">${opsj(Object.entries(OPPDRAGSSTATUS).map(([k, v]) => [k, v.navn]), o.status)}</select></label>
@@ -168,6 +170,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
       utforer: () => `<p class="hint op-intro">Be om tilbud fra en eller flere utførere, eller skriv inn utføreren direkte hvis avtalen allerede er klar.</p>${tilbudUi.html(o)}<h4 class="undertittel">Utfører</h4>${skjemaUtforer}${feltUi.html(o, tegn)}`,
       maskin: () => `<p class="hint op-intro">Filsett til hogstmaskin og lassbærer før drift, og produksjonsfilene tilbake etter drift.</p>${stanfordUi.html(o)}`,
       eudr: () => eudrHtml(o),
+      samrad: () => samradUi.html(o, tegn),
       sjekkliste: () => `<p class="hint op-intro">Krav og praktiske punkter for ${esc(ot.kort.toLowerCase())}. Kryss av etter hvert. PEFC-kravpunktene står bak.</p>
         <div class="oppdrag-sjekk">${ot.sjekk.map((k) => `<label class="avkrysning"><input type="checkbox" data-sjekk="${k.id}" ${o.sjekk?.[k.id] ? 'checked' : ''}> <span>${esc(k.tekst)}${k.pefc ? ` <span class="hint">PEFC ${k.pefc} ${esc(kravNavn(k.pefc))}</span>` : ''}</span></label>`).join('')}</div>`,
     };
@@ -203,7 +206,9 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
   function apne(id, fane = null) { if (fane) faneFor.set(id, fane); valgt = id; const o = finn(id); if (o) tilbudUi.apnet(o, tegn); tegn(); if (o) visBestander(linjer(S(), o).map((l) => l.bestand.id)); }
 
   function settStatus(o, ny) {
-    const for_ = o.status; o.status = ny;
+    const for_ = o.status;
+    if (ny === 'pagar' && for_ !== 'pagar' && HOGSTOPPDRAG.includes(o.type) && !samradUi.sjekkStart(o)) return false;
+    o.status = ny;
     if (ny === 'utfort' && for_ !== 'utfort') {
       o.utfortDato = new Date().toISOString().slice(0, 10);
       const aapne = linjer(S(), o).filter((l) => l.tiltak.status !== 'utfort');
@@ -262,6 +267,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     if (valgt && finn(valgt) && e.target.closest('[data-dv]') && driftsvegUi.klikk(e, finn(valgt), tegn)) return;
     if (valgt && finn(valgt) && e.target.closest('[data-sp]') && skiltUi.klikk(e, finn(valgt), tegn)) return;
     if (valgt && finn(valgt) && e.target.closest('[data-fo]') && await feltUi.klikk(e, finn(valgt), tegn)) return;
+    if (valgt && finn(valgt) && e.target.closest('[data-sr]') && await samradUi.klikk(e, finn(valgt), tegn)) return;
     const rad = e.target.closest('[data-oppdrag]');
     if (rad) { apne(rad.dataset.oppdrag); return; }
     const h = e.target.closest('[data-oh]'); if (!h) return;
@@ -290,6 +296,7 @@ export function initOppdrag({ hentPlan, endret, melding, okonomi, settUtfort, vi
     if (stanfordUi.endring(e, o, tegn)) return;
     if (driftsvegUi.endring(e)) return;
     if (skiltUi.endring(e, o)) return;
+    if (samradUi.endring(e, o, tegn)) return;
     if (f.dataset.sjekk) { o.sjekk = { ...o.sjekk, [f.dataset.sjekk]: f.checked }; lagreStille(o); return; }
     if (f.dataset.felt) {
       const def = typeFor(o.type).felt.find((x) => x.id === f.dataset.felt); const for_ = o.felt?.[f.dataset.felt];
