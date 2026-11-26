@@ -728,7 +728,7 @@ function visFane(navn) {
   $('#faneTittel').textContent = FANE_TITLER[navn] || navn;
   $('.panel-innhold').scrollTop = 0;
   if (erMobil() && $('#panel').dataset.ark === 'lav') settArk('halv');
-  if (!erMobil()) document.body.classList.remove('panel-skjult');
+  if (!erMobil() && document.body.classList.contains('panel-skjult')) $('#panelLukk').click();
   setTimeout(() => kart.invalidateSize(), 50);
 }
 
@@ -2786,7 +2786,14 @@ function kommandoValg(q) {
 function kobleHendelser() {
   $$('.faner button').forEach((b) => b.addEventListener('click', () => visFane(b.dataset.fane)));
   $('#innsiktListe').addEventListener('click', (e) => { const k = e.target.closest('[data-innsikt]'); if (k) utforHandling(k.dataset.innsikt); });
-  $('#panelLukk').addEventListener('click', () => { document.body.classList.toggle('panel-skjult'); });
+  // Skjul eller vis panelet. Når det er skjult, viser et trykk hvor som helst på stripen det igjen.
+  const settPanelSkjult = (skjult) => {
+    document.body.classList.toggle('panel-skjult', skjult);
+    const k = $('#panelLukk'); k.title = skjult ? 'Vis panelet' : 'Skjul panelet'; k.setAttribute('aria-label', k.title); k.setAttribute('aria-expanded', String(!skjult));
+    setTimeout(() => kart.invalidateSize(), 320);
+  };
+  $('#panelLukk').addEventListener('click', (e) => { e.stopPropagation(); settPanelSkjult(!document.body.classList.contains('panel-skjult')); });
+  $('#panel').addEventListener('click', () => { if (document.body.classList.contains('panel-skjult') && !erMobil()) settPanelSkjult(false); });
   $('#temaBtn').addEventListener('click', () => {
     const naa = document.documentElement.dataset.theme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     const ny = naa === 'dark' ? 'light' : 'dark';
