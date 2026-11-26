@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.22.1 – Panelet kan vises igjen etter at det er skjult (2026-11-26)
+
+*Rettet.* Når panelet til høyre ble skjult med pila, havnet pila utenfor skjermen, så panelet ikke kunne åpnes igjen. Nå ligger pila i stripen som er igjen, og et trykk hvor som helst på stripen viser panelet. Panelet åpnes også når du velger en fane i menyen.
+
 ## 2.22.0 – 🗺️ Ryddigere kart (2026-11-26)
 
 *Forbedret.* Mindre som ligger oppå kartet. Trykk i kartet gir nå én samlet boks, «Her ligger», med bestandet, tiltak, uproduktiv mark, naturtyper, arter, kulturminner og arealplan – i stedet for flere bokser og verktøytips oppå hverandre. Panelet bytter ikke lenger fane av seg selv; trykk «Åpne bestandet» for detaljene. Tegnforklaringen er lukket fra start, har ryddige seksjoner og husker om du har åpnet den. Meldingene vises én om gangen, forsvinner av seg selv og lukkes med et trykk. Velkomsten er et lite kort i hjørnet som lukkes når du tar kartet i bruk. På mobil er verktøylinjen én rad, og zoomknappene ligger ikke lenger oppå knappene.
