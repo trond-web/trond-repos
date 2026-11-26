@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.22.0 – 🗺️ Ryddigere kart (2026-11-26)
+
+*Forbedret.* Mindre som ligger oppå kartet. Trykk i kartet gir nå én samlet boks, «Her ligger», med bestandet, tiltak, uproduktiv mark, naturtyper, arter, kulturminner og arealplan – i stedet for flere bokser og verktøytips oppå hverandre. Panelet bytter ikke lenger fane av seg selv; trykk «Åpne bestandet» for detaljene. Tegnforklaringen er lukket fra start, har ryddige seksjoner og husker om du har åpnet den. Meldingene vises én om gangen, forsvinner av seg selv og lukkes med et trykk. Velkomsten er et lite kort i hjørnet som lukkes når du tar kartet i bruk. På mobil er verktøylinjen én rad, og zoomknappene ligger ikke lenger oppå knappene.
+
 ## 2.21.0 – 🎯 Virtuelle prøveflater fra hogstmaskindata (2026-11-25)
 
 *Nytt.* Når du leser inn en hpr-fil fra hogstmaskinen under Data › Hogstmaskindata, lages det prøveflater på 400 m² med 40 m mellomrom over arealet som er hogd. Stammene på hver flate gir stammetall, grunnflate, middeldiameter, anslått høyde, volum og treslag – som en prøveflate i takst, men målt av maskinen. Per bestand sammenlignes volumet med planen, med avvik og vurdering. Ved flatehogst kan volumet i andre hogstmodne bestand med samme treslag kalibreres med samme faktor, og det kan angres. Flatene kan vises i kartet og lastes ned som CSV eller GeoJSON. Ved tynning viser flatene bare uttaket. Fører-ID i fila leses ikke.

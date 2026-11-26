@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.21.0** (2026-11-25) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.22.0** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -469,6 +469,21 @@ Feltappen lager flyruter for ortofoto som åpnes i **DJI Pilot 2**. Logikken lig
 **Støttede droner** (kodene fra WPML): Mavic 3 Enterprise, Multispectral og Thermal, Matrice 3D, M30 og M350 RTK med H20. Kameraparametrene (sensor, oppløsning, brennvidde) ligger i `DRONER`. Zenmuse P1/L2 og Matrice 4E mangler i WPML-dokumentasjonen og er ikke med ennå.
 
 **Beta:** Ruten er laget etter DJIs offentlige WPML-spesifikasjon, men er ikke testet på alle droner og fastvareversjoner. DJI Pilot 2 kan regenerere linjene fra malen. Kontroller alltid ruten i Pilot 2 før du flyr.
+
+## 🗺️ Ryddig kart: «Her ligger», tegnforklaring og meldinger
+- **«Her ligger»** (`hvaErHer` i `js/app.js`): ett klikk eller trykk i kartet gir én samlet boks.
+  - **Med en gang:** tiltak (fra tiltaksflatene), bestandet med treslag, bonitet, hogstklasse, alder, volum og areal, og uproduktiv mark.
+  - **Når de er hentet:** naturtyper, arter, kulturminner og arealplan. Tomme kilder vises ikke.
+  - Bestandet markeres i kartet og i Bestand-fanen, men panelet bytter ikke fane av seg selv. «Åpne bestandet» gjør det.
+  - Uproduktiv mark har ikke lenger et verktøytips som følger musen.
+- **Tegnforklaringen** er lukket som standard og viser antall deler. Valget huskes (`skogiq-tegnforklaring`). Seksjonene er skilt med linjer, og lista får rullefelt når den er lang. På mobil viker den lukkede tegnforklaringen mens en infoboks er åpen.
+- **Meldinger** vises én om gangen.
+  - Varigheten følger lengden (3,5–9 s), og et trykk lukker meldingen.
+  - Lange meldinger får avrundede hjørner i stedet for pilleform. På mobil går de over hele bredden over menyen.
+- **Velkomsten** ligger som et lite kort nede til høyre i kartet på PC, og kompakt under søket på mobil.
+  - Den venter til andre dialoger er lukket.
+  - Den lukkes når kartet tas i bruk eller en plan åpnes, ellers etter 25 s.
+- **Mobil:** verktøylinjen over kartet er én rad som kan rulles sidelengs, og zoomknappene er skjult (knip for å zoome). Da ligger ingen knapper oppå hverandre.
 
 ## Flere eiendommer i kartet (fanen «Planer»)
 
