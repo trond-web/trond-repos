@@ -4642,6 +4642,26 @@ test('Driftsområder: skjulte faner, forslag og minst ett område', async () => 
   assert.match(UI.husdyrHtml({ bestand: [], skifteplan: { skifter: [], dyrehold: { dyr: [{ id: 'k', slag: 'sau', antall: 30 }] } } }, 2026), /tonn husdyrgjødsel/);
 });
 
+test('Teiger: fra eiendomsgrensen og fra teignummeret på bestandene', async () => {
+  const T = await import('../js/teiger.js');
+  const kv = (x, y, d = 0.01) => [[[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]]];
+  const best = (id, x, y, ekstra = {}) => ({ id, nr: id, areal: 10, geometri: { type: 'Polygon', coordinates: kv(x, y, 0.002) }, ...ekstra });
+  // To atskilte teiger i grensen; den største får nr 1, bestandene knyttes til teigen de ligger i.
+  const S = { eiendom: { grense: { type: 'MultiPolygon', coordinates: [kv(11, 60, 0.005), kv(11.1, 60, 0.02)] } }, bestand: [best('a', 11.001, 60.001), best('b', 11.105, 60.005), best('c', 11.11, 60.01), best('d', 11.03, 60.001)] };
+  const t = T.finnTeiger(S);
+  assert.deepEqual(t.map((x) => x.navn), ['Teig 1', 'Teig 2']);
+  assert.deepEqual(t[0].bestand.sort(), ['b', 'c'], 'største teig');
+  assert.deepEqual(t[1].bestand.sort(), ['a', 'd'], 'bestand litt utenfor grensen går til nærmeste teig');
+  // Teignummer på bestandene gir navnet.
+  S.bestand = S.bestand.map((b) => ({ ...b, teig: ['b', 'c'].includes(b.id) ? '7' : '3' }));
+  assert.deepEqual(T.finnTeiger(S).map((x) => x.navn), ['Teig 3', 'Teig 7']);
+  // Én samlet grense, men tre teignumre (også fra «2-4»): grupperes etter teignummeret.
+  const U = { eiendom: { grense: { type: 'Polygon', coordinates: kv(11, 60, 0.05) } }, bestand: [best('1-1', 11.001, 60.001), best('2-4', 11.02, 60.02), best('x', 11.04, 60.04, { teig: '3' })] };
+  assert.equal(T.teigEtikett(U.bestand[1]), '2');
+  const tu = T.finnTeiger(U); assert.deepEqual(tu.map((x) => x.nr), ['1', '2', '3']); assert.ok(tu.every((x) => x.bbox && x.punkt));
+  assert.equal(T.finnTeiger({ eiendom: {}, bestand: [best('q', 11, 60)] }).length, 0, 'én teig uten grense: ingen velger');
+});
+
 test('Klima: gårdens klimabalanse (husdyr, jord, energi, skog)', async () => {
   const K = await import('../js/klima.js'); const { lagDemo } = await import('../js/demo.js');
   const tom = K.klimabalanse({ bestand: [] }, 2026); assert.equal(tom.poster.length, 0); assert.equal(tom.netto, 0);
