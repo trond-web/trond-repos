@@ -4980,3 +4980,52 @@ test('Skadesimulering: storm, snø, brannspredning, granbarkbille og tørke ut f
   assert.deepEqual(SIM.fraPrognose('storm', { dager: [{ vind: 10, kast: 22, retning: 250 }, { vind: 14, kast: 31, retning: 223 }] }), { kast: 31, retning: 225 });
   assert.equal(SIM.fraPrognose('torke', { dager: [{ nedbor: 0, tempMaks: 20 }, { nedbor: 0.2, tempMaks: 26 }, { nedbor: 5, tempMaks: 18 }] }).dager, 2);
 });
+
+test('Skadesimulering for kommunen: alle SR16-flater, værfelt, åpne kanter, brann på rutenett med AR5', async () => {
+  const K = await import('../js/kommunesim.js');
+  const x0 = 11; const y0 = 60; const dx = 100 / 55800; const dy = 100 / 110540; const N = 40;
+  const fl = []; let n = 0;
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { n++; const x = x0 + i * dx; const y = y0 + j * dy; fl.push({ id: `f${n}`, geometri: { type: 'Polygon', coordinates: [[[x, y], [x + dx, y], [x + dx, y + dy], [x, y + dy], [x, y]]] }, senter: [x + dx / 2, y + dy / 2], areal: 10, treslag: i < 20 ? 'G' : 'F', bonitet: 14, alder: j < 5 ? 2 : 80, volumDaa: j < 5 ? 0 : 30, hoyde: j < 5 ? 1 : 22, treantall: 100, maaleaar: 2022 }); }
+  const grense = { type: 'Polygon', coordinates: [[[x0, y0], [x0 + N * dx, y0], [x0 + N * dx, y0 + N * dy], [x0, y0 + N * dy], [x0, y0]]] };
+  const d = { flater: fl, kommune: { navn: 'Test', geometri: grense } }; const idx = K.lagIndeks(fl); const o = { iAar: 2026, idx };
+  // Framskriving fra måleåret
+  const fi = K.flateInfo(fl[100], 2026); assert.equal(fi.st.alder, 84); assert.ok(fi.h > 22 && fi.volum > 300);
+  // Åpen kant: flatene like nord for hogstflatene (j = 5) har åpen kant mot sør
+  const kantFlate = K.flateInfo(fl[5], 2026); assert.equal(K.kantMotVind(kantFlate, 180, idx), true); assert.equal(K.kantMotVind(kantFlate, 0, idx), false);
+  // Storm: mer med sterkere vind, og kanten mot sør gir mer skade ved sørlig vind
+  const svak = K.simulerKommune(d, 'storm', { kast: 18 }, o); const sterk = K.simulerKommune(d, 'storm', { kast: 34 }, o);
+  assert.ok(sterk.sum.kr > svak.sum.kr * 5); assert.ok(sterk.perTreslag.G.kr > sterk.perTreslag.F.kr, 'gran rammes mest');
+  const sor = K.simulerKommune(d, 'storm', { kast: 26, retning: 180 }, o); assert.ok(sor.andel[5] > sor.andel[15], 'kant mot vinden');
+  assert.ok(sterk.omrader.length >= 1 && sterk.omrader[0].kr >= sterk.omrader.at(-1).kr);
+  const kurve = K.kurveKommune(sterk); assert.ok(kurve.length > 10 && kurve.at(-1).kr > kurve[0].kr);
+  // Værfelt: kast skaleres lokalt (vest 30 m/s, øst 15 m/s) → vestlige flater rammes mer
+  const punkter = [{ pos: [x0 + 0.005, y0 + 0.018], vaer: { dager: [{ vind: 15, kast: 30, retning: 270 }] } }, { pos: [x0 + 0.065, y0 + 0.018], vaer: { dager: [{ vind: 8, kast: 15, retning: 270 }] } }];
+  const felt = K.lagFelt('storm', punkter); assert.equal(felt.scenario.kast, 30);
+  assert.ok(K.lokalParam('storm', { kast: 30, retning: 0 }, felt, [x0 + 0.065, y0 + 0.018]).kast < 18, 'lokal skalering');
+  const romlig = K.simulerKommune(d, 'storm', { kast: 30 }, { ...o, felt }); assert.ok(romlig.andel[N * 2 + 30] > romlig.andel[N * 35 + 30], 'vest rammes mer enn øst');
+  assert.ok(K.vaerPunkter(grense).length >= 1);
+  // Snø, bille og tørke kjører
+  for (const t of ['sno', 'bille', 'torke']) assert.ok(K.simulerKommune(d, t, {}, o).sum.flater >= 0);
+  assert.ok(K.simulerKommune(d, 'torke', { dager: 50, tempMaks: 28 }, o).sum.flater > 0, 'tørke rammer hogstflatene (plantefelt)');
+  // AR5-farger
+  assert.equal(K.klassifiserRgb(158, 204, 115), 1); assert.equal(K.klassifiserRgb(255, 209, 110), 2); assert.equal(K.klassifiserRgb(181, 236, 252), 3); assert.equal(K.klassifiserRgb(145, 231, 255), 5); assert.equal(K.klassifiserRgb(252, 219, 214), 6); assert.equal(K.klassifiserRgb(255, 255, 255), 0);
+  // Brann: rutenett, rasterisering, spredning med vinden, vann stopper, bebyggelse nås
+  const start = [x0 + 20 * dx, y0 + 20 * dy];
+  const g = K.lagRutenett(start, 1500, { celleM: 50 }); const fIdx = K.rasteriserFlater(g, fl, idx);
+  assert.ok(fIdx.filter((v) => v >= 0).length > 0.2 * g.nx * g.ny);
+  const b1 = K.brannKommune(d, { vind: 8, retning: 270, timer: 2, torrhet: 'torr' }, { start, iAar: 2026, idx, grid: g });
+  assert.ok(b1.sum.daa > 0 && b1.kurve.at(-1).daa >= b1.kurve[0].daa);
+  const celle = (lon, lat) => Math.floor((lat - g.lat0) / g.dlat) * g.nx + Math.floor((lon - g.lon0) / g.dlon);
+  assert.ok(b1.tid[celle(start[0] + 0.004, start[1])] < b1.tid[celle(start[0] - 0.004, start[1])], 'raskere med vinden (østover)');
+  // En vannstripe øst for startpunktet stopper brannen, og bebyggelse vest blir nådd
+  const dekke = new Uint8Array(g.nx * g.ny).fill(1); const iVann = Math.floor((start[0] + 0.002 - g.lon0) / g.dlon);
+  for (let j = 0; j < g.ny; j++) { dekke[j * g.nx + iVann] = 5; dekke[j * g.nx + iVann + 1] = 5; }
+  const iBy = Math.floor((start[0] - 0.003 - g.lon0) / g.dlon); const jBy = Math.floor((start[1] - g.lat0) / g.dlat); dekke[jBy * g.nx + iBy] = 6;
+  const b2 = K.brannKommune(d, { vind: 8, retning: 270, timer: 6, torrhet: 'torr' }, { start, iAar: 2026, idx, grid: g, dekke });
+  assert.equal(b2.tid[celle(start[0] + 0.004, start[1])], Infinity, 'vann stopper brannen'); assert.ok(b2.truet.length >= 1 && b2.sum.truetOmrader >= 1, 'bebyggelse nås');
+  const ivann = K.brannKommune(d, {}, { start: [g.lon0 + (iVann + 0.5) * g.dlon, start[1]], iAar: 2026, idx, grid: g, dekke }); assert.match(ivann.feil, /vann/);
+  // AR5-biter og bilde → dekke
+  const biter = K.ar5Biter(g); assert.ok(biter.length >= 1 && /LAYERS=Arealtype/.test(biter[0].url) && /SRS=EPSG:3857/.test(biter[0].url) && biter.every((x) => x.W <= 2000 && x.H <= 2000));
+  const bit = biter[0]; const rgba = new Uint8ClampedArray(bit.W * bit.H * 4); for (let q = 0; q < rgba.length; q += 4) { rgba[q] = 145; rgba[q + 1] = 231; rgba[q + 2] = 255; }
+  const dk = new Uint8Array(g.nx * g.ny); K.dekkeFraBilde(g, dk, bit, rgba); assert.equal(dk[0], 5);
+});
