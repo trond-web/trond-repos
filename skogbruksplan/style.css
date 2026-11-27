@@ -1839,3 +1839,8 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .teig-etikett { background: none; border: 0; }
 .teig-etikett span { display: inline-block; transform: translate(-50%, -50%); white-space: nowrap; padding: 3px 9px; border-radius: 99px; background: rgba(16, 36, 28, .82); color: #fff; font: 700 12px/1.2 var(--font-body); box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
 .teig-etikett.aktiv span { background: #ffd400; color: #10241c; }
+
+/* Kartflisene: ved skjermskalering som ikke er et helt tall (f.eks. 125 % i Windows) havner kanten mellom to fliser
+   midt i en skjermpiksel, og Chrome tegner da en lys strek der. En gjennomsiktig kantlinje får nettleseren til å tegne
+   flisene uten den kanteffekten. Gjelder alle kartlag (bakgrunnskart og WMS-lag som kommuneplaner). */
+.leaflet-tile-container img.leaflet-tile { outline: 1px solid transparent; }

@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.34.1 – 🗺 Ingen lyse streker mellom kartflisene (2026-11-27)
+
+*Rettet.* På PC-er med skjermskalering som ikke er et helt tall, for eksempel 125 % i Windows, kunne det komme tynne, lyse streker mellom flisene i kartet, både i bakgrunnskartet og i kartlag som kommuneplaner. Strekene er borte, også i SkogIQ Felt.
+
 ## 2.34.0 – 🧩 Oversikt over teigene (2026-11-27)
 
 *Nytt.* Har eiendommen flere teiger, får Skogoversikt og Bestand en teigvelger øverst. Med ‹ og › blar du fra teig til teig, og kartet zoomer til teigen og markerer den. Nøkkeltallene, hogstklassediagrammet, neste tiltak og bestandslisten viser da bare den teigen. Kortet Teiger i Skogoversikt viser alle teigene med areal, antall bestand, volum, hogstmoden skog og planlagte tiltak. Trykk på en teig i kortet eller på teignavnet i kartet for å gå til den. Teigene finnes fra eiendomsgrensen og fra teignummeret på bestandene. Du finner dem også i søket (Ctrl K).
