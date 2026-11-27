@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.34.1** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.35.0** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -1000,6 +1000,16 @@ Tonn CO₂-ekvivalenter per år: utslipp fra husdyr, jord, energi og innkjøpte 
 - Viser netto balanse, utslipp og binding per kilde, og tiltak med anslått effekt: metandempende fôrtilsetning, biogass, bedre gjødselutnyttelse, myr, klimatiltak i skog og HVO.
 - **Metode:** IPCC 2006/2019 Tier 1 (Vest-Europa, kjølig klima) og GWP100 fra AR5 (CH₄ 28, N₂O 265). Dette er et anslag. Et sertifisert klimaregnskap lages med Klimakalkulatoren.
 
+## 🔗 Slå sammen skifter (`planleggSammenslaing` og `slaaSammenSkifter` i `js/skifteplan.js`)
+
+Under Jord › Skifter: «🔗 Slå sammen», velg to eller flere skifter i tabellen eller kartet, og bekreft. Før bekreftelsen vises det nye skiftets nummer og areal og alt som bør kontrolleres.
+- Det største skiftet beholder id, nummer og jordsmonn, slik at lenker til det virker videre. Navn hentes fra et annet skifte hvis det største ikke har navn.
+- Flatene forenes med polygon-clipping. Ligger skiftene ikke inntil hverandre, blir skiftet en multipolygon (varsel).
+- Vekster per år: felles vekst, ellers veksten med størst areal (varsel). Forventet avling vektes etter areal.
+- Jordprøve: den nyeste (varsel når det var flere).
+- Gjødsling: like gjødslinger (år, type, produkt, status, dato, spredemåte) slås sammen med arealvektet mengde, så den totale mengden N og P er den samme.
+- Sprøytejournal, beiteplan og maskindata peker etterpå til det nye skiftet. Grøfteplaner for de andre skiftene følger ikke med (varsel). Notater slås sammen, og `sammenslaatt` lagrer hvilke skifter det nye skiftet består av.
+
 ## 🧩 Teiger – oversikt og navigering (`js/teiger.js`)
 
 En eiendom kan bestå av flere teiger. `finnTeiger(S)` finner dem:
@@ -1020,13 +1030,13 @@ Skifteplan og KSL vises når jord eller husdyr er på.
 
 ### Menylinja: ett område om gangen, hvert med sitt dashboard (`MENY` i `js/driftsomrader.js`, `js/omrader-ui.js`)
 
-Øverst i menylinja velger brukeren område. Menylinja viser bare fanene for området, og hvert område starter på sitt eget dashboard:
+Øverst i panelet velger brukeren område. Menylinja viser bare fanene for området, og hvert område starter på sitt eget dashboard:
 - **🌲 Skog** – Skogoversikt (Skogkarakter, Innsikt, nøkkeltall, hogstklasser, neste tiltak), Bestand, Tiltak, Prognose, Veier, Skogbrand, Karbon, PEFC, EUDR, Kommune og Felt.
 - **🌾 Jord** – Jordoversikt (areal, vekster, planlagt N og P mot behov, sprøytinger, avvik og hva som må følges opp), Skifter, Gjødsling, Plantevern, Maskin og Krav.
 - **🐄 Husdyr** – Husdyroversikt (dyrene, husdyrgjødsel, fosfor per daa, lager, fôrbalanse, rundballer, produksjonstilskudd og avvik), Dyr og fjøs, Gjødsel, Fôr og beite, Mattilsynet og Tilskudd.
 - **🏡 Gården** (felles) – Gårdsoversikt (driftsområdene, klimabalanse, aktuelle tilskudd, KSL-avvik, kommende frister, arealfordeling, kommunale planer og Marka), Verdi, Klima, Tilskudd, KSL og Rapporter.
 
-Planer, Nettverk, Spør AI og Data vises i alle områdene. Skifteplanens underfaner ligger direkte i menylinja (`skifteplan:gjodsling` osv.), så den interne fanerekka er skjult. Går brukeren til en fane i et annet område (søk, lenke, innsikt), byttes området automatisk. Områder som er slått av under driftsområder, vises ikke i velgeren. Sist brukte område huskes i nettleseren (`skogiq-omrade`). På mobil er velgeren et lite 2×2-rutenett til venstre i fanelinja.
+Områdevelgeren ligger som faner øverst i panelet. Planer har fast plass øverst i menylinja, og Nettverk, Spør AI og Data har fast plass nederst (på mobil som ikoner). De ruller aldri bort. Eiendomsnavnet øverst i panelet er en knapp til Planer. Skifteplanens underfaner ligger direkte i menylinja (`skifteplan:gjodsling` osv.), så den interne fanerekka er skjult. Går brukeren til en fane i et annet område (søk, lenke, innsikt), byttes området automatisk. Områder som er slått av under driftsområder, vises ikke i velgeren. Sist brukte område huskes i nettleseren (`skogiq-omrade`). 
 
 Første gang en plan åpnes, spør appen «Hva driver du med?». Den viser hva som faktisk finnes på eiendommen (antall bestand og daa skog, jordbruksareal fra kartet eller skifter, dyr eller driftsbygninger) og foreslår ut fra det. Fanene for områder som er slått av, skjules, også i hurtigmenyen (Ctrl K). Dataene blir liggende. Valget lagres i planen (`S.drift`), følger synkroniseringen og endres med «Tilpass» øverst i Gården › Oversikt. Demo-eiendommen spørres ikke.
 

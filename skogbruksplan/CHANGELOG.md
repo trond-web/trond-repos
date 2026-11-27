@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.35.0 – 🔗 Slå sammen skifter, og enklere meny (2026-11-27)
+
+*Nytt.* Under Jord › Skifter kan du slå sammen to eller flere skifter til ett. Trykk «🔗 Slå sammen» og velg skiftene i tabellen eller kartet. Det største skiftet beholder nummeret. Flatene slås sammen i kartet. Der skiftene har ulik vekst, brukes veksten med størst areal. Den nyeste jordprøven beholdes. Gjødslingen fordeles på hele skiftet med samme totale mengde, og sprøytejournal, beiteplan og maskindata følger med. Før du bekrefter, ser du hva som skjer, for eksempel om skiftene ikke ligger inntil hverandre. Menyen er også enklere: Skog, Jord, Husdyr og Gården velges med fanene øverst i panelet. Planer har fast plass øverst i menylinja, og Nettverk, Spør AI og Data har fast plass nederst. Trykk på eiendomsnavnet øverst i panelet for å bytte plan.
+
 ## 2.34.1 – 🗺 Ingen lyse streker mellom kartflisene (2026-11-27)
 
 *Rettet.* På PC-er med skjermskalering som ikke er et helt tall, for eksempel 125 % i Windows, kunne det komme tynne, lyse streker mellom flisene i kartet, både i bakgrunnskartet og i kartlag som kommuneplaner. Strekene er borte, også i SkogIQ Felt.

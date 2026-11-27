@@ -1784,15 +1784,24 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .bd-panel > .nokkeltall:first-child { margin-top: 0; }
 
 /* ---------- 🧭 Områdevelger i menylinja og åpningsdashboard per område (js/driftsomrader.js MENY, js/omrader-ui.js) ---------- */
-.omrader { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 4px; margin-bottom: 4px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06); }
-.omrader button { display: flex; flex-direction: column; align-items: center; gap: 1px; border: 0; background: none; color: inherit; cursor: pointer; padding: 4px 2px 3px; border-radius: 10px; font: 600 10px/1.1 var(--font-body); transition: background .15s, color .15s; }
-.omrader button i { font-style: normal; font-size: 17px; line-height: 1; filter: grayscale(.7); opacity: .75; transition: filter .15s, opacity .15s; }
-.omrader button:hover { background: rgba(255,255,255,.06); color: #e6eee8; }
-.omrader button:hover i { filter: none; opacity: 1; }
-.omrader button.aktiv { background: var(--rail-aktiv); color: var(--rail); }
-.omrader button.aktiv i { filter: none; opacity: 1; }
-.rail-skille { display: block; height: 1px; margin: 5px 10px; background: rgba(255,255,255,.1); flex: none; }
 .faner button[hidden] { display: none; }
+/* Faste deler av menylinja: Planer øverst, Nettverk, Spør AI og Data nederst – ruller aldri bort. */
+.faner.faner-fast { flex: none; overflow: visible; }
+.faner:not(.faner-fast) { min-height: 0; }
+.faner-topp { padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.faner-bunn { padding-top: 6px; margin-top: 4px; border-top: 1px solid rgba(255,255,255,.1); }
+/* Områdevelgeren øverst i panelet: Skog · Jord · Husdyr · Gården */
+.omrader { flex-basis: 100%; order: 10; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 3px; padding: 3px; margin-top: 4px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); }
+.omrader button { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; border: 0; background: none; color: var(--text-2); cursor: pointer; padding: 7px 6px; border-radius: 9px; font: 600 13px/1.1 var(--font-body); white-space: nowrap; transition: background .15s, color .15s; }
+.omrader button[hidden] { display: none; }
+.omrader button i { font-style: normal; font-size: 16px; line-height: 1; }
+.omrader button:hover { background: var(--surface); color: var(--text); }
+.omrader button.aktiv { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12), inset 0 -2px 0 var(--accent); }
+.panel-topp { flex-wrap: wrap; }
+.plan-bytt { border: 0; background: none; padding: 0; cursor: pointer; text-align: left; max-width: 100%; }
+.plan-bytt::after { content: ' ▾'; }
+.plan-bytt:hover { color: var(--accent); }
+body.panel-skjult .panel .omrader { visibility: hidden; }
 
 .omr-topp { display: flex; justify-content: flex-end; margin: -4px 0 6px; }
 .omr-helt p { margin: 6px 0 12px; }
@@ -1819,12 +1828,13 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .omr-dato { font-weight: 700; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 860px) {
-  /* Mobil: velgeren blir et lite 2×2-rutenett med bare ikoner til venstre i fanelinja. */
-  .omrader { display: grid; grid-template-columns: repeat(2, 28px); grid-auto-rows: 26px; gap: 2px; width: auto; flex: none; padding: 2px; margin: 0 6px 0 0; align-self: center; }
-  .omrader button { padding: 0; justify-content: center; }
-  .omrader button span { display: none; }
-  .omrader button i { font-size: 14px; }
-  .rail-skille { width: 1px; height: auto; margin: 10px 3px; }
+  .faner.faner-fast { width: auto; }
+  .faner:not(.faner-fast) { flex: 1; min-width: 0; }
+  .faner-topp { border-bottom: 0; border-right: 1px solid rgba(255,255,255,.1); padding: 0 4px 0 0; margin: 0 4px 0 0; }
+  .faner-bunn { border-top: 0; border-left: 1px solid rgba(255,255,255,.1); padding: 0 0 0 4px; margin: 0 0 0 4px; }
+  .faner-bunn button { min-width: 40px; padding: 7px 2px 6px; }
+  .faner-bunn button span { display: none; } /* bare ikon på mobil – navnet står i title */
+  .omrader button { font-size: 12px; padding: 6px 4px; gap: 4px; }
   .omr-stolpe { grid-template-columns: 90px minmax(0, 1fr) 70px; }
 }
 
@@ -1844,3 +1854,8 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
    midt i en skjermpiksel, og Chrome tegner da en lys strek der. En gjennomsiktig kantlinje får nettleseren til å tegne
    flisene uten den kanteffekten. Gjelder alle kartlag (bakgrunnskart og WMS-lag som kommuneplaner). */
 .leaflet-tile-container img.leaflet-tile { outline: 1px solid transparent; }
+
+/* 🔗 Slå sammen skifter */
+.sp-samle { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 10px 12px; margin: 0 0 10px; border-radius: var(--radius); background: color-mix(in srgb, #ffd400 18%, var(--surface)); border: 1px solid color-mix(in srgb, #ffd400 60%, var(--border)); font-size: 13px; }
+.sp-samle-boks { width: 28px; }
+.sp-samle-boks input { pointer-events: none; }

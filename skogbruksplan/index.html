@@ -24,17 +24,10 @@
   <a class="logo" href="#" data-gaa="oversikt" aria-label="SkogIQ.ai – til oversikten">
     <img src="icon.svg" alt="" width="36" height="36">
   </a>
-  <div class="omrader" role="tablist" aria-label="Område">
-    <button type="button" role="tab" data-omrade="skog" title="Skog – bestand, tiltak, prognose, veier, skogbrand, karbon og sertifisering"><i aria-hidden="true">🌲</i><span>Skog</span></button>
-    <button type="button" role="tab" data-omrade="jord" title="Jord – skifter, gjødsling, plantevern og maskin"><i aria-hidden="true">🌾</i><span>Jord</span></button>
-    <button type="button" role="tab" data-omrade="husdyr" title="Husdyr – dyrehold, husdyrgjødsel, fôr og beite, Mattilsynet og produksjonstilskudd"><i aria-hidden="true">🐄</i><span>Husdyr</span></button>
-    <button type="button" role="tab" data-omrade="gard" title="Gården – felles for hele eiendommen: verdi, klima, tilskudd, KSL og rapporter"><i aria-hidden="true">🏡</i><span>Gården</span></button>
-  </div>
-  <nav class="faner" role="tablist" aria-label="Moduler">
-    <span class="rail-skille" data-skille="topp" aria-hidden="true"></span>
-    <span class="rail-skille" data-skille="bunn" aria-hidden="true"></span>
+  <nav class="faner faner-fast faner-topp" aria-label="Planer">
     <button role="tab" data-fane="planer" title="Planer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 4.5 9-4.5" opacity=".5"/></svg><span>Planer</span></button>
-    <button role="tab" data-fane="nettverk" title="Nettverk – innkjøpere, entreprenører og skogeiere, med chat"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M14 14.6c.9-.6 1.9-.9 3-.9 2.3 0 4 1.5 4.5 4.3"/></svg><span>Nettverk</span><i class="rail-merke" id="nettverkMerke" hidden></i></button>
+  </nav>
+  <nav class="faner" role="tablist" aria-label="Moduler">
     <button role="tab" data-fane="kommune" title="Kommune"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5 9 4l6 2.5L20 4v13.5L15 20l-6-2.5L4 20Z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span>Kommune</span></button>
     <button role="tab" data-fane="oversikt" class="aktiv" title="Oversikt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14a8 8 0 1 1 16 0"/><path d="m12 14 4-5"/><circle cx="12" cy="14" r="1.5"/><path d="M4 18h16"/></svg><span>Oversikt</span></button>
     <button role="tab" data-fane="jordoversikt" title="Oversikt over jordbruket"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14a8 8 0 1 1 16 0"/><path d="m12 14 4-5"/><circle cx="12" cy="14" r="1.5"/><path d="M4 18h16"/></svg><span>Oversikt</span></button>
@@ -63,8 +56,11 @@
     <button role="tab" data-fane="tilskudd" title="Tilskudd – ordningene du kan søke, med beløp, krav og frister for gården"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6.5" rx="7" ry="2.5"/><path d="M5 6.5v4c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-4"/><path d="M5 10.5v4c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-4"/><path d="M5 14.5v3c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-3"/></svg><span>Tilskudd</span></button>
     <button role="tab" data-fane="pefc" title="PEFC skogstandard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg><span>PEFC</span></button>
     <button role="tab" data-fane="eudr" title="EUDR – dokumentasjon av avskogingsfritt og lovlig tømmer (EUs avskogingsforordning)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6Z"/><path d="M12 7.5v9M9 10.5l3-3 3 3M8.5 13.5 12 10l3.5 3.5"/></svg><span>EUDR</span></button>
-    <button role="tab" data-fane="ai" title="Spør AI om planen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5h0a2 2 0 0 1-2-2Z"/><path d="m12 7.5.9 1.9 1.9.9-1.9.9-.9 1.9-.9-1.9-1.9-.9 1.9-.9Z"/></svg><span>Spør AI</span></button>
     <button role="tab" data-fane="felt" title="Felt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span>Felt</span></button>
+  </nav>
+  <nav class="faner faner-fast faner-bunn" aria-label="Felles">
+    <button role="tab" data-fane="nettverk" title="Nettverk – innkjøpere, entreprenører og skogeiere, med chat"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M14 14.6c.9-.6 1.9-.9 3-.9 2.3 0 4 1.5 4.5 4.3"/></svg><span>Nettverk</span><i class="rail-merke" id="nettverkMerke" hidden></i></button>
+    <button role="tab" data-fane="ai" title="Spør AI om planen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5h0a2 2 0 0 1-2-2Z"/><path d="m12 7.5.9 1.9 1.9.9-1.9.9-.9 1.9-.9-1.9-1.9-.9 1.9-.9Z"/></svg><span>Spør AI</span></button>
     <button role="tab" data-fane="data" title="Data"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.5"/><path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13"/><path d="M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5"/></svg><span>Data</span></button>
   </nav>
   <button type="button" class="skogen-merke" data-skogen hidden title="Skogen siste døgn"></button>
@@ -133,11 +129,17 @@
     <header class="panel-topp">
       <button class="ark-hank" id="arkHank" type="button" aria-label="Endre størrelse på panelet"><span></span></button>
       <div class="panel-tittel">
-        <span class="overtittel" id="eiendomNavn">SkogIQ.ai</span>
+        <button type="button" class="overtittel plan-bytt" id="eiendomNavn" data-gaa="planer" title="Bytt plan eller lag ny">SkogIQ.ai</button>
         <h2 id="faneTittel">Oversikt</h2>
       </div>
       <button class="knapp ikon-knapp panel-hjelp" id="panelHjelp" type="button" data-hjelp="kom-i-gang" title="Brukerveiledning for denne fanen" aria-label="Brukerveiledning">?</button>
       <button class="knapp ikon-knapp" id="panelLukk" type="button" title="Skjul panelet" aria-label="Skjul panelet" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
+      <div class="omrader" role="tablist" aria-label="Område">
+        <button type="button" role="tab" data-omrade="skog" title="Skog – bestand, tiltak, prognose, veier, skogbrand, karbon og sertifisering"><i aria-hidden="true">🌲</i><span>Skog</span></button>
+        <button type="button" role="tab" data-omrade="jord" title="Jord – skifter, gjødsling, plantevern og maskin"><i aria-hidden="true">🌾</i><span>Jord</span></button>
+        <button type="button" role="tab" data-omrade="husdyr" title="Husdyr – dyrehold, husdyrgjødsel, fôr og beite, Mattilsynet og produksjonstilskudd"><i aria-hidden="true">🐄</i><span>Husdyr</span></button>
+        <button type="button" role="tab" data-omrade="gard" title="Gården – felles for hele eiendommen: verdi, klima, tilskudd, KSL og rapporter"><i aria-hidden="true">🏡</i><span>Gården</span></button>
+      </div>
     </header>
     <div class="panel-innhold">
     <!-- PLANER -->

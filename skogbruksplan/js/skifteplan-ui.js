@@ -4,7 +4,7 @@ import {
   KILDER, GRUPPER, KULTURER, JORDARBEIDING, MINERAL, HUSDYR, SPREDEMAATE, REGIONER, AR5_JORDBRUK, IPV, JORDSMONN_KARTLAG, INNDELING,
   tomSkifteplan, nyttSkifte, skifterFraMarkslag, hentJordsmonn, gjodselbehov, naering, produktNavn, sumGjodsling,
   foreslaGjodsling, kontroller, fosforSnitt, fosforgrense, aktiveSkifter, nySproyting, tidligsteHosting, oppsummer,
-  gjodslingsplanCsv, sproytejournalCsv, kartskisse, avstandTilVann,
+  gjodslingsplanCsv, sproytejournalCsv, kartskisse, avstandTilVann, planleggSammenslaing, slaaSammenSkifter,
 } from './skifteplan.js';
 import { arealM2 } from './proj.js';
 import { fmt } from './charts.js';
@@ -21,11 +21,12 @@ const NIVAA = { avvik: { navn: 'Avvik', farge: 'var(--critical)', ikon: '✕' },
 const idag = () => new Date().toISOString().slice(0, 10);
 const tall = (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? '' : Number(v));
 
-export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKartKlikk, hentJordbruk, lagInndeling, vedUnderfane = () => {}, iAar = new Date().getFullYear() }) {
+export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKartKlikk, hentJordbruk, lagInndeling, hentKlipping = async () => null, vedUnderfane = () => {}, iAar = new Date().getFullYear() }) {
   const lag = L.layerGroup();
   const wms = {};
   let underfane = 'skifter';
   let valgt = null; let tegner = null; let synlig = false; let arbeider = '';
+  let samle = null; // 🔗 skifter valgt for sammenslåing (Set med id), eller null
 
   const SP = () => {
     const S = hentPlan();
@@ -47,10 +48,10 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     for (const sk of p.skifter) {
       if (!sk.geometri) continue;
       const k = KULTURER[sk.vekster?.[a]?.kultur]; const farge = GRUPPER[k?.gruppe]?.farge || '#ffffff';
-      const er = sk.id === valgt;
-      const l = L.geoJSON(sk.geometri, { style: { color: er ? '#ffd400' : '#3d3108', weight: er ? 4 : 2.4, fillColor: farge, fillOpacity: k ? 0.6 : 0.3 } });
+      const er = samle ? samle.has(sk.id) : sk.id === valgt;
+      const l = L.geoJSON(sk.geometri, { style: { color: er ? '#ffd400' : '#3d3108', weight: er ? 4 : 2.4, dashArray: samle && er ? '7 4' : null, fillColor: farge, fillOpacity: k ? 0.6 : 0.3 } });
       l.bindTooltip(`<b>${esc(sk.nr)}</b>${k ? ` ${esc(k.navn.split(',')[0])}` : ''}`, { permanent: true, direction: 'center', className: 'sp-etikett' });
-      l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (tegner) tegner.klikk(e.latlng); else velg(sk.id, { zoom: false }); });
+      l.on('click', (e) => { L.DomEvent.stopPropagation(e); if (tegner) tegner.klikk(e.latlng); else if (samle) veksleSamle(sk.id); else velg(sk.id, { zoom: false }); });
       l.addTo(lag);
     }
     dren.tegnKart(lag, p.skifter);
@@ -59,6 +60,18 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
       if (vis[id] && !wms[id]) wms[id] = L.tileLayer.wms(c.url, { layers: c.lag, format: 'image/png', transparent: true, opacity: 0.6, attribution: c.attr || 'Jordsmonn © NIBIO' }).addTo(kart);
       if (!vis[id] && wms[id]) { wms[id].remove(); delete wms[id]; }
     }
+  }
+  // 🔗 Slå sammen skifter (planleggSammenslaing/slaaSammenSkifter i skifteplan.js)
+  function veksleSamle(id) { if (!samle) return; if (samle.has(id)) samle.delete(id); else samle.add(id); tegnKart(); tegn(); }
+  async function utforSammenslaing() {
+    const p = SP(); if (!samle || samle.size < 2) return;
+    const klipping = await hentKlipping();
+    const r = planleggSammenslaing(p, [...samle], { klipping }); if (!r) return;
+    const tekst = `Slå sammen skifte ${r.valgte.join(', ')} til ett skifte?\n\nDet nye skiftet blir nr ${r.skifte.nr}${r.skifte.navn ? ` (${r.skifte.navn})` : ''} på ${fmt(r.skifte.areal, 1)} daa.${r.advarsler.length ? `\n\n${r.advarsler.map((x) => `• ${x}`).join('\n')}` : ''}`;
+    if (!confirm(tekst)) return;
+    slaaSammenSkifter(p, [...samle], { klipping });
+    samle = null; valgt = r.skifte.id; lagre(); zoom(r.skifte);
+    melding(`Skifte ${r.valgte.join(', ')} er slått sammen til skifte ${r.skifte.nr} (${fmt(r.skifte.areal, 1)} daa).`);
   }
   function zoom(sk) { if (sk?.geometri) kart.fitBounds(L.geoJSON(sk.geometri).getBounds(), { padding: [40, 40], maxZoom: 17 }); }
   function zoomAlle() { const g = SP().skifter.filter((s) => s.geometri); if (g.length) kart.fitBounds(L.geoJSON({ type: 'GeometryCollection', geometries: g.map((s) => s.geometri) }).getBounds(), { padding: [30, 30] }); }
@@ -159,12 +172,13 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     }
     const grupper = {}; for (const sk of p.skifter) { const g = KULTURER[sk.vekster?.[a]?.kultur]?.gruppe || 'ukjent'; grupper[g] = (grupper[g] || 0) + (sk.areal || 0); }
     const sk = finn(valgt);
-    return `<div class="knapperad sp-verktoy"><button type="button" class="knapp liten" data-sp="auto" ${arbeider ? 'disabled' : ''}>Ny automatisk inndeling</button><button type="button" class="knapp liten" data-sp="tegn">Tegn skifte</button><button type="button" class="knapp liten" data-sp="jordsmonn-alle" ${arbeider ? 'disabled' : ''}>Hent jordsmonn</button><button type="button" class="knapp liten" data-sp="zoom-alle">Vis alle</button></div>
+    return `<div class="knapperad sp-verktoy"><button type="button" class="knapp liten" data-sp="auto" ${arbeider ? 'disabled' : ''}>Ny automatisk inndeling</button><button type="button" class="knapp liten" data-sp="tegn">Tegn skifte</button><button type="button" class="knapp liten" data-sp="jordsmonn-alle" ${arbeider ? 'disabled' : ''}>Hent jordsmonn</button><button type="button" class="knapp liten" data-sp="zoom-alle">Vis alle</button>${p.skifter.length > 1 && !samle ? '<button type="button" class="knapp liten" data-sp="samle" title="Slå sammen to eller flere skifter til ett">🔗 Slå sammen</button>' : ''}</div>
+      ${samle ? `<div class="sp-samle"><span><b>Slå sammen skifter:</b> trykk på skiftene i tabellen eller kartet. ${samle.size ? `${samle.size} valgt (${fmt(p.skifter.filter((x) => samle.has(x.id)).reduce((t, x) => t + (x.areal || 0), 0), 1)} daa).` : ''}</span><span class="knapperad" style="margin:0"><button type="button" class="knapp liten primar" data-sp="samle-ok" ${samle.size < 2 ? 'disabled' : ''}>Slå sammen ${samle.size > 1 ? samle.size : ''} skifter</button><button type="button" class="knapp liten" data-sp="samle-avbryt">Avbryt</button></span></div>` : ''}
       <div class="sp-grupper">${Object.entries(grupper).map(([g, v]) => `<span class="sp-chip"><i class="sp-prikk" style="--farge:${GRUPPER[g]?.farge || '#fff'}"></i>${esc(GRUPPER[g]?.navn || 'Uten vekst')} ${fmt(v, 1)} daa</span>`).join('')}</div>
-      <div class="tabell-wrap"><table class="tabell sp-tabell"><thead><tr><th>Nr</th><th>Navn</th><th class="tall">Daa</th><th>Forgrøde ${a - 1}</th><th>Vekst ${a}</th><th class="tall">P-AL</th><th>Prøve</th></tr></thead><tbody>
-        ${p.skifter.map((s) => { const pa = s.jordprove?.dato ? Number(s.jordprove.dato.slice(0, 4)) : null; const gammel = pa && a - pa > (KULTURER[s.vekster?.[a]?.kultur]?.pKrevende ? 4 : 8); return `<tr data-sp-skifte="${s.id}" class="${s.id === valgt ? 'valgt' : ''}"><td><b>${esc(s.nr)}</b></td><td>${esc(s.navn)}</td><td class="tall">${fmt(s.areal, 1)}</td><td>${esc(vekstNavn(s, a - 1))}</td><td>${prik(s, a)}${esc(vekstNavn(s, a)) || '<span class="hint">velg</span>'}</td><td class="tall">${s.jordprove?.PAL ?? ''}</td><td${gammel ? ' class="sp-gammel"' : ''}>${pa || '<span class="hint">mangler</span>'}</td></tr>`; }).join('')}
+      <div class="tabell-wrap"><table class="tabell sp-tabell"><thead><tr>${samle ? '<th></th>' : ''}<th>Nr</th><th>Navn</th><th class="tall">Daa</th><th>Forgrøde ${a - 1}</th><th>Vekst ${a}</th><th class="tall">P-AL</th><th>Prøve</th></tr></thead><tbody>
+        ${p.skifter.map((s) => { const pa = s.jordprove?.dato ? Number(s.jordprove.dato.slice(0, 4)) : null; const gammel = pa && a - pa > (KULTURER[s.vekster?.[a]?.kultur]?.pKrevende ? 4 : 8); return `<tr data-sp-skifte="${s.id}" class="${(samle ? samle.has(s.id) : s.id === valgt) ? 'valgt' : ''}">${samle ? `<td class="sp-samle-boks"><input type="checkbox" tabindex="-1" aria-label="Velg skifte ${esc(s.nr)}" ${samle.has(s.id) ? 'checked' : ''}></td>` : ''}<td><b>${esc(s.nr)}</b></td><td>${esc(s.navn)}</td><td class="tall">${fmt(s.areal, 1)}</td><td>${esc(vekstNavn(s, a - 1))}</td><td>${prik(s, a)}${esc(vekstNavn(s, a)) || '<span class="hint">velg</span>'}</td><td class="tall">${s.jordprove?.PAL ?? ''}</td><td${gammel ? ' class="sp-gammel"' : ''}>${pa || '<span class="hint">mangler</span>'}</td></tr>`; }).join('')}
       </tbody></table></div>
-      ${sk ? detaljHtml(sk, S) : '<p class="hint">Velg et skifte i tabellen eller kartet for å registrere vekster, jordprøve og jordsmonn.</p>'}
+      ${samle ? '' : sk ? detaljHtml(sk, S) : '<p class="hint">Velg et skifte i tabellen eller kartet for å registrere vekster, jordprøve og jordsmonn.</p>'}
       ${prinsippHtml(false)}
       <details class="kort sp-lag"><summary><b>Kartlag fra NIBIO</b></summary><div class="sp-lagvalg">${Object.entries(JORDSMONN_KARTLAG).map(([id, c]) => `<label><input type="checkbox" data-sp-lag="${id}" ${p.visLag?.[id] ? 'checked' : ''}> ${esc(c.navn)}</label>`).join('')}</div></details>`;
   }
@@ -190,7 +204,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     const vann = avstandTilVann(sk, S);
     const aarene = [a - 3, a - 2, a - 1, a, a + 1];
     return `<div class="kort sp-detalj" data-sp-kort="${sk.id}">
-      <div class="detalj-topp"><h3>Skifte ${esc(sk.nr)}${sk.navn ? ` – ${esc(sk.navn)}` : ''}</h3><div class="knapperad" style="margin:0"><button type="button" class="knapp liten" data-sp="zoom" title="Zoom til skiftet">🔍</button><button type="button" class="knapp liten fare" data-sp="slett">Slett</button></div></div>
+      <div class="detalj-topp"><h3>Skifte ${esc(sk.nr)}${sk.navn ? ` – ${esc(sk.navn)}` : ''}</h3><div class="knapperad" style="margin:0"><button type="button" class="knapp liten" data-sp="zoom" title="Zoom til skiftet">🔍</button>${SP().skifter.length > 1 ? '<button type="button" class="knapp liten" data-sp="samle" title="Slå sammen dette skiftet med ett eller flere andre">🔗 Slå sammen med …</button>' : ''}<button type="button" class="knapp liten fare" data-sp="slett">Slett</button></div></div>
       <div class="skjema to-kol">
         <label>Nr <input data-sp-felt="nr" value="${esc(sk.nr)}"></label>
         <label>Navn <input data-sp-felt="navn" value="${esc(sk.navn)}" placeholder="F.eks. Nordre jorde"></label>
@@ -432,9 +446,13 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     const spSlett = e.target.closest('[data-sp-sp-slett]');
     if (spSlett) { const id = spSlett.closest('[data-sp-sp]').dataset.spSp; if (confirm('Slette sprøytingen fra journalen?')) { p.sproyting = p.sproyting.filter((x) => x.id !== id); lagre(false); } return; }
     const rad = e.target.closest('[data-sp-skifte]');
+    if (rad && samle && !e.target.closest('select,button')) { e.preventDefault(); veksleSamle(rad.dataset.spSkifte); return; }
     if (rad && !e.target.closest('input,select,button:not([data-sp-skifte])')) { e.preventDefault(); if (underfane === 'krav') underfane = 'skifter'; velg(rad.dataset.spSkifte); return; }
     const k = e.target.closest('[data-sp]')?.dataset.sp; if (!k) return;
     const sk = finn(valgt);
+    if (k === 'samle') { samle = new Set(valgt ? [valgt] : []); underfane = 'skifter'; tegnKart(); tegn(); melding('Trykk på skiftene som skal slås sammen – i tabellen eller i kartet.'); return; }
+    if (k === 'samle-avbryt') { samle = null; tegnKart(); tegn(); return; }
+    if (k === 'samle-ok') { await utforSammenslaing(); return; }
     if (k === 'ar5') hentFraAr5();
     if (k === 'auto') autoInndeling();
     if (k === 'tegn') startTegning();
@@ -498,7 +516,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
 
   return {
     vis() { synlig = true; SP(); if (!kart.hasLayer(lag)) lag.addTo(kart); tegnKart(); tegn(); },
-    skjul() { synlig = false; stopp(); lag.remove(); for (const id of Object.keys(wms)) { wms[id].remove(); delete wms[id]; } },
+    skjul() { synlig = false; samle = null; stopp(); lag.remove(); for (const id of Object.keys(wms)) { wms[id].remove(); delete wms[id]; } },
     oppdater() { if (synlig) { tegnKart(); tegn(); } },
     underfane(navn) { underfane = navn; if (synlig) tegn(); },
     aktivUnderfane: () => underfane,
