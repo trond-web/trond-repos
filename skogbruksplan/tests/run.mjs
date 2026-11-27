@@ -4939,3 +4939,44 @@ test('Samråd ved skogbrannfare: obligatorisk ved stor fare, skjema, bekreftelse
   assert.equal(rensTekst('🔥 Brann ➜ x'), 'Brann -> x');
   const lang = lagPdf(Array.from({ length: 120 }, (_, i) => ({ type: 'kv', etikett: `Rad ${i}`, verdi: 'x' }))); assert.ok((String.fromCharCode(...lang).match(/\/Type \/Page /g) || []).length >= 3, 'sideskift');
 });
+
+test('Skadesimulering: storm, snø, brannspredning, granbarkbille og tørke ut fra værscenario', async () => {
+  const SIM = await import('../js/skadesim.js');
+  const sq = (x, y, d) => ({ type: 'Polygon', coordinates: [[[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]]] });
+  // 4×3 rutenett av bestand à 30 daa; rad 0 er hogstflate/plantefelt, rad 2 er gammel skog
+  const best = []; let n = 0;
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) { n++; best.push({ id: `b${n}`, nr: String(n), treslag: i === 1 ? 'F' : i === 3 ? 'L' : 'G', bonitet: 14, alder: [3, 30, 80][j], areal: 30, geometri: sq(11 + i * 0.004, 60 + j * 0.0025, 0.004), tiltak: [] }); }
+  const S = { bestand: best, innstillinger: STANDARD_INNSTILLINGER };
+  const o = { iAar: 2026 };
+  // Storm: mer skade med sterkere vind, gammel gran rammes mest, plantefelt ikke
+  const svak = SIM.simuler(S, 'storm', { kast: 16 }, o); const sterk = SIM.simuler(S, 'storm', { kast: 36 }, o);
+  assert.ok(sterk.sum.kr > svak.sum.kr * 5 && sterk.sum.m3 > svak.sum.m3);
+  assert.equal(sterk.rader[0].treslag, 'G'); assert.equal(sterk.rader.find((r) => r.id === 'b1').andel, 0, 'plantefelt felles ikke av vind');
+  const tele = SIM.simuler(S, 'storm', { kast: 28, mark: 'tele' }, o).sum.kr; const vat = SIM.simuler(S, 'storm', { kast: 28, mark: 'vat' }, o).sum.kr; assert.ok(vat > tele, 'bløt mark gir mer skade enn tele');
+  // Kant mot vinden: hogstflate vest for gammel gran gir lavere kritisk vind når vinden kommer fra vest
+  const nyHogst = { ...S, bestand: best.map((b) => (b.id === 'b3' ? { ...b, alder: 1 } : b)) };
+  const fraVest = SIM.simuler(nyHogst, 'storm', { kast: 26, retning: 270 }, o).rader.find((r) => r.id === 'b6'); const fraOst = SIM.simuler(nyHogst, 'storm', { kast: 26, retning: 90 }, o).rader.find((r) => r.id === 'b6');
+  assert.ok(fraVest.andel > fraOst.andel && fraVest.grunner.includes('Åpen kant mot vinden'));
+  // Snø: våt snø gir mer enn tørr, og mer snø mer skade
+  assert.ok(SIM.simuler(S, 'sno', { nysno: 50, snotype: 'vat' }, o).sum.kr > SIM.simuler(S, 'sno', { nysno: 50, snotype: 'torr', temp: -10 }, o).sum.kr);
+  assert.ok(SIM.simuler(S, 'sno', { nysno: 80 }, o).sum.skadetDaa > SIM.simuler(S, 'sno', { nysno: 20 }, o).sum.skadetDaa);
+  // Brann: FBP-verdier, spredning med vinden og over tid
+  assert.ok(Math.abs(SIM.isi(90, 8) - 18.3) < 0.5, 'ISI'); assert.ok(Math.abs(SIM.ros('C2', 10) - 13.4) < 0.3, 'ROS C2');
+  assert.ok(SIM.rosRetning(10, 3, 180) < SIM.rosRetning(10, 3, 90) && SIM.rosRetning(10, 3, 90) < 10 && Math.abs(SIM.rosRetning(10, 3, 0) - 10) < 1e-9, 'ellipse');
+  const b6 = SIM.simuler(S, 'brann', { start: 'b5', vind: 8, retning: 270, timer: 2, torrhet: 'torr' }, o); // vind fra vest → sprer seg østover
+  const ank = (id) => b6.rader.find((r) => r.id === id).ankomst;
+  assert.equal(ank('b5'), 0); assert.ok(ank('b8') < ank('b2'), 'raskere med vinden (øst) enn mot (vest)');
+  const kort = SIM.simuler(S, 'brann', { start: 'b5', timer: 1 }, o).sum.skadetDaa; const lang = SIM.simuler(S, 'brann', { start: 'b5', timer: 12 }, o).sum.skadetDaa; assert.ok(lang > kort);
+  assert.ok(SIM.simuler(S, 'brann', { start: 'b5', torrhet: 'ekstrem', timer: 3 }, o).sum.skadetDaa > SIM.simuler(S, 'brann', { start: 'b5', torrhet: 'fuktig', timer: 3 }, o).sum.skadetDaa);
+  assert.equal(b6.forsikring.dekket, true);
+  // Granbarkbille: bare gran, varme og vindfall øker
+  const kjolig = SIM.simuler(S, 'bille', { varmeDager: 2, graddager: 900 }, o); const varm = SIM.simuler(S, 'bille', { varmeDager: 25, graddager: 1600, torkeDager: 30, vindfall: 600 }, o);
+  assert.ok(varm.sum.kr > kjolig.sum.kr * 3); assert.ok(varm.rader.filter((r) => r.andel > 0).every((r) => r.treslag === 'G')); assert.equal(varm.forsikring.dekket, false);
+  // Tørke: rammer plantefelt, kostnad = suppleringsplanting
+  const t = SIM.simuler(S, 'torke', { dager: 45, tempMaks: 28, kostnad: 2000 }, o);
+  assert.ok(t.rader.filter((r) => r.andel > 0.05).every((r) => ['b1', 'b4', 'b7', 'b10', 'b2', 'b5', 'b8', 'b11'].includes(r.id))); assert.equal(t.sum.m3, 0); assert.ok(t.sum.kr > 0);
+  // Sensitivitet og prognose
+  const sens = SIM.sensitivitet(S, 'storm', {}, o); assert.ok(sens.length > 10 && sens.at(-1).kr >= sens[0].kr);
+  assert.deepEqual(SIM.fraPrognose('storm', { dager: [{ vind: 10, kast: 22, retning: 250 }, { vind: 14, kast: 31, retning: 223 }] }), { kast: 31, retning: 225 });
+  assert.equal(SIM.fraPrognose('torke', { dager: [{ nedbor: 0, tempMaks: 20 }, { nedbor: 0.2, tempMaks: 26 }, { nedbor: 5, tempMaks: 18 }] }).dager, 2);
+});

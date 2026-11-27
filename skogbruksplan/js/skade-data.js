@@ -60,6 +60,29 @@ export async function hentVind(lon, lat, { hent = fetch } = {}) {
   return { dager: [...perDag.values()].slice(0, 9), hentet: new Date().toISOString() };
 }
 
+// Værprognose per dag til simulering: vind og kast, temperatur, nedbør og anslått nysnø (1 mm nedbør ≈ 1 cm snø når
+// temperaturen er rundt eller under 1 °C).
+export async function hentVaer(lon, lat, { hent = fetch } = {}) {
+  const d = JSON.parse(await hentTekst(hent, `${MET}/locationforecast/2.0/complete?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`));
+  const perDag = new Map(); let forrige = null;
+  for (const t of d.properties?.timeseries || []) {
+    const dag = new Date(t.time).toLocaleDateString('sv-SE', { timeZone: 'Europe/Oslo' });
+    const x = t.data.instant.details; const tid = new Date(t.time);
+    const r = perDag.get(dag) || { dato: dag, vind: 0, kast: null, retning: null, tempMaks: -99, tempMin: 99, nedbor: 0, sno: 0 };
+    if (x.wind_speed > r.vind) { r.vind = x.wind_speed; r.retning = x.wind_from_direction; }
+    if (x.wind_speed_of_gust != null && (r.kast == null || x.wind_speed_of_gust > r.kast)) r.kast = x.wind_speed_of_gust;
+    r.tempMaks = Math.max(r.tempMaks, x.air_temperature); r.tempMin = Math.min(r.tempMin, x.air_temperature);
+    // Nedbør: bruk 1-timers verdier der de finnes, ellers 6-timers – uten å telle samme periode to ganger.
+    const n1 = t.data.next_1_hours?.details?.precipitation_amount; const n6 = t.data.next_6_hours?.details?.precipitation_amount;
+    let mm = 0; if (n1 != null) mm = n1; else if (n6 != null && (!forrige || tid - forrige >= 6 * 3600e3 - 1)) { mm = n6; forrige = tid; }
+    if (n1 != null) forrige = null;
+    r.nedbor += mm; if (x.air_temperature <= 1) r.sno += mm;
+    perDag.set(dag, r);
+  }
+  const dager = [...perDag.values()].map((r) => ({ ...r, nedbor: Math.round(r.nedbor * 10) / 10, sno: Math.round(r.sno) })).slice(0, 10);
+  return { dager, hentet: new Date().toISOString(), kilde: 'Meteorologisk institutt (Locationforecast)' };
+}
+
 // Barkbilleovervåkingen: risikovarsel for sonen og fangst i de nærmeste fellene.
 const gmlFelt = (blokk) => { const a = {}; for (const [, k, v] of blokk.matchAll(/<(\w+)>([\s\S]*?)<\/\1>/g)) if (!k.startsWith('gml')) a[k] = v.trim(); return a; };
 const gmlObjekter = (tekst, lag) => tekst.split(`<${lag}_feature>`).slice(1).map((b) => {
