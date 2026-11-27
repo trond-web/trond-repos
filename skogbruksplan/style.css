@@ -1827,3 +1827,15 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
   .rail-skille { width: 1px; height: auto; margin: 10px 3px; }
   .omr-stolpe { grid-template-columns: 90px minmax(0, 1fr) 70px; }
 }
+
+/* ---------- 🧩 Teiger: velger, kort og navn i kartet (js/teiger.js) ---------- */
+.teig-velger { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: center; margin-bottom: 12px; padding: 6px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); }
+.teig-velger select { width: 100%; min-width: 0; font-weight: 600; }
+.teig-velger .ikon-knapp { font-size: 20px; line-height: 1; }
+.teig-tabell tbody tr { cursor: pointer; }
+.teig-tabell tbody tr:hover { background: var(--surface-2); }
+.teig-tabell tbody tr.valgt { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.teig-forfalt { color: #c77800; font-size: 10px; vertical-align: middle; }
+.teig-etikett { background: none; border: 0; }
+.teig-etikett span { display: inline-block; transform: translate(-50%, -50%); white-space: nowrap; padding: 3px 9px; border-radius: 99px; background: rgba(16, 36, 28, .82); color: #fff; font: 700 12px/1.2 var(--font-body); box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
+.teig-etikett.aktiv span { background: #ffd400; color: #10241c; }

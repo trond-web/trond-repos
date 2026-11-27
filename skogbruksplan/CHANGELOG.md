@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.34.0 – 🧩 Oversikt over teigene (2026-11-27)
+
+*Nytt.* Har eiendommen flere teiger, får Skogoversikt og Bestand en teigvelger øverst. Med ‹ og › blar du fra teig til teig, og kartet zoomer til teigen og markerer den. Nøkkeltallene, hogstklassediagrammet, neste tiltak og bestandslisten viser da bare den teigen. Kortet Teiger i Skogoversikt viser alle teigene med areal, antall bestand, volum, hogstmoden skog og planlagte tiltak. Trykk på en teig i kortet eller på teignavnet i kartet for å gå til den. Teigene finnes fra eiendomsgrensen og fra teignummeret på bestandene. Du finner dem også i søket (Ctrl K).
+
 ## 2.33.0 – 🧭 Skog, Jord, Husdyr og Gården – hver med sitt dashboard (2026-11-27)
 
 *Forbedret.* Øverst i menylinja velger du område: 🌲 Skog, 🌾 Jord, 🐄 Husdyr eller 🏡 Gården. Menylinja viser da bare fanene for området, og hvert område åpner på sitt eget dashboard med nøkkeltall, det som må følges opp, og snarveier. Jord har Skifter, Gjødsling, Plantevern, Maskin og Krav. Husdyr har Dyr og fjøs, Gjødsel, Fôr og beite, Mattilsynet og Produksjonstilskudd. Gården samler det som gjelder hele eiendommen: Verdi, Klima, Tilskudd, KSL og Rapporter, med klimabalanse, tilskudd, KSL-avvik og kommende frister på dashboardet. Arealfordeling, kommunale planer og Marka ligger nå i Gårdsoversikten. Planer, Nettverk, Spør AI og Data finnes i alle områdene. Appen husker området du sist brukte, og går du til en fane fra søket eller en lenke, bytter området automatisk.

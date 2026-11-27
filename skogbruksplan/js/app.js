@@ -28,6 +28,7 @@ import { initSok } from './sok-ui.js';
 import { initKommando } from './kommando.js';
 import { skjulte as driftSkjulte, velgDriftsomrader, settDrift, harValgt as driftValgt, kortTekst as driftTekst, MENY, FELLES_FANER, omradeFor, synligeOmrader, faneNokkel } from './driftsomrader.js';
 import { jordHtml, husdyrHtml, gardHtml } from './omrader-ui.js';
+import { finnTeiger } from './teiger.js';
 import { initPefc } from './pefc-ui.js';
 import { delFlate, nyttNr } from './del.js';
 import { initAssistent } from './assistent.js';
@@ -510,6 +511,7 @@ function tegnBestandKart(zoom = false) {
   if (S.eiendom.grense) {
     grenseLag = L.geoJSON(S.eiendom.grense, { style: { color: '#d03b3b', weight: 2.5, dashArray: '8 5', fill: false }, interactive: false }).addTo(kart);
   }
+  oppdaterTeiger(); tegnTeigLag();
   for (const b of S.bestand) {
     if (!b.geometri) continue;
     const lag = L.geoJSON(b.geometri, { style: () => stilFor(b) });
@@ -888,6 +890,67 @@ async function trekkUtMarkslag() {
   melding(r.endret || r.fjernet ? `${fmt(r.daa, 1)} daa uproduktiv mark trukket ut: ${r.endret} bestand endret${r.fjernet ? `, ${r.fjernet} fjernet` : ''}.` : 'Ingen bestand overlappet uproduktiv mark.', 6000);
 }
 
+// ---------------------------------------------------------------- 🧩 teiger (js/teiger.js)
+// Eiendommer med flere teiger får en teigvelger (◀ teig ▶) øverst i Oversikt og Bestand, et Teiger-kort i
+// Oversikt, og teignavn i kartet. Valgt teig avgrenser nøkkeltallene, diagrammet, neste tiltak og bestandslisten.
+let teigListe = []; let aktivTeig = null; let teigFor = null; let teigLag = null;
+function oppdaterTeiger() {
+  teigListe = finnTeiger(S);
+  if (teigFor !== S) { aktivTeig = null; teigFor = S; } // ny plan
+  if (aktivTeig && !teigListe.some((t) => t.id === aktivTeig)) aktivTeig = null;
+}
+const aktivTeigObj = () => (teigListe.length > 1 ? teigListe.find((t) => t.id === aktivTeig) || null : null);
+const teigSett = () => { const t = aktivTeigObj(); return t ? new Set(t.bestand) : null; };
+function teigBestand() { const m = teigSett(); return m ? S.bestand.filter((b) => m.has(b.id)) : S.bestand; }
+function tegnTeigLag() {
+  if (teigLag) { teigLag.remove(); teigLag = null; }
+  if (teigListe.length < 2) return;
+  teigLag = L.layerGroup();
+  if (!kart.getPane('teigPane')) kart.createPane('teigPane').style.zIndex = 660; // over bestandsnumrene
+  for (const t of teigListe) {
+    const er = t.id === aktivTeig;
+    if (t.geometri && er) L.geoJSON(t.geometri, { style: { color: '#ffd400', weight: 4, fill: false }, interactive: false }).addTo(teigLag);
+    if (t.punkt) L.marker([t.punkt[1], t.punkt[0]], { pane: 'teigPane', icon: L.divIcon({ className: `teig-etikett${er ? ' aktiv' : ''}`, html: `<span>${esc(t.navn)}</span>`, iconSize: null }), keyboard: false })
+      .on('click', (e) => { L.DomEvent.stopPropagation(e); velgTeig(t.id === aktivTeig ? null : t.id); }).addTo(teigLag);
+  }
+  teigLag.addTo(kart);
+}
+function teigVelgerHtml() {
+  const sum = S.bestand.reduce((s, b) => s + (b.areal || 0), 0);
+  const m = new Map(S.bestand.map((b) => [b.id, b])); const skog = (t) => t.bestand.reduce((s, id) => s + (m.get(id)?.areal || 0), 0);
+  return `<div class="teig-velger" role="group" aria-label="Velg teig">
+    <button type="button" class="knapp ikon-knapp" data-teig-steg="-1" title="Forrige teig" aria-label="Forrige teig">‹</button>
+    <select data-teig-velg aria-label="Teig"><option value="">Alle ${teigListe.length} teiger · ${fmt(sum)} daa skog</option>${teigListe.map((t) => `<option value="${esc(t.id)}" ${t.id === aktivTeig ? 'selected' : ''}>${esc(t.navn)} · ${fmt(skog(t), 1)} daa skog · ${t.bestand.length} bestand</option>`).join('')}</select>
+    <button type="button" class="knapp ikon-knapp" data-teig-steg="1" title="Neste teig" aria-label="Neste teig">›</button>
+  </div>`;
+}
+function tegnTeiger() {
+  const flere = teigListe.length > 1;
+  $$('.teig-velger-plass').forEach((el) => { el.hidden = !flere; el.innerHTML = flere ? teigVelgerHtml() : ''; });
+  const kort = $('#teigKort'); if (!kort) return; kort.hidden = !flere; if (!flere) return;
+  const m = new Map(S.bestand.map((b) => [b.id, b]));
+  const rader = teigListe.map((t) => {
+    const liste = t.bestand.map((id) => m.get(id)).filter(Boolean); const s = sammendrag(liste, inn());
+    const moden = liste.filter((b) => hk(b) === 5).reduce((x, b) => x + (b.areal || 0), 0);
+    const tiltak = liste.flatMap((b) => b.tiltak || []).filter((x) => x.status !== 'utfort');
+    return `<tr data-teig="${esc(t.id)}" class="${t.id === aktivTeig ? 'valgt' : ''}" tabindex="0"><td><b>${esc(t.navn)}</b></td><td class="tall">${fmt(s.areal, 1)}</td><td class="tall">${liste.length}</td><td class="tall">${fmt(s.volum)}</td><td class="tall">${fmt(moden, 1)}</td><td class="tall">${tiltak.length}${tiltak.some((x) => x.aar <= IAAR) ? ' <span class="teig-forfalt" title="Forfalt eller i år">●</span>' : ''}</td></tr>`;
+  }).join('');
+  $('#teigTabell').innerHTML = `<div class="tabell-wrap"><table class="tabell teig-tabell"><thead><tr><th>Teig</th><th class="tall" title="Produktiv skog i teigen">Daa</th><th class="tall">Bestand</th><th class="tall" title="Stående volum">m³</th><th class="tall" title="Hogstmoden skog (hogstklasse V), daa">HK V</th><th class="tall" title="Planlagte tiltak">Tiltak</th></tr></thead><tbody>${rader}</tbody></table></div>
+    <p class="hint">Trykk på en teig for å zoome til den og se tallene for bare den teigen. Teignavnene i kartet kan også trykkes på.</p>`;
+}
+function velgTeig(id, { zoom = true } = {}) {
+  aktivTeig = id || null;
+  const t = aktivTeigObj();
+  if (zoom) { if (t?.bbox) kart.fitBounds([[t.bbox[1], t.bbox[0]], [t.bbox[3], t.bbox[2]]], { maxZoom: 16, ...synligPadding(kart, 30) }); else zoomTilAlle(); }
+  tegnTeigLag(); tegnOversikt(); tegnBestandTabell();
+}
+function stegTeig(retning) {
+  if (teigListe.length < 2) return;
+  const i = teigListe.findIndex((t) => t.id === aktivTeig);
+  const n = i < 0 ? (retning > 0 ? 0 : teigListe.length - 1) : (i + retning + teigListe.length) % teigListe.length;
+  velgTeig(teigListe[n].id);
+}
+
 function tegnOversikt() {
   tegnOmrader();
   skogkarakter?.tegn();
@@ -895,11 +958,13 @@ function tegnOversikt() {
   tegnArealfordeling();
   tegnArealplan();
   tegnMarka();
-  const s = sammendrag(S.bestand, inn());
+  tegnTeiger();
+  const utvalg = teigBestand(); const teigS = teigSett();
+  const s = sammendrag(utvalg, inn());
   const kpi = (verdi, etikett, under = '') => `<div class="kpi"><div class="verdi">${verdi}</div><div class="etikett">${etikett}</div>${under ? `<div class="under">${under}</div>` : ''}</div>`;
-  const planlagt = alleTiltak().filter((t) => t.status !== 'utfort');
+  const planlagt = alleTiltak().filter((t) => t.status !== 'utfort' && (!teigS || teigS.has(t.bestand.id)));
   $('#kpi').innerHTML = S.bestand.length ? [
-    kpi(fmt(s.areal), 'daa produktiv skog', `${s.antall} bestand`),
+    kpi(fmt(s.areal), 'daa produktiv skog', `${s.antall} bestand${teigS ? ` i ${esc(aktivTeigObj().navn.toLowerCase())}` : ''}`),
     kpi(fmt(s.volum), 'm³ stående volum', `${fmt(s.areal ? s.volum / s.areal : 0, 1)} m³/daa`),
     kpi(fmt(s.tilvekst), 'm³ tilvekst per år', `${fmt(s.volum ? (s.tilvekst / s.volum) * 100 : 0, 1)} % av volumet`),
     kpi(`${fmt(s.verdiHogstmoden / 1e6, 2)} mill`, 'kr rotnetto i HK V', 'Estimat med dagens priser'),
@@ -923,7 +988,9 @@ function tegnBestandTabell() {
   const sok = $('#bestandSok').value.trim().toLowerCase();
   const fHk = $('#bestandFilterHk').value; const fTs = $('#bestandFilterTs').value;
   const utvalg = sokVisning?.utvalg();
+  const iTeig = teigSett();
   const rader = S.bestand.filter((b) => {
+    if (iTeig && !iTeig.has(b.id)) return false;
     if (utvalg && !utvalg.has(b.id)) return false;
     if (fHk && String(hk(b)) !== fHk) return false;
     if (fTs && b.treslag !== fTs) return false;
@@ -2915,6 +2982,7 @@ function kommandoValg(q) {
   );
   for (const o of $$('#fargeEtter option')) valg.push({ gruppe: 'Farge i kartet', ikon: '◐', tittel: `Farge etter ${o.textContent.toLowerCase()}`, utfor: () => { $('#fargeEtter').value = o.value; $('#fargeEtter').dispatchEvent(new Event('change')); } });
   for (const p of planlisteCache) valg.push({ gruppe: 'Planer', ikon: '▤', tittel: p.navn, under: `${fmt(p.areal)} daa · ${p.antall} bestand${p.id === S.planId ? ' · åpen' : ''}`, sok: 'plan', utfor: () => aapnePlan(p.id) });
+  if (teigListe.length > 1) for (const t of teigListe) valg.push({ gruppe: 'Teiger', ikon: '🧩', tittel: t.navn, under: `${t.bestand.length} bestand · ${fmt(t.arealDaa, 1)} daa`, sok: `teig ${t.nr}`, utfor: () => { visFane('oversikt'); velgTeig(t.id); } });
   for (const b of S.bestand) {
     const st = startTilstand(b);
     valg.push({ gruppe: 'Bestand', ikon: '⬡', tittel: `Bestand ${b.nr}`, under: `${fmt(b.areal, 1)} daa · ${TRESLAG[b.treslag] || ''} ${b.bonitet ?? ''} · ${Math.round(st.alder)} år · ${fmt(st.volumDaa, 1)} m³/daa`, sok: `${b.merknad || ''} ${b.teig || ''}`, utfor: () => { velgBestand(b.id); visFane('bestand'); } });
@@ -2928,6 +2996,13 @@ function kobleHendelser() {
   $$('.faner button[data-fane]').forEach((b) => b.addEventListener('click', () => visFane(b.dataset.fane, { under: b.dataset.under || null })));
   $$('.omrader [data-omrade]').forEach((b) => b.addEventListener('click', () => settOmrade(b.dataset.omrade, { gaa: true })));
   brukMeny(); if (omrade !== 'skog') visStart();
+  // 🧩 Teigvelger og Teiger-kortet
+  document.addEventListener('click', (e) => {
+    const st = e.target.closest('[data-teig-steg]'); if (st) { stegTeig(Number(st.dataset.teigSteg)); return; }
+    const r = e.target.closest('tr[data-teig]'); if (r) velgTeig(r.dataset.teig === aktivTeig ? null : r.dataset.teig);
+  });
+  document.addEventListener('keydown', (e) => { const r = e.target.closest?.('tr[data-teig]'); if (r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); velgTeig(r.dataset.teig); } });
+  document.addEventListener('change', (e) => { if (e.target.matches('[data-teig-velg]')) velgTeig(e.target.value || null); });
   $('#innsiktListe').addEventListener('click', (e) => { const k = e.target.closest('[data-innsikt]'); if (k) utforHandling(k.dataset.innsikt); });
   // Skjul eller vis panelet. Når det er skjult, viser et trykk hvor som helst på stripen det igjen.
   const settPanelSkjult = (skjult) => {

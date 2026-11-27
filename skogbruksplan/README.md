@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.33.0** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.34.0** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -999,6 +999,15 @@ Tonn CO₂-ekvivalenter per år: utslipp fra husdyr, jord, energi og innkjøpte 
 - **Skog:** snitt for de neste 10 årene etter planen. Bindingen i tilveksten og karbonet som går ut med hogsten regnes med biomassefaktorene i Karbon (hele treet).
 - Viser netto balanse, utslipp og binding per kilde, og tiltak med anslått effekt: metandempende fôrtilsetning, biogass, bedre gjødselutnyttelse, myr, klimatiltak i skog og HVO.
 - **Metode:** IPCC 2006/2019 Tier 1 (Vest-Europa, kjølig klima) og GWP100 fra AR5 (CH₄ 28, N₂O 265). Dette er et anslag. Et sertifisert klimaregnskap lages med Klimakalkulatoren.
+
+## 🧩 Teiger – oversikt og navigering (`js/teiger.js`)
+
+En eiendom kan bestå av flere teiger. `finnTeiger(S)` finner dem:
+- **Fra eiendomsgrensen:** hver polygon i grensen er én teig (biter under 0,5 daa uten bestand hoppes over). Bestandene knyttes til teigen de ligger i, eller nærmeste teig hvis de ligger litt utenfor grensen.
+- **Fra teignummeret:** bestandets `teig`, eller «1» i bestandsnummer «1-5» fra NIBIOs planer. Gir teignumrene flere grupper enn grensen har deler (teiger som grenser til hverandre er slått sammen i grensen, eller planen mangler grense), grupperes det etter teignummeret.
+- **Navn:** teignummeret de fleste bestandene i teigen har, ellers fortløpende etter størrelse.
+
+Har eiendommen mer enn én teig, får Skogoversikt og Bestand en teigvelger (‹ teig ›), og Skogoversikt et Teiger-kort med areal, bestand, volum, hogstklasse V og planlagte tiltak per teig. Valgt teig zoomes til og markeres i kartet, og avgrenser nøkkeltallene, hogstklassediagrammet, neste tiltak og bestandslisten. Teignavnene vises i kartet og kan trykkes på, og teigene finnes i søket (Ctrl K).
 
 ## 🧭 Driftsområder – vis bare det eiendommen bruker (`js/driftsomrader.js`)
 

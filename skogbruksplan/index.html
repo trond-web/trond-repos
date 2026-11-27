@@ -225,12 +225,17 @@
 
     <!-- OVERSIKT -->
     <div class="fane" id="fane-oversikt">
+      <div class="teig-velger-plass" hidden></div>
       <section class="kort sk-kort" id="skogkarakter" aria-label="SkogIQ Skogkarakter" hidden></section>
       <section class="innsikt" id="innsikt" aria-label="SkogIQ-innsikt" hidden>
         <div class="innsikt-topp"><span class="iq-merke">IQ</span><h3>Innsikt</h3><span class="hint">beregnet fra planens data</span></div>
         <div id="innsiktListe" class="innsikt-liste"></div>
       </section>
       <div class="kpi-rad" id="kpi"></div>
+      <div class="kort" id="teigKort" hidden>
+        <h3>Teiger</h3>
+        <div id="teigTabell"></div>
+      </div>
       <div class="kort">
         <h3>Areal per hogstklasse og treslag (daa)</h3>
         <div id="hkDiagram"></div>
@@ -264,6 +269,7 @@
 
     <!-- BESTAND -->
     <div class="fane" id="fane-bestand" hidden>
+      <div class="teig-velger-plass" hidden></div>
       <div class="verktoyrad">
         <input type="search" id="bestandSok" placeholder="Søk nr, merknad …">
         <select id="bestandFilterHk"><option value="">Alle hogstklasser</option></select>
