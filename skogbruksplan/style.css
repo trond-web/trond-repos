@@ -95,7 +95,7 @@ h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.01em; text-wra
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   border: 0; background: none; color: inherit; cursor: pointer;
   font: 500 10.5px/1.1 var(--font-body); letter-spacing: .01em;
-  padding: 9px 2px 8px; border-radius: 12px; position: relative; transition: background .15s, color .15s;
+  padding: 7px 2px 6px; border-radius: 12px; position: relative; transition: background .15s, color .15s;
 }
 .faner button svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .faner button:hover { background: rgba(255,255,255,.06); color: #e6eee8; }
@@ -1782,3 +1782,48 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .bd-antall { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--surface-2); font-size: 11px; line-height: 18px; text-align: center; margin-left: 3px; }
 .bd-faner button.aktiv .bd-antall { background: var(--accent); color: #fff; }
 .bd-panel > .nokkeltall:first-child { margin-top: 0; }
+
+/* ---------- 🧭 Områdevelger i menylinja og åpningsdashboard per område (js/driftsomrader.js MENY, js/omrader-ui.js) ---------- */
+.omrader { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 4px; margin-bottom: 4px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06); }
+.omrader button { display: flex; flex-direction: column; align-items: center; gap: 1px; border: 0; background: none; color: inherit; cursor: pointer; padding: 4px 2px 3px; border-radius: 10px; font: 600 10px/1.1 var(--font-body); transition: background .15s, color .15s; }
+.omrader button i { font-style: normal; font-size: 17px; line-height: 1; filter: grayscale(.7); opacity: .75; transition: filter .15s, opacity .15s; }
+.omrader button:hover { background: rgba(255,255,255,.06); color: #e6eee8; }
+.omrader button:hover i { filter: none; opacity: 1; }
+.omrader button.aktiv { background: var(--rail-aktiv); color: var(--rail); }
+.omrader button.aktiv i { filter: none; opacity: 1; }
+.rail-skille { display: block; height: 1px; margin: 5px 10px; background: rgba(255,255,255,.1); flex: none; }
+.faner button[hidden] { display: none; }
+
+.omr-topp { display: flex; justify-content: flex-end; margin: -4px 0 6px; }
+.omr-helt p { margin: 6px 0 12px; }
+.kpi-lenke { cursor: pointer; transition: border-color .15s, transform .15s; }
+.kpi-lenke:hover { border-color: var(--accent); }
+.omr-rod { color: var(--critical); }
+.omr-snarveier, .omr-omrader { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.omr-snarvei, .omr-omrade { display: flex; align-items: center; gap: 10px; text-align: left; padding: 11px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; transition: border-color .15s, background .15s; }
+.omr-snarvei:hover, .omr-omrade:hover { border-color: var(--accent); background: var(--surface-2); }
+.omr-snarvei > span:last-child, .omr-omrade > span:nth-child(2) { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.omr-snarvei .hint, .omr-omrade .hint { font-size: 12px; }
+.omr-ikon { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 10px; background: var(--surface-2); font-size: 18px; }
+.omr-omrade { padding: 14px; }
+.omr-omrade .omr-ikon { width: 42px; height: 42px; font-size: 22px; }
+.omr-stolper { display: grid; gap: 6px; }
+.omr-stolpe { display: grid; grid-template-columns: 110px minmax(0, 1fr) 80px; gap: 8px; align-items: center; font-size: 13px; }
+.omr-bar { height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.omr-bar i { display: block; height: 100%; border-radius: 99px; }
+.omr-dyr { display: flex; flex-wrap: wrap; gap: 6px; }
+.omr-dyr-rad { display: inline-flex; gap: 6px; align-items: center; padding: 5px 10px; border-radius: 99px; background: var(--surface-2); font-size: 13px; }
+.omr-frister { display: grid; gap: 4px; }
+.omr-frist { display: grid; grid-template-columns: 100px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.omr-frist:first-child { border-top: 0; }
+.omr-dato { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 860px) {
+  /* Mobil: velgeren blir et lite 2×2-rutenett med bare ikoner til venstre i fanelinja. */
+  .omrader { display: grid; grid-template-columns: repeat(2, 28px); grid-auto-rows: 26px; gap: 2px; width: auto; flex: none; padding: 2px; margin: 0 6px 0 0; align-self: center; }
+  .omrader button { padding: 0; justify-content: center; }
+  .omrader button span { display: none; }
+  .omrader button i { font-size: 14px; }
+  .rail-skille { width: 1px; height: auto; margin: 10px 3px; }
+  .omr-stolpe { grid-template-columns: 90px minmax(0, 1fr) 70px; }
+}
