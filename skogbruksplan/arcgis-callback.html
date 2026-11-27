@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kobler til ArcGIS – SkogIQ.ai</title>
+<meta name="referrer" content="no-referrer">
+<style>body{font:15px/1.5 system-ui,sans-serif;max-width:420px;margin:60px auto;padding:0 16px;color:#1b1c19;background:#f6f6f2}@media (prefers-color-scheme:dark){body{background:#151714;color:#e9ebe4}}</style>
+</head>
+<body>
+<p id="t">Fullfører tilkoblingen til ArcGIS …</p>
+<script>
+  // Tilbakekall for innlogging til ArcGIS (OAuth 2.0 + PKCE). Sender koden til SkogIQ-vinduet og lukker seg.
+  // Koden er bare gyldig sammen med PKCE-nøkkelen som ligger i appen, og fjernes fra adresselinja med en gang.
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var svar = { code: q.get('code'), state: q.get('state'), error: q.get('error'), error_description: q.get('error_description') };
+    history.replaceState(null, '', location.pathname);
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage({ arcgis: svar }, location.origin);
+      document.getElementById('t').textContent = svar.error ? 'Tilkoblingen ble avbrutt. Du kan lukke vinduet.' : 'Koblet til. Du kan lukke vinduet.';
+      setTimeout(function () { window.close(); }, 300);
+    } else {
+      try { localStorage.setItem('skogiq-arcgis-svar', JSON.stringify(svar)); } catch (e) { /* */ }
+      location.replace('./index.html');
+    }
+  })();
+</script>
+</body>
+</html>

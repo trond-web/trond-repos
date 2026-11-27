@@ -4279,7 +4279,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
   '1.8': '1b41be6f78760f90',
-  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976', '1.16': 'a85bfccb66c6fc14', '1.17': 'db0ca4fb428144e9', '1.18': '118453b512546180', '1.19': '6e094b29259ad9e0', '1.20': 'abd683fefb036c95',
+  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976', '1.16': 'a85bfccb66c6fc14', '1.17': 'db0ca4fb428144e9', '1.18': '118453b512546180', '1.19': '6e094b29259ad9e0', '1.20': 'abd683fefb036c95', '1.21': '1e267a87d7044ef0',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
@@ -5079,4 +5079,61 @@ test('Skadevarsel 5 døgn: PNG, skogprofil fra SR16-bilder, varsel per kommune o
   let status = 0; let kropp = ''; const res = { writeHead: (s) => { status = s; }, end: (b) => { kropp = b; } };
   assert.equal(SV.skadevarselApi(sv, { method: 'GET', headers: {} }, res, '/api/skadevarsel'), true); assert.equal(status, 200); assert.equal(JSON.parse(kropp).kommuner[0].nr, '9999');
   assert.equal(SV.skadevarselApi(sv, { method: 'GET', headers: {} }, res, '/api/annet'), false);
+});
+
+test('ArcGIS: PKCE, Esri-geometri, lagdefinisjoner, overføring (opprett og oppdater) og Shapefile for ArcGIS Pro', async () => {
+  const A = await import('../js/arcgis.js');
+  // PKCE
+  const p = await A.lagPkce(); assert.match(p.verifier, /^[A-Za-z0-9_-]{43}$/); assert.match(p.challenge, /^[A-Za-z0-9_-]{43}$/);
+  const { createHash } = await import('node:crypto'); assert.equal(p.challenge, createHash('sha256').update(p.verifier).digest('base64url'));
+  const u = new URL(A.autoriserUrl({ portal: 'https://www.arcgis.com/', klientId: 'abc', tilbake: 'https://x/arcgis-callback.html', challenge: p.challenge, state: p.state }));
+  assert.equal(u.origin + u.pathname, 'https://www.arcgis.com/sharing/rest/oauth2/authorize'); assert.equal(u.searchParams.get('code_challenge_method'), 'S256');
+  assert.equal(A.rensPortal('https://gis.kommune.no/portal/home/'), 'https://gis.kommune.no/portal'); assert.equal(A.rensPortal('https://gis.kommune.no/portal/sharing/rest'), 'https://gis.kommune.no/portal');
+  // Geometri: ytre ring med klokka, hull mot klokka
+  const mot = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]; const g = A.esriGeometri({ type: 'Polygon', coordinates: [mot, [[0.2, 0.2], [0.2, 0.8], [0.8, 0.8], [0.8, 0.2], [0.2, 0.2]]] });
+  const signert = (r) => { let s = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) s += (r[j][0] - r[i][0]) * (r[j][1] + r[i][1]); return s; };
+  assert.ok(signert(g.rings[0]) > 0 && signert(g.rings[1]) < 0); assert.equal(g.spatialReference.wkid, 4326);
+  assert.deepEqual(A.esriGeometri({ type: 'Point', coordinates: [10, 60] }), { x: 10, y: 60, spatialReference: { wkid: 4326 } });
+  // Plan → Esri
+  const sq = (x, y, d) => ({ type: 'Polygon', coordinates: [[[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]]] });
+  const S = { eiendom: { navn: 'Øvre Åsen', gnrbnr: '12/3', kommune: 'Løten', kommunenr: '3412', grense: sq(11, 60, 0.02) }, bestand: [{ id: 'b1', nr: '1', treslag: 'G', bonitet: 17, alder: 70, volumDaa: 30, areal: 20, geometri: sq(11, 60, 0.01), tiltak: [{ id: 't1', type: 'sluttavvirkning', aar: 2027, status: 'planlagt' }] }],
+    veier: { veier: [{ id: 'v1', navn: 'Skogsvei', status: 'eksisterende', klasse: 3, geometri: { type: 'LineString', coordinates: [[11, 60], [11.01, 60.01]] }, lengde: 1200 }], punkter: [{ id: 'p1', type: 'velteplass', navn: 'V1', geometri: { type: 'Point', coordinates: [11, 60] } }] },
+    pefc: { objekter: [{ id: 'n1', type: 'noekkelbiotop', navn: 'Bekkekløft', geometri: sq(11.01, 60.01, 0.002) }] }, skogbrand: { skader: [{ id: 's1', type: 'storm', dato: '2026-01-02', status: 'registrert', skadeprosent: 40, geometri: sq(11.002, 60.002, 0.002) }] } };
+  const e = A.tilEsri(S, { tid: 1 });
+  assert.equal(e[0].length, 1); assert.equal(e[0][0].attributes.treslag_navn, 'Gran'); assert.equal(e[0][0].attributes.volum_m3, 600); assert.equal(e[1][0].attributes.tiltak, 'Sluttavvirkning');
+  assert.equal(e[2][0].geometry.paths.length, 1); assert.equal(e[3][0].geometry.x, 11); assert.equal(e[4][0].attributes.gnrbnr, '12/3'); assert.equal(e[5].length, 1); assert.equal(e[6][0].attributes.skadeprosent, 40);
+  const defs = A.lagDefinisjoner(A.utstrekning(S)); assert.equal(defs.length, 7);
+  for (const d of defs) { for (const f of d.fields) assert.ok(f.name.length <= 31 && /^[A-Za-z_][A-Za-z0-9_]*$/.test(f.name), f.name); for (const a of Object.keys(e[d.id][0]?.attributes || {})) assert.ok(d.fields.some((f) => f.name === a), `${d.name}: ${a}`); }
+  assert.match(A.tjenesteNavn(S, 'x1'), /^SkogIQ_Ovre_Asen_x1$/);
+  // Overføring mot falsk ArcGIS
+  const kall = []; let tjenesteFinnes = true;
+  const hent = async (url, opt) => {
+    const f = Object.fromEntries(new URLSearchParams(opt.body)); kall.push([url, f]);
+    const j = (o) => ({ ok: true, json: async () => o });
+    if (url.endsWith('/createService')) return j({ success: true, serviceurl: 'https://services.arcgis.com/ORG/arcgis/rest/services/SkogIQ_x/FeatureServer', itemId: 'item1' });
+    if (url.endsWith('/addToDefinition')) return j({ success: true });
+    if (/\/items\/item1\/update$/.test(url)) return j({ success: true });
+    if (url.endsWith('/deleteFeatures')) return j({ deleteResults: [] });
+    if (url.endsWith('/addFeatures')) return j({ addResults: JSON.parse(f.features).map(() => ({ success: true })) });
+    if (/FeatureServer$/.test(url)) return tjenesteFinnes ? j({ layers: [] }) : j({ error: { code: 400, message: 'Service not found' } });
+    return { ok: false, status: 404, json: async () => ({ error: { code: 404, message: 'ukjent' } }) };
+  };
+  const klient = A.lagKlient({ hent }); const k = { portal: 'https://www.arcgis.com', token: 'tok', bruker: 'ola' };
+  const r1 = await A.overfor(S, k, { klient, tid: 1 });
+  assert.equal(r1.itemId, 'item1'); assert.equal(r1.antall.Bestand, 1); assert.equal(r1.antall.Veier, 1);
+  const cs = kall.find(([u2]) => u2.endsWith('/createService')); assert.match(cs[0], /content\/users\/ola\/createService$/); assert.equal(JSON.parse(cs[1].createParameters).spatialReference.wkid, 4326);
+  const ad = kall.find(([u2]) => u2.endsWith('/addToDefinition')); assert.match(ad[0], /\/rest\/admin\/services\/SkogIQ_x\/FeatureServer\/addToDefinition$/); assert.equal(JSON.parse(ad[1].addToDefinition).layers.length, 7);
+  assert.ok(kall.every(([, f2]) => f2.token === 'tok' && f2.f === 'json'));
+  // Andre gang: samme tjeneste, bare slett og legg til
+  kall.length = 0; S.arcgis = r1; const r2 = await A.overfor(S, k, { klient, tid: 2 });
+  assert.equal(r2.itemId, 'item1'); assert.ok(!kall.some(([u2]) => u2.endsWith('/createService'))); assert.equal(kall.filter(([u2]) => u2.endsWith('/deleteFeatures')).length, 7);
+  // Slettet i ArcGIS: lager nytt lag
+  kall.length = 0; tjenesteFinnes = false; await A.overfor(S, k, { klient, tid: 3 }); assert.ok(kall.some(([u2]) => u2.endsWith('/createService')));
+  // Annen bruker: nytt lag
+  tjenesteFinnes = true; kall.length = 0; await A.overfor(S, { ...k, bruker: 'kari' }, { klient, tid: 4 }); assert.ok(kall.some(([u2]) => /users\/kari\/createService$/.test(u2)));
+  // Feilmelding fra ArcGIS
+  await assert.rejects(() => A.lagKlient({ hent: async () => ({ ok: true, json: async () => ({ error: { code: 403, message: 'You do not have permissions', details: ['publish'] } }) }) }).opprettTjeneste(k, { navn: 'x', beskrivelse: '', utstrekning: A.utstrekning(S) }), /ArcGIS: You do not have permissions \(publish\)/);
+  // Shapefile-pakke
+  const zip = A.shapefilZip(S); const t = Buffer.from(zip).toString('latin1');
+  for (const n of ['bestand.shp', 'bestand.dbf', 'bestand.prj', 'tiltak.shp', 'veier.shp', 'punkter.shp', 'eiendom.shp', 'miljo.shp', 'skader.shp', 'LES_MEG.txt']) assert.ok(t.includes(n), n);
 });

@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.31.0 – 🗺 Skogbruksplanen rett til ArcGIS (2026-11-27)
+
+*Nytt.* Under Data › ArcGIS kobler du til ArcGIS Online eller din organisasjons ArcGIS Enterprise, og overfører skogbruksplanen med ett trykk. Den blir et lag i din egen ArcGIS-organisasjon med bestand, tiltak, veier, punkter, eiendom, miljø og skader, og kan brukes i ArcGIS Pro, Field Maps og Dashboards. Laget kan oppdateres automatisk når planen endres. Innloggingen skjer hos ArcGIS, og SkogIQ ser aldri passordet. Uten innlogging kan du laste ned planen som Shapefile for ArcGIS Pro. Personvernerklæringen er oppdatert til versjon 1.21, fordi Esri (ArcGIS) er en ny mottaker når du selv velger å overføre. Du må godta den nye versjonen.
+
 ## 2.30.0 – ⚠ Skadevarsel for skog de neste 5 døgnene (2026-11-27)
 
 *Nytt.* Under Skogbrand › Varsel 5 døgn ser du anslått skogskade fra storm og snøbrekk, og skogbrannfaren, for alle kommuner med skog de neste 5 døgnene. Kommunene med størst skade står øverst. Skogen i hver kommune er beregnet fra skogressurskartet SR16, og været fra Meteorologisk institutt oppdateres hver 3. time. Du kan sortere på storm, snø eller brannfare, søke etter kommune og se kommunene i kartet. Med «Simuler →» går du rett til skadesimuleringen for kommunen, med værprognosen fylt inn. Personvernerklæringen er oppdatert til versjon 1.20, fordi varselet har en ny tjeneste på serveren. Den bruker ingen opplysninger om deg, og du trenger ikke godta på nytt.

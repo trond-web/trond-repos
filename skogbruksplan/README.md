@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.30.0** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.31.0** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -2751,3 +2751,27 @@ til filen, så appen beregner den fra dagens alder. Hogstklassen fra planen ligg
 
 `data/nannestad-29-2.geojson` er laget slik (Nannestad 29/2) og kan lastes med knappen under **Data**.
 Resultatet er et **utkast** som må kontrolleres i felt.
+
+
+## 🗺 ArcGIS – overføring av skogbruksplanen (Data › ArcGIS, `js/arcgis.js`, `js/arcgis-ui.js`, `arcgis-callback.html`)
+
+Skogbruksplanen kan overføres til brukerens egen organisasjon i **ArcGIS Online** eller **ArcGIS Enterprise**. Data går én vei: SkogIQ er hovedkilden.
+
+- **Innlogging:**
+  - OAuth 2.0 med PKCE direkte mot portalen. Innloggingen skjer i et popup-vindu hos ArcGIS, og koden kommer tilbake via `arcgis-callback.html`.
+  - SkogIQ ser aldri passordet, og serveren har ingen hemmeligheter.
+  - Tilgangsnøkkelen (med fornyelse) lagres bare på enheten (`localStorage`).
+- **Første overføring:**
+  - Et *hosted feature layer* opprettes i brukerens innhold (`createService` + `addToDefinition`) med 7 lag i WGS 84: Bestand, Tiltak, Veier, Punkter, Eiendom, Miljø og hensyn, og Skader.
+  - Lagene har feltnavn, aliaser og enkel symbolisering, og elementet får tittel, emneord og beskrivelse.
+  - Laget er privat til brukeren deler det.
+- **Oppdatering:**
+  - Med ett trykk, eller automatisk ett minutt etter at planen er endret.
+  - Innholdet i lagene erstattes (`deleteFeatures` + `addFeatures`), så ArcGIS alltid speiler planen.
+  - Er laget slettet i ArcGIS, eller brukeren bytter konto, lages et nytt lag.
+  - Adressen til laget lagres i planen (`S.arcgis`).
+- **Shapefile for ArcGIS Pro (.zip)** uten innlogging: alle lag med `.prj` og `.cpg` (ISO-8859-1 for æøå).
+- **Oppsett:**
+  - *ArcGIS Online:* registrer en OAuth 2.0-app (Innhold › Nytt element › Utviklerlegitimasjon). Legg inn omdirigerings-adressene `https://skogiq-production.up.railway.app/arcgis-callback.html` og `https://trond-web.github.io/trond-repos/skogbruksplan/arcgis-callback.html`, og sett klient-ID-en i miljøvariabelen `ARCGIS_CLIENT_ID` på Railway. Klient-ID-en er ikke hemmelig og hentes fra `GET /api/arcgis/oppsett`.
+  - *ArcGIS Enterprise:* portaladministratoren registrerer en app på samme måte, og brukeren skriver inn portal-adresse og klient-ID.
+- **Personvern:** Esri er ny tredjepart fra versjon 1.21 av erklæringen. Overføring skjer bare når brukeren selv kobler til, og uten kontaktopplysninger (DPIA R20).
