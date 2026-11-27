@@ -21,7 +21,7 @@ const NIVAA = { avvik: { navn: 'Avvik', farge: 'var(--critical)', ikon: '✕' },
 const idag = () => new Date().toISOString().slice(0, 10);
 const tall = (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? '' : Number(v));
 
-export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKartKlikk, hentJordbruk, lagInndeling, iAar = new Date().getFullYear() }) {
+export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKartKlikk, hentJordbruk, lagInndeling, vedUnderfane = () => {}, iAar = new Date().getFullYear() }) {
   const lag = L.layerGroup();
   const wms = {};
   let underfane = 'skifter';
@@ -343,7 +343,8 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     const skjult = driftSkjulte(hentPlan()).underfaner;
     if (skjult.has(underfane)) underfane = ['skifter', 'gjodsling', 'sproyting', 'husdyr', 'krav', 'maskin'].find((u) => !skjult.has(u));
     panel.querySelectorAll('[data-sp-under]').forEach((k) => { k.hidden = skjult.has(k.dataset.spUnder); k.classList.toggle('aktiv', k.dataset.spUnder === underfane); });
-    const html = underfane === 'gjodsling' ? gjodslingHtml() : underfane === 'sproyting' ? sproytingHtml() : underfane === 'krav' ? kravHtml() : underfane === 'maskin' ? maskin.html(tegn) : underfane === 'husdyr' ? husdyr.html() : skifterHtml();
+    if (synlig) vedUnderfane(underfane); // 🧭 menylinja følger underfanen (js/driftsomrader.js MENY)
+    const html = underfane === 'gjodsling' ? gjodslingHtml() : underfane === 'sproyting' ? sproytingHtml() : underfane === 'krav' ? kravHtml() : underfane === 'maskin' ? maskin.html(tegn) : underfane.startsWith('husdyr') ? husdyr.html(underfane) : skifterHtml();
     $('#spInnhold').innerHTML = toppHtml() + html;
   }
 
@@ -406,7 +407,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     const u = e.target.closest('[data-sp-under]'); if (u) { underfane = u.dataset.spUnder; tegn(); return; }
     const ul = e.target.closest('[data-sp-under-lenke]'); if (ul) { e.preventDefault(); underfane = ul.dataset.spUnderLenke; tegn(); return; }
     if (underfane === 'maskin' && await maskin.klikk(e)) return;
-    if (underfane === 'husdyr' && husdyr.klikk(e)) return;
+    if (underfane.startsWith('husdyr') && husdyr.klikk(e)) return;
     if (valgt && e.target.closest('[data-dr-k]') && await dren.klikk(e, finn(valgt), tegn)) return;
     const gh = e.target.closest('[data-sp-gh]');
     if (gh) {
@@ -466,7 +467,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
   });
   panel.addEventListener('change', (e) => {
     if (underfane === 'maskin' && maskin.endring(e)) return;
-    if (underfane === 'husdyr' && husdyr.endring(e)) return;
+    if (underfane.startsWith('husdyr') && husdyr.endring(e)) return;
     if (valgt && e.target.dataset?.dr && finn(valgt) && dren.endring(e, finn(valgt))) return;
     const t = e.target; const p = SP(); const sk = finn(valgt);
     if (t.matches('[data-sp-aar]')) { p.aar = Number(t.value); lagre(); return; }
@@ -500,6 +501,7 @@ export function initSkifteplan({ kart, hentPlan, endret, melding, nyId, settKart
     skjul() { synlig = false; stopp(); lag.remove(); for (const id of Object.keys(wms)) { wms[id].remove(); delete wms[id]; } },
     oppdater() { if (synlig) { tegnKart(); tegn(); } },
     underfane(navn) { underfane = navn; if (synlig) tegn(); },
+    aktivUnderfane: () => underfane,
     oppsummering() { const S = hentPlan(); return S.skifteplan?.skifter?.length ? oppsummer(S, Number(S.skifteplan.aar) || iAar) : null; },
   };
 }

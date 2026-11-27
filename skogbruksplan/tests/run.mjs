@@ -4624,6 +4624,22 @@ test('Driftsområder: skjulte faner, forslag og minst ett område', async () => 
   assert.ok(D.skjulte(S).faner.has('skifteplan') && D.skjulte(S).faner.has('ksl'));
   assert.deepEqual(D.settDrift(S, {}), { skog: true, jord: false, husdyr: false, valgt: true }, 'minst ett område');
   assert.deepEqual(D.forslag({ bestand: [] }), { skog: true, jord: true, husdyr: true }, 'tom plan: alt på');
+  // Menylinja: hvert område har et dashboard, og hver knapp i menylinja hører til et område eller er en fellesfane.
+  assert.equal(D.omradeFor('bestand'), 'skog'); assert.equal(D.omradeFor('klima'), 'gard'); assert.equal(D.omradeFor('planer'), null);
+  assert.equal(D.omradeFor('skifteplan', 'gjodsling'), 'jord'); assert.equal(D.omradeFor('skifteplan', 'husdyr-for'), 'husdyr'); assert.equal(D.omradeFor('skifteplan'), 'jord');
+  assert.deepEqual(D.synligeOmrader(S), ['skog', 'gard'], 'Gården vises alltid');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const knapper = [...html.matchAll(/<button role="tab" data-fane="([^"]+)"(?: data-under="([^"]+)")?/g)].map((m) => D.faneNokkel(m[1], m[2]));
+  for (const [k, m] of Object.entries(D.MENY)) {
+    assert.equal(m.faner[0], m.start, `${k}: dashboardet først`);
+    for (const f of m.faner) { assert.ok(knapper.includes(f), `${f} mangler i menylinja`); assert.ok(html.includes(`id="fane-${f.split(':')[0]}"`), `fane-${f}`); }
+  }
+  for (const k of knapper) assert.ok(D.FELLES_FANER.includes(k) || Object.values(D.MENY).some((m) => m.faner.includes(k)), `${k} hører ikke til noe område`);
+  const UI = await import('../js/omrader-ui.js');
+  assert.match(UI.jordHtml({ bestand: [] }, 2026), /Kom i gang med skifteplanen/);
+  const jord = UI.jordHtml({ bestand: [], skifteplan: { aar: 2026, skifter: [{ id: 'a', nr: '1', areal: 50, vekster: { 2026: { kultur: 'engNorm2' } }, gjodsling: [] }] } }, 2026);
+  assert.match(jord, /data-gaa="skifteplan:gjodsling"/); assert.match(jord, /50,0/);
+  assert.match(UI.husdyrHtml({ bestand: [], skifteplan: { skifter: [], dyrehold: { dyr: [{ id: 'k', slag: 'sau', antall: 30 }] } } }, 2026), /tonn husdyrgjødsel/);
 });
 
 test('Klima: gårdens klimabalanse (husdyr, jord, energi, skog)', async () => {

@@ -26,7 +26,8 @@ import { lagInnsikt } from './innsikt.js';
 import { skjotselsbehov, skjotselsTiltak } from './skjotsel.js';
 import { initSok } from './sok-ui.js';
 import { initKommando } from './kommando.js';
-import { skjulte as driftSkjulte, velgDriftsomrader, settDrift, harValgt as driftValgt, kortTekst as driftTekst } from './driftsomrader.js';
+import { skjulte as driftSkjulte, velgDriftsomrader, settDrift, harValgt as driftValgt, kortTekst as driftTekst, MENY, FELLES_FANER, omradeFor, synligeOmrader, faneNokkel } from './driftsomrader.js';
+import { jordHtml, husdyrHtml, gardHtml } from './omrader-ui.js';
 import { initPefc } from './pefc-ui.js';
 import { delFlate, nyttNr } from './del.js';
 import { initAssistent } from './assistent.js';
@@ -699,25 +700,75 @@ let verdiVisning = null; let takstVisning = null; let skogkarakter = null; let t
 let aiVisning = null;
 let skogbrandVisning = null;
 let skifteplanVisning = null;
-const FANE_TITLER = { planer: 'Planer', nettverk: 'Nettverk', kommune: 'Kommuneanalyse', oversikt: 'Oversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', skifteplan: 'Skifteplan', ksl: 'KSL', karbon: 'Karbon', klima: 'Klimabalanse', tilskudd: 'Tilskudd', eudr: 'EUDR', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
+const FANE_TITLER = { planer: 'Planer', nettverk: 'Nettverk', kommune: 'Kommuneanalyse', oversikt: 'Skogoversikt', jordoversikt: 'Jordoversikt', husdyroversikt: 'Husdyroversikt', gardsoversikt: 'Gårdsoversikt', bestand: 'Bestand', tiltak: 'Tiltak', framskriving: 'Framskriving', veier: 'Veier', verdi: 'Verdiberegning', rapporter: 'Rapporter', skogbrand: 'Skogbrand', skifteplan: 'Skifteplan', ksl: 'KSL', karbon: 'Karbon', klima: 'Klimabalanse', tilskudd: 'Tilskudd', eudr: 'EUDR', pefc: 'PEFC skogstandard', ai: 'Spør AI', felt: 'Felt', data: 'Data og oppsett' };
 const erMobil = () => window.matchMedia('(max-width: 860px)').matches;
 function settArk(tilstand) { $('#panel').dataset.ark = tilstand; }
 // Kapittel i brukerveiledningen for hver fane («?» i panelets overskrift).
-const HJELP_FOR_FANE = { planer: 'kom-i-gang', nettverk: 'nettverk', oversikt: 'kom-i-gang', kommune: 'kommune', bestand: 'bestand', tiltak: 'tiltak', framskriving: 'verdi', veier: 'veier', verdi: 'verdi', rapporter: 'rapporter', skogbrand: 'miljo', skifteplan: 'miljo', ksl: 'miljo', karbon: 'miljo', klima: 'karbon', tilskudd: 'kom-i-gang', eudr: 'pefc', pefc: 'miljo', ai: 'data', felt: 'felt', data: 'data' };
-function visFane(navn) {
-  if (driftSkjulte(S).faner.has(navn)) navn = 'oversikt'; // 🧭 fanen hører til et driftsområde som er slått av
+const HJELP_FOR_FANE = { planer: 'kom-i-gang', nettverk: 'nettverk', oversikt: 'kom-i-gang', jordoversikt: 'miljo', husdyroversikt: 'miljo', gardsoversikt: 'kom-i-gang', kommune: 'kommune', bestand: 'bestand', tiltak: 'tiltak', framskriving: 'verdi', veier: 'veier', verdi: 'verdi', rapporter: 'rapporter', skogbrand: 'miljo', skifteplan: 'miljo', ksl: 'miljo', karbon: 'miljo', klima: 'karbon', tilskudd: 'kom-i-gang', eudr: 'pefc', pefc: 'miljo', ai: 'data', felt: 'felt', data: 'data' };
+// 🧭 Område i menylinja (js/driftsomrader.js MENY): Skog, Jord, Husdyr eller Gården. Hvert område viser bare sine
+// egne faner pluss fellesfanene, og starter på sitt eget dashboard. Valget huskes i nettleseren.
+const OMRADE_LS = 'skogiq-omrade';
+let omrade = (() => { try { const o = localStorage.getItem(OMRADE_LS); return MENY[o] ? o : 'skog'; } catch { return 'skog'; } })();
+const UNDER_TITLER = { skifter: 'Skifter', gjodsling: 'Gjødsling', sproyting: 'Plantevern', maskin: 'Maskin', krav: 'Krav', husdyr: 'Dyr og fjøs', 'husdyr-gjodsel': 'Husdyrgjødsel', 'husdyr-for': 'Fôr og beite', 'husdyr-mattilsynet': 'Mattilsynet', 'husdyr-tilskudd': 'Produksjonstilskudd' };
+function settOmrade(o, { gaa = false } = {}) {
+  if (!MENY[o]) return;
+  if (o !== omrade) { omrade = o; try { localStorage.setItem(OMRADE_LS, o); } catch { /* privat modus */ } }
+  brukMeny();
+  if (gaa) visFane(MENY[omrade].start);
+}
+const visStart = () => visFane(MENY[omrade]?.start || 'oversikt');
+// Viser fanene for området i menylinja, i rekkefølgen fra MENY (CSS order), med fellesfanene over og under.
+function brukMeny() {
+  const synlige = synligeOmrader(S); if (!synlige.includes(omrade)) omrade = synlige[0];
+  $$('.omrader [data-omrade]').forEach((b) => { b.hidden = !synlige.includes(b.dataset.omrade); const er = b.dataset.omrade === omrade; b.classList.toggle('aktiv', er); b.setAttribute('aria-selected', String(er)); });
+  const sk = driftSkjulte(S); const liste = MENY[omrade].faner;
+  $$('.faner button[data-fane]').forEach((b) => {
+    const f = b.dataset.fane; const n = faneNokkel(f, b.dataset.under); const felles = FELLES_FANER.indexOf(f);
+    const i = liste.indexOf(n);
+    b.hidden = sk.faner.has(f) || sk.underfaner.has(b.dataset.under) || (felles < 0 && i < 0);
+    b.style.order = felles === 0 ? -10 : felles > 0 ? 100 + felles : i;
+  });
+  const topp = $('.faner [data-skille="topp"]'); if (topp) topp.style.order = -5;
+  const bunn = $('.faner [data-skille="bunn"]'); if (bunn) bunn.style.order = 99;
+  $('.rail').dataset.omrade = omrade;
+}
+// Marker aktiv knapp i menylinja (fane, eller fane:underfane for Skifteplan).
+function merkAktiv(navn, under = null) {
+  $$('.faner button[data-fane]').forEach((b) => b.classList.toggle('aktiv', b.dataset.fane === navn && (!b.dataset.under || b.dataset.under === under)));
+  $('#faneTittel').textContent = (navn === 'skifteplan' && UNDER_TITLER[under]) || FANE_TITLER[navn] || navn;
+}
+// Skifteplan bytter underfane selv (lenker inni fanen): menylinja og området følger etter.
+function vedUnderfane(under) {
+  if ($('#fane-skifteplan').hidden) return;
+  const o = omradeFor('skifteplan', under); if (o && o !== omrade) settOmrade(o);
+  merkAktiv('skifteplan', under);
+}
+function tegnOmrader() {
+  const vis = (id, f) => { const el = $(`#${id}`); if (el && !el.closest('.fane').hidden) el.innerHTML = f(S, IAAR); };
+  vis('jordOversikt', jordHtml); vis('husdyrOversikt', husdyrHtml); vis('gardOversikt', gardHtml);
+}
+function visFane(navn, { under = null } = {}) {
+  if (String(navn).includes(':')) [navn, under] = navn.split(':');
+  if (navn === 'skifteplan') {
+    // Uten underfane: bli i området (Husdyr → Dyr og fjøs, ellers den aktive jord-underfanen).
+    const naa = skifteplanVisning?.aktivUnderfane?.() || 'skifter';
+    if (!under) under = omrade === 'husdyr' ? (naa.startsWith('husdyr') ? naa : 'husdyr') : (naa.startsWith('husdyr') ? 'skifter' : naa);
+    if (driftSkjulte(S).underfaner.has(under)) under = null;
+  }
+  if (driftSkjulte(S).faner.has(navn)) navn = MENY[omrade]?.start || 'oversikt'; // 🧭 fanen hører til et driftsområde som er slått av
+  if (driftSkjulte(S).faner.has(navn)) navn = 'gardsoversikt';
+  const o = omradeFor(navn, under); if (o && o !== omrade) settOmrade(o);
   const hk = $('#panelHjelp'); if (hk) hk.dataset.hjelp = HJELP_FOR_FANE[navn] || 'kom-i-gang';
   registrerBruk('fane', navn); // bruksstatistikk for administrator (innlogging.js)
   if (deling && navn !== 'bestand') stoppDeling();
   if (pefcVisning) { if (navn === 'pefc') setTimeout(() => pefcVisning.vis(), 0); else pefcVisning.skjul(); }
   if (skogbrandVisning) { if (navn === 'skogbrand') setTimeout(() => skogbrandVisning.vis(), 0); else skogbrandVisning.skjul(); }
   if (navn === 'data') setTimeout(() => arcgisVisning?.tegn(), 0);
-  if (skifteplanVisning) { if (navn === 'skifteplan') setTimeout(() => skifteplanVisning.vis(), 0); else skifteplanVisning.skjul(); }
+  if (skifteplanVisning) { if (navn === 'skifteplan') { if (under) skifteplanVisning.underfane(under); setTimeout(() => skifteplanVisning.vis(), 0); } else skifteplanVisning.skjul(); }
   veiVisning?.synlig(navn !== 'kommune');
   if (navn === 'veier') { veiVisning?.vis(); transportVisning?.vis(); } else transportVisning?.skjul();
   if (kommuneVisning) { if (navn === 'kommune') kommuneVisning.vis(); else { kommuneVisning.skjul(); tegnLegend(); } }
   $('.kartverktoy').hidden = navn === 'kommune';
-  $$('.faner button').forEach((b) => b.classList.toggle('aktiv', b.dataset.fane === navn));
   $$('.fane').forEach((f) => { f.hidden = f.id !== `fane-${navn}`; });
   if (navn !== 'tiltak' && navn !== 'karbon' && navn !== 'bestand' && uthevet.size) { uthevet = new Set(); oppdaterStiler(); } // bestand: treff fra egenskapssøket
   if (navn === 'tiltak' && !$('#oppdragPanel').hidden) oppdragVisning?.tegn();
@@ -733,7 +784,8 @@ function visFane(navn) {
   if (navn === 'ai') aiVisning?.vis();
   if (navn === 'rapporter') tegnRapportKort();
   if (navn === 'planer') { tegnPlanListe(); lastKommuner(); }
-  $('#faneTittel').textContent = FANE_TITLER[navn] || navn;
+  merkAktiv(navn, navn === 'skifteplan' ? (under || skifteplanVisning?.aktivUnderfane?.()) : null);
+  if (/oversikt$/.test(navn)) tegnOmrader();
   $('.panel-innhold').scrollTop = 0;
   if (erMobil() && $('#panel').dataset.ark === 'lav') settArk('halv');
   if (!erMobil() && document.body.classList.contains('panel-skjult')) $('#panelLukk').click();
@@ -744,14 +796,14 @@ function visFane(navn) {
 // Skjuler fanene for skog, jord eller husdyr når eiendommen ikke bruker dem, og viser valget øverst i Oversikt.
 function brukDrift() {
   const sk = driftSkjulte(S);
-  $$('.faner button[data-fane]').forEach((b) => { b.hidden = sk.faner.has(b.dataset.fane); });
-  const aktiv = $('.faner button.aktiv')?.dataset.fane; if (aktiv && sk.faner.has(aktiv)) visFane('oversikt');
+  brukMeny();
+  const aktiv = $('.faner button.aktiv'); if (!aktiv || aktiv.hidden || sk.faner.has(aktiv.dataset.fane)) visStart();
   const l = $('#driftLinje'); if (l) l.innerHTML = `<span class="hint">Viser</span> <b>${esc(driftTekst(S))}</b> <button type="button" class="knapp liten" data-drift-velg title="Velg hvilke deler av løsningen du vil se for denne eiendommen">Tilpass</button>`;
 }
 async function velgDrift({ forste = false } = {}) {
   const valg = await velgDriftsomrader(S, { forste }); if (!valg) return;
   settDrift(S, valg); lagreSnart(); brukDrift(); skifteplanVisning?.tegn?.();
-  melding(`Viser nå: ${driftTekst(S)}. Endre når som helst med «Tilpass» øverst i Oversikt.`);
+  melding(`Viser nå: ${driftTekst(S)}. Endre når som helst med «Tilpass» øverst i Gården › Oversikt.`);
 }
 // Spør én gang per eiendom (ikke for demoen), når ingen annen dialog er åpen.
 function sporDriftOmNodvendig(forsok = 0) {
@@ -836,6 +888,7 @@ async function trekkUtMarkslag() {
 }
 
 function tegnOversikt() {
+  tegnOmrader();
   skogkarakter?.tegn();
   tegnInnsikt();
   tegnArealfordeling();
@@ -2642,7 +2695,7 @@ async function sikreKantsone({ tving = false, stille = false } = {}) {
 async function aapnePlan(id) {
   window.dispatchEvent(new Event('skogiq-plan-apnet'));
   stoppDeling(); sisteDeling = null;
-  if (id === S.planId) { visFane('oversikt'); zoomTilAlle(); return; }
+  if (id === S.planId) { visStart(); zoomTilAlle(); return; }
   const plan = await hentPlan(id);
   if (!plan) { melding('Fant ikke planen. Den kan være slettet.'); tegnPlanListe(); return; }
   await lagreAktivPlan();
@@ -2652,7 +2705,7 @@ async function aapnePlan(id) {
   valgModus = false; valgteTiltak = new Set(); maalOppdrag = null; uthevet = new Set(); kartUtvalg = null; oppdragVisning?.lukk();
   tegnEiendom(); tegnInnstillinger(); tegnRegistreringer();
   endret({ kart: true, zoom: true });
-  visFane('oversikt');
+  visStart();
   andreVisning?.tegn(); tegnPlanListe();
   melding(`Åpnet ${S.eiendom.navn || 'planen'}.`);
   sikreKantsone();
@@ -2826,8 +2879,8 @@ function kommandoValg(q) {
     { gruppe: 'Handlinger', ikon: '✦', tittel: `Spør AI: ${q || 'still et spørsmål om planen'}`, under: 'Claude svarer ut fra planens data', sok: 'ai spør chat assistent claude hvorfor hva hvor mye', alltid: !!q && q.length > 12 && /\?$|^(hva|hvor|hvilke|hvilken|hvordan|hvorfor|når|kan|bør|skal)\b/i.test(q.trim()), utfor: () => { visFane('ai'); if (q) aiVisning?.sporr(q); } },
     { gruppe: 'Handlinger', ikon: '🔥', tittel: 'Registrer skade', under: 'Brann, storm, snø, granbarkbille …', sok: 'skogbrand skade stormfelling vindfall snøbrekk barkbille brann forsikring skademelding', utfor: () => { visFane('skogbrand'); setTimeout(() => document.querySelector('[data-sb-under="skader"]')?.click(), 50); } },
     { gruppe: 'Handlinger', ikon: '🔥', tittel: 'Skogbrannfare og farevarsler', under: 'Skogbrannindeks, vind og barkbillevarsel for eiendommen', sok: 'skogbrand brannfare fwi met vind storm varsel barkbille', utfor: () => visFane('skogbrand') },
-    { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Gjødslingsplan', under: 'Gjødselbehov per skifte, forslag og utskrift (gjødselforskriften § 26)', sok: 'skifteplan gjødsel gjødsling jordprøve nitrogen fosfor kalium husdyrgjødsel jordbruk', utfor: () => { visFane('skifteplan'); skifteplanVisning?.underfane('gjodsling'); } },
-    { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Sprøytejournal / plantevernjournal', under: 'Registrer sprøyting og skriv ut journalen', sok: 'skifteplan sprøyting plantevern plantevernmidler ugras journal ipv', utfor: () => { visFane('skifteplan'); skifteplanVisning?.underfane('sproyting'); } },
+    { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Gjødslingsplan', under: 'Gjødselbehov per skifte, forslag og utskrift (gjødselforskriften § 26)', sok: 'skifteplan gjødsel gjødsling jordprøve nitrogen fosfor kalium husdyrgjødsel jordbruk', utfor: () => visFane('skifteplan', { under: 'gjodsling' }) },
+    { gruppe: 'Handlinger', ikon: '🌾', tittel: 'Sprøytejournal / plantevernjournal', under: 'Registrer sprøyting og skriv ut journalen', sok: 'skifteplan sprøyting plantevern plantevernmidler ugras journal ipv', utfor: () => visFane('skifteplan', { under: 'sproyting' }) },
     { gruppe: 'Handlinger', ikon: '¤', tittel: 'Verdiberegning', under: 'Eiendomsverdi, slaktverdi, jordverdi og nåverdi', sok: 'verdi nåverdi slaktverdi takst lev faustmann', utfor: () => visFane('verdi') },
     { gruppe: 'Handlinger', ikon: '📱', tittel: 'Åpne mobilversjonen (SkogIQ Felt)', under: 'Kart i fullskjerm, GPS, registreringer og tiltak – fungerer offline', sok: 'mobil felt mobilversjon offline pwa app installer telefon gps', utfor: () => { location.href = 'felt.html'; } },
     { gruppe: 'Handlinger', ikon: '▤', tittel: 'Vis alle eiendommene mine i kartet', under: 'Andre skogbruksplaner vises sammen med planen som er åpen', sok: 'flere eiendommer kart alle planer vis samtidig naboeiendom', utfor: async () => { await andreVisning.settAlle(true); await andreVisning.zoomAlle(bboxFor()); tegnPlanListe(); } },
@@ -2871,7 +2924,9 @@ function kommandoValg(q) {
 
 // ---------------------------------------------------------------- oppkobling
 function kobleHendelser() {
-  $$('.faner button').forEach((b) => b.addEventListener('click', () => visFane(b.dataset.fane)));
+  $$('.faner button[data-fane]').forEach((b) => b.addEventListener('click', () => visFane(b.dataset.fane, { under: b.dataset.under || null })));
+  $$('.omrader [data-omrade]').forEach((b) => b.addEventListener('click', () => settOmrade(b.dataset.omrade, { gaa: true })));
+  brukMeny(); if (omrade !== 'skog') visStart();
   $('#innsiktListe').addEventListener('click', (e) => { const k = e.target.closest('[data-innsikt]'); if (k) utforHandling(k.dataset.innsikt); });
   // Skjul eller vis panelet. Når det er skjult, viser et trykk hvor som helst på stripen det igjen.
   const settPanelSkjult = (skjult) => {
@@ -2942,7 +2997,7 @@ function kobleHendelser() {
     hentPosisjon: () => sistePos || (valgtPunkt ? { lat: valgtPunkt.getLatLng().lat, lon: valgtPunkt.getLatLng().lng } : null),
   });
   skifteplanVisning = initSkifteplan({
-    kart, hentPlan: () => S, endret, melding, nyId, iAar: IAAR,
+    kart, hentPlan: () => S, endret, melding, nyId, iAar: IAAR, vedUnderfane,
     settKartKlikk: (fn) => { kartKlikk = fn; },
     // Jordbruksfigurer fra AR5: bruker figurene i planen hvis de finnes, ellers hentes AR5 for eiendommen.
     hentJordbruk: async (logg) => ((S.markslag || []).some((f) => f.kategori === 'jordbruk') ? S.markslag : lastAr5(logg)),
@@ -3079,7 +3134,8 @@ function kobleHendelser() {
   });
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-til-mobil]')) { tilMobil(); return; }
-    const g = e.target.closest('[data-gaa]'); if (g) { e.preventDefault(); visFane(g.dataset.gaa); }
+    const go = e.target.closest('[data-gaa-omrade]'); if (go) { e.preventDefault(); settOmrade(go.dataset.gaaOmrade, { gaa: true }); return; }
+    const g = e.target.closest('[data-gaa]'); if (g) { e.preventDefault(); if (g.classList.contains('logo')) visStart(); else visFane(g.dataset.gaa); }
     const v = e.target.closest('[data-vis]'); if (v) { e.preventDefault(); velgBestand(v.dataset.vis); visFane('bestand'); }
   });
   $('#fargeEtter').addEventListener('change', () => { if ($('#fargeEtter').value === 'framskrevet') visFane('framskriving'); oppdaterStiler(); });
@@ -3198,7 +3254,7 @@ function kobleHendelser() {
       const navn = knapp.dataset.eksempel.split('/').pop();
       await nyArbeidsplan({ navn: knapp.dataset.navn, kommune: knapp.dataset.kommune, gnrbnr: '', takstAar: IAAR });
       await importerFiler([new File([await svar.blob()], navn)], 'erstatt');
-      tegnEiendom(); tegnRegistreringer(); visFane('oversikt');
+      tegnEiendom(); tegnRegistreringer(); visStart();
     } catch (e) { melding(`Kunne ikke hente planen: ${e.message}`); }
   }));
   $('#slettAltBtn').addEventListener('click', () => {

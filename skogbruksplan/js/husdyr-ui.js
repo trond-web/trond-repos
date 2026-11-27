@@ -131,13 +131,20 @@ export function lagHusdyrUi({ SP, aar, hentPlan, lagre, melding, nyId, visGjodsl
   }
 
   return {
-    html() {
+    // del: underfanen i menylinja – 'husdyr' (dyr og fjøs), 'husdyr-gjodsel', 'husdyr-for' (fôr og beite),
+    // 'husdyr-mattilsynet' eller 'husdyr-tilskudd'. Uten del vises alt.
+    html(del = null) {
       const a = aar(); const S = hentPlan(); const dh = DH();
       const g = husdyrgjodsel(S, a); const f = forbalanse(S, a); const funn = [...kontrollerHusdyr(S, a), ...kontrollerBeite(S, a), ...kontrollerRom(S)];
       const NIV = { avvik: '✕', varsel: '!', info: 'i' };
-      return `${dyrHtml(dh)}
-        ${funn.length ? `<div class="kort">${funn.map((x) => `<div class="sp-funn" style="--farge:${x.nivaa === 'avvik' ? 'var(--critical)' : x.nivaa === 'varsel' ? '#c77800' : 'var(--accent)'}"><i>${NIV[x.nivaa]}</i><div><b>${esc(x.tittel)}</b><div class="hint">${esc(x.tekst)}</div></div></div>`).join('')}</div>` : ''}
-        ${gjodselHtml(g, dh, a)}${forHtml(f, a)}${beiteHtml(a)}${romHtml()}${mt.html()}${tilskuddHtml(a)}`;
+      const funnHtml = funn.length ? `<div class="kort">${funn.map((x) => `<div class="sp-funn" style="--farge:${x.nivaa === 'avvik' ? 'var(--critical)' : x.nivaa === 'varsel' ? '#c77800' : 'var(--accent)'}"><i>${NIV[x.nivaa]}</i><div><b>${esc(x.tittel)}</b><div class="hint">${esc(x.tekst)}</div></div></div>`).join('')}</div>` : '';
+      const tom = '<div class="kort tom">Legg inn dyrene på gården under <a href="#" data-gaa="skifteplan:husdyr">Dyr og fjøs</a> først.</div>';
+      if (del === 'husdyr') return `${dyrHtml(dh)}${funnHtml}${romHtml()}`;
+      if (del === 'husdyr-gjodsel') return gjodselHtml(g, dh, a) || tom;
+      if (del === 'husdyr-for') return (forHtml(f, a) + beiteHtml(a)) || tom;
+      if (del === 'husdyr-mattilsynet') return mt.html() || tom;
+      if (del === 'husdyr-tilskudd') return tilskuddHtml(a) || tom;
+      return `${dyrHtml(dh)}${funnHtml}${gjodselHtml(g, dh, a)}${forHtml(f, a)}${beiteHtml(a)}${romHtml()}${mt.html()}${tilskuddHtml(a)}`;
     },
     klikk(e) {
       if (mt.klikk(e)) return true;

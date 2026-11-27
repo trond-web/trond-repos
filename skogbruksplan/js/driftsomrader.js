@@ -6,8 +6,30 @@ import { arealfordeling } from './markslag.js';
 export const OMRADER = {
   skog: { navn: 'Skog', ikon: '🌲', tekst: 'Bestand, tiltak, framskriving, veier, Skogbrand, karbon og PEFC', faner: ['bestand', 'tiltak', 'framskriving', 'veier', 'skogbrand', 'karbon', 'pefc', 'eudr'] },
   jord: { navn: 'Jord', ikon: '🌾', tekst: 'Skifteplan med vekster, jordprøver, gjødsling, plantevern og maskin', underfaner: ['skifter', 'gjodsling', 'sproyting', 'maskin'] },
-  husdyr: { navn: 'Husdyr', ikon: '🐄', tekst: 'Dyrehold, husdyrgjødsel, fôrbalanse, beiteplan, plass i fjøset og produksjonstilskudd', underfaner: ['husdyr'] },
+  husdyr: { navn: 'Husdyr', ikon: '🐄', tekst: 'Dyrehold, husdyrgjødsel, fôrbalanse, beiteplan, plass i fjøset og produksjonstilskudd', underfaner: ['husdyr', 'husdyr-gjodsel', 'husdyr-for', 'husdyr-mattilsynet', 'husdyr-tilskudd'] },
 };
+// 🧭 Menyen: hvert område har sitt eget åpningsdashboard (start) og sine egne faner i menylinja. «Gården» samler det
+// som gjelder hele eiendommen (verdi, klima, tilskudd, KSL og rapporter). Faner i FELLES_FANER vises i alle områdene.
+// En fane skrives «fane» eller «fane:underfane» (Skifteplan deles mellom Jord og Husdyr).
+export const MENY = {
+  skog: { navn: 'Skog', ikon: '🌲', start: 'oversikt', faner: ['oversikt', 'bestand', 'tiltak', 'framskriving', 'veier', 'skogbrand', 'karbon', 'pefc', 'eudr', 'kommune', 'felt'] },
+  jord: { navn: 'Jord', ikon: '🌾', start: 'jordoversikt', faner: ['jordoversikt', 'skifteplan:skifter', 'skifteplan:gjodsling', 'skifteplan:sproyting', 'skifteplan:maskin', 'skifteplan:krav'] },
+  husdyr: { navn: 'Husdyr', ikon: '🐄', start: 'husdyroversikt', faner: ['husdyroversikt', 'skifteplan:husdyr', 'skifteplan:husdyr-gjodsel', 'skifteplan:husdyr-for', 'skifteplan:husdyr-mattilsynet', 'skifteplan:husdyr-tilskudd'] },
+  gard: { navn: 'Gården', ikon: '🏡', start: 'gardsoversikt', faner: ['gardsoversikt', 'verdi', 'klima', 'tilskudd', 'ksl', 'rapporter'] },
+};
+export const FELLES_FANER = ['planer', 'nettverk', 'ai', 'data'];
+export const faneNokkel = (fane, under) => (under ? `${fane}:${under}` : fane);
+// Området en fane hører til (null for fellesfanene). Skifteplan uten underfane regnes som Jord.
+export function omradeFor(fane, under = null) {
+  if (FELLES_FANER.includes(fane)) return null;
+  const n = faneNokkel(fane, under);
+  for (const [k, m] of Object.entries(MENY)) if (m.faner.includes(n)) return k;
+  if (fane === 'skifteplan') return String(under || '').startsWith('husdyr') ? 'husdyr' : 'jord';
+  return null;
+}
+// Områdene som vises i velgeren: Gården alltid, de andre når driftsområdet er på.
+export function synligeOmrader(S) { const d = drift(S); return Object.keys(MENY).filter((k) => k === 'gard' || d[k]); }
+
 export const STANDARD = { skog: true, jord: true, husdyr: true };
 
 // Gjeldende valg for planen (alt på hvis ingenting er valgt).
