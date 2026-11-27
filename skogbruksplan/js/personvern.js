@@ -9,7 +9,7 @@
 // Settes VILKAR.kreverGodkjenning til den nye versjonen, må alle brukere godta på nytt ved neste innlogging.
 // Brukes ved vesentlige endringer: nye formål, nye mottakere eller lengre lagring. Små språkendringer krever det ikke.
 
-export const VILKAR = { versjon: '1.20', dato: '2026-11-27', kreverGodkjenning: '1.17' };
+export const VILKAR = { versjon: '1.21', dato: '2026-11-27', kreverGodkjenning: '1.21' };
 
 // Behandlingsansvarlig. Fylles ut av eieren av tjenesten (navn, organisasjonsnummer og e-post for personvern).
 export const ANSVARLIG = { navn: 'Trond Harald Sand (SkogIQ.ai)', orgnr: '', epost: 'trond@strafferunden.no', adresse: '' };
@@ -82,8 +82,12 @@ export const BEHANDLINGER = [
     opplysninger: 'Beregnes fra opplysningene i planen din (bestand, tiltak og status, miljøregistreringer, PEFC-sjekklister, artsfunn og skader). Karakteren og ett øyeblikksbilde per år lagres i planen.',
     grunnlag: 'avtale', lagring: 'Sammen med planen, til du sletter den.',
     mottakere: 'Ingen. Karakteren beregnes i nettleseren og vises bare for deg. Den brukes ikke til å rangere eller sammenligne skogeiere. Den deles bare når du selv skriver ut karakterbeviset eller laster ned stempelet.', api: [] },
+  { id: 'arcgis', navn: 'Overføring til ArcGIS (Esri)', formaal: 'Overføre skogbruksplanen til din egen organisasjon i ArcGIS Online eller ArcGIS Enterprise, når du selv kobler til og velger å overføre, slik at du kan bruke den i ArcGIS Pro, Field Maps og andre ArcGIS-verktøy.',
+    opplysninger: 'Skogbruksplanen for eiendommen: eiendomsnavn, gnr/bnr og kommune, bestand med skogdata, tiltak, veier og punkter, miljøfigurer og registrerte skader. Ikke navn, e-post eller annen kontaktinformasjon. Innloggingen hos ArcGIS (tilgangsnøkkel) lagres bare på enheten din, aldri hos SkogIQ.ai.',
+    grunnlag: 'avtale', lagring: 'I ArcGIS: til du sletter laget i din ArcGIS-organisasjon. På enheten: til du kobler fra ArcGIS. SkogIQ-serveren lagrer bare adressen til laget i planen din.',
+    mottakere: 'Esri (ArcGIS Online) eller din organisasjons egen ArcGIS Enterprise-portal. Dataene går direkte fra nettleseren din til ArcGIS, ikke via SkogIQ-serveren. Esri og din organisasjon er ansvarlige for behandlingen i ArcGIS.', api: ['/api/arcgis'] },
   { id: 'lokal', navn: 'Lagring i nettleseren', formaal: 'Bruke appen uten nett og huske innstillinger.',
-    opplysninger: 'Planer, kartfliser, innstillinger og innloggingsøkt lagres på enheten din (IndexedDB, localStorage og én informasjonskapsel for innloggingen).',
+    opplysninger: 'Planer, kartfliser, innstillinger og innloggingsøkt lagres på enheten din (IndexedDB, localStorage og én informasjonskapsel for innloggingen). Kobler du til ArcGIS, lagres tilgangsnøkkelen dit også.',
     grunnlag: 'avtale', lagring: 'Til du logger ut, sletter planen eller tømmer nettleseren.',
     mottakere: 'Ingen. Bare strengt nødvendige informasjonskapsler (ekomloven § 3-15), derfor ikke samtykke til informasjonskapsler.', api: [] },
 ];
@@ -92,6 +96,7 @@ export const BEHANDLINGER = [
 export const TREDJEPARTER = [
   { navn: 'Railway Corporation', rolle: 'Drift av serveren og lagring av data (databehandler)', land: 'Serveren og lagringen er i Railway sin region i Amsterdam (EU). Selskapet er amerikansk, og overføring er sikret med EUs standardavtaler (SCC).' },
   { navn: 'Lagring av sikkerhetskopier', rolle: 'Krypterte sikkerhetskopier av dataene på serveren, utenfor Railway (databehandler). Kopiene krypteres med en nøkkel bare SkogIQ.ai har, før de sendes ut', land: 'S3-kompatibel lagring i EU/EØS.' },
+  { navn: 'Esri (ArcGIS Online)', rolle: 'Mottar skogbruksplanen bare når du selv kobler til ArcGIS og overfører den, til din egen ArcGIS-organisasjon. Bruker du ArcGIS Enterprise, går dataene til din organisasjons egen portal i stedet.', land: 'Esri er amerikansk. Hvor dataene lagres i ArcGIS Online, avhenger av regionen til din ArcGIS-organisasjon (USA eller EU), og er regulert av avtalen mellom organisasjonen din og Esri.' },
   { navn: 'GitHub (Microsoft)', rolle: 'Leverer selve appen (filene) fra github.io', land: 'USA/EU. Ser IP-adressen din. Data om skogen din sendes ikke dit.' },
   { navn: 'Resend', rolle: 'Sender e-post for glemt passord, når e-post er slått på (databehandler)', land: 'USA, EUs standardavtaler (SCC).' },
   { navn: 'jsDelivr, unpkg og Google Fonts', rolle: 'Programbiblioteker og skrifttyper som nettleseren henter', land: 'Globale nettverk. Ser IP-adressen din.' },

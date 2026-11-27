@@ -201,6 +201,8 @@ const server = http.createServer(async (req, res) => {
   if (feltoppdragApi(feltoppdrag, { ...skyOppsett, navn: (u) => innlogging.meg(u)?.navn || u }, req, res, sti, SIKKERHET)) return;
   if (tilbakemeldingApi(tilbakemelding, { meg: (q) => { const o = innlogging.fraForesporsel(q); if (!o) return null; const m = innlogging.meg(o.u); return { bruker: o.u, navn: m?.navn || o.u, admin: innlogging.erAdmin(o.u) }; }, cors: corsFor }, req, res, sti, SIKKERHET)) return;
   if (skadevarselApi(skadevarsel, req, res, sti, SIKKERHET, corsFor)) return;
+  // ArcGIS-tilkobling: klient-ID for SkogIQ-appen i ArcGIS Online (offentlig, ingen hemmelighet). Se js/arcgis.js.
+  if (sti === '/api/arcgis/oppsett' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, max-age=3600', ...corsFor(req), ...SIKKERHET }); return res.end(JSON.stringify({ klientId: process.env.ARCGIS_CLIENT_ID || '' })); }
   if (planApi(planRelay, req, res, sti, SIKKERHET)) return;
   if (jdApi(jdRelay, req, res, sti, SIKKERHET)) return;
   if (req.method !== 'GET' && req.method !== 'HEAD') return svar(res, 405, 'Metoden er ikke tillatt');

@@ -3,6 +3,7 @@ import { initEgneLag } from './egne-lag-ui.js';
 import { ER_EGET_LAG } from './egne-lag.js';
 import { lagVelkomst } from './velkommen.js';
 import * as MARKA from './marka.js';
+import { lagArcgisUi } from './arcgis-ui.js';
 import { arealM2, punktIGeometri, bbox, fraWgs84, etikettPunkt, utmTilGeo } from './proj.js';
 import { lagSosi } from './sosi.js';
 import {
@@ -691,7 +692,7 @@ function angreDeling() {
 }
 
 // ---------------------------------------------------------------- faner
-let kommuneVisning = null;
+let kommuneVisning = null; let arcgisVisning = null;
 let veiVisning = null; let transportVisning = null; /* 🚛 tømmertransport (js/transport-ui.js) */ let sokVisning = null; /* 🔎 egenskapssøk (js/sok-ui.js) */ let egneLagVisning = null; // 📌 egne kartlag (GPX/KML/KMZ, js/egne-lag-ui.js)
 let pefcVisning = null;
 let verdiVisning = null; let takstVisning = null; let skogkarakter = null; let tommerVisning = null; let ajourVisning = null; let hurtigTilbud = null; let maaling = null; let nettverk = null;
@@ -710,6 +711,7 @@ function visFane(navn) {
   if (deling && navn !== 'bestand') stoppDeling();
   if (pefcVisning) { if (navn === 'pefc') setTimeout(() => pefcVisning.vis(), 0); else pefcVisning.skjul(); }
   if (skogbrandVisning) { if (navn === 'skogbrand') setTimeout(() => skogbrandVisning.vis(), 0); else skogbrandVisning.skjul(); }
+  if (navn === 'data') setTimeout(() => arcgisVisning?.tegn(), 0);
   if (skifteplanVisning) { if (navn === 'skifteplan') setTimeout(() => skifteplanVisning.vis(), 0); else skifteplanVisning.skjul(); }
   veiVisning?.synlig(navn !== 'kommune');
   if (navn === 'veier') { veiVisning?.vis(); transportVisning?.vis(); } else transportVisning?.skjul();
@@ -2182,6 +2184,7 @@ function bestandTilFeature(b, koordsys = 'WGS84') {
 function csvRad(verdier) { return verdier.map((v) => { const s = v === null || v === undefined ? '' : typeof v === 'number' ? String(v).replace('.', ',') : String(v); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(';'); }
 
 function eksporter(type) {
+  if (type === 'arcgis') return arcgisVisning?.lastNedShape();
   if (type === 'backup') return lastNed(filnavn('json'), JSON.stringify({ ...S, eksportert: new Date().toISOString() }), 'application/json');
   if (type === 'geojson') return lastNed(filnavn('geojson'), JSON.stringify({ type: 'FeatureCollection', features: S.bestand.filter((b) => b.geometri).map((b) => bestandTilFeature(b)) }), 'application/geo+json');
   if (type === 'sosi32' || type === 'sosi33') {
@@ -2348,9 +2351,11 @@ function tegnEiendom() {
 function endret({ kart: kartEndret = false, zoom = false, bare = null } = {}) {
   // Bare oppdragsdata (felt, sjekkliste, utfører): lagre uten å tegne resten av appen på nytt.
   if (bare === 'oppdrag') { lagreSnart(); if (!$('#fane-eudr').hidden) eudrVisning?.tegn(); return; }
+  if (bare === 'arcgis') { lagreSnart(); return; }
   frResultat = null;
   for (const b of S.bestand) for (const t of b.tiltak || []) if (!t.id) t.id = nyId('t'); // eldre importerte tiltak uten id
   lagreSnart();
+  arcgisVisning?.vedEndring(); if (!$('#fane-data')?.hidden) arcgisVisning?.tegn();
   if (kartEndret) { tegnBestandKart(zoom); tegnKantsone(); if (S.eiendom?.grense && !S.kantsone?.bred) setTimeout(() => sikreKantsone(), 0); veiVisning?.oppdater(); pefcVisning?.oppdater(); skogbrandVisning?.oppdater(); skifteplanVisning?.oppdater(); egneLagVisning?.oppdater(); sokVisning?.tegn(); if (!$('#fane-veier').hidden) transportVisning?.oppdater(); } else oppdaterStiler();
   tegnOversikt();
   tegnBestandTabell();
@@ -3015,6 +3020,7 @@ function kobleHendelser() {
       if (erMobil()) settArk('halv');
     },
   });
+  arcgisVisning = lagArcgisUi({ hentPlan: () => S, endret, melding }); arcgisVisning.tegn();
   kommuneVisning = initKommune({ kart, melding, innstillinger: inn, lastKommuner, finnKommune, lagPlanFor });
   $('#genKommune').addEventListener('focus', lastKommuner, { once: true });
   $('#planListe').addEventListener('change', async (e) => {
