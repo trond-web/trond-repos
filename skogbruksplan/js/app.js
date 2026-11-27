@@ -2901,6 +2901,7 @@ function kobleHendelser() {
   });
   skogbrandVisning = initSkogbrand({
     kart, hentPlan: () => S, endret, melding, nyId, iAar: IAAR, lastKlipping, skalerBilde,
+    aapneKommunesim: (k) => { visFane('kommune'); kommuneVisning?.simulerFraVarsel(k); },
     settKartKlikk: (fn) => { kartKlikk = fn; },
     visBestand: (id) => { velgBestand(id); visFane('bestand'); },
     hentPosisjon: () => sistePos || (valgtPunkt ? { lat: valgtPunkt.getLatLng().lat, lon: valgtPunkt.getLatLng().lng } : null),

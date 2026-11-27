@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.30.0 – ⚠ Skadevarsel for skog de neste 5 døgnene (2026-11-27)
+
+*Nytt.* Under Skogbrand › Varsel 5 døgn ser du anslått skogskade fra storm og snøbrekk, og skogbrannfaren, for alle kommuner med skog de neste 5 døgnene. Kommunene med størst skade står øverst. Skogen i hver kommune er beregnet fra skogressurskartet SR16, og været fra Meteorologisk institutt oppdateres hver 3. time. Du kan sortere på storm, snø eller brannfare, søke etter kommune og se kommunene i kartet. Med «Simuler →» går du rett til skadesimuleringen for kommunen, med værprognosen fylt inn. Personvernerklæringen er oppdatert til versjon 1.20, fordi varselet har en ny tjeneste på serveren. Den bruker ingen opplysninger om deg, og du trenger ikke godta på nytt.
+
 ## 2.29.0 – 🧪 Skadesimulering for hele kommunen (2026-11-27)
 
 *Nytt.* I fanen Kommune kan du nå simulere storm, snøbrekk, skogbrann, granbarkbille og tørke på alle skogflatene i kommunen. SR16 skrives fram til i år. Værprognosen kan hentes i et rutenett over kommunen, slik at vind og snø varierer fra sted til sted. Skogbrann regnes på et rutenett rundt et startpunkt du velger i kartet, med arealtyper fra AR5. Myr brenner dårlig, og vann, bebyggelse og vei stopper brannen. Du ser hvor brannen er time for time, og hvilken bebyggelse den når fram til. Resultatet vises som varmekart med de mest utsatte områdene, fordelt på treslag. Du kan slå opp berørte eiendommer (gnr/bnr) og laste ned en rapport som PDF.

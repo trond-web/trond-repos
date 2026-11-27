@@ -260,8 +260,15 @@ export function lagKommunesimUi({ kart, melding, innstillinger, eiendomIPunkt, h
     const v = e.target.closest('input[type="range"][data-ks-v]'); if (!v) return false; const def = SIM.TYPER[type].variabler.find((x) => x.id === v.dataset.ksV); const b = v.closest('label')?.querySelector('.sim-verdi');
     if (b && def) b.textContent = def.retning ? `${SIM.himmel(Number(v.value))} (${v.value}°)` : `${fmt(Number(v.value))} ${def.enhet}`; return true;
   }
+  // Åpne simuleringen med en bestemt skadetype og værprognosen for kommunen (fra skadevarselet).
+  async function aapneMed(t, ekstra = {}) {
+    type = t; param[t] = { ...(param[t] || {}), ...ekstra };
+    if (!aapen) { aapen = true; visVanlig(false); lag.addTo(kart); kobleKlikk(true); }
+    tegn(); el()?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    if (t !== 'bille') await hentVaerFelt();
+  }
   return {
-    tegn, klikk, endring, input, legend,
+    tegn, klikk, endring, input, legend, aapneMed,
     nyData() { res = null; resNokkel = ''; brann = null; start = null; vaerData = null; felt = null; eiendommer = null; raster = null; dekkeCache.clear(); if (aapen) { aapen = false; lag.remove(); kobleKlikk(false); } tegn(); },
     skjul() { lag.remove(); kobleKlikk(false); if (startKlikk) { kart.off('click', startKlikk); startKlikk = null; } if (velgStart) { velgStart = false; kart.getContainer().style.cursor = ''; } },
     vis() { if (aapen) { lag.addTo(kart); visVanlig(false); kobleKlikk(true); tegnKart(); } },

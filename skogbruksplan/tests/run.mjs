@@ -4279,7 +4279,7 @@ const PERSONVERN_SJEKKSUM = {
   '1.6': 'a0fb42021e2ae582',
   '1.7': 'ad76546af094b915',
   '1.8': '1b41be6f78760f90',
-  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976', '1.16': 'a85bfccb66c6fc14', '1.17': 'db0ca4fb428144e9', '1.18': '118453b512546180', '1.19': '6e094b29259ad9e0',
+  '1.9': '95e150ddf143b146', '1.10': 'bcad0c3ed7405b42', '1.11': '4fdc156246a1088c', '1.12': '8fb7a699dc9d1298', '1.13': '38aa9b4b7a6eb258', '1.14': '2d39e8a002e753b1', '1.15': '183fc125b92c6976', '1.16': 'a85bfccb66c6fc14', '1.17': 'db0ca4fb428144e9', '1.18': '118453b512546180', '1.19': '6e094b29259ad9e0', '1.20': 'abd683fefb036c95',
 };
 
 test('Personvern: erklæringen dekker alle /api-stier, versjon og sjekksum, og sidene lenker til den', async () => {
@@ -5028,4 +5028,55 @@ test('Skadesimulering for kommunen: alle SR16-flater, værfelt, åpne kanter, br
   const biter = K.ar5Biter(g); assert.ok(biter.length >= 1 && /LAYERS=Arealtype/.test(biter[0].url) && /SRS=EPSG:3857/.test(biter[0].url) && biter.every((x) => x.W <= 2000 && x.H <= 2000));
   const bit = biter[0]; const rgba = new Uint8ClampedArray(bit.W * bit.H * 4); for (let q = 0; q < rgba.length; q += 4) { rgba[q] = 145; rgba[q + 1] = 231; rgba[q + 2] = 255; }
   const dk = new Uint8Array(g.nx * g.ny); K.dekkeFraBilde(g, dk, bit, rgba); assert.equal(dk[0], 5);
+});
+
+test('Skadevarsel 5 døgn: PNG, skogprofil fra SR16-bilder, varsel per kommune og hele kjeden på serveren', async () => {
+  const SV = await import('../skadevarsel.js'); const zlib = await import('node:zlib');
+  // Lag en PNG (RGB, filter 0) av et RGBA-bilde
+  const png = (w, h, px) => {
+    const crcT = new Int32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c; });
+    const crc = (b) => { let c = -1; for (const x of b) c = crcT[(c ^ x) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; };
+    const chunk = (t, d) => { const l = Buffer.alloc(4); l.writeUInt32BE(d.length); const td = Buffer.concat([Buffer.from(t), d]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([l, td, c]); };
+    const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+    const raw = Buffer.alloc(h * (w * 3 + 1)); for (let y = 0; y < h; y++) { raw[y * (w * 3 + 1)] = y % 2 ? 2 : 1; for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) raw[y * (w * 3 + 1) + 1 + x * 3 + c] = px(x, y)[c]; }
+    // filter 1 (sub) og 2 (up) på annenhver rad: regn om radene
+    for (let y = h - 1; y >= 0; y--) { const s = y * (w * 3 + 1) + 1; const f = raw[s - 1]; for (let i = w * 3 - 1; i >= 0; i--) { const a = i >= 3 ? raw[s + i - 3] : 0; const up = y > 0 ? px(Math.floor(i / 3), y - 1)[i % 3] : 0; raw[s + i] = (raw[s + i] - (f === 1 ? a : up) + 256) & 255; } }
+    return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+  };
+  const W = 20; const H = 20;
+  // Gran i venstre halvdel (høy og tett), åpent (hvitt) i høyre halvdel; furu i nederste rad
+  const treslag = (x, y) => (x >= 10 ? [255, 255, 255] : y === H - 1 ? [205, 170, 101] : [82, 176, 56]);
+  const hoyde = (x) => (x >= 10 ? [255, 255, 255] : [0, 40, 15]); const volum = (x) => (x >= 10 ? [255, 255, 255] : [44, 162, 95]);
+  const d = SV.dekodPng(png(W, H, treslag)); assert.equal(d.w, W); assert.deepEqual([...d.data.slice(0, 4)], [82, 176, 56, 255]); assert.deepEqual([...d.data.slice((H - 1) * W * 4, (H - 1) * W * 4 + 3)], [205, 170, 101]);
+  const prof = SV.lagProfil({ w: W, h: H, pikselM: 100, iKommune: () => true, treslag: SV.dekodPng(png(W, H, treslag)).data, hoyde: SV.dekodPng(png(W, H, hoyde)).data, volum: SV.dekodPng(png(W, H, volum)).data });
+  assert.equal(prof.skogDaa, 200 * 10); // 200 piksler à 10 daa
+  const gran = prof.kombi[SV.kombiNokkel(0, 9, 3)]; assert.equal(gran[0], 190); assert.equal(gran[3], 19, 'åpen kant mot øst: høyre kolonne av granskogen');
+  // Varsel: storm fra øst gir skade, rolig vær ingen
+  const dager = (kast, sno = 0, retning = 90) => Array.from({ length: 5 }, (_, i) => ({ dato: `2026-12-0${i + 1}`, kast: i === 2 ? kast : 5, vind: 5, retning, sno: i === 3 ? sno : 0, tempMin: -1, tempMaks: 1 }));
+  const rolig = SV.varselForKommune(prof, dager(8)); assert.equal(rolig.kr, 0);
+  const storm = SV.varselForKommune(prof, dager(34)); assert.ok(storm.storm.kr > 0 && storm.storm.dato === '2026-12-03' && storm.storm.kast === 34);
+  assert.ok(SV.varselForKommune(prof, dager(30, 0, 90)).storm.kr > SV.varselForKommune(prof, dager(30, 0, 270)).storm.kr, 'åpen kant mot vinden gir mer skade');
+  const sno = SV.varselForKommune(prof, dager(8, 60)); assert.ok(sno.sno.kr > 0 && sno.sno.cm >= 60);
+  assert.ok(SV.varselForKommune(prof, dager(8), [{ dato: '2026-12-02', fwi: 25 }]).brann.nivaa === 'rod');
+  // Hele kjeden med falske tjenester
+  const kall = [];
+  const fakeHent = async (url, opt) => {
+    kall.push([url, opt?.headers?.['User-Agent']]);
+    const j = (o) => ({ ok: true, json: async () => o, text: async () => JSON.stringify(o) });
+    if (/kommuneinfo\/v1\/kommuner$/.test(url)) return j([{ kommunenummer: '9999', kommunenavnNorsk: 'Skogby' }]);
+    if (/kommuner\/9999\/omrade/.test(url)) return j({ omrade: { type: 'Polygon', coordinates: [[[200000, 6600000], [202000, 6600000], [202000, 6602000], [200000, 6602000], [200000, 6600000]]] } });
+    if (/kommuner\/9999$/.test(url)) return j({ fylkesnavn: 'Testfylke', punktIOmrade: { coordinates: [10, 60] } });
+    if (/wms\.nibio\.no\/cgi-bin\/sr16/.test(url)) { const u = new URL(url); const l = u.searchParams.get('LAYERS'); const w = Number(u.searchParams.get('WIDTH')); const h = Number(u.searchParams.get('HEIGHT')); const f = { SRRTRESLAG: treslag, SRRHOYDEM: hoyde, SRRVOLUB: volum }[l]; const b = png(w, h, (x, y) => f(Math.floor((x / w) * 20), Math.floor((y / h) * 20))); return { ok: true, arrayBuffer: async () => b }; }
+    if (/locationforecast/.test(url)) return j({ properties: { timeseries: Array.from({ length: 5 * 4 }, (_, i) => ({ time: new Date(Date.UTC(2026, 11, 1 + Math.floor(i / 4), 6 * (i % 4))).toISOString(), data: { instant: { details: { wind_speed: 14, wind_speed_of_gust: i === 9 ? 36 : 12, wind_from_direction: 90, air_temperature: 2 } }, next_6_hours: { details: { precipitation_amount: 0 } } } })) } });
+    return { ok: false, status: 500, text: async () => '', json: async () => ({}) };
+  };
+  const sv = SV.lagSkadevarsel({ fil: null, hent: fakeHent, start: false, logg: () => {} });
+  await sv.kjor();
+  const v = sv.hent(); assert.equal(v.kommuner.length, 1); const k = v.kommuner[0];
+  assert.equal(k.navn, 'Skogby'); assert.equal(k.fylke, 'Testfylke'); assert.ok(k.skogDaa > 1000 && k.kr > 0 && k.storm.kast === 36);
+  assert.ok(kall.filter(([u]) => /met\.no|nibio|kartverket/.test(u)).every(([, ua]) => /SkogIQ/.test(ua)), 'identifiserer seg med User-Agent');
+  // API
+  let status = 0; let kropp = ''; const res = { writeHead: (s) => { status = s; }, end: (b) => { kropp = b; } };
+  assert.equal(SV.skadevarselApi(sv, { method: 'GET', headers: {} }, res, '/api/skadevarsel'), true); assert.equal(status, 200); assert.equal(JSON.parse(kropp).kommuner[0].nr, '9999');
+  assert.equal(SV.skadevarselApi(sv, { method: 'GET', headers: {} }, res, '/api/annet'), false);
 });
