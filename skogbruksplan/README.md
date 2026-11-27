@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.28.0** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.29.0** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -2674,6 +2674,37 @@ treslag finnes, brukes den.
   - «Lag skogbruksplan» åpner planlagingen for eiendommen.
 - **Kartet:** eiendomsgrenser med gnr/bnr fra Kartverkets matrikkel-WMS vises når du zoomer inn (fra ca. 1:40 000).
   Det kan slås av med «Eiendomsgrenser og gnr/bnr i kartet». Laget finnes også i lagvelgeren i hovedkartet.
+
+
+### 🧪 Skadesimulering for hele kommunen (`js/kommunesim.js`, `js/kommunesim-ui.js`)
+
+Når kommuneanalysen er hentet, kan du åpne skadesimuleringen. Den bruker de samme modellene som Skogbrand › Simulering, men regner på alle SR16-skogflatene i kommunen.
+
+- **SR16 skrives fram til i år** fra måleåret: alder og høyde øker med årene siden målingen, og volumet øker med 2,5 % i året. Hvis du klikker en flate i kartet, vises framskrevne verdier og simulert skade.
+- **Storm, snøbrekk, granbarkbille og tørke** regnes for alle flatene.
+  - Åpne kanter mot vinden finnes med en romlig indeks: punktet like oppvinds for flaten ligger ikke i skog over 5 m.
+  - Kritisk vindkast og snølast regnes én gang per flate. Derfor tar et nytt scenario og kurven over hovedvariabelen bare brøkdeler av et sekund, også med titusenvis av flater.
+- **Værprognosen varierer over kommunen.** «🌦 Værprognose for hele kommunen» henter prognosen fra Meteorologisk institutt i et rutenett av punkter innenfor kommunegrensa: høyst ca. 24 punkter, minst 6 km mellom dem. Hver flate får lokale verdier ved interpolasjon (inverse avstandsvekter):
+  - vindkast, snømengde og tørkedager skaleres mot det høyeste punktet
+  - vindretningen hentes lokalt
+  - temperaturen forskyves lokalt
+
+  Glideren styrer det høyeste punktet, så hele mønsteret kan skrus opp eller ned.
+- **Skogbrann regnes på et rutenett** (50 m, grovere for lange branner) rundt startpunktet, som du velger i kartet.
+  - Drivstoffet kommer fra SR16-flatene (kanadisk FBP).
+  - Arealtypen kommer fra AR5. NIBIOs WMS-bilde hentes i EPSG:3857 med ca. 12 m per piksel, fordi laget ikke tegnes grovere eller i EPSG:4326.
+  - Myr brenner dårlig, og jordbruk og åpen fastmark brenner som gress og lyng.
+  - Vann, hav, bebyggelse og vei stopper brannen. Areal som ikke er kartlagt (ofte hav), brenner ikke.
+  - Spredningen følger korteste vei (Dijkstra) på 8 naboer med elliptisk spredning etter vinden.
+  - Resultatet er ankomsttid per celle (kartlag med tidsbånd), brent areal over tid, skog og volum som går tapt, og bebygde områder brannen når fram til, med tidspunkt.
+- **Resultat:**
+  - varmekart (rasterbilde av flatene, raskt også for store kommuner) med fargeskala og de ti mest utsatte områdene
+  - totaler og fordeling på treslag
+  - mest utsatte områder i ruter på 2 × 2 km
+  - **berørte eiendommer** (gnr/bnr fra Kartverkets matrikkel for de 40 hardest rammede flatene)
+  - **rapport som PDF** til kommunen, skogbrukssjefen eller brannvesenet
+
+Anslagene er forenklede. Terreng, slokking og lokale forhold er ikke med.
 
 ## Plan fra åpne data med Python (`verktoy/lag_plan_fra_apne_data.py`)
 

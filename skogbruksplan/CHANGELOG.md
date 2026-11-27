@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.29.0 – 🧪 Skadesimulering for hele kommunen (2026-11-27)
+
+*Nytt.* I fanen Kommune kan du nå simulere storm, snøbrekk, skogbrann, granbarkbille og tørke på alle skogflatene i kommunen. SR16 skrives fram til i år. Værprognosen kan hentes i et rutenett over kommunen, slik at vind og snø varierer fra sted til sted. Skogbrann regnes på et rutenett rundt et startpunkt du velger i kartet, med arealtyper fra AR5. Myr brenner dårlig, og vann, bebyggelse og vei stopper brannen. Du ser hvor brannen er time for time, og hvilken bebyggelse den når fram til. Resultatet vises som varmekart med de mest utsatte områdene, fordelt på treslag. Du kan slå opp berørte eiendommer (gnr/bnr) og laste ned en rapport som PDF.
+
 ## 2.28.0 – 🧪 Simuler skade før den skjer (2026-11-27)
 
 *Nytt.* I fanen Skogbrand ligger en ny del for simulering. Du velger skadetype og vær, og ser hvilke bestand som kan rammes, hvor mye, berørt volum, verditap og om forsikringen trolig dekker skaden. Skadetypene er storm (vindkast, vindretning og mark), snøbrekk (nysnø, snøtype og temperatur), skogbrann (tørrhet, vind og tid før brannen er under kontroll, med spredning bestand for bestand), granbarkbille (varme dager, graddager, tørke og vindfall) og tørke (dager uten nedbør og temperatur). Scenarioet kan hentes fra værprognosen. Resultatet vises i kartet med fargeskala og vindpil, og en kurve viser hvordan omfanget øker. Modellene er forenklede anslag for planlegging og beredskap.

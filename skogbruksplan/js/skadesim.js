@@ -22,6 +22,7 @@ const peiling = (a, b) => { const k = meterPer((a[1] + b[1]) / 2); return ((Math
 const vinkel = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
 const utfortSiden = (b, type) => (b.tiltak || []).filter((t) => t.type === type && t.status === 'utfort').reduce((m, t) => Math.max(m, t.aar || 0), 0) || null;
 const planlagtInnen = (b, type, iAar, aar) => (b.tiltak || []).some((t) => t.type === type && t.status !== 'utfort' && t.aar <= iAar + aar);
+export { logistisk, klamp };
 export const himmel = (g) => ['nord', 'nordøst', 'øst', 'sørøst', 'sør', 'sørvest', 'vest', 'nordvest'][Math.round(((g % 360) + 360) % 360 / 45) % 8];
 
 // ---------------------------------------------------------------- skadetyper og variabler
@@ -124,15 +125,12 @@ export function kritiskVind(x, { mark = 'normal', lauv = 'uten', kantMotVind = f
   if (mark === 'tele') { u += 3; g.push('Tele gir god forankring'); }
   return { u: r1(u), grunner: g };
 }
-function storm(S, p, info, nab) {
-  return info.map((x) => {
-    const kant = kanterMotVind(x, nab, p.retning, x.iAar).length > 0;
-    const k = kritiskVind(x, { mark: p.mark, lauv: p.lauv, kantMotVind: kant });
-    const sann = x.h < 4 ? 0 : logistisk((p.kast - k.u) / 1.8);
-    const andel = sann * (0.15 + 0.5 * sann);
-    return { x, p: sann, andel, grunner: [`Kritisk vindkast ca. ${k.u} m/s`, ...k.grunner] };
-  });
+export function stormVurdering(x, p, kant) {
+  const k = kritiskVind(x, { mark: p.mark, lauv: p.lauv, kantMotVind: kant });
+  const sann = x.h < 4 ? 0 : logistisk((p.kast - k.u) / 1.8);
+  return { p: sann, andel: sann * (0.15 + 0.5 * sann), grunner: [`Kritisk vindkast ca. ${k.u} m/s`, ...k.grunner] };
 }
+function storm(S, p, info, nab) { return info.map((x) => ({ x, ...stormVurdering(x, p, kanterMotVind(x, nab, p.retning, x.iAar).length > 0) })); }
 
 // ---------------------------------------------------------------- snø
 const SNO_TETTHET = { vat: 1.6, middels: 1.0, torr: 0.6 }; // kg/m² per cm nysnø
@@ -152,13 +150,11 @@ export function kritiskSnolast(x) {
   if (x.tynnet && x.iAar - x.tynnet <= 5) { l -= 8; g.push(`Nylig tynnet (${x.tynnet})`); }
   return { l, grunner: g };
 }
-function sno(S, p, info) {
-  return info.map((x) => {
-    const last = snolast(x, p); const k = kritiskSnolast(x);
-    const sann = logistisk((last - k.l) / 4);
-    return { x, p: sann, andel: sann * (0.08 + 0.35 * sann), grunner: [`Snølast i kronene ca. ${Math.round(last)} kg/m² (tåler ca. ${Math.round(k.l)})`, ...k.grunner] };
-  });
+export function snoVurdering(x, p) {
+  const last = snolast(x, p); const k = kritiskSnolast(x); const sann = logistisk((last - k.l) / 4);
+  return { p: sann, andel: sann * (0.08 + 0.35 * sann), grunner: [`Snølast i kronene ca. ${Math.round(last)} kg/m² (tåler ca. ${Math.round(k.l)})`, ...k.grunner] };
 }
+function sno(S, p, info) { return info.map((x) => ({ x, ...snoVurdering(x, p) })); }
 
 // ---------------------------------------------------------------- skogbrann (FBP)
 const FFMC = { fuktig: 80, normal: 86, torr: 90, svart: 93, ekstrem: 95 };
@@ -218,32 +214,34 @@ function brann(S, p, info, nab) {
 }
 
 // ---------------------------------------------------------------- granbarkbille
+// Værfaktorene for granbarkbille (felles for eiendom og kommune).
+export function billeVaer(p) {
+  return { sverm: logistisk((p.varmeDager - 4) / 1.5), toGen: logistisk((p.graddager - 1350) / 80), torke: klamp((p.torkeDager - 10) / 25), press: klamp(p.vindfall / 300) };
+}
+export function billeSann(statisk, v) { return klamp(statisk * v.sverm * (0.35 + 0.35 * v.torke + 0.3 * v.press) * (1 + 0.6 * v.toGen) * 1.6); }
+export function billeGrunner(statisk, v, p) {
+  return [`Grunnrisiko ${Math.round(statisk * 100)} av 100`, `Sverming ${Math.round(v.sverm * 100)} %`, `Andre generasjon ${Math.round(v.toGen * 100)} %`, ...(v.torke > 0.3 ? ['Tørkestress'] : []), ...(v.press > 0.2 ? [`Vindfall i nærheten (${p.vindfall} m³)`] : [])];
+}
 function bille(S, p, info, risiko) {
-  const sverm = logistisk((p.varmeDager - 4) / 1.5);
-  const toGen = logistisk((p.graddager - 1350) / 80);
-  const torke = klamp((p.torkeDager - 10) / 25);
-  const press = klamp(p.vindfall / 300);
+  const v = billeVaer(p);
   return info.map((x) => {
     if (x.b.treslag !== 'G') return { x, p: 0, andel: 0, grunner: ['Ikke gran'] };
-    const statisk = (risiko.get(x.b.id)?.bille?.p ?? 30) / 100;
-    const sann = klamp(statisk * sverm * (0.35 + 0.35 * torke + 0.3 * press) * (1 + 0.6 * toGen) * 1.6);
-    return { x, p: sann, andel: sann * 0.3, grunner: [`Grunnrisiko ${Math.round(statisk * 100)} av 100`, `Sverming ${Math.round(sverm * 100)} %`, `Andre generasjon ${Math.round(toGen * 100)} %`, ...(torke > 0.3 ? ['Tørkestress'] : []), ...(press > 0.2 ? [`Vindfall i nærheten (${p.vindfall} m³)`] : [])] };
+    const statisk = (risiko.get(x.b.id)?.bille?.p ?? 30) / 100; const sann = billeSann(statisk, v);
+    return { x, p: sann, andel: sann * 0.3, grunner: billeGrunner(statisk, v, p) };
   });
 }
 
 // ---------------------------------------------------------------- tørke
-function torke(S, p, info) {
-  const stress = (p.dager * Math.max(0, p.tempMaks - 10)) / 10;
-  return info.map((x) => {
-    const { b, st } = x;
-    if (st.alder > 15) return { x, p: 0, andel: 0, grunner: ['Etablert skog – tørken gir mest tilvekstnedgang'] };
-    let terskel = st.alder <= 5 ? 30 : 50; const g = [st.alder <= 5 ? `Plantefelt (${Math.round(st.alder)} år)` : `Ungskog (${Math.round(st.alder)} år)`];
-    if (b.treslag === 'G') { terskel -= 5; g.push('Gran tåler tørke dårligst'); }
-    if ((b.bonitet || 11) <= 11) { terskel -= 5; g.push('Lav bonitet – ofte grunnlendt'); }
-    const sann = logistisk((stress - terskel) / 5);
-    return { x, p: sann, andel: sann * 0.5, grunner: [`Tørkestress ${Math.round(stress)} (terskel ca. ${terskel})`, ...g] };
-  });
+export function torkeVurdering(x, p) {
+  const { b, st } = x; const stress = (p.dager * Math.max(0, p.tempMaks - 10)) / 10;
+  if (st.alder > 15) return { p: 0, andel: 0, grunner: ['Etablert skog – tørken gir mest tilvekstnedgang'] };
+  let terskel = st.alder <= 5 ? 30 : 50; const g = [st.alder <= 5 ? `Plantefelt (${Math.round(st.alder)} år)` : `Ungskog (${Math.round(st.alder)} år)`];
+  if (b.treslag === 'G') { terskel -= 5; g.push('Gran tåler tørke dårligst'); }
+  if ((b.bonitet || 11) <= 11) { terskel -= 5; g.push('Lav bonitet – ofte grunnlendt'); }
+  const sann = logistisk((stress - terskel) / 5);
+  return { p: sann, andel: sann * 0.5, grunner: [`Tørkestress ${Math.round(stress)} (terskel ca. ${terskel})`, ...g] };
 }
+function torke(S, p, info) { return info.map((x) => ({ x, ...torkeVurdering(x, p) })); }
 
 // ---------------------------------------------------------------- simuler
 export function simuler(S, type, param = {}, { iAar = new Date().getFullYear(), risiko = null, naboKart = null } = {}) {

@@ -1,4 +1,5 @@
 // Fanen «Kommune»: analyse av en hel kommune med kart, liste, kriterier og kobling til planlaging for eiendommen.
+import { lagKommunesimUi } from './kommunesim-ui.js';
 import { eiendomGrenseLag } from './eiendomslag.js';
 import { hentKommunedata, hentMis, klassifiser, oppsummer, perTreslag, eiendomIPunkt, STANDARD_KRITERIER, TRESLAG_REKKEFOLGE, merkMisOgVern, pakkKommunedata, pakkUtKommunedata } from './kommuneanalyse.js';
 import { TRESLAG } from './model.js';
@@ -68,12 +69,15 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
   const vernLag = L.layerGroup();
   let aktiv = false;
   let flateLag = new Map();
+  // Skadesimulering for kommunen (eget kartlag; skjuler kategorilaget mens den er åpen).
+  const sim = lagKommunesimUi({ kart, melding, innstillinger, eiendomIPunkt, hentData: () => data, visVanlig: (paa) => { if (paa && aktiv) { lag.addTo(kart); vernLag.addTo(kart); tegnLegend(); } else { lag.remove(); vernLag.remove(); } } });
 
   const panel = $('#fane-kommune');
   $('#komKriterier').innerHTML = KRITERIE_FELT.map(([k, navn, steg]) => `<label>${navn}<input type="number" step="${steg}" data-k="${k}" id="krit-${k}" value="${kriterier[k]}"></label>`).join('');
 
   function tegnLegend() {
     if (!aktiv || !resultat) return;
+    if (sim?.aapen()) { sim.legend(); return; }
     const k = KATEGORIER[kategori];
     const drift = kategori === 'hogst' && harDrift();
     $('#kartLegend').innerHTML = `<div class="legend-innhold"><b>${drift ? `Kjøreskaderisiko ${ukedag(valgtDag)}` : k.navn}</b>${drift ? `${NAA.map((n) => `<div><i style="background:${n.farge}"></i>${n.navn}</div>`).join('')}<div><i style="background:${k.farge};opacity:.45"></i>Ikke analysert</div>` : `<div><i style="background:${k.farge}"></i>Forslag (${fmt(resultat[kategori].length)} flater)</div>`}<div><i style="${misLegendStil}"></i>Nøkkelbiotop (MiS)</div><div><i style="background:transparent;border:2px dashed #d03b3b"></i>Verneområde</div><div><i style="background:transparent;border:2px solid #1b1c19"></i>Kommunegrense</div>${data?.natur ? `<div><i style="background:${NATUR.FARGE.nin}33;border:1.5px solid ${NATUR.FARGE.nin}"></i>Naturtype (NiN)</div><div><i style="background:${NATUR.FARGE.art}22;border:1.5px dashed ${NATUR.FARGE.art}"></i>Art – funksjonsområde</div>` : ''}${data?.kultur ? `<div><i style="background:${KULTUR.FARGE}44;border:1.5px solid ${KULTUR.FARGE}"></i>Kulturminne (sikringssone)</div>` : ''}${$('#komEiendom')?.checked ? `<div><i style="background:transparent;border:1.5px solid #e8432f"></i>Eiendomsgrense, gnr/bnr ${kart.getZoom() < 13 ? '(zoom inn)' : ''}</div>` : ''}${visDtw ? `<b style="display:block;margin-top:6px">Markfuktighet (DTW)</b>${DTW_KLASSER.map((d) => `<div><i style="background:rgb(${d.rgb.join(',')})"></i>${d.id === 'vann' ? 'Vann' : `Grunnvann ${d.navn}`}</div>`).join('')}` : ''}</div>`;
@@ -386,6 +390,7 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     $('#komInfo').innerHTML = `<b>${esc(d.kommune.navn)}</b>: ${fmt(d.flater.length)} skogflater fra SR16${median ? `, hovedsakelig målt ${median}` : ''}. ${d.vern.length} verneområder og ${d.mis.length} nøkkelbiotoper er holdt utenfor hogstforslagene. ${fraLager ? `Lagret analyse fra ${new Date(d.hentet).toLocaleDateString('nb-NO')}.` : ''}
       ${median && median < new Date().getFullYear() - 5 ? '<br><span class="advarsel">Skog kan være hogd etter at SR16 ble målt. Kontroller mot flyfoto før du går videre.</span>' : ''}`;
     $('#komResultat').hidden = false;
+    sim.nyData();
     veiStatus = ''; visVeiStatus();
     oppdater();
     if (!d.vei) beregnVei();
@@ -496,6 +501,8 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     if (t.id === 'komDriftBare') { bareDrivbar = t.checked; tegnListe(); tegnKart(); }
     if (t.id === 'komDtw') settDtw(t.checked);
   });
+  const simEl = $('#komSim');
+  simEl?.addEventListener('click', (e) => sim.klikk(e)); simEl?.addEventListener('change', (e) => sim.endring(e)); simEl?.addEventListener('input', (e) => sim.input(e));
   panel.querySelectorAll('[data-kom-eksport]').forEach((b) => b.addEventListener('click', () => eksporter(b.dataset.komEksport)));
   // Knappene ligger i Leaflet-popuper; lytt på dokumentet så Leaflets klikkhåndtering ikke stopper dem.
   document.addEventListener('click', (e) => {
@@ -509,12 +516,12 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
 
   return {
     vis() {
-      aktiv = true; lag.addTo(kart); vernLag.addTo(kart); if (visDtw && dtwLag) dtwLag.addTo(kart); if ($('#komEiendom')?.checked) eiendomLag.addTo(kart);
+      aktiv = true; if (!sim.aapen()) { lag.addTo(kart); vernLag.addTo(kart); } sim.vis(); if (visDtw && dtwLag) dtwLag.addTo(kart); if ($('#komEiendom')?.checked) eiendomLag.addTo(kart);
       if (misMerker) stoppMisMerker = merkerVedZoom(kart, misMerker, 13);
       lastKommuner();
       if (data) { tegnLegend(); kart.fitBounds(L.geoJSON(data.kommune.geometri).getBounds(), { padding: [10, 10] }); }
     },
-    skjul() { aktiv = false; eiendomGen++; lag.remove(); vernLag.remove(); dtwLag?.remove(); eiendomLag.remove(); stoppMisMerker?.(); stoppMisMerker = null; },
+    skjul() { aktiv = false; eiendomGen++; sim.skjul(); lag.remove(); vernLag.remove(); dtwLag?.remove(); eiendomLag.remove(); stoppMisMerker?.(); stoppMisMerker = null; },
     oppdaterPriser() { if (data) oppdater(); },
   };
 }
