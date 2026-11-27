@@ -840,7 +840,8 @@ function leggInnSkjotsel(type) {
 
 function tegnArealfordeling() {
   const el = $('#arealfordeling'); if (!el) return;
-  if (!S.bestand.length) { el.closest('.kort').hidden = true; return; }
+  // Vises også for gårder uten skog, når planen har markslag eller eiendomsgrense (AR5 kan hentes).
+  if (!S.bestand.length && !(S.markslag || []).length && !S.eiendom?.grense) { el.closest('.kort').hidden = true; return; }
   el.closest('.kort').hidden = false;
   const a = arealfordeling(S);
   const har = (S.markslag || []).length;
@@ -848,8 +849,8 @@ function tegnArealfordeling() {
   el.innerHTML = `${har ? `<div class="tabell-wrap"><table class="tabell ms-tabell"><thead><tr><th></th><th>Markslag</th><th class="tall">Figurer</th><th class="tall">Daa</th><th class="tall">%</th></tr></thead><tbody>
     ${Object.entries(a.rader).filter(([, r]) => r.areal > 0).map(([k, r]) => rad(k, r)).join('')}
     ${a.ukjent > 0.5 ? `<tr><td></td><td class="hint">Ikke klassifisert (avvik mellom AR5 og eiendomsgrensen)</td><td></td><td class="tall">${fmt(a.ukjent, 1)}</td><td class="tall">${fmt((a.ukjent / a.total) * 100, 1)}</td></tr>` : ''}</tbody>
-    <tfoot><tr><td></td><td>Sum eiendom</td><td></td><td class="tall">${fmt(a.total, 1)}</td><td class="tall">100</td></tr></tfoot></table></div>` : '<p class="hint">Markslag er ikke hentet for denne planen. Uproduktiv mark (impediment, myr, åpen fastmark) kan da ligge inne i bestandene.</p>'}
-    <div class="knapperad"><button type="button" class="knapp" id="hentMarkslag">${har ? 'Oppdater markslag (AR5)' : 'Hent markslag fra AR5'}</button>${har ? '<button type="button" class="knapp" id="trekkUtMarkslag">Trekk uproduktiv mark ut av bestandene</button>' : ''}</div>`;
+    <tfoot><tr><td></td><td>Sum eiendom</td><td></td><td class="tall">${fmt(a.total, 1)}</td><td class="tall">100</td></tr></tfoot></table></div>` : `<p class="hint">Markslag er ikke hentet for denne planen.${S.bestand.length ? ' Uproduktiv mark (impediment, myr, åpen fastmark) kan da ligge inne i bestandene.' : ''}</p>`}
+    <div class="knapperad"><button type="button" class="knapp" id="hentMarkslag">${har ? 'Oppdater markslag (AR5)' : 'Hent markslag fra AR5'}</button>${har && S.bestand.length ? '<button type="button" class="knapp" id="trekkUtMarkslag">Trekk uproduktiv mark ut av bestandene</button>' : ''}</div>`;
   $('#hentMarkslag').onclick = hentMarkslagForPlan;
   if ($('#trekkUtMarkslag')) $('#trekkUtMarkslag').onclick = trekkUtMarkslag;
 }
