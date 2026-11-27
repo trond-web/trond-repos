@@ -9,6 +9,7 @@ import {
 import { hentBrannfare, hentFarevarsler, hentVind, hentBarkbille, KARTLAG, PERIODER } from './skade-data.js';
 import { fmt } from './charts.js';
 import { signatur } from './versjon.js';
+import { lagSkadesimUi } from './skadesim-ui.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -24,6 +25,7 @@ export function initSkogbrand({ kart, hentPlan, endret, melding, nyId, settKartK
   let valgtSkade = null; let tegner = null; let synlig = false;
   let risikoCache = null; let risikoNokkel = '';
   let henter = false;
+  const sim = lagSkadesimUi({ kart, hentPlan, endret, melding, settKartKlikk, visBestand, iAar });
 
   // Fyller inn manglende felt på stedet, slik at referanser til objektet holder seg gyldige.
   const SB = () => {
@@ -351,7 +353,8 @@ export function initSkogbrand({ kart, hentPlan, endret, melding, nyId, settKartK
   function tegn() {
     const panel = $('#fane-skogbrand'); if (!panel) return;
     panel.querySelectorAll('[data-sb-under]').forEach((k) => k.classList.toggle('aktiv', k.dataset.sbUnder === underfane));
-    $('#sbInnhold').innerHTML = underfane === 'naa' ? naaHtml() : underfane === 'forebygging' ? forebyggingHtml() : skaderHtml();
+    $('#sbInnhold').innerHTML = underfane === 'naa' ? naaHtml() : underfane === 'forebygging' ? forebyggingHtml() : underfane === 'simulering' ? sim.html() : skaderHtml();
+    if (underfane === 'simulering') { sim.etterTegning(); if (synlig) sim.vis(); } else sim.skjul();
   }
 
   // ---------- handlinger ----------
@@ -421,6 +424,7 @@ export function initSkogbrand({ kart, hentPlan, endret, melding, nyId, settKartK
   const panel = $('#fane-skogbrand');
   panel.addEventListener('click', async (e) => {
     const S = hentPlan(); const sb = SB();
+    if (underfane === 'simulering' && sim.klikk(e, tegn)) return;
     const u = e.target.closest('[data-sb-under]'); if (u) { underfane = u.dataset.sbUnder; tegn(); if (underfane === 'naa') hentData(); return; }
     const bes = e.target.closest('[data-sb-bestand]'); if (bes && !e.target.closest('input,select,button:not([data-sb-bestand])')) { e.preventDefault(); visBestand(bes.dataset.sbBestand); return; }
     const sk = e.target.closest('[data-sb-skade]'); if (sk) { velgSkade(sk.dataset.sbSkade); zoomSkade(aktivSkade()); return; }
@@ -452,7 +456,9 @@ export function initSkogbrand({ kart, hentPlan, endret, melding, nyId, settKartK
     if (k === 'tiltak') leggTilTiltakForSkade(s);
     if (k === 'ny-time') { s.timer = s.timer || []; s.timer.push({ dato: new Date().toISOString().slice(0, 10), type: 'vakthold', timer: 1, attestert: false }); lagre(false); }
   });
+  panel.addEventListener('input', (e) => { if (underfane === 'simulering') sim.input(e); });
   panel.addEventListener('change', async (e) => {
+    if (underfane === 'simulering' && sim.endring(e, tegn)) return;
     const t = e.target; const sb = SB(); const s = aktivSkade();
     if (t.dataset.sbLag) { sb.visLag = { ...sb.visLag, [t.dataset.sbLag]: t.checked }; if (t.dataset.sbLag === 'feller' && t.checked && !sb.data?.bille?.feller) await hentData(true); endret({ kart: false }); tegnKart(); tegn(); return; }
     if (t.dataset.sbBer) { sb.beredskap = { ...sb.beredskap, [t.dataset.sbBer]: t.type === 'checkbox' ? t.checked : t.value }; endret({ kart: false }); return; }
@@ -482,7 +488,7 @@ export function initSkogbrand({ kart, hentPlan, endret, melding, nyId, settKartK
 
   return {
     vis() { synlig = true; if (!kart.hasLayer(lag)) { lag.addTo(kart); felleLag.addTo(kart); } tegnKart(); tegn(); if (underfane === 'naa') hentData(); },
-    skjul() { synlig = false; stopp(); lag.remove(); felleLag.remove(); for (const id of Object.keys(wms)) { wms[id].remove(); delete wms[id]; } },
+    skjul() { synlig = false; sim.skjul(); stopp(); lag.remove(); felleLag.remove(); for (const id of Object.keys(wms)) { wms[id].remove(); delete wms[id]; } },
     oppdater() { risikoCache = null; if (synlig) { tegnKart(); tegn(); } },
     risiko(bestandId, type) { return risiko().get(bestandId)?.[type] || null; },
     // Oppdaterer beregning for skader etter at bestand er endret (f.eks. ny plan eller deling).

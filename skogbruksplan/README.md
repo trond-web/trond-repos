@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.27.0** (2026-11-26) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.28.0** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -1893,6 +1893,26 @@ Bygger på Skogbrands råd om forebygging og oppfølging etter skade, vilkårene
 - **Forsikringssak, bilder og timeliste:** skadenummer, takst og erstatning; bilder fra kamera; timeliste for vakthold og slokking ved brann (300 kr/t).
 - **Skademelding:** kan kopieres, skrives ut med bilder eller lastes ned som GeoJSON.
 - **Kobling til resten av planen:** brann blir en brannflate i PEFC-modulen, og opprydding og foryngelse kan legges inn i tiltaksplanen.
+
+
+### 🧪 Simulering – mulig omfang før skaden skjer (`js/skadesim.js`, `js/skadesim-ui.js`)
+
+Velg skadetype og værscenario. Appen anslår hvilke bestand som rammes, hvor stor andel som skades, berørt volum og verditap. Resultatet vises i tabell, i kartet (fargeskala per bestand og vindpil) og som en kurve for hvordan omfanget øker med hovedvariabelen. Scenarioet kan fylles ut med ferdige forslag eller fra værprognosen til Meteorologisk institutt (største verdier de nærmeste dagene).
+
+| Skadetype | Variabler | Modell |
+|---|---|---|
+| 🌪 Storm / vindfall | vindkast, vindretning, mark (normal, bløt, tele), lauv | Kritisk vindkast per bestand ut fra trehøyde og treslag. Lavere ved nylig tynning, utynnede slanke trær, åpen kant mot vinden, råte og bløt mark, høyere med tele. Logistisk sannsynlighet. Inspirert av ForestGALES, med forenklede tall. |
+| ❄ Snøbrekk | nysnø (cm), snøtype, temperatur, vind, lauv | Snølast i kronene (nysnø × tetthet × avskjæring) mot kritisk last etter treslag, slankhet (6–18 m), tetthet og tynning. |
+| 🔥 Skogbrann – spredning | tørrhet (FFMC), vind, retning, timer til kontroll, startbestand (også valgt i kartet) | Kanadisk FBP: ISI fra vind og FFMC, spredningshastighet per drivstofftype (C2 gran, C3 moden furu, C4 ung bartreskog, D1/D2 lauv, S1 hogstflate), elliptisk spredning med vinden og korteste vei mellom nabobestand. Gir ankomsttid per bestand og brent areal over tid. Fare for toppbrann over ca. 10 m/min. |
+| 🪲 Granbarkbille | dager over 20 °C i sverming, graddager over 5 °C, tørke, ferskt vindfall | Grunnrisiko per granbestand fra risikovurderingen, kombinert med sverming, sjanse for andre generasjon, tørkestress og yngleplass. |
+| ☀ Tørke | dager uten nedbør, temperatur, kostnad for suppleringsplanting | Tørkestress for plantefelt og ungskog, høyest for gran og lav bonitet. Tapet regnes som kostnaden med å suppleringsplante. |
+
+- **Volum og verdi** kommer fra planen. Verditapet er rotnetto ganger en tapsfaktor per skadetype: storm 35 %, snø 50 %, brann 70 % og bille 40 %.
+- **Forsikring:** hvert scenario viser om skaden trolig dekkes av Skogbrands vilkår. For storm og snø gjelder 20 daa med minst 25 % skade.
+- **Tiltak:** hvert scenario viser hva som kan gjøres på forhånd.
+- **Lagring:** scenarioet lagres i planen (`S.skogbrand.simulering`).
+
+Modellene er forenklede anslag for planlegging og beredskap, ikke prognoser. Koeffisientene kan kalibreres mot faktiske skader.
 
 ## Skifteplan – jordbruksskifter, gjødslingsplan og plantevernjournal (fanen «Skifteplan»)
 
