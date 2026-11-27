@@ -523,5 +523,16 @@ export function initKommune({ kart, melding, innstillinger, lastKommuner, finnKo
     },
     skjul() { aktiv = false; eiendomGen++; sim.skjul(); lag.remove(); vernLag.remove(); dtwLag?.remove(); eiendomLag.remove(); stoppMisMerker?.(); stoppMisMerker = null; },
     oppdaterPriser() { if (data) oppdater(); },
+    // Fra skadevarselet: analyser kommunen (eller bruk lagret analyse) og åpne simuleringen med varslet skadetype.
+    async simulerFraVarsel(k) {
+      const type = (k.storm?.kr || 0) >= (k.sno?.kr || 0) && (k.storm?.kr || 0) > 0 ? 'storm' : (k.sno?.kr || 0) > 0 ? 'sno' : ['rod', 'morkerod'].includes(k.brann?.nivaa) ? 'brann' : 'storm';
+      const torrhet = { gronn: 'fuktig', gul: 'normal', oransje: 'torr', rod: 'svart', morkerod: 'ekstrem' }[k.brann?.nivaa];
+      if (data?.kommune?.nr !== k.nr) {
+        $('#komKommune').value = `${k.navn} (${k.nr})`; melding(`Henter skogdata for ${k.navn} …`, 4000);
+        await analyser();
+        if (data?.kommune?.nr !== k.nr) { melding(`Klarte ikke å analysere ${k.navn}.`, 6000); return; }
+      }
+      await sim.aapneMed(type, type === 'brann' && torrhet ? { torrhet } : {});
+    },
   };
 }

@@ -69,6 +69,8 @@ const ENDEPUNKTER = [
   ['Geonorge matrikkel/eiendom', 'https://ws.geonorge.no/kommuneinfo/v1/kommuner'], ['NVDB', 'https://nvdbapiles.atlas.vegvesen.no/vegnett/api/v4/veglenkesekvenser/segmentert?kommune=3401&antall=1'], ['MET værvarsel', 'https://api.met.no/weatherapi/locationforecast/2.0/status'],
   ['SSB API', 'https://data.ssb.no/api/v0/no/table/03794'],
   ['Valhalla lastebilruting (tømmertransport)', 'https://valhalla1.openstreetmap.de/status'],
+  ['SR16 rasterkart (skadevarsel per kommune)', 'https://wms.nibio.no/cgi-bin/sr16?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.1.1'],
+  ['Kartverket kommuneinfo (skadevarsel)', 'https://api.kartverket.no/kommuneinfo/v1/kommuner/3212'],
   ['NVDB bruksklasse tømmertransport (900)', 'https://nvdbapiles.atlas.vegvesen.no/vegobjekttyper/900'],
   ['Markagrensa (Kartverket WFS)', 'https://wfs.geonorge.no/skwms1/wfs.markagrensen?service=WFS&request=GetCapabilities'],
   ['Markagrensa (Kartverket WMS)', 'https://wms.geonorge.no/skwms1/wms.markagrensen?service=WMS&request=GetCapabilities'],

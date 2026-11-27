@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.29.0** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.30.0** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -1894,6 +1894,29 @@ Bygger på Skogbrands råd om forebygging og oppfølging etter skade, vilkårene
 - **Skademelding:** kan kopieres, skrives ut med bilder eller lastes ned som GeoJSON.
 - **Kobling til resten av planen:** brann blir en brannflate i PEFC-modulen, og opprydding og foryngelse kan legges inn i tiltaksplanen.
 
+
+### ⚠ Varsel 5 døgn – skadevarsel for alle kommuner (`skadevarsel.js` på serveren, `js/skadevarsel-ui.js`)
+
+Under Skogbrand › Varsel 5 døgn vises anslått skogskade fra storm og snøbrekk de neste 5 døgnene, og skogbrannfaren, for alle kommuner med skog. Kommunene med størst anslått skade står øverst.
+
+- **Skogprofil per kommune (på serveren, fornyes hver 30. dag):**
+  - SR16-rasterkartene fra NIBIO (treslag, middelhøyde og volum) hentes som bilder over kommunen. Oppløsningen er minst 100 m og høyst ca. 1000 piksler.
+  - Bildene avgrenses med kommunegrensa fra Kartverket (skannlinjer).
+  - Det gir areal per kombinasjon av treslag × høydeklasse × volumklasse, og hvor mye som har åpen kant mot hver av 8 vindretninger.
+  - Serveren har en egen liten PNG-dekoder og trenger ingen avhengigheter.
+- **Vær hver 3. time:** værprognosen (met.no Locationforecast) og skogbrannindeksen (met.no FWI) i et punkt i hver kommune, med User-Agent som identifiserer SkogIQ.ai.
+- **Varsel:**
+  - Storm og snøbrekk (snø over to døgn) regnes med modellene fra simuleringen, for hver dag og kombinasjon.
+  - Sannsynlighet under 10 % og snø under 10 cm regnes som ingen skade, så rolig vær ikke gir støy over store skogarealer.
+  - Brannfaren vises som nivå.
+  - Kommuner med mindre enn 2 000 daa skog tas ikke med.
+- **Skjermbildet:**
+  - kommunene sortert etter samlet skade, storm, snøbrekk eller brannfare
+  - søk, og stolper for hver av de 5 døgnene
+  - din kommune uthevet
+  - kart med kommunene som har varsel
+- **«Simuler →»** åpner Kommune-fanen, analyserer kommunen (eller bruker lagret analyse) og starter skadesimuleringen med varslet skadetype og værprognosen i flere punkter.
+- `GET /api/skadevarsel` (innlogget) gir varselet som JSON. `SKADEVARSEL=0` slår tjenesten av, for eksempel lokalt.
 
 ### 🧪 Simulering – mulig omfang før skaden skjer (`js/skadesim.js`, `js/skadesim-ui.js`)
 

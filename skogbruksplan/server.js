@@ -20,6 +20,7 @@ import { apiV1, apiNoklerAdmin } from './api-v1.js';
 import { lagBackup, lagS3, backupApi } from './backup.js';
 import { lagTilbakemelding, tilbakemeldingApi } from './tilbakemelding.js';
 import { lagProfilbilder, profilbildeApi } from './profilbilde.js';
+import { lagSkadevarsel, skadevarselApi } from './skadevarsel.js';
 
 const ROT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8080;
@@ -39,7 +40,7 @@ const TYPER = {
   '.sos': 'text/plain; charset=utf-8',
 };
 // Mapper og filer som ikke skal publiseres.
-const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|feltoppdrag\.js|api-v1\.js|api-nokler\.js|api-dok\.js|backup\.js|tilbakemelding\.js|profilbilde\.js|package(-lock)?\.json|railway\.json)$|\/\./;
+const SKJULT = /^\/(tests|verktoy|node_modules)(\/|$)|^\/(server\.js|kontroller-relay\.js|plan-relay\.js|jd-relay\.js|auth\.js|tilbud-relay\.js|sky-lager\.js|nettverk\.js|feltoppdrag\.js|skadevarsel\.js|api-v1\.js|api-nokler\.js|api-dok\.js|backup\.js|tilbakemelding\.js|profilbilde\.js|package(-lock)?\.json|railway\.json)$|\/\./;
 const KOMPRIMER = /^(text\/|application\/(json|geo\+json|manifest\+json)|image\/svg)/;
 
 const SIKKERHET = {
@@ -139,6 +140,9 @@ const feltoppdrag = innlogging.registrering ? lagFeltoppdrag({
     if (t) nettverk.send(fra, kid, t);
   },
 }) : null;
+// Skadevarsel for skog de neste 5 døgnene for alle kommuner (skadevarsel.js): skogprofil fra SR16 og vær fra met.no,
+// oppdatert hver 3. time i bakgrunnen. Ingen personopplysninger. SKADEVARSEL=0 slår det av (f.eks. lokalt).
+const skadevarsel = process.env.SKADEVARSEL === '0' ? null : lagSkadevarsel({ fil: iData('skadevarsel.json') });
 // Profilbilder (profilbilde.js) i <datamappe>/profilbilder; id-en ligger i profilen.
 const profilbilder = lagProfilbilder({ mappe: iData('profilbilder') });
 // Tilbakemeldinger og forbedringsforslag (tilbakemelding.js), på volumet.
@@ -196,6 +200,7 @@ const server = http.createServer(async (req, res) => {
   if (nettverkApi(nettverk, skyOppsett, req, res, sti, SIKKERHET)) return;
   if (feltoppdragApi(feltoppdrag, { ...skyOppsett, navn: (u) => innlogging.meg(u)?.navn || u }, req, res, sti, SIKKERHET)) return;
   if (tilbakemeldingApi(tilbakemelding, { meg: (q) => { const o = innlogging.fraForesporsel(q); if (!o) return null; const m = innlogging.meg(o.u); return { bruker: o.u, navn: m?.navn || o.u, admin: innlogging.erAdmin(o.u) }; }, cors: corsFor }, req, res, sti, SIKKERHET)) return;
+  if (skadevarselApi(skadevarsel, req, res, sti, SIKKERHET, corsFor)) return;
   if (planApi(planRelay, req, res, sti, SIKKERHET)) return;
   if (jdApi(jdRelay, req, res, sti, SIKKERHET)) return;
   if (req.method !== 'GET' && req.method !== 'HEAD') return svar(res, 405, 'Metoden er ikke tillatt');
