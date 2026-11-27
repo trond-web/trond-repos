@@ -4642,6 +4642,33 @@ test('Driftsområder: skjulte faner, forslag og minst ett område', async () => 
   assert.match(UI.husdyrHtml({ bestand: [], skifteplan: { skifter: [], dyrehold: { dyr: [{ id: 'k', slag: 'sau', antall: 30 }] } } }, 2026), /tonn husdyrgjødsel/);
 });
 
+test('Skifteplan: slå sammen skifter', async () => {
+  const M = await import('../js/skifteplan.js');
+  const kv = (x, d = 0.001) => ({ type: 'Polygon', coordinates: [[[x, 60], [x + d, 60], [x + d, 60 + d], [x, 60 + d], [x, 60]]] });
+  const plan = { skifter: [
+    { id: 'a', nr: '1', navn: '', areal: 30, geometri: kv(10), vekster: { 2026: { kultur: 'bygg', avling: 400 } }, jordprove: { dato: '2019-04-01', PAL: 5 }, gjodsling: [{ id: 'g1', aar: 2026, type: 'mineral', produkt: 'f22310', mengde: 40 }], notat: 'Stein i nordkant' },
+    { id: 'b', nr: '2', navn: 'Bakken', areal: 10, geometri: kv(10.002), vekster: { 2026: { kultur: 'havre', avling: 500 } }, jordprove: { dato: '2024-04-01', PAL: 9 }, gjodsling: [], drenering: { status: 'plan', plan: { grofter: [] } } },
+    { id: 'c', nr: '3', areal: 5, geometri: kv(10.01), vekster: {}, gjodsling: [] }],
+  sproyting: [{ skifter: ['a', 'b'] }, { skifter: ['c'] }], dyrehold: { beiting: [{ skifteId: 'b' }] }, maskindata: [{ skifter: [{ id: 'b', snitt: 1 }] }] };
+  assert.equal(M.planleggSammenslaing(plan, ['a']), null, 'minst to');
+  const r = M.planleggSammenslaing(plan, ['a', 'b']);
+  assert.equal(r.skifte.id, 'a', 'største skifte beholder id og nummer'); assert.equal(r.skifte.nr, '1'); assert.equal(r.skifte.navn, 'Bakken');
+  assert.equal(r.skifte.vekster[2026].kultur, 'bygg', 'vekst med størst areal'); assert.equal(r.skifte.jordprove.dato, '2024-04-01', 'nyeste jordprøve');
+  assert.equal(r.skifte.gjodsling.length, 1); assert.equal(r.skifte.gjodsling[0].mengde, 30, '40 kg/daa på 30 av 40 daa = 30 kg/daa – samme totale mengde');
+  assert.equal(r.sammenhengende, false, 'uten geometribibliotek: to flater');
+  for (const t of ['ulik vekst', 'Jordprøven', 'hele det nye skiftet', 'Grøfteplanen for skifte 2']) assert.ok(r.advarsler.some((x) => x.includes(t)), t);
+  assert.equal(plan.skifter.length, 3, 'planlegging endrer ikke planen');
+  M.slaaSammenSkifter(plan, ['a', 'b']);
+  assert.deepEqual(plan.skifter.map((s) => s.id), ['a', 'c']); assert.equal(plan.skifter[0].areal > 0, true);
+  assert.deepEqual(plan.sproyting.map((x) => x.skifter), [['a'], ['c']], 'sprøytejournalen peker til det nye skiftet');
+  assert.equal(plan.dyrehold.beiting[0].skifteId, 'a'); assert.equal(plan.maskindata[0].skifter[0].id, 'a');
+  assert.equal(plan.skifter[0].sammenslaatt[0].skifter.length, 2, 'historikk');
+  // Med geometribibliotek: to flater som grenser til hverandre blir én.
+  const pc = { union: () => [[[[10, 60], [10.002, 60], [10.002, 60.001], [10, 60.001], [10, 60]]]] }; // forenklet polygon-clipping
+  const p2 = { skifter: [{ id: 'x', nr: '1', areal: 10, geometri: kv(10), gjodsling: [] }, { id: 'y', nr: '2', areal: 10, geometri: kv(10.001), gjodsling: [] }] };
+  assert.equal(M.planleggSammenslaing(p2, ['x', 'y'], { klipping: pc }).sammenhengende, true);
+});
+
 test('Teiger: fra eiendomsgrensen og fra teignummeret på bestandene', async () => {
   const T = await import('../js/teiger.js');
   const kv = (x, y, d = 0.01) => [[[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]]];

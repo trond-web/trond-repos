@@ -732,7 +732,7 @@ function brukMeny() {
   });
   const topp = $('.faner [data-skille="topp"]'); if (topp) topp.style.order = -5;
   const bunn = $('.faner [data-skille="bunn"]'); if (bunn) bunn.style.order = 99;
-  $('.rail').dataset.omrade = omrade;
+  $('.rail').dataset.aktivtOmrade = omrade;
 }
 // Marker aktiv knapp i menylinja (fane, eller fane:underfane for Skifteplan).
 function merkAktiv(navn, under = null) {
@@ -3077,6 +3077,7 @@ function kobleHendelser() {
     settKartKlikk: (fn) => { kartKlikk = fn; },
     // Jordbruksfigurer fra AR5: bruker figurene i planen hvis de finnes, ellers hentes AR5 for eiendommen.
     hentJordbruk: async (logg) => ((S.markslag || []).some((f) => f.kategori === 'jordbruk') ? S.markslag : lastAr5(logg)),
+    hentKlipping: lastKlipping,
     lagInndeling: async (logg) => {
       const fig = (S.markslag || []).some((f) => f.kategori === 'jordbruk') ? S.markslag : await lastAr5(logg);
       const klipping = await lastKlipping();

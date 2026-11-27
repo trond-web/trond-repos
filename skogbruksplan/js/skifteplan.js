@@ -749,3 +749,69 @@ export function jordbruksBoks(figurer, margin = 0.0005) {
   const b = f.map((x) => boks(x.geometri));
   return [Math.min(...b.map((x) => x[0])) - margin, Math.min(...b.map((x) => x[1])) - margin, Math.max(...b.map((x) => x[2])) + margin, Math.max(...b.map((x) => x[3])) + margin];
 }
+
+// ---------- slå sammen skifter ----------
+// Planlegger sammenslåing av to eller flere skifter til ett. Det største skiftet beholder id, nummer og jordsmonn,
+// slik at lenker til det (sprøytejournal, beiteplan, maskindata) virker videre. Vekster per år: felles vekst, ellers
+// vekst med størst areal. Avling og gjødsling vektes etter areal, slik at total mengde gjødsel (kg N og P) er den
+// samme som før. Jordprøve: den nyeste. Gir { skifte, fjern, advarsler, sammenhengende } uten å endre planen.
+export function planleggSammenslaing(plan, ider, { klipping = null } = {}) {
+  const valgte = (plan?.skifter || []).filter((s) => ider.includes(s.id));
+  if (valgte.length < 2) return null;
+  const A = (s) => Number(s.areal) || 0;
+  const hoved = [...valgte].sort((a, b) => A(b) - A(a))[0]; const andre = valgte.filter((s) => s !== hoved);
+  const advarsler = [];
+  // Geometri: forening av flatene. Uten geometribiblioteket legges flatene sammen som multipolygon.
+  const geoms = valgte.map((s) => s.geometri).filter(Boolean);
+  let geometri = null; let sammenhengende = null;
+  if (geoms.length) {
+    if (klipping) { try { const mp = klipping.union(...geoms.map((g) => g.coordinates)); geometri = somGeom(mp); sammenhengende = mp.length === 1; } catch { geometri = null; } }
+    if (!geometri) { geometri = somGeom(geoms.flatMap(deler)); sammenhengende = geometri?.type === 'Polygon'; }
+  }
+  if (geoms.length && geoms.length < valgte.length) advarsler.push(`${valgte.length - geoms.length} av skiftene mangler kartflate – arealet deres er lagt til, men ikke flaten.`);
+  if (sammenhengende === false) advarsler.push('Skiftene ligger ikke inntil hverandre, så det nye skiftet blir delt i flere flater.');
+  const sumA = valgte.reduce((s, x) => s + A(x), 0);
+  const areal = Math.round((geometri && geoms.length === valgte.length ? daa(geometri) : sumA) * 10) / 10;
+  const vekt = (s) => (sumA ? A(s) / sumA : 1 / valgte.length);
+  const typer = [...new Set(valgte.map((s) => s.artype).filter(Boolean))];
+  if (typer.length > 1) advarsler.push(`Skiftene har ulik arealtype (${typer.join(', ')}). ${hoved.artype || typer[0]} beholdes.`);
+  // Vekster per år
+  const vekster = {};
+  for (const aar of [...new Set(valgte.flatMap((s) => Object.keys(s.vekster || {})))].sort()) {
+    const perKultur = new Map();
+    for (const s of valgte) { const v = s.vekster?.[aar]; if (!v?.kultur) continue; const x = perKultur.get(v.kultur) || { areal: 0, avling: 0, avlingVekt: 0, v }; x.areal += A(s); if (Number(v.avling)) { x.avling += Number(v.avling) * A(s); x.avlingVekt += A(s); } perKultur.set(v.kultur, x); }
+    if (!perKultur.size) { if (hoved.vekster?.[aar]) vekster[aar] = { ...hoved.vekster[aar] }; continue; }
+    const [kultur, x] = [...perKultur.entries()].sort((a, b) => b[1].areal - a[1].areal)[0];
+    vekster[aar] = { ...x.v, kultur, ...(x.avlingVekt ? { avling: Math.round(x.avling / x.avlingVekt) } : {}) };
+    if (perKultur.size > 1 || valgte.some((s) => !s.vekster?.[aar]?.kultur)) advarsler.push(`${aar}: skiftene har ulik vekst – ${KULTURER[kultur]?.navn || kultur} (størst areal) brukes.`);
+  }
+  // Jordprøve: den nyeste
+  const prover = valgte.filter((s) => s.jordprove?.dato).sort((a, b) => String(b.jordprove.dato).localeCompare(String(a.jordprove.dato)) || A(b) - A(a));
+  const jordprove = prover[0] ? { ...prover[0].jordprove } : { ...(hoved.jordprove || {}) };
+  if (prover.length > 1) advarsler.push(`Jordprøven fra ${jordprove.dato} (skifte ${prover[0].nr}) beholdes. Ta gjerne ny prøve av hele skiftet.`);
+  // Gjødsling: like gjødslinger slås sammen med arealvektet mengde (samme totale mengde som før).
+  const grupper = new Map();
+  for (const s of valgte) for (const g of s.gjodsling || []) {
+    const k = [g.aar, g.type, g.produkt, g.status || 'planlagt', g.dato || '', g.spredemaate || ''].join('|');
+    const x = grupper.get(k) || { g: { ...g }, mengde: 0, fra: new Set() }; x.mengde += (Number(g.mengde) || 0) * vekt(s); x.fra.add(s.nr); grupper.set(k, x);
+  }
+  const gjodsling = [...grupper.values()].map((x) => ({ ...x.g, mengde: Math.round(x.mengde * 10) / 10 }));
+  if ([...grupper.values()].some((x) => x.fra.size < valgte.length)) advarsler.push('Gjødsling som bare var lagt inn på noen av skiftene, er fordelt på hele det nye skiftet (samme totale mengde). Kontroller gjødslingsplanen.');
+  const dren = andre.filter((s) => s.drenering?.plan || s.drenering?.status && s.drenering.status !== 'plan');
+  if (dren.length) advarsler.push(`Grøfteplanen for skifte ${dren.map((s) => s.nr).join(', ')} følger ikke med – bare den for skifte ${hoved.nr}.`);
+  const notat = valgte.filter((s) => (s.notat || '').trim()).map((s) => (valgte.filter((x) => x.notat).length > 1 ? `Skifte ${s.nr}: ${s.notat.trim()}` : s.notat.trim())).join('\n');
+  const skifte = { ...hoved, navn: hoved.navn || andre.find((s) => s.navn)?.navn || '', geometri: geometri || hoved.geometri, areal, vekster, jordprove, gjodsling, notat,
+    sammenslaatt: [...(hoved.sammenslaatt || []), { dato: new Date().toISOString().slice(0, 10), skifter: valgte.map((s) => ({ nr: s.nr, areal: s.areal })) }] };
+  return { skifte, fjern: andre.map((s) => s.id), advarsler, sammenhengende, valgte: valgte.map((s) => s.nr) };
+}
+
+// Gjennomfører sammenslåingen i planen og retter lenker til skiftene som forsvinner.
+export function slaaSammenSkifter(plan, ider, opt = {}) {
+  const r = planleggSammenslaing(plan, ider, opt); if (!r) return null;
+  const fjern = new Set(r.fjern); const ny = r.skifte.id;
+  plan.skifter = plan.skifter.filter((s) => !fjern.has(s.id)).map((s) => (s.id === ny ? r.skifte : s));
+  for (const x of plan.sproyting || []) x.skifter = [...new Set((x.skifter || []).map((id) => (fjern.has(id) ? ny : id)))];
+  for (const b of plan.dyrehold?.beiting || []) if (fjern.has(b.skifteId)) b.skifteId = ny;
+  for (const m of plan.maskindata || []) for (const s of m.skifter || []) if (fjern.has(s.id)) s.id = ny;
+  return r;
+}
