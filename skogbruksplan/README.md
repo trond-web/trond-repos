@@ -1,6 +1,6 @@
 # SkogIQ.ai – forvaltning av skogbruksplandata
 
-**Versjon 2.31.0** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
+**Versjon 2.32.0** (2026-11-27) · [Versjonslogg](CHANGELOG.md) · Utviklet av **Trond Harald Sand**. Versjonsnummeret ligger i `js/versjon.js` og `package.json` (testene sjekker at de er like) og vises i appen (Om-boksen og versjonsmerket), i SkogIQ Felt, på kontroller-siden, i installasjonsbeskrivelsen, i rapportene og i utskrifter.
 
 > **Om SkogIQ.ai:** SkogIQ.ai er utviklet av Trond Harald Sand og bygger på 25 års erfaring med digitalisering i skogbruket. Løsningen er utviklet på fritiden og uten kommersielle formål. Fordi den drives som et privat initiativ, kan det ikke gis garantier for at tjenesten blir videreført eller vil være tilgjengelig i framtiden. Spørsmål, innspill eller ønske om samarbeid? Kontakt trond@strafferunden.no.
 >
@@ -87,6 +87,18 @@ Alder og volum i en ny plan gjelder alltid for inneværende år, og brukeren få
 - **Import** (SOSI, GeoJSON, CSV): takståret leses fra filen (TAKSTAAR, REGAAR, REGAAR_KORR, REGISTRERINGSAAR, TAKSERINGSAAR, SP_REGAAR, datoer). Mangler det, kan du fylle inn «Dataene gjelder år». Uten takstår regnes dataene som årets, og importen sier fra om det. Eksporten tar med TAKSTAAR, så en plan som importeres igjen, ikke skrives fram to ganger.
 - **Sikkerhetskopi og eldre planer:** skrives fram når de gjenopprettes eller åpnes et senere år, med melding.
 - Hvert bestand som er skrevet fram, får en merknad («Alder og volum fra … skrevet fram N år fra 2016 til 2026»), og dataåret lagres i `ekstra.DATAAAR`. Fellesfunksjonene er `framskrivListe` og `framskrivTekst` i `js/model.js`.
+
+## Bestandspanelet (høyre side)
+
+Når du trykker på et bestand, viser panelet til høyre:
+
+- **Toppen:** knappene (Zoom, Gå inn i skogen, Rediger grense, Del i to, Slett), en sammendragslinje (areal, treslag og bonitet, hogstklasse, alder, volum per daa) og varselmerker. Merkene er hogstmoden, miljøfigur, kantsone, bratt terreng, våt mark, naturverdier, Marka og arealplan, og et trykk åpner riktig fane.
+- **Faner:**
+  - **Oversikt:** nøkkeltall, stolpepotensial, ungskog og tiltakene.
+  - **Skogdata:** treslag og volum, og skjemaet for bestandsdata.
+  - **Terreng og miljø:** kantsone, bratthet, markfuktighet, naturtyper og arter, Marka og arealplan.
+  - **Satellitt:** bilder 2018–i dag, som lastes først når fanen åpnes.
+- Fanen huskes når du bytter bestand. Tallet på fanen viser åpne tiltak og antall hensyn.
 
 ## Treslag og volum i bestandsinfoen (`js/treslag.js`)
 

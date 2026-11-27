@@ -2,6 +2,10 @@
 
 Nyeste først. Vises også i appen under «Hva er nytt».
 
+## 2.32.0 – 🌲 Ryddigere bestandspanel (2026-11-27)
+
+*Forbedret.* Bestandspanelet til høyre er delt i faner: Oversikt med nøkkeltall og tiltak, Skogdata med treslag og redigering, Terreng og miljø med kantsone, bratthet, markfuktighet, naturverdier, Marka og arealplan, og Satellitt. Øverst står en kort linje med areal, treslag, bonitet, hogstklasse, alder og volum, og merker for det som krever oppmerksomhet, for eksempel hogstmoden, kantsone eller bratt terreng. Et trykk på et merke åpner riktig fane. Panelet husker fanen du sist brukte, også når du bytter bestand.
+
 ## 2.31.0 – 🗺 Skogbruksplanen rett til ArcGIS (2026-11-27)
 
 *Nytt.* Under Data › ArcGIS kobler du til ArcGIS Online eller din organisasjons ArcGIS Enterprise, og overfører skogbruksplanen med ett trykk. Den blir et lag i din egen ArcGIS-organisasjon med bestand, tiltak, veier, punkter, eiendom, miljø og skader, og kan brukes i ArcGIS Pro, Field Maps og Dashboards. Laget kan oppdateres automatisk når planen endres. Innloggingen skjer hos ArcGIS, og SkogIQ ser aldri passordet. Uten innlogging kan du laste ned planen som Shapefile for ArcGIS Pro. Personvernerklæringen er oppdatert til versjon 1.21, fordi Esri (ArcGIS) er en ny mottaker når du selv velger å overføre. Du må godta den nye versjonen.

@@ -1008,6 +1008,11 @@ if (innloggetBruker()) startTbMerke(); else window.addEventListener('skogiq-innl
 // 🌲 Skogen siste døgn: hvor mange som har vært i SkogIQ.ai (bare antall, js/skogen-ui.js)
 if (innloggetBruker()) startSkogen(); else window.addEventListener('skogiq-innlogget', () => startSkogen(), { once: true });
 
+// Kort linje øverst i bestandspanelet: areal, treslag og bonitet, hogstklasse, alder og volum.
+function bdSammendrag(b) {
+  const s = startTilstand(b);
+  return `<span>${fmt(b.areal, 1)} daa</span><span>${esc(TRESLAG[b.treslag] || '–')}${b.bonitet ? ` · ${esc(b.treslag || '')}${b.bonitet}` : ''}</span><span>HK ${hk(b) ? HK_ROMERTALL[hk(b)] : '–'}</span><span>${s.alder != null ? `${Math.round(s.alder)} år` : '–'}</span><span>${fmt(s.volumDaa, 1)} m³/daa</span>`;
+}
 function visDetalj() {
   const boks = $('#bestandDetalj');
   const b = finnBestand(valgtId);
@@ -1019,6 +1024,22 @@ function visDetalj() {
   const om10 = framskriv([b], 10, inn(), { folgPlan: false }).perBestand.get(b.id)[10].volumDaa * (b.areal || 0);
   const hm = hogstmodenAar(b);
   const ekstra = Object.entries(b.ekstra || {});
+  // Terreng og miljø: hver del er tom når den ikke gjelder bestandet.
+  const miljo = { kantsone: KANT.harKantsone(b) ? `<div class="kantsone-linje"><b>💧 ${esc(KANT.kantsoneTekst(b, S.kantsone?.bredde))}</b><span>${esc(KANT.HENSYN)}</span></div>` : '', natur: (() => { const nv = (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade', 'kulturminne'].includes(o.type) && o.geometri && b.geometri && overlapper(b.geometri, o.geometri)); return nv.length ? `<div class="bratt-linje plan-2"><span>${nv.slice(0, 4).map((o) => `${o.type === 'artsomrade' ? '🦉' : o.type === 'kulturminne' ? '🏛' : '🌿'} ${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : esc(o.navn)}`).join('<br>')}${nv.length > 4 ? `<br><small>+ ${nv.length - 4} til</small>` : ''}<br><small>${nv.some((o) => o.type === 'kulturminne') ? 'Kulturminne: ikke kjør over eller skad det, og hold sikringssonen fri (PEFC krav 30). ' : ''}${nv.some((o) => o.type !== 'kulturminne') ? 'Naturtype eller art – vurderes av skogbiologisk kompetanse før hogst (PEFC krav 22).' : ''}</small></span></div>` : ''; })(), marka: MARKA.bestandAndel(S, b.id) ? `<div class="bratt-linje plan-1"><span>🌲 <b>${MARKA.bestandAndel(S, b.id) >= 0.99 ? 'I Marka' : `${Math.round(MARKA.bestandAndel(S, b.id) * 100)} % i Marka`}</b> <span>Hogst er tillatt, men veier og terrenginngrep krever plan eller dispensasjon, og stier og løyper skal holdes åpne.</span> <a href="${MARKA.HJEMMEL.lov.url}" target="_blank" rel="noopener">Markaloven</a></span></div>` : '', plan: S.arealplan?.bestand?.[b.id] ? (() => { const t = planBestandTekst(S.arealplan.bestand[b.id]); return t?.tekst ? `<div class="bratt-linje plan-${t.alvor}"><div class="bratt-stolpe">${S.arealplan.bestand[b.id].formal.map((f) => `<span style="flex:${f.andel};background:${formalInfo(f.kode).farge}" title="${esc(formalInfo(f.kode).navn)}: ${Math.round(f.andel * 100)} %"></span>`).join('')}</div><span>🏘 ${esc(t.tekst)}${t.raad ? `<br><small>${esc(t.raad)}</small>` : ''}</span></div>` : ''; })() : '', bratt: b.bratthet ? (() => { const v = brattVurdering(b.bratthet); return `<div class="bratt-linje bratt-${v.niva}"><div class="bratt-stolpe">${BRATT_KLASSER.map((k) => (b.bratthet.andel[k.id] ? `<span style="flex:${b.bratthet.andel[k.id]};background:${k.farge || '#cfe3c7'}" title="${esc(k.navn)}: ${Math.round(b.bratthet.andel[k.id] * 100)} %"></span>` : '')).join('')}</div><span>⛰ ${esc(v.tekst)}</span></div>`; })() : '', fukt: b.markfukt ? (() => { const v = fuktVurdering(b.markfukt); return `<div class="bratt-linje fukt-${v.niva}"><div class="bratt-stolpe">${FUKT_KLASSER.map((k) => (b.markfukt.andeler[k.id] ? `<span style="flex:${b.markfukt.andeler[k.id]};background:${k.farge}" title="${esc(k.leg)}: ${Math.round(b.markfukt.andeler[k.id] * 100)} %"></span>` : '')).join('')}${b.markfukt.andeler.torr ? `<span style="flex:${b.markfukt.andeler.torr};background:#e6e1c8" title="Tørt: ${Math.round(b.markfukt.andeler.torr * 100)} %"></span>` : ''}</div><span>💧 ${esc(v.tekst)}</span></div>`; })() : '' };
+  const antMiljo = Object.values(miljo).filter((x) => String(x || '').trim()).length;
+  // Varselmerker øverst: det som krever oppmerksomhet. Trykk åpner fanen der det står mer.
+  const merker = [
+    hm && hm <= IAAR ? ['oversikt', '🪓 Hogstmoden', 'hoy'] : null,
+    b.miljo ? ['skogdata', '🛡 Miljøfigur', 'info'] : null,
+    miljo.kantsone ? ['miljo', '💧 Kantsone mot vann', 'info'] : null,
+    b.bratthet && brattVurdering(b.bratthet).niva !== 'lett' ? ['miljo', '⛰ Bratt terreng', 'middels'] : null,
+    b.markfukt && ['vat', 'svart'].includes(fuktVurdering(b.markfukt).niva) ? ['miljo', '💦 Våt mark', 'middels'] : null,
+    miljo.natur ? ['miljo', '🌿 Naturverdier', 'middels'] : null,
+    miljo.marka ? ['miljo', '🌲 Marka', 'info'] : null,
+    miljo.plan && /plan-[12]/.test(miljo.plan) ? ['miljo', '🏘 Arealplan', 'middels'] : null,
+  ].filter(Boolean);
+  const fane = visDetalj.fane || 'oversikt';
+  const FANER = [['oversikt', 'Oversikt', (b.tiltak || []).filter((t) => t.status !== 'utfort').length || ''], ['skogdata', 'Skogdata', ''], ['miljo', 'Terreng og miljø', antMiljo || ''], ...(b.geometri ? [['satellitt', 'Satellitt', '']] : [])];
   boks.innerHTML = `
     <div class="detalj-topp">
       <h3>Bestand ${esc(b.nr)}${b.teig ? ` <span class="hint">teig ${esc(b.teig)}</span>` : ''}</h3>
@@ -1031,6 +1052,10 @@ function visDetalj() {
         <button class="knapp liten fare" data-handling="slett" type="button">Slett</button>
       </div>
     </div>
+    <div class="bd-sammendrag">${bdSammendrag(b)}</div>
+    ${merker.length ? `<div class="bd-merker">${merker.map(([f, t, n]) => `<button type="button" class="bd-merke bd-${n}" data-bd-fane="${f}">${esc(t)}</button>`).join('')}</div>` : ''}
+    <div class="bd-faner" role="tablist">${FANER.map(([id, navn, n]) => `<button type="button" role="tab" data-bd-fane="${id}" aria-selected="${id === fane}" class="${id === fane ? 'aktiv' : ''}">${esc(navn)}${n ? ` <span class="bd-antall">${n}</span>` : ''}</button>`).join('')}</div>
+    <div class="bd-panel" data-bd-panel="oversikt" ${fane === 'oversikt' ? '' : 'hidden'}>
     <div class="nokkeltall">
       <div><b>${fmt(s.volumDaa * (b.areal || 0))} m³</b><span>stående volum</span></div>
       <div><b>${fmt(tilv, 1)} m³/år</b><span>tilvekst (est.)</span></div>
@@ -1039,15 +1064,21 @@ function visDetalj() {
       <div><b>${fmt(s.volumDaa * (b.areal || 0) * rotnettoPerM3(b, inn()) / 1000)} k</b><span>kr rotnetto ved hogst nå</span></div>
       ${(() => { const a = veiVisning?.avstand(b.id); return a && Number.isFinite(a.meter) ? `<div><b>${fmt(a.meter)} m</b><span>til nærmeste bilvei${a.meter > veiVisning.maks() ? ' – lang terrengtransport' : ''}</span></div>` : ''; })()}
     </div>
-    ${treslagSeksjonHtml(b)}
-    ${KANT.harKantsone(b) ? `<div class="kantsone-linje"><b>💧 ${esc(KANT.kantsoneTekst(b, S.kantsone?.bredde))}</b><span>${esc(KANT.HENSYN)}</span></div>` : ''}
     ${stolpe().kortHtml(b)}
-    ${artsSeksjonHtml(b)}
-    ${b.markfukt ? (() => { const v = fuktVurdering(b.markfukt); return `<div class="bratt-linje fukt-${v.niva}"><div class="bratt-stolpe">${FUKT_KLASSER.map((k) => (b.markfukt.andeler[k.id] ? `<span style="flex:${b.markfukt.andeler[k.id]};background:${k.farge}" title="${esc(k.leg)}: ${Math.round(b.markfukt.andeler[k.id] * 100)} %"></span>` : '')).join('')}${b.markfukt.andeler.torr ? `<span style="flex:${b.markfukt.andeler.torr};background:#e6e1c8" title="Tørt: ${Math.round(b.markfukt.andeler.torr * 100)} %"></span>` : ''}</div><span>💧 ${esc(v.tekst)}</span></div>`; })() : ''}
-    ${(() => { const nv = (S.pefc?.objekter || []).filter((o) => ['naturtype', 'artsomrade', 'kulturminne'].includes(o.type) && o.geometri && b.geometri && overlapper(b.geometri, o.geometri)); return nv.length ? `<div class="bratt-linje plan-2"><span>${nv.slice(0, 4).map((o) => `${o.type === 'artsomrade' ? '🦉' : o.type === 'kulturminne' ? '🏛' : '🌿'} ${o.lenke ? `<a href="${esc(o.lenke)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : esc(o.navn)}`).join('<br>')}${nv.length > 4 ? `<br><small>+ ${nv.length - 4} til</small>` : ''}<br><small>${nv.some((o) => o.type === 'kulturminne') ? 'Kulturminne: ikke kjør over eller skad det, og hold sikringssonen fri (PEFC krav 30). ' : ''}${nv.some((o) => o.type !== 'kulturminne') ? 'Naturtype eller art – vurderes av skogbiologisk kompetanse før hogst (PEFC krav 22).' : ''}</small></span></div>` : ''; })()}
-    ${MARKA.bestandAndel(S, b.id) ? `<div class="bratt-linje plan-1"><span>🌲 <b>${MARKA.bestandAndel(S, b.id) >= 0.99 ? 'I Marka' : `${Math.round(MARKA.bestandAndel(S, b.id) * 100)} % i Marka`}</b> <span>Hogst er tillatt, men veier og terrenginngrep krever plan eller dispensasjon, og stier og løyper skal holdes åpne.</span> <a href="${MARKA.HJEMMEL.lov.url}" target="_blank" rel="noopener">Markaloven</a></span></div>` : ''}
-    ${S.arealplan?.bestand?.[b.id] ? (() => { const t = planBestandTekst(S.arealplan.bestand[b.id]); return t?.tekst ? `<div class="bratt-linje plan-${t.alvor}"><div class="bratt-stolpe">${S.arealplan.bestand[b.id].formal.map((f) => `<span style="flex:${f.andel};background:${formalInfo(f.kode).farge}" title="${esc(formalInfo(f.kode).navn)}: ${Math.round(f.andel * 100)} %"></span>`).join('')}</div><span>🏘 ${esc(t.tekst)}${t.raad ? `<br><small>${esc(t.raad)}</small>` : ''}</span></div>` : ''; })() : ''}
-    ${b.bratthet ? (() => { const v = brattVurdering(b.bratthet); return `<div class="bratt-linje bratt-${v.niva}"><div class="bratt-stolpe">${BRATT_KLASSER.map((k) => (b.bratthet.andel[k.id] ? `<span style="flex:${b.bratthet.andel[k.id]};background:${k.farge || '#cfe3c7'}" title="${esc(k.navn)}: ${Math.round(b.bratthet.andel[k.id] * 100)} %"></span>` : '')).join('')}</div><span>⛰ ${esc(v.tekst)}</span></div>`; })() : ''}
+    ${ungskogSeksjonHtml(b)}
+      <h4 class="undertittel">Tiltak for bestandet</h4>
+    <div id="motorBanner">${motorBannerHtml(b)}</div>
+    <div>${(b.tiltak || []).sort((x, y) => x.aar - y.aar).map((t) => tiltakRadHtml({ ...t, bestand: b })).join('') || '<div class="tom">Ingen tiltak registrert.</div>'}</div>
+    <form class="verktoyrad" id="nyttTiltakSkjema">
+      <select name="type">${opsjoner(Object.entries(TILTAKSTYPER).map(([k, v]) => [k, v.navn]))}</select>
+      <input name="aar" type="number" value="${IAAR}" style="width:90px" aria-label="År">
+      <select name="prioritet"><option value="1">Prioritet 1</option><option value="2" selected>Prioritet 2</option><option value="3">Prioritet 3</option></select>
+      <button class="knapp primar" type="submit">Legg til</button>
+    </form>
+    </div>
+    <div class="bd-panel" data-bd-panel="skogdata" ${fane === 'skogdata' ? '' : 'hidden'}>
+    ${treslagSeksjonHtml(b)}
+      <h4 class="undertittel">Bestandsdata</h4>
     <form class="skjema tre-kol" id="detaljSkjema">
       <label>Bestandsnr <input name="nr" value="${esc(b.nr)}"></label>
       <label>Teig <input name="teig" value="${esc(b.teig)}"></label>
@@ -1065,22 +1096,20 @@ function visDetalj() {
       <label class="hel">Merknad <textarea name="merknad" rows="2">${esc(b.merknad)}</textarea></label>
     </form>
     ${ekstra.length ? `<details class="ekstra"><summary>Andre felt fra importen (${ekstra.length})</summary>${ekstra.map(([k, v]) => `<div><b>${esc(k)}</b>: ${esc(v)}</div>`).join('')}</details>` : ''}
-    ${b.geometri ? `<details class="sat-detalj" id="satDetalj"${visDetalj.satAapen ? ' open' : ''}><summary>🛰 Satellittbilder ${SATELLITT_AAR[0]}–${SISTE_SATELLITTAAR} – se endringer siden taksten</summary><div id="satStripe"></div></details>` : ''}
-    ${ungskogSeksjonHtml(b)}
-    <h3 style="margin-top:14px">Tiltak for bestandet</h3>
-    <div id="motorBanner">${motorBannerHtml(b)}</div>
-    <div>${(b.tiltak || []).sort((x, y) => x.aar - y.aar).map((t) => tiltakRadHtml({ ...t, bestand: b })).join('') || '<div class="tom">Ingen tiltak registrert.</div>'}</div>
-    <form class="verktoyrad" id="nyttTiltakSkjema">
-      <select name="type">${opsjoner(Object.entries(TILTAKSTYPER).map(([k, v]) => [k, v.navn]))}</select>
-      <input name="aar" type="number" value="${IAAR}" style="width:90px" aria-label="År">
-      <select name="prioritet"><option value="1">Prioritet 1</option><option value="2" selected>Prioritet 2</option><option value="3">Prioritet 3</option></select>
-      <button class="knapp primar" type="submit">Legg til</button>
-    </form>`;
+    </div>
+    <div class="bd-panel" data-bd-panel="miljo" ${fane === 'miljo' ? '' : 'hidden'}>
+    ${antMiljo ? '' : '<p class="hint">Ingen kjente hensyn for bestandet. Kantsone, bratthet, markfuktighet, naturtyper, Marka og planer vises her når de er hentet.</p>'}
+    ${miljo.kantsone}${miljo.bratt}${miljo.fukt}${miljo.natur}${miljo.marka}${miljo.plan}
+    ${artsSeksjonHtml(b)}
+    </div>
+    <div class="bd-panel" data-bd-panel="satellitt" ${fane === 'satellitt' ? '' : 'hidden'}>
+    ${b.geometri ? `<details class="sat-detalj" id="satDetalj" open><summary>🛰 Satellittbilder ${SATELLITT_AAR[0]}–${SISTE_SATELLITTAAR} – se endringer siden taksten</summary><div id="satStripe"></div></details>` : ''}
+    </div>`;
 
   // Satellittbildene lastes først når delen åpnes (åtte bilder per bestand).
   const satD = $('#satDetalj');
   if (satD) {
-    const fyll = () => { if (satD.open && !$('#satStripe').innerHTML) $('#satStripe').innerHTML = bestandStripeHtml(b); };
+    const fyll = () => { if (satD.open && !satD.closest('[hidden]') && !$('#satStripe').innerHTML) $('#satStripe').innerHTML = bestandStripeHtml(b); };
     satD.addEventListener('toggle', () => { visDetalj.satAapen = satD.open; fyll(); }); fyll();
     satD.addEventListener('click', (e) => { const k = e.target.closest('[data-sat-aar]'); if (k) visSatellittAar(Number(k.dataset.satAar), b); });
   }
@@ -1094,6 +1123,7 @@ function visDetalj() {
     b[navn] = v;
     if (['alder', 'volumDaa', 'treantall', 'hoyde'].includes(navn)) b.takstAar = IAAR; // registrert i år
     endret({ kart: false });
+    const sm = $('#bestandDetalj .bd-sammendrag'); if (sm) sm.innerHTML = bdSammendrag(b);
     if (navn === 'treslag') visDetalj();
     // Tiltaksmotoren sjekker om endringen gir nye eller utgåtte tiltak.
     clearTimeout(visDetalj.motorT); visDetalj.motorT = setTimeout(() => {
@@ -3110,6 +3140,15 @@ function kobleHendelser() {
     handterEndring(e);
   });
   ['#tiltakListe', '#forslagListe', '#nesteTiltak', '#bestandDetalj'].forEach((s) => $(s).addEventListener('click', handterTiltakKlikk));
+  // Faner i bestandspanelet: bytt uten å tegne på nytt (skjemaer og fokus beholdes). Fanen huskes mellom bestand.
+  $('#bestandDetalj').addEventListener('click', (e) => {
+    const f = e.target.closest('[data-bd-fane]'); if (!f) return;
+    const boks = $('#bestandDetalj'); visDetalj.fane = f.dataset.bdFane;
+    boks.querySelectorAll('.bd-faner [data-bd-fane]').forEach((x) => { const a = x.dataset.bdFane === visDetalj.fane; x.classList.toggle('aktiv', a); x.setAttribute('aria-selected', a); });
+    boks.querySelectorAll('[data-bd-panel]').forEach((x) => { x.hidden = x.dataset.bdPanel !== visDetalj.fane; });
+    if (visDetalj.fane === 'satellitt') { const st = $('#satStripe'); const b = finnBestand(valgtId); if (st && !st.innerHTML && b) st.innerHTML = bestandStripeHtml(b); }
+    if (f.classList.contains('bd-merke')) boks.querySelector('.bd-faner')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
   $('#bestandDetalj').addEventListener('click', handterEndring);
 
   $('#frPeriode').addEventListener('change', () => { frResultat = null; tegnFramskriving(); });

@@ -1767,3 +1767,18 @@ button.rail-versjon:hover { color: #e6eee8; background: rgba(255,255,255,.06); }
 .sv-min-rad { outline: 2px solid var(--accent); }
 .sv-blink { animation: svBlink 1.5s ease; }
 @keyframes svBlink { 0%, 60% { background: color-mix(in srgb, #f2c230 45%, transparent); } 100% { background: transparent; } }
+
+/* Bestandspanelet: sammendrag, varselmerker og faner */
+.bd-sammendrag { display: flex; flex-wrap: wrap; gap: 4px 0; margin: 4px 0 8px; font-size: 13px; color: var(--text-2); }
+.bd-sammendrag span:not(:last-child)::after { content: '·'; margin: 0 7px; opacity: .6; }
+.bd-merker { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.bd-merke { border: 1px solid var(--border); background: var(--surface-2); color: inherit; border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.bd-merke.bd-hoy { border-color: #c77800; background: color-mix(in srgb, #f2c230 22%, transparent); font-weight: 600; }
+.bd-merke.bd-middels { border-color: color-mix(in srgb, #e0602c 60%, transparent); }
+.bd-merke:hover { border-color: var(--accent); }
+.bd-faner { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin: 4px 0 10px; overflow-x: auto; scrollbar-width: none; }
+.bd-faner button { flex: 0 0 auto; border: 0; background: transparent; color: var(--text-2); font: inherit; font-size: 13px; font-weight: 600; padding: 8px 7px; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
+.bd-faner button.aktiv { color: var(--text); border-bottom-color: var(--accent); }
+.bd-antall { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--surface-2); font-size: 11px; line-height: 18px; text-align: center; margin-left: 3px; }
+.bd-faner button.aktiv .bd-antall { background: var(--accent); color: #fff; }
+.bd-panel > .nokkeltall:first-child { margin-top: 0; }
